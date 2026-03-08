@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addMonths, format, setDate, startOfMonth, endOfMonth, differenceInDays, parseISO, isSameMonth } from "date-fns";
+import { addMonths, format, setDate, startOfMonth, endOfMonth, differenceInDays, parseISO, isSameMonth, differenceInMonths } from "date-fns";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -260,21 +260,39 @@ export const createPaymentsForRental = async (params: {
   const payments: any[] = [];
   const fullMonthlyAmount = monthlyRent + (hasGarage ? garageValue : 0);
   
-  // ✅ CORREÇÃO: Sempre começar do mês de início do contrato
-  const firstPaymentMonth = startOfMonth(startDate);
-  const contractEndMonth = startOfMonth(endDate);
+  // ✅ CORREÇÃO CRÍTICA: Calcular número de meses do contrato
+  // Ex: 05/02/2026 → 04/02/2028 = 24 meses (não 25!)
+  const contractMonths = differenceInMonths(endDate, startDate);
   
-  let currentPaymentMonth = firstPaymentMonth;
-  let installmentNumber = 1;
+  // ✅ Se início tem ≤15 dias: criar proporcional extra (não numerado) + contractMonths pagamentos
+  // ✅ Se início tem ≥16 dias: primeira parcela conta + (contractMonths - 1) pagamentos
+  
+  const startDay = startDate.getDate();
+  const firstMonthEnd = endOfMonth(startDate);
+  const daysInFirstMonth = firstMonthEnd.getDate();
+  const proportionalDaysFirst = daysInFirstMonth - startDay + 1;
+  const firstMonthIsProportional = proportionalDaysFirst < daysInFirstMonth;
+  const firstMonthCountsAsInstallment = proportionalDaysFirst >= 16;
+  
+  // Total de parcelas numeradas (installments)
+  const totalInstallments = contractMonths;
+  
+  // Array de meses a processar
   const allPaymentMonths: Date[] = [];
-
-  // ✅ CORREÇÃO: Loop inclui explicitamente o mês final
-  while (currentPaymentMonth <= contractEndMonth) {
+  let currentPaymentMonth = startOfMonth(startDate);
+  
+  // ✅ CORREÇÃO: Criar pagamentos apenas para os meses do contrato
+  for (let i = 0; i < contractMonths; i++) {
     allPaymentMonths.push(new Date(currentPaymentMonth));
     currentPaymentMonth = addMonths(currentPaymentMonth, 1);
   }
+  
+  // Se primeira parcela ≤15 dias, adicionar pagamento proporcional extra
+  if (firstMonthIsProportional && !firstMonthCountsAsInstallment) {
+    allPaymentMonths.unshift(new Date(startOfMonth(startDate)));
+  }
 
-  const totalInstallments = allPaymentMonths.length;
+  let installmentNumber = 1;
 
   for (let i = 0; i < allPaymentMonths.length; i++) {
     const paymentMonth = allPaymentMonths[i];
@@ -302,15 +320,14 @@ export const createPaymentsForRental = async (params: {
       });
     }
 
-    // ✅ NOVA REGRA: Primeira parcela
+    // ✅ PRIMEIRA PARCELA
     if (isFirstPayment) {
       const startDay = startDate.getDate();
       const monthEndDate = endOfMonth(paymentMonth);
       const daysInMonth = monthEndDate.getDate();
       
-      // Se começou depois do dia 1, calcular proporcional
       if (startDay > 1) {
-        proportionalDays = daysInMonth - startDay + 1; // +1 para incluir o dia inicial
+        proportionalDays = daysInMonth - startDay + 1;
         
         if (proportionalDays < daysInMonth) {
           isProporcional = true;
@@ -332,13 +349,12 @@ export const createPaymentsForRental = async (params: {
         }
       }
     } 
-    // ✅ NOVA REGRA: Última parcela (SEMPRE proporcional)
+    // ✅ ÚLTIMA PARCELA (sempre proporcional se termina antes do fim do mês)
     else if (isLastPayment) {
       const endDay = endDate.getDate();
       const monthEndDate = endOfMonth(paymentMonth);
       const daysInMonth = monthEndDate.getDate();
       
-      // Última parcela é SEMPRE proporcional (não importa quantos dias)
       proportionalDays = endDay;
       
       if (endDay < daysInMonth) {
@@ -361,29 +377,24 @@ export const createPaymentsForRental = async (params: {
       }
     }
 
-    // ✅ NOVA REGRA DE NUMERAÇÃO:
-    // - Primeira parcela ≤15 dias: installment = NULL (não conta)
-    // - Primeira parcela ≥16 dias: installment = 1 (conta)
-    // - Última parcela: installment = totalInstallments (sempre)
+    // ✅ NUMERAÇÃO DE PARCELAS:
+    // - Primeira ≤15 dias: installment = NULL (não conta)
+    // - Primeira ≥16 dias: installment = 1 (conta)
+    // - Última: installment = totalInstallments
     // - Demais: incrementa normalmente
     
     let currentInstallment = null;
     
     if (isFirstPayment && isProporcional) {
-      // Primeira parcela proporcional
       if (proportionalDays >= 16) {
-        // ≥16 dias: conta como parcela 1
         currentInstallment = installmentNumber;
         installmentNumber++;
       } else {
-        // ≤15 dias: não conta (installment = NULL)
         currentInstallment = null;
       }
     } else if (isLastPayment) {
-      // Última parcela: usa o número total de installments
       currentInstallment = totalInstallments;
     } else {
-      // Parcelas intermediárias
       currentInstallment = installmentNumber;
       installmentNumber++;
     }

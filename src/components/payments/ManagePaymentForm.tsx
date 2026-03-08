@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,8 @@ import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { PaymentInfoCards } from "./PaymentInfoCards";
 import { PaymentBreakdownCard } from "./PaymentBreakdownCard";
+import { PaymentFormFields } from "./PaymentFormFields";
+import { PaymentAttachments } from "./PaymentAttachments";
 import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
 import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
 import { invalidateCache } from "@/services/cacheService";
@@ -119,6 +121,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
+  // Memoizar funções de formatação
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
     const number = parseFloat(numericValue) / 100;
@@ -204,7 +207,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
-      // LÓGICA CORRETA: rent_value JÁ É O ALUGUEL, garage_value JÁ É A GARAGEM
       effectiveRentalValue = paymentData.rentals.rent_value || 0;
       
       if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
@@ -268,8 +270,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (isTermination && paymentData.rentals) {
         console.log("🚨🚨🚨 BUSCANDO PARCELAS DO CAUÇÃO NA TABELA deposit_installments");
         
-        // Fix for TS2589: Type instantiation is excessively deep
-        // Extract rental ID safely to avoid complex type inference in the query
         const rentalId = (paymentData.rentals as any).id;
 
         const { data: installments, error: installmentsError } = await supabase
@@ -505,7 +505,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setUploadProgress(prev => ({ ...prev, [index]: 30 }));
       
-      // Upload direto para Supabase Storage
       const publicUrl = await uploadToSupabase(file);
       
       setUploadProgress(prev => ({ ...prev, [index]: 100 }));
@@ -562,7 +561,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
     
-    // Zerar o campo "Valor a Pagar" para evitar soma indevida
     setFormData(prev => ({
       ...prev,
       amount_to_pay: ""
@@ -593,17 +591,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setDiscountAmount(parseCurrency(formatCurrency(value)));
   }, [formatCurrency, parseCurrency]);
 
-  // Add saving state for auto-save feedback
   const [isSavingExpenses, setIsSavingExpenses] = useState(false);
 
-  // Auto-save function for expenses and discounts
   const handleSaveExpensesAndDiscount = useCallback(async () => {
     if (!payment || !isTerminationPayment || loading) return;
     
     try {
       setIsSavingExpenses(true);
       
-      // Reconstruct the breakdown with updated values
       let breakdownData = payment.breakdown;
       if (typeof breakdownData === 'string') {
         breakdownData = JSON.parse(breakdownData);
@@ -613,7 +608,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         breakdownData = [];
       }
       
-      // Update IGPM correction if available
       if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
         breakdownData = breakdownData.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
@@ -626,7 +620,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Remove old expenses, late fees, interest, and discounts
       breakdownData = breakdownData.filter((item: any) => 
         !item.description?.includes("Despesas") &&
         !item.description?.includes("Multa por Atraso") &&
@@ -634,7 +627,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         !item.description?.includes("Desconto")
       );
       
-      // Add late fee if not removed
       if (!removeLateFee && calculateValues.multa > 0) {
         breakdownData.push({
           description: "Multa por Atraso",
@@ -643,7 +635,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Add interest if not removed
       if (!removeInterest && calculateValues.juros > 0) {
         breakdownData.push({
           description: "Juros por Atraso",
@@ -652,7 +643,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Add repair expenses if any
       if (repairExpenses > 0) {
         breakdownData.push({
           description: "Despesas Adicionais*",
@@ -661,7 +651,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Calculate new expected total (breakdown sum - discount)
       const breakdownTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
       const newExpectedTotal = breakdownTotal - discountAmount;
       
@@ -669,7 +658,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       console.log("💾 AUTO-SAVE - Breakdown Total:", breakdownTotal);
       console.log("💾 AUTO-SAVE - Novo Expected Total (com desconto):", newExpectedTotal);
       
-      // Update database
       const { error: updateError } = await supabase
         .from("payments")
         .update({
@@ -684,7 +672,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       console.log("✅ Valores salvos com sucesso!");
       
-      // Invalidar cache para forçar recarregamento dos dados atualizados
       invalidateCache('payments');
       
     } catch (error) {
@@ -705,13 +692,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     paymentId
   ]);
 
-  // Debounced auto-save effect
   useEffect(() => {
     if (!isTerminationPayment || loading || !payment) return;
     
     const timeoutId = setTimeout(() => {
       handleSaveExpensesAndDiscount();
-    }, 1500); // Save after 1.5 seconds of no changes
+    }, 1500);
     
     return () => clearTimeout(timeoutId);
   }, [repairExpenses, discountAmount, handleSaveExpensesAndDiscount, isTerminationPayment, loading, payment, igpmCorrection]);
@@ -746,7 +732,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             breakdownData = [];
           }
           
-          // Atualizar caução com correção IGPM se houver
           if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
@@ -759,7 +744,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Remover itens antigos que serão recalculados
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
@@ -767,7 +751,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             !item.description?.includes("Desconto")
           );
           
-          // Adicionar multa por atraso se não foi removida
           if (!removeLateFee && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
@@ -776,7 +759,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Adicionar juros por atraso se não foram removidos
           if (!removeInterest && values.juros > 0) {
             breakdownData.push({
               description: "Juros por Atraso",
@@ -785,7 +767,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Adicionar despesas adicionais se houver
           if (repairExpenses > 0) {
             breakdownData.push({
               description: "Despesas Adicionais*",
@@ -794,10 +775,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Salvar breakdown atualizado
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // CALCULAR expectedTotal: soma do breakdown MENOS o desconto
           const breakdownTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
           expectedTotal = breakdownTotal - discountAmount;
           
@@ -905,6 +884,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
+  // Memoizar installment info
+  const installmentInfo = useMemo(() => {
+    if (payment?.installment === null || payment?.installment === undefined) {
+      return "Proporcional";
+    }
+    return payment?.total_installments 
+      ? `${payment.installment}/${payment.total_installments}`
+      : "Única";
+  }, [payment?.installment, payment?.total_installments]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -963,176 +952,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="payment_date">
-                    Data do Pagamento <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="payment_date"
-                    type="date"
-                    value={formData.payment_date}
-                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                    required
-                    disabled={isReadOnly}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="payment_method">
-                    Forma de Pagamento <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.payment_method}
-                    onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
-                    disabled={isReadOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="boleto">Boleto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
-                  <div>
-                    <Label htmlFor="payment_code_type">
-                      C/C Recebimento
-                    </Label>
-                    <Select
-                      value={formData.pix_code_type}
-                      onValueChange={(value) => setFormData({ ...formData, pix_code_type: value })}
-                      disabled={isReadOnly}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CP">CP</SelectItem>
-                        <SelectItem value="CD">CD</SelectItem>
-                        <SelectItem value="CE">CE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {formData.payment_method === "pix" && (
-                  <div>
-                    <Label htmlFor="payment_time">
-                      Horário do Recebimento
-                    </Label>
-                    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-2 items-center">
-                      <Input
-                        id="payment_hour"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="HH"
-                        maxLength={2}
-                        value={paymentHour}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 23)) {
-                            setPaymentHour(value);
-                          }
-                        }}
-                        disabled={isReadOnly}
-                      />
-                      <span className="text-2xl font-bold">:</span>
-                      <Input
-                        id="payment_minute"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="MM"
-                        maxLength={2}
-                        value={paymentMinute}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59)) {
-                            setPaymentMinute(value);
-                          }
-                        }}
-                        disabled={isReadOnly}
-                      />
-                      <span className="text-2xl font-bold">:</span>
-                      <Input
-                        id="payment_second"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="SS"
-                        maxLength={2}
-                        value={paymentSecond}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59)) {
-                            setPaymentSecond(value);
-                          }
-                        }}
-                        disabled={isReadOnly}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <Label htmlFor="amount_to_pay">
-                    Valor a Pagar <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="amount_to_pay"
-                    type="text"
-                    placeholder="R$ 0,00"
-                    value={formData.amount_to_pay}
-                    onChange={(e) => {
-                      const formatted = formatCurrency(e.target.value);
-                      setFormData({ ...formData, amount_to_pay: formatted });
-                    }}
-                    required
-                    disabled={isReadOnly}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="installment_info">
-                    Parcela
-                  </Label>
-                  <Input
-                    id="installment_info"
-                    type="text"
-                    value={
-                      payment?.installment === null || payment?.installment === undefined
-                        ? "Proporcional"
-                        : payment?.total_installments
-                        ? `${payment.installment}/${payment.total_installments}`
-                        : "Única"
-                    }
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Observações</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Observações sobre o pagamento..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={2}
-                  disabled={isReadOnly}
-                  className="resize-none"
-                />
-              </div>
-            </div>
+            <PaymentFormFields
+              formData={formData}
+              paymentHour={paymentHour}
+              paymentMinute={paymentMinute}
+              paymentSecond={paymentSecond}
+              installmentInfo={installmentInfo}
+              isReadOnly={isReadOnly}
+              onFormDataChange={setFormData}
+              onPaymentHourChange={setPaymentHour}
+              onPaymentMinuteChange={setPaymentMinute}
+              onPaymentSecondChange={setPaymentSecond}
+              formatCurrency={formatCurrency}
+            />
           </CardContent>
         </Card>
       </div>
@@ -1145,140 +977,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <input
-                  id="file-input"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                  onChange={(e) => {
-                    const index = attachments.findIndex(a => !a.url);
-                    if (index === -1) {
-                      addAttachment();
-                      setTimeout(() => handleFileChange(e, attachments.length), 0);
-                    } else {
-                      handleFileChange(e, index);
-                    }
-                  }}
-                  disabled={uploadingFile || isReadOnly}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('file-input')?.click();
-                  }}
-                  disabled={uploadingFile || isReadOnly}
-                >
-                  <Upload className="mr-2 h-5 w-5" />
-                  Escolher Arquivo
-                </Button>
-              </div>
-
-              <div className="flex-1 sm:hidden">
-                <input
-                  id="camera-input"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => {
-                    const index = attachments.findIndex(a => !a.url);
-                    if (index === -1) {
-                      addAttachment();
-                      setTimeout(() => handleFileChange(e, attachments.length), 0);
-                    } else {
-                      handleFileChange(e, index);
-                    }
-                  }}
-                  disabled={uploadingFile || isReadOnly}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('camera-input')?.click();
-                  }}
-                  disabled={uploadingFile || isReadOnly}
-                >
-                  <Camera className="mr-2 h-5 w-5" />
-                  Tirar Foto
-                </Button>
-              </div>
-            </div>
-
-            {attachments.filter(a => a.url).length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Arquivos Anexados ({attachments.filter(a => a.url).length})
-                </p>
-                {attachments.map((attachment, index) => {
-                  if (!attachment.url) return null;
-                  
-                  return (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
-                      <div className="flex-shrink-0">
-                        {attachment.url.toLowerCase().endsWith(".pdf") ? (
-                          <FileText className="h-8 w-8 text-primary" />
-                        ) : (
-                          <ImageIcon className="h-8 w-8 text-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {attachment.name || "Arquivo"}
-                        </p>
-                        <a 
-                          href={attachment.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Visualizar →
-                        </a>
-                      </div>
-                      {!isReadOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                          className="h-8 w-8 p-0 flex-shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {Object.keys(uploadProgress).length > 0 && (
-              <div className="space-y-2">
-                {Object.entries(uploadProgress).map(([key, progress]) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Enviando... {progress}%</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <PaymentAttachments
+            attachments={attachments}
+            uploadingFile={uploadingFile}
+            uploadProgress={uploadProgress}
+            isReadOnly={isReadOnly}
+            onFileChange={handleFileChange}
+            onRemoveAttachment={removeAttachment}
+            onAddAttachment={addAttachment}
+          />
         </CardContent>
       </Card>
 
