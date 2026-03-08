@@ -259,39 +259,6 @@ export function DepositInstallmentsTable({
     window.print();
   }, []);
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2">Carregando dados...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <Card>
-        <CardContent className="pt-6 text-center text-muted-foreground">
-          Acesso restrito a administradores.
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6 text-center text-muted-foreground">
-          Nenhum dado de caução encontrado.
-        </CardContent>
-      </Card>
-    );
-  }
-
   // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
   const groupedData = useMemo(() => {
     return data.reduce((acc, inst) => {
@@ -405,6 +372,39 @@ export function DepositInstallmentsTable({
       netRevenue
     };
   }, [visibleData]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Carregando dados...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center text-muted-foreground">
+          Acesso restrito a administradores.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center text-muted-foreground">
+          Nenhum dado de caução encontrado.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
