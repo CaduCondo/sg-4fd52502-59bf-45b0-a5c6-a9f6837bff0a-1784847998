@@ -776,7 +776,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               <div className="flex justify-between items-center pt-2 border-t border-emerald-200 dark:border-emerald-800">
                 <span className="font-bold text-emerald-900 dark:text-emerald-100">Valor Total:</span>
                 <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(calculateTotal())}
+                  {formatCurrency(calculateTotal)}
                 </span>
               </div>
             </div>
