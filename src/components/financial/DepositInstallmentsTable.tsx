@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -157,7 +157,7 @@ export function DepositInstallmentsTable({
     fetchData();
   }, [isAdmin, statusFilter, toast]);
 
-  const handleSort = (field: SortField) => {
+  const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       // Ciclo: asc → desc → null
       if (sortDirection === "asc") {
@@ -170,9 +170,9 @@ export function DepositInstallmentsTable({
       setSortField(field);
       setSortDirection("asc");
     }
-  };
+  }, [sortField, sortDirection]);
 
-  const getSortIcon = (field: SortField) => {
+  const getSortIcon = useCallback((field: SortField) => {
     if (sortField !== field) {
       return <ArrowUpDown className="h-4 w-4 ml-1 opacity-30" />;
     }
@@ -180,9 +180,9 @@ export function DepositInstallmentsTable({
       return <ArrowUp className="h-4 w-4 ml-1" />;
     }
     return <ArrowDown className="h-4 w-4 ml-1" />;
-  };
+  }, [sortField, sortDirection]);
 
-  const handleUpdateField = async (
+  const handleUpdateField = useCallback(async (
     installmentId: string,
     field: string,
     value: string | number
@@ -224,9 +224,9 @@ export function DepositInstallmentsTable({
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(() => {
     const excelData = data.map((inst) => ({
       Local: inst.rental?.property?.location?.name || "-",
       Complemento: inst.rental?.property?.complement || "-",
@@ -253,11 +253,11 @@ export function DepositInstallmentsTable({
       title: "Sucesso",
       description: "Planilha exportada com sucesso!",
     });
-  };
+  }, [data, toast]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -292,100 +292,119 @@ export function DepositInstallmentsTable({
     );
   }
 
-  // ✅ Agrupa parcelas por rental_id
-  const groupedData = data.reduce((acc, inst) => {
-    if (!acc[inst.rental_id]) {
-      acc[inst.rental_id] = [];
-    }
-    acc[inst.rental_id].push(inst);
-    return acc;
-  }, {} as Record<string, DepositInstallment[]>);
-
-  // ✅ Ordena parcelas dentro de cada grupo por installment_number
-  Object.values(groupedData).forEach((group) => {
-    group.sort((a, b) => a.installment_number - b.installment_number);
-  });
-
-  // ✅ Converte para array e ordena grupos pela data da primeira parcela
-  let sortedGroups = Object.entries(groupedData)
-    .sort((a, b) => {
-      const dateA = new Date(a[1][0].due_date || a[1][0].payment_date || "");
-      const dateB = new Date(b[1][0].due_date || b[1][0].payment_date || "");
-      return dateA.getTime() - dateB.getTime();
-    })
-    .map(([_, group]) => group);
-
-  // ✅ Aplicar ordenação customizada se houver
-  if (sortField && sortDirection) {
-    sortedGroups = [...sortedGroups].sort((groupA, groupB) => {
-      const instA = groupA[0];
-      const instB = groupB[0];
-      let comparison = 0;
-
-      switch (sortField) {
-        case "location":
-          comparison = (instA.rental?.property?.location?.name || "").localeCompare(
-            instB.rental?.property?.location?.name || ""
-          );
-          break;
-        case "complement":
-          comparison = (instA.rental?.property?.complement || "").localeCompare(
-            instB.rental?.property?.complement || ""
-          );
-          break;
-        case "tenant":
-          comparison = (instA.rental?.tenant?.name || "").localeCompare(
-            instB.rental?.tenant?.name || ""
-          );
-          break;
-        case "rent":
-          comparison = (instA.rental?.rent_value || 0) - (instB.rental?.rent_value || 0);
-          break;
-        case "deposit":
-          const depositA = groupA.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-          const depositB = groupB.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-          comparison = depositA - depositB;
-          break;
-        case "partner":
-          comparison = (instA.rental?.has_partner_broker ? 1 : 0) - (instB.rental?.has_partner_broker ? 1 : 0);
-          break;
-        case "partnerCommission":
-          comparison = (instA.partner_commission || 0) - (instB.partner_commission || 0);
-          break;
-        case "internalCommission":
-          comparison = (instA.internal_commission || 0) - (instB.internal_commission || 0);
-          break;
-        case "installment":
-          comparison = instA.installment_number - instB.installment_number;
-          break;
-        case "date":
-          const dateA = new Date(instA.payment_date || instA.due_date || "");
-          const dateB = new Date(instB.payment_date || instB.due_date || "");
-          comparison = dateA.getTime() - dateB.getTime();
-          break;
-        case "amount":
-          comparison = (instA.amount || 0) - (instB.amount || 0);
-          break;
-        case "pix":
-          comparison = (instA.pix_code || "").localeCompare(instB.pix_code || "");
-          break;
+  // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
+  const groupedData = useMemo(() => {
+    return data.reduce((acc, inst) => {
+      if (!acc[inst.rental_id]) {
+        acc[inst.rental_id] = [];
       }
+      acc[inst.rental_id].push(inst);
+      return acc;
+    }, {} as Record<string, DepositInstallment[]>);
+  }, [data]);
 
-      return sortDirection === "asc" ? comparison : -comparison;
+  // ✅ Ordena parcelas dentro de cada grupo (MEMOIZADO)
+  useMemo(() => {
+    Object.values(groupedData).forEach((group) => {
+      group.sort((a, b) => a.installment_number - b.installment_number);
     });
-  }
+  }, [groupedData]);
 
-  // Achatar os grupos para cálculo de totais
-  const visibleData = sortedGroups.flatMap(group => group);
+  // ✅ Converte para array e ordena grupos (MEMOIZADO)
+  const sortedGroups = useMemo(() => {
+    let groups = Object.entries(groupedData)
+      .sort((a, b) => {
+        const dateA = new Date(a[1][0].due_date || a[1][0].payment_date || "");
+        const dateB = new Date(b[1][0].due_date || b[1][0].payment_date || "");
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map(([_, group]) => group);
 
-  const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const totalReceived = visibleData
-    .filter((inst) => inst.pix_code && inst.pix_code.trim() !== "")
-    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const totalPartnerCommission = visibleData.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
-  const totalInternalCommission = visibleData.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
-  const totalCommission = totalPartnerCommission + totalInternalCommission;
-  const netRevenue = totalReceived - totalCommission;
+    // ✅ Aplicar ordenação customizada se houver
+    if (sortField && sortDirection) {
+      groups = [...groups].sort((groupA, groupB) => {
+        const instA = groupA[0];
+        const instB = groupB[0];
+        let comparison = 0;
+
+        switch (sortField) {
+          case "location":
+            comparison = (instA.rental?.property?.location?.name || "").localeCompare(
+              instB.rental?.property?.location?.name || ""
+            );
+            break;
+          case "complement":
+            comparison = (instA.rental?.property?.complement || "").localeCompare(
+              instB.rental?.property?.complement || ""
+            );
+            break;
+          case "tenant":
+            comparison = (instA.rental?.tenant?.name || "").localeCompare(
+              instB.rental?.tenant?.name || ""
+            );
+            break;
+          case "rent":
+            comparison = (instA.rental?.rent_value || 0) - (instB.rental?.rent_value || 0);
+            break;
+          case "deposit":
+            const depositA = groupA.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+            const depositB = groupB.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+            comparison = depositA - depositB;
+            break;
+          case "partner":
+            comparison = (instA.rental?.has_partner_broker ? 1 : 0) - (instB.rental?.has_partner_broker ? 1 : 0);
+            break;
+          case "partnerCommission":
+            comparison = (instA.partner_commission || 0) - (instB.partner_commission || 0);
+            break;
+          case "internalCommission":
+            comparison = (instA.internal_commission || 0) - (instB.internal_commission || 0);
+            break;
+          case "installment":
+            comparison = instA.installment_number - instB.installment_number;
+            break;
+          case "date":
+            const dateA = new Date(instA.payment_date || instA.due_date || "");
+            const dateB = new Date(instB.payment_date || instB.due_date || "");
+            comparison = dateA.getTime() - dateB.getTime();
+            break;
+          case "amount":
+            comparison = (instA.amount || 0) - (instB.amount || 0);
+            break;
+          case "pix":
+            comparison = (instA.pix_code || "").localeCompare(instB.pix_code || "");
+            break;
+        }
+
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+
+    return groups;
+  }, [groupedData, sortField, sortDirection]);
+
+  // Achatar os grupos para cálculo de totais (MEMOIZADO)
+  const visibleData = useMemo(() => sortedGroups.flatMap(group => group), [sortedGroups]);
+
+  const { totalExpected, totalReceived, totalPartnerCommission, totalInternalCommission, totalCommission, netRevenue } = useMemo(() => {
+    const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const totalReceived = visibleData
+      .filter((inst) => inst.pix_code && inst.pix_code.trim() !== "")
+      .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const totalPartnerCommission = visibleData.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
+    const totalInternalCommission = visibleData.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
+    const totalCommission = totalPartnerCommission + totalInternalCommission;
+    const netRevenue = totalReceived - totalCommission;
+
+    return {
+      totalExpected,
+      totalReceived,
+      totalPartnerCommission,
+      totalInternalCommission,
+      totalCommission,
+      netRevenue
+    };
+  }, [visibleData]);
 
   return (
     <div className="space-y-6">

@@ -146,7 +146,6 @@ export default function Financial() {
       });
 
       // QUERY OTIMIZADA: 1 única query com JOIN completo
-      // Usando 'any' para evitar erro TS2589 (excessively deep type instantiation) devido à complexidade dos JOINs
       const paymentsQuery: any = supabase
         .from("payments")
         .select(`
