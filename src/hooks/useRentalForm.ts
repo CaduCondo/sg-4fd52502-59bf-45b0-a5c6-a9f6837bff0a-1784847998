@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/masks";
 import { calculateProportionalRent, calculateDaysBetweenDates, shouldUseProportionalRent } from "@/lib/rentalCalculations";
@@ -79,7 +79,7 @@ export function useRentalForm({
     }
   }, []);
 
-  // Calcular valor proporcional
+  // Calcular valor proporcional (MEMOIZADO)
   useEffect(() => {
     if (!startDate || !paymentDay || !selectedPropertyId) return;
 
@@ -328,12 +328,10 @@ export function useRentalForm({
     });
   }, [toast]);
 
-  // Obter propriedade selecionada
+  // Obter propriedade selecionada (MEMOIZADO)
   const getSelectedProperty = useCallback((): Property | undefined => {
-    // Primeiro tenta encontrar na lista de properties
     const found = properties.find((p) => p.id === selectedPropertyId);
     
-    // Se não encontrou e estamos visualizando um rental existente
     if (!found && rental?.property && rental.propertyId === selectedPropertyId) {
       console.log("🏠 [getSelectedProperty] Usando property do rental como fallback");
       return rental.property as Property;
@@ -342,26 +340,15 @@ export function useRentalForm({
     return found;
   }, [properties, selectedPropertyId, rental]);
 
-  // Calcular total
-  const calculateTotal = useCallback((): number => {
+  // Calcular total (MEMOIZADO)
+  const calculateTotal = useMemo((): number => {
     const property = getSelectedProperty();
-    console.log("💰 [calculateTotal] Property:", property);
-    console.log("💰 [calculateTotal] Property value:", property?.value);
-    
     const propertyValue = property?.value || 0;
-    console.log("💰 [calculateTotal] propertyValue:", propertyValue);
-    
     const garage = hasGarage
       ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
       : 0;
-    console.log("💰 [calculateTotal] hasGarage:", hasGarage);
-    console.log("💰 [calculateTotal] garageValue:", garageValue);
-    console.log("💰 [calculateTotal] garage (parsed):", garage);
     
-    const total = propertyValue + garage;
-    console.log("💰 [calculateTotal] TOTAL:", total);
-    
-    return total;
+    return propertyValue + garage;
   }, [getSelectedProperty, hasGarage, garageValue]);
 
   return {

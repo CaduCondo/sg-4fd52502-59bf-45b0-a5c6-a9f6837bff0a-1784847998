@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
@@ -22,7 +22,7 @@ let paymentsCache: {
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
 // Invalidar cache
-const invalidateCache = () => {
+export const invalidatePaymentsCache = () => {
   paymentsCache = { data: null, key: "", timestamp: 0 };
   console.log("🗑️ [usePayments] Cache invalidado");
 };
@@ -34,10 +34,21 @@ export function usePayments() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Prevenir múltiplas chamadas simultâneas
+  const loadingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadPayments = useCallback(async (month?: string, year?: string) => {
+    // Se já está carregando, cancela a requisição anterior
+    if (loadingRef.current && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     try {
+      loadingRef.current = true;
       setLoading(true);
+      abortControllerRef.current = new AbortController();
 
       // Verificar cache
       const cacheKey = `${month || "all"}-${year || "all"}`;
@@ -53,6 +64,7 @@ export function usePayments() {
         setProperties(paymentsCache.data.properties);
         setTenants(paymentsCache.data.tenants);
         setLoading(false);
+        loadingRef.current = false;
         return;
       }
 
@@ -127,6 +139,12 @@ export function usePayments() {
 
       const { data: paymentsData, error: paymentsError } = await query;
 
+      // Verificar se foi cancelado
+      if (abortControllerRef.current?.signal.aborted) {
+        loadingRef.current = false;
+        return;
+      }
+
       if (paymentsError) {
         console.error("❌ [usePayments] Erro ao buscar:", paymentsError);
         throw paymentsError;
@@ -139,6 +157,7 @@ export function usePayments() {
         setProperties([]);
         setTenants([]);
         setLoading(false);
+        loadingRef.current = false;
         return;
       }
 
@@ -269,7 +288,13 @@ export function usePayments() {
       setProperties(propertiesArray);
       setTenants(tenantsArray);
 
-    } catch (error) {
+    } catch (error: any) {
+      // Ignorar erros de cancelamento
+      if (error.name === 'AbortError') {
+        console.log("ℹ️ [usePayments] Requisição cancelada");
+        return;
+      }
+      
       console.error("❌ [usePayments] Erro ao carregar pagamentos:", error);
       toast({
         title: "Erro",
@@ -278,6 +303,7 @@ export function usePayments() {
       });
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [toast]);
 
@@ -299,7 +325,7 @@ export function usePayments() {
       if (error) throw error;
 
       // Invalidar cache
-      invalidateCache();
+      invalidatePaymentsCache();
 
       toast({
         title: "Sucesso",

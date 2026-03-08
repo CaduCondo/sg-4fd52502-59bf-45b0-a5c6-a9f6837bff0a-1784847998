@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardCounts {
@@ -26,7 +26,7 @@ interface DashboardData {
 
 // Cache em memória com TTL maior (views materializadas são atualizadas por triggers)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos (aumentado para melhor performance)
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -41,6 +41,12 @@ function getCached<T>(key: string): T | null {
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
   console.log(`💾 [useDashboardData] Cache atualizado para ${key}`);
+}
+
+// Função para invalidar cache (exportada para uso externo)
+export function invalidateDashboardCache(): void {
+  cache.clear();
+  console.log("🗑️ [useDashboardData] Cache limpo");
 }
 
 export function useDashboardData(
@@ -74,31 +80,34 @@ export function useDashboardData(
     [userId, month, year, userRole]
   );
 
-  useEffect(() => {
-    let isMounted = true;
+  // Prevenir múltiplas chamadas simultâneas
+  const loadingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
     const loadData = async () => {
       if (!userId) {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
+      }
+
+      // Se já está carregando, cancela a requisição anterior
+      if (loadingRef.current && abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
 
       // Tentar cache primeiro
       const cached = getCached<DashboardCounts>(cacheKey);
       if (cached) {
-        if (isMounted) {
-          setCounts(cached);
-          setLoading(false);
-        }
+        setCounts(cached);
+        setLoading(false);
         return;
       }
 
       try {
-        if (isMounted) {
-          setLoading(true);
-        }
+        loadingRef.current = true;
+        setLoading(true);
+        abortControllerRef.current = new AbortController();
 
         // 1. Buscar permissões de localização (se financeiro)
         let allowedLocations: string[] | null = null;
@@ -108,30 +117,33 @@ export function useDashboardData(
             .select("location_id")
             .eq("user_id", userId);
           
-          if (!isMounted) return;
+          // Verificar se foi cancelado
+          if (abortControllerRef.current?.signal.aborted) {
+            loadingRef.current = false;
+            return;
+          }
           
           allowedLocations = permData?.map(p => p.location_id) || [];
           
           if (allowedLocations.length === 0) {
-            if (isMounted) {
-              setCounts({
-                totalProperties: 0,
-                availableProperties: 0,
-                unavailableProperties: 0,
-                occupiedProperties: 0,
-                totalTenants: 0,
-                activeContracts: 0,
-                expiringContracts: 0,
-                overduePayments: 0,
-                overdueAmount: 0,
-                dueTodayPayments: 0,
-                completedPayments: 0,
-                expectedAmount: 0,
-                grossRevenue: 0,
-                locationExpenses: 0,
-              });
-              setLoading(false);
-            }
+            setCounts({
+              totalProperties: 0,
+              availableProperties: 0,
+              unavailableProperties: 0,
+              occupiedProperties: 0,
+              totalTenants: 0,
+              activeContracts: 0,
+              expiringContracts: 0,
+              overduePayments: 0,
+              overdueAmount: 0,
+              dueTodayPayments: 0,
+              completedPayments: 0,
+              expectedAmount: 0,
+              grossRevenue: 0,
+              locationExpenses: 0,
+            });
+            setLoading(false);
+            loadingRef.current = false;
             return;
           }
         }
@@ -189,7 +201,11 @@ export function useDashboardData(
           })(),
         ]);
 
-        if (!isMounted) return;
+        // Verificar se foi cancelado
+        if (abortControllerRef.current?.signal.aborted) {
+          loadingRef.current = false;
+          return;
+        }
 
         // 3. Processar resultados das VIEWS MATERIALIZADAS
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
@@ -254,28 +270,32 @@ export function useDashboardData(
           locationExpenses,
         };
 
-        if (!isMounted) return;
-
         // Salvar no cache
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
 
       } catch (error: any) {
-        if (!isMounted) return;
+        // Ignorar erros de cancelamento
+        if (error.name === 'AbortError') {
+          console.log("ℹ️ [useDashboardData] Requisição cancelada");
+          return;
+        }
         
-        // Log apenas erros reais (não relacionados a cancelamento)
         console.error("Error loading dashboard data:", error);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
+        loadingRef.current = false;
       }
     };
 
     loadData();
 
+    // Cleanup: cancelar requisições pendentes ao desmontar
     return () => {
-      isMounted = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      loadingRef.current = false;
     };
   }, [month, year, userId, userRole, isFinancialUser, cacheKey]);
 
