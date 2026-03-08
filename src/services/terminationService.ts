@@ -489,3 +489,61 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("🏁 FIM processContractTermination");
   console.log("═".repeat(80) + "\n");
 }
+
+// ✅ PERFORMANCE: Select específico nas queries principais
+export async function calculateTerminationValues(rentalId: string) {
+  console.log("🔍 Buscando dados da locação para rescisão:", rentalId);
+
+  // ✅ Select apenas campos necessários
+  const { data: rental, error: rentalError } = await supabase
+    .from("rentals")
+    .select(`
+      id,
+      property_id,
+      tenant_id,
+      start_date,
+      end_date,
+      value,
+      monthly_rent,
+      deposit_amount,
+      deposit_installments,
+      deposit_installment1,
+      deposit_installment2,
+      deposit_installment3,
+      has_garage,
+      garage_value,
+      properties!rentals_property_id_fkey (
+        id,
+        location_id,
+        complement,
+        locations!properties_location_id_fkey (
+          id,
+          name
+        )
+      ),
+      tenants!rentals_tenant_id_fkey (
+        id,
+        name
+      )
+    `)
+    .eq("id", rentalId)
+    .single();
+
+  if (rentalError || !rental) {
+    console.error("❌ Erro ao buscar locação:", rentalError);
+    throw new Error("Locação não encontrada");
+  }
+
+  // ✅ Select apenas campos necessários dos pagamentos
+  const { data: payments, error: paymentsError } = await supabase
+    .from("payments")
+    .select("id, status, expected_amount, paid_amount, payment_date, reference_month, reference_year")
+    .eq("rental_id", rentalId)
+    .order("reference_year", { ascending: true })
+    .order("reference_month", { ascending: true });
+
+  if (paymentsError) {
+    console.error("❌ Erro ao buscar pagamentos:", paymentsError);
+    throw paymentsError;
+  }
+}
