@@ -326,7 +326,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_method: paymentData.payment_method || "pix",
         payment_time: (paymentData as any).payment_time || "",
         amount_to_pay: alreadyPaid 
-          ? "" // ✅ BUG #2: Campo zerado se pagamento já está pago
+          ? (paymentData.paid_amount 
+              ? formatCurrency(paymentData.paid_amount.toFixed(2))
+              : "") // ✅ Se pago, mostrar valor para visualização
           : (paymentData.paid_amount 
               ? formatCurrency(paymentData.paid_amount.toFixed(2))
               : ""),
@@ -563,6 +565,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
     
+    // ✅ BUG #2 FIX: Zerar campo "Valor a Pagar" ao habilitar edição
     setFormData(prev => ({
       ...prev,
       amount_to_pay: ""
@@ -570,12 +573,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     
     toast({
       title: "Modo de Edição",
-      description: "Campos desbloqueados para edição.",
+      description: "Campos desbloqueados para edição. Campo 'Valor a Pagar' zerado - preencha o valor manualmente.",
     });
   }, [toast]);
 
   const handleCancelEdit = useCallback(() => {
     setIsEditMode(false);
+    // ✅ Recarregar dados para restaurar valores originais
     loadPaymentData();
     toast({
       title: "Edição Cancelada",
