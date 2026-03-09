@@ -411,13 +411,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       setCalculatedTotal(newTotal);
       
-      if (isEditMode) {
+      // ✅ CORREÇÃO: Não preencher se estamos editando um pagamento já pago
+      // Apenas preenche para pagamentos novos (não pagos) ou quando não estamos em modo de edição
+      if (isEditMode && !isPaid) {
         setFormData(prev => ({
           ...prev,
           amount_to_pay: formatCurrency(newTotal.toFixed(2))
         }));
       }
-    } else if (!isTerminationPayment && isEditMode) {
+    } else if (!isTerminationPayment && isEditMode && !isPaid) {
+      // ✅ CORREÇÃO: Apenas preenche para pagamentos novos (não pagos)
       const subtotal = displayBreakdown.total;
       const lateFees = (removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros);
       const totalValue = subtotal + lateFees;
@@ -436,6 +439,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     removeInterest,
     calculateValues,
     isEditMode,
+    isPaid, // ✅ Adicionar isPaid nas dependências
     loading,
     payment,
     igpmCorrection,
