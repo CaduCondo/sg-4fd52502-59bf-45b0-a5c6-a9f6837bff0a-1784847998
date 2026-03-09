@@ -713,10 +713,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, [repairExpenses, discountAmount, handleSaveExpensesAndDiscount, isTerminationPayment, loading, payment, igpmCorrection]);
 
   const handleSubmit = async () => {
-    if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
+    // ✅ CORREÇÃO: Remover obrigatoriedade do campo amount_to_pay
+    if (!formData.payment_date || !formData.payment_method) {
       toast({
         title: "Atenção",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Preencha os campos obrigatórios: Data e Método de Pagamento",
         variant: "destructive",
       });
       return;
@@ -725,7 +726,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      const paidAmount = parseCurrency(formData.amount_to_pay);
+      // ✅ Permitir valor zerado - se vazio, mantém o paid_amount anterior
+      const paidAmount = formData.amount_to_pay 
+        ? parseCurrency(formData.amount_to_pay)
+        : 0;
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -810,15 +814,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let paymentStatus: "paid" | "partial";
       let finalPaidAmount: number;
       
-      if (isTerminationPayment) {
-        const expectedAbs = Math.abs(expectedTotal);
-        const difference = Math.abs(paidAmount - expectedAbs);
-        paymentStatus = difference < 0.01 ? "paid" : "partial";
-        finalPaidAmount = paidAmount;
+      // ✅ CORREÇÃO: Se amount_to_pay estiver vazio, mantém o paid_amount anterior
+      if (paidAmount === 0) {
+        // Editando sem alterar valor pago - mantém status e valor anterior
+        finalPaidAmount = payment?.paid_amount || 0;
+        paymentStatus = payment?.status || "pending";
+        console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
-        const previousPaid = payment?.paid_amount || 0;
-        finalPaidAmount = previousPaid + paidAmount;
-        paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
+        // Adicionando novo pagamento ou alterando valor
+        if (isTerminationPayment) {
+          const expectedAbs = Math.abs(expectedTotal);
+          const difference = Math.abs(paidAmount - expectedAbs);
+          paymentStatus = difference < 0.01 ? "paid" : "partial";
+          finalPaidAmount = paidAmount;
+        } else {
+          const previousPaid = payment?.paid_amount || 0;
+          finalPaidAmount = previousPaid + paidAmount;
+          paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
+        }
       }
 
       const attachmentsToSave = attachments.filter(a => a.url).map(a => ({
@@ -842,7 +855,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
-        expected_amount: Math.abs(expectedTotal), // CORREÇÃO: Agora inclui despesas e descontos
+        expected_amount: Math.abs(expectedTotal),
       };
 
       const { error: updateError } = await supabase
@@ -854,9 +867,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       toast({
         title: "Sucesso",
-        description: paymentStatus === "partial" 
-          ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
-          : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
+        description: paidAmount === 0
+          ? "Pagamento atualizado com sucesso!"
+          : paymentStatus === "partial" 
+            ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
+            : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
       if (onSuccess) {
