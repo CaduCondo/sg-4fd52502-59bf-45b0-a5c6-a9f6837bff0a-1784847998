@@ -811,7 +811,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       console.log("📊 VALOR FINAL A SER SALVO - expected_amount:", Math.abs(expectedTotal));
       
-      let paymentStatus: "paid" | "partial";
+      let paymentStatus: string;
       let finalPaidAmount: number;
       
       // ✅ CORREÇÃO: Se amount_to_pay estiver vazio, mantém o paid_amount anterior
