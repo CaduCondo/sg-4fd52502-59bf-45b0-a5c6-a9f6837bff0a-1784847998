@@ -273,11 +273,42 @@ export async function createPaymentsForRental(params: {
   const garage = hasGarage && garageValue ? garageValue : 0;
   const totalMonthlyValue = rentValue + garage;
 
+  // 🎯 REGRA DO PRIMEIRO RECEBIMENTO:
+  // Calcular quantos dias tem entre start_date e o primeiro payment_day
+  const startDay = startDate.getDate();
+  const startMonth = startDate.getMonth();
+  const startYear = startDate.getFullYear();
+  
+  // Determinar a data do primeiro vencimento
+  let firstDueDate: Date;
+  if (startDay <= paymentDay) {
+    // Primeiro vencimento no mesmo mês
+    firstDueDate = new Date(startYear, startMonth, paymentDay);
+  } else {
+    // Primeiro vencimento no mês seguinte
+    firstDueDate = new Date(startYear, startMonth + 1, paymentDay);
+  }
+  
+  // Calcular dias do primeiro período (de start_date até primeiro vencimento)
+  const daysFirstPeriod = Math.ceil((firstDueDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+  console.log("📅 Análise do Primeiro Período:", {
+    startDay,
+    paymentDay,
+    firstDueDate: firstDueDate.toISOString().split("T")[0],
+    daysFirstPeriod,
+    isProrataOnly: daysFirstPeriod <= 15,
+  });
+
   const currentDate = new Date(startDate);
   const end = new Date(endDate);
 
   // ✅ PERFORMANCE: Coletar todos os pagamentos em array para batch insert
   const paymentsToCreate: any[] = [];
+  
+  // Determinar se o primeiro pagamento é "Prorata" (≤15 dias) ou "1/XX" (≥16 dias)
+  const isFirstProrataOnly = daysFirstPeriod <= 15;
+  let installmentNumber = isFirstProrataOnly ? 0 : 1; // Se for prorata puro, começa em 0
 
   while (currentDate <= end) {
     const year = currentDate.getFullYear();
@@ -312,8 +343,11 @@ export async function createPaymentsForRental(params: {
       const proportionalGarage = hasGarage && garage ? (garage / 30) * daysToCharge : 0;
       expectedAmount = proportionalRent + proportionalGarage;
 
+      // 🎯 DETERMINAR DESCRIÇÃO BASEADO NA REGRA
+      const descriptionPrefix = daysToCharge <= 15 ? "Prorata" : "Aluguel Proporcional";
+      
       breakdown.push({
-        description: `Aluguel Proporcional (${daysToCharge} dias - ${startDate.toISOString().split("T")[0]} até ${dueDate.toISOString().split("T")[0]})`,
+        description: `${descriptionPrefix} (${daysToCharge} dias - ${startDate.toISOString().split("T")[0]} até ${dueDate.toISOString().split("T")[0]})`,
         amount: parseFloat(proportionalRent.toFixed(2)),
         type: "addition",
       });
@@ -325,7 +359,26 @@ export async function createPaymentsForRental(params: {
           type: "addition",
         });
       }
+      
+      // 🎯 Se for prorata puro (≤15 dias), installment = 0 (não conta como parcela)
+      paymentsToCreate.push({
+        rental_id: rental.id,
+        reference_month: month,
+        reference_year: year,
+        due_date: dueDate.toISOString().split("T")[0],
+        expected_amount: parseFloat(expectedAmount.toFixed(2)),
+        status: "pending",
+        breakdown: breakdown,
+        installment: installmentNumber,
+        total_installments: null, // Será calculado no final
+      });
+      
+      // Se foi prorata puro (≤15 dias), próxima parcela será 1/XX
+      // Se foi ≥16 dias, já contou como 1/XX
+      installmentNumber++;
+      
     } else {
+      // Pagamentos normais (não é primeiro mês)
       breakdown.push({
         description: "Aluguel",
         amount: parseFloat(rentValue.toFixed(2)),
@@ -339,20 +392,42 @@ export async function createPaymentsForRental(params: {
           type: "addition",
         });
       }
+      
+      paymentsToCreate.push({
+        rental_id: rental.id,
+        reference_month: month,
+        reference_year: year,
+        due_date: dueDate.toISOString().split("T")[0],
+        expected_amount: parseFloat(expectedAmount.toFixed(2)),
+        status: "pending",
+        breakdown: breakdown,
+        installment: installmentNumber,
+        total_installments: null, // Será calculado no final
+      });
+      
+      installmentNumber++;
     }
-
-    paymentsToCreate.push({
-      rental_id: rental.id,
-      reference_month: month,
-      reference_year: year,
-      due_date: dueDate.toISOString().split("T")[0],
-      expected_amount: parseFloat(expectedAmount.toFixed(2)),
-      status: "pending",
-      breakdown: breakdown,
-    });
 
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
+
+  // 🎯 CALCULAR TOTAL_INSTALLMENTS CORRETO
+  // Total = número de pagamentos - 1 se houver prorata (installment = 0)
+  const hasProrata = paymentsToCreate.some(p => p.installment === 0);
+  const totalInstallments = paymentsToCreate.length - (hasProrata ? 1 : 0);
+  
+  console.log("📊 Resumo dos Pagamentos:", {
+    totalPayments: paymentsToCreate.length,
+    hasProrata: hasProrata,
+    totalInstallments: totalInstallments,
+    firstInstallment: paymentsToCreate[0]?.installment,
+    lastInstallment: paymentsToCreate[paymentsToCreate.length - 1]?.installment,
+  });
+  
+  // Atualizar total_installments em todos os pagamentos
+  paymentsToCreate.forEach(payment => {
+    payment.total_installments = totalInstallments;
+  });
 
   // ✅ PERFORMANCE: Batch insert único em vez de loop
   if (paymentsToCreate.length > 0) {
