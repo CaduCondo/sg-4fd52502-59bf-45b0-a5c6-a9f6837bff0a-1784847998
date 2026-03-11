@@ -104,8 +104,95 @@ const mapRentalData = (data: any): Rental => {
 };
 
 export const rentalService = {
+  /**
+   * Verifica e atualiza automaticamente locações cujo contrato expirou (end_date passou)
+   * Atualiza:
+   * - rental.status = 'ended'
+   * - property.status = 'available'
+   * - tenant.status = 'active'
+   */
+  async checkAndUpdateExpiredRentals(): Promise<void> {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      console.log("🔍 [rentalService.checkAndUpdateExpiredRentals] Verificando contratos expirados...");
+      
+      // Buscar locações ativas cuja end_date já passou
+      const { data: expiredRentals, error } = await supabase
+        .from("rentals")
+        .select("id, tenant_id, property_id, end_date")
+        .eq("status", "active")
+        .not("end_date", "is", null)
+        .lt("end_date", today);
+
+      if (error) {
+        console.error("❌ [rentalService.checkAndUpdateExpiredRentals] Erro:", error);
+        return;
+      }
+
+      if (!expiredRentals || expiredRentals.length === 0) {
+        console.log("✅ [rentalService.checkAndUpdateExpiredRentals] Nenhum contrato expirado encontrado");
+        return;
+      }
+
+      console.log(`📋 [rentalService.checkAndUpdateExpiredRentals] ${expiredRentals.length} contrato(s) expirado(s) encontrado(s)`);
+
+      // Atualizar cada locação expirada
+      for (const rental of expiredRentals) {
+        console.log(`🔄 [rentalService.checkAndUpdateExpiredRentals] Encerrando contrato ${rental.id}...`);
+        
+        // 1. Atualizar status da locação para 'ended'
+        const { error: rentalError } = await supabase
+          .from("rentals")
+          .update({ status: "ended" })
+          .eq("id", rental.id);
+
+        if (rentalError) {
+          console.error(`❌ Erro ao atualizar locação ${rental.id}:`, rentalError);
+          continue;
+        }
+
+        // 2. Atualizar status do imóvel para 'available'
+        if (rental.property_id) {
+          const { error: propertyError } = await supabase
+            .from("properties")
+            .update({ status: "available" })
+            .eq("id", rental.property_id);
+
+          if (propertyError) {
+            console.error(`❌ Erro ao atualizar imóvel ${rental.property_id}:`, propertyError);
+          }
+        }
+
+        // 3. Atualizar status do inquilino para 'active'
+        if (rental.tenant_id) {
+          const { error: tenantError } = await supabase
+            .from("tenants")
+            .update({ status: "active" })
+            .eq("id", rental.tenant_id);
+
+          if (tenantError) {
+            console.error(`❌ Erro ao atualizar inquilino ${rental.tenant_id}:`, tenantError);
+          }
+        }
+
+        console.log(`✅ [rentalService.checkAndUpdateExpiredRentals] Contrato ${rental.id} encerrado com sucesso`);
+      }
+
+      // Invalidar cache após atualização
+      rentalService.invalidateCache();
+      
+      console.log("✅ [rentalService.checkAndUpdateExpiredRentals] Verificação concluída");
+    } catch (error) {
+      console.error("❌ [rentalService.checkAndUpdateExpiredRentals] Erro inesperado:", error);
+    }
+  },
+
   async getAll(forceRefresh = false): Promise<Rental[]> {
     const now = Date.now();
+    
+    // ✅ Verificar e atualizar contratos expirados antes de buscar dados
+    await rentalService.checkAndUpdateExpiredRentals();
     
     // ✅ OTIMIZAÇÃO: Usar cache se disponível e não expirado
     if (!forceRefresh && rentalsCache.data && (now - rentalsCache.timestamp) < CACHE_DURATION) {
@@ -176,6 +263,9 @@ export const rentalService = {
 
   async getById(id: string): Promise<Rental> {
     console.log(`🔄 [rentalService.getById] Buscando locação ${id}...`);
+    
+    // ✅ Verificar e atualizar contratos expirados antes de buscar dados
+    await rentalService.checkAndUpdateExpiredRentals();
     
     const { data, error } = await supabase
       .from("rentals")
