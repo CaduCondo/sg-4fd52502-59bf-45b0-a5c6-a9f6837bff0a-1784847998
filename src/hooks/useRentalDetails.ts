@@ -164,6 +164,7 @@ export function useRentalDetails(rentalId: string) {
       console.log("=== HOOK: INICIANDO RESCISÃO ===");
       console.log("Rental ID:", rental.id);
       console.log("Data de rescisão:", data.terminationDate);
+      console.log("💰 Valor do caução recebido (JÁ DEVE SER CORRIGIDO):", data.depositAmount);
       
       // 1. Calcular aluguel proporcional aqui para passar para o serviço
       const termDate = parseISO(data.terminationDate);
@@ -178,12 +179,12 @@ export function useRentalDetails(rentalId: string) {
         daysUsed = 30; 
       }
       
-      // 2. Chamar serviço de rescisão
+      // 2. Chamar serviço de rescisão com o valor DO CAUÇÃO JÁ CORRIGIDO
       await processContractTermination({
         rentalId: rental.id,
         terminationDate: data.terminationDate,
         penaltyAmount: data.penaltyAmount,
-        depositAmount: data.depositAmount,
+        depositAmount: data.depositAmount, // Este já deve vir corrigido do diálogo
         paymentDay: rental.paymentDay || 1,
         monthlyRent: rental.value || 0,
       });

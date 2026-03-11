@@ -397,11 +397,23 @@ export function RentalTerminationDialog({
 
     setIsSubmitting(true);
     try {
+      // SEMPRE usar o valor corrigido quando disponível
+      const finalDepositAmount = correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount;
+      
+      console.log("\n🎯 ========================================");
+      console.log("🎯   CONFIRMAÇÃO DE RESCISÃO - VALORES");
+      console.log("🎯 ========================================");
+      console.log("💰 Valor original do caução:", depositAmount.toFixed(2));
+      console.log("💰 Correção Poupança (%):", poupancaPercentage.toFixed(4));
+      console.log("💰 Valor corrigido do caução:", correctedDepositAmount.toFixed(2));
+      console.log("✅ VALOR FINAL ENVIADO:", finalDepositAmount.toFixed(2));
+      console.log("🎯 ========================================\n");
+
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
         penaltyAmount,
-        depositAmount: correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount,
+        depositAmount: finalDepositAmount, // SEMPRE usa o valor corrigido
       });
       onOpenChange(false);
     } catch (error) {
