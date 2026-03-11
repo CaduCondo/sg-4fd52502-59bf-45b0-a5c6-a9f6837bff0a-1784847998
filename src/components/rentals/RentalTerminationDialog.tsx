@@ -381,19 +381,8 @@ export function RentalTerminationDialog({
       return;
     }
 
-    if (depositAmount === 0) {
-      alert(
-        "⚠️ ATENÇÃO: Não é possível rescindir o contrato sem caução cadastrado.\n\n" +
-        "O sistema não encontrou o valor do caução em nenhuma fonte de dados:\n" +
-        "• Tabela deposit_installments\n" +
-        "• Campos deposit_installment_1/2/3\n" +
-        "• Campo security_deposit\n" +
-        "• Campo deposit_value\n\n" +
-        "Por favor, verifique se o caução foi cadastrado corretamente e tente novamente."
-      );
-      console.error("❌ RESCISÃO BLOQUEADA: depositAmount = 0");
-      return;
-    }
+    // REMOVIDO: Bloqueio quando depositAmount === 0
+    // O sistema deve permitir rescisão mesmo sem caução
 
     setIsSubmitting(true);
     try {
@@ -413,7 +402,7 @@ export function RentalTerminationDialog({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
         penaltyAmount,
-        depositAmount: finalDepositAmount, // SEMPRE usa o valor corrigido
+        depositAmount: finalDepositAmount,
       });
       onOpenChange(false);
     } catch (error) {
@@ -558,17 +547,17 @@ export function RentalTerminationDialog({
                 </AlertDescription>
               </Alert>
             ) : (
-              <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
                 <AlertDescription>
                   <div className="space-y-2">
-                    <p className="font-semibold text-red-900 dark:text-red-100">
-                      ⚠️ ATENÇÃO: CAUÇÃO NÃO ENCONTRADO
+                    <p className="font-semibold text-amber-900 dark:text-amber-100">
+                      ℹ️ INFORMAÇÃO: SEM CAUÇÃO
                     </p>
-                    <p className="text-sm text-red-800 dark:text-red-200">
-                      O sistema não encontrou o valor do caução para esta locação.
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      Esta locação não possui valor de caução cadastrado.
                     </p>
-                    <p className="text-xs text-red-700 dark:text-red-300">
-                      Não será possível prosseguir com a rescisão até que o caução seja cadastrado corretamente.
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      A rescisão pode ser realizada normalmente. Apenas os valores de aluguel e multa (se aplicável) serão considerados.
                     </p>
                   </div>
                 </AlertDescription>
@@ -700,7 +689,7 @@ export function RentalTerminationDialog({
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={!terminationDate || isSubmitting || depositAmount === 0}
+              disabled={!terminationDate || isSubmitting}
             >
               {isSubmitting ? "Processando..." : "Confirmar Rescisão"}
             </Button>
