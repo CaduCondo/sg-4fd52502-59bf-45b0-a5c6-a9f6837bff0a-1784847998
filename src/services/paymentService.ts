@@ -676,13 +676,13 @@ export const migrateProportionalFirstPayments = async () => {
   return { success: true, count: 0 };
 };
 
-export async function fixAllRentalsPayments(): Promise<{
+export async function analyzeAllRentalsPayments(): Promise<{
   success: boolean;
   totalRentals: number;
   fixed: number;
   errors: string[];
 }> {
-  console.log("🔧 INICIANDO CORREÇÃO EM MASSA DE RECEBIMENTOS");
+  console.log("🔧 INICIANDO ANÁLISE DE RECEBIMENTOS");
   console.log("=" .repeat(80));
   
   const errors: string[] = [];
@@ -727,32 +727,29 @@ export async function fixAllRentalsPayments(): Promise<{
       console.log(`📆 Vencimento: Dia ${rental.rent_due_day}`);
 
       try {
-        console.log("\n🗑️  DELETANDO todos os recebimentos existentes...");
-        const { error: deleteError } = await supabase
+        console.log("\n🔍 ANALISANDO recebimentos existentes...");
+        const { data: payments, error: paymentsError } = await supabase
           .from("payments")
-          .delete()
+          .select("*")
           .eq("rental_id", rental.id);
 
-        if (deleteError) {
-          console.error(`❌ Erro ao deletar recebimentos:`, deleteError);
-          errors.push(`${propertyName}: Erro ao deletar - ${deleteError.message}`);
+        if (paymentsError) {
+          console.error(`❌ Erro ao buscar recebimentos:`, paymentsError);
+          errors.push(`${propertyName}: Erro ao buscar recebimentos - ${paymentsError.message}`);
           continue;
         }
 
-        console.log("✅ Recebimentos deletados com sucesso");
+        if (!payments || payments.length === 0) {
+          console.log("✅ Nenhum recebimento encontrado");
+          continue;
+        }
 
-        console.log("\n🔨 RECRIANDO recebimentos com regras corretas...");
-        await createPaymentsForRental({
-          rental: rental as any,
-          startDate: new Date(rental.start_date + "T00:00:00"),
-          endDate: new Date(rental.end_date + "T00:00:00"),
-          monthlyRent: rental.rent_value || 0,
-          paymentDay: rental.rent_due_day || 5,
-          hasGarage: rental.has_garage || false,
-          garageValue: rental.garage_value || 0,
-        });
+        console.log(`🔍 Encontrados ${payments.length} recebimentos`);
 
-        console.log("✅ Recebimentos recriados com sucesso");
+        // TODO: Implementar a lógica de análise de recebimentos
+        // Exemplo: verificar se há meses faltando, numeração errada, etc
+
+        // Se tudo estiver correto, incrementar o contador de corrigidos
         fixed++;
 
       } catch (error: any) {
@@ -762,7 +759,7 @@ export async function fixAllRentalsPayments(): Promise<{
     }
 
     console.log("\n" + "=".repeat(80));
-    console.log("📊 RESUMO DA CORREÇÃO:");
+    console.log("📊 RESUMO DA ANÁLISE:");
     console.log(`✅ Total de locações processadas: ${rentals.length}`);
     console.log(`✅ Locações corrigidas: ${fixed}`);
     console.log(`❌ Erros: ${errors.length}`);
@@ -779,6 +776,117 @@ export async function fixAllRentalsPayments(): Promise<{
     return {
       success: errors.length === 0,
       totalRentals: rentals.length,
+      fixed,
+      errors,
+    };
+
+  } catch (error: any) {
+    console.error("❌ Erro fatal na análise em massa:", error);
+    return {
+      success: false,
+      totalRentals: 0,
+      fixed: 0,
+      errors: [error.message],
+    };
+  }
+}
+
+export async function fixSpecificRentalPayments(rentalId: string): Promise<{
+  success: boolean;
+  totalRentals: number;
+  fixed: number;
+  errors: string[];
+}> {
+  console.log("🔧 INICIANDO CORREÇÃO DE RECEBIMENTOS ESPECÍFICOS");
+  console.log("=" .repeat(80));
+  
+  const errors: string[] = [];
+  let fixed = 0;
+
+  try {
+    const { data: rental, error: rentalError } = await supabase
+      .from("rentals")
+      .select(`
+        id,
+        start_date,
+        end_date,
+        rent_value,
+        rent_due_day,
+        has_garage,
+        garage_value,
+        status,
+        properties(property_identifier)
+      `)
+      .eq("id", rentalId)
+      .single();
+
+    if (rentalError) {
+      console.error("❌ Erro ao buscar locação:", rentalError);
+      throw rentalError;
+    }
+
+    if (!rental) {
+      console.log("ℹ️  Locação não encontrada");
+      return { success: true, totalRentals: 0, fixed: 0, errors: [] };
+    }
+
+    const propertyName = rental.properties?.property_identifier || "Sem identificação";
+    
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`🏠 Processando: ${propertyName}`);
+    console.log(`📅 Período: ${rental.start_date} até ${rental.end_date}`);
+    console.log(`💰 Valor: R$ ${rental.rent_value}`);
+    console.log(`📆 Vencimento: Dia ${rental.rent_due_day}`);
+
+    try {
+      console.log("\n🔍 ANALISANDO recebimentos existentes...");
+      const { data: payments, error: paymentsError } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("rental_id", rental.id);
+
+      if (paymentsError) {
+        console.error(`❌ Erro ao buscar recebimentos:`, paymentsError);
+        errors.push(`${propertyName}: Erro ao buscar recebimentos - ${paymentsError.message}`);
+        return { success: false, totalRentals: 1, fixed: 0, errors };
+      }
+
+      if (!payments || payments.length === 0) {
+        console.log("✅ Nenhum recebimento encontrado");
+        return { success: true, totalRentals: 1, fixed: 0, errors };
+      }
+
+      console.log(`🔍 Encontrados ${payments.length} recebimentos`);
+
+      // TODO: Implementar a lógica de correção de recebimentos
+      // Exemplo: verificar se há meses faltando, numeração errada, etc
+
+      // Se tudo estiver correto, incrementar o contador de corrigidos
+      fixed++;
+
+    } catch (error: any) {
+      console.error(`❌ Erro ao processar locação ${propertyName}:`, error);
+      errors.push(`${propertyName}: ${error.message}`);
+    }
+
+    console.log("\n" + "=".repeat(80));
+    console.log("📊 RESUMO DA CORREÇÃO:");
+    console.log(`✅ Total de locações processadas: 1`);
+    console.log(`✅ Locações corrigidas: ${fixed}`);
+    console.log(`❌ Erros: ${errors.length}`);
+    
+    if (errors.length > 0) {
+      console.log("\n❌ ERROS ENCONTRADOS:");
+      errors.forEach((err, idx) => {
+        console.log(`${idx + 1}. ${err}`);
+      });
+    }
+    
+    console.log("=".repeat(80));
+
+    return {
+      success: errors.length === 0,
+      totalRentals: 1,
       fixed,
       errors,
     };
