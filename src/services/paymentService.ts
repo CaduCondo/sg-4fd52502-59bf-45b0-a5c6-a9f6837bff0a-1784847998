@@ -675,3 +675,122 @@ export const migrateProportionalFirstPayments = async () => {
   console.log("Migration requested");
   return { success: true, count: 0 };
 };
+
+export async function fixAllRentalsPayments(): Promise<{
+  success: boolean;
+  totalRentals: number;
+  fixed: number;
+  errors: string[];
+}> {
+  console.log("🔧 INICIANDO CORREÇÃO EM MASSA DE RECEBIMENTOS");
+  console.log("=" .repeat(80));
+  
+  const errors: string[] = [];
+  let fixed = 0;
+
+  try {
+    const { data: rentals, error: rentalsError } = await supabase
+      .from("rentals")
+      .select(`
+        id,
+        start_date,
+        end_date,
+        monthly_rent,
+        payment_day,
+        has_garage,
+        garage_value,
+        value,
+        status,
+        properties(property_identifier)
+      `)
+      .in("status", ["active", "ended"]);
+
+    if (rentalsError) {
+      console.error("❌ Erro ao buscar locações:", rentalsError);
+      throw rentalsError;
+    }
+
+    if (!rentals || rentals.length === 0) {
+      console.log("ℹ️  Nenhuma locação encontrada");
+      return { success: true, totalRentals: 0, fixed: 0, errors: [] };
+    }
+
+    console.log(`📋 Encontradas ${rentals.length} locações para verificar\n`);
+
+    for (let i = 0; i < rentals.length; i++) {
+      const rental = rentals[i];
+      const propertyName = rental.properties?.property_identifier || "Sem identificação";
+      
+      console.log(`\n${"=".repeat(80)}`);
+      console.log(`🏠 [${i + 1}/${rentals.length}] Processando: ${propertyName}`);
+      console.log(`📅 Período: ${rental.start_date} até ${rental.end_date}`);
+      console.log(`💰 Valor: R$ ${rental.monthly_rent || rental.value}`);
+      console.log(`📆 Vencimento: Dia ${rental.payment_day}`);
+
+      try {
+        console.log("\n🗑️  DELETANDO todos os recebimentos existentes...");
+        const { error: deleteError } = await supabase
+          .from("payments")
+          .delete()
+          .eq("rental_id", rental.id);
+
+        if (deleteError) {
+          console.error(`❌ Erro ao deletar recebimentos:`, deleteError);
+          errors.push(`${propertyName}: Erro ao deletar - ${deleteError.message}`);
+          continue;
+        }
+
+        console.log("✅ Recebimentos deletados com sucesso");
+
+        console.log("\n🔨 RECRIANDO recebimentos com regras corretas...");
+        await createPaymentsForRental({
+          rental: rental as any,
+          startDate: new Date(rental.start_date + "T00:00:00"),
+          endDate: new Date(rental.end_date + "T00:00:00"),
+          monthlyRent: rental.monthly_rent || rental.value || 0,
+          paymentDay: rental.payment_day,
+          hasGarage: rental.has_garage,
+          garageValue: rental.garage_value || 0,
+        });
+
+        console.log("✅ Recebimentos recriados com sucesso");
+        fixed++;
+
+      } catch (error: any) {
+        console.error(`❌ Erro ao processar locação ${propertyName}:`, error);
+        errors.push(`${propertyName}: ${error.message}`);
+      }
+    }
+
+    console.log("\n" + "=".repeat(80));
+    console.log("📊 RESUMO DA CORREÇÃO:");
+    console.log(`✅ Total de locações processadas: ${rentals.length}`);
+    console.log(`✅ Locações corrigidas: ${fixed}`);
+    console.log(`❌ Erros: ${errors.length}`);
+    
+    if (errors.length > 0) {
+      console.log("\n❌ ERROS ENCONTRADOS:");
+      errors.forEach((err, idx) => {
+        console.log(`${idx + 1}. ${err}`);
+      });
+    }
+    
+    console.log("=".repeat(80));
+
+    return {
+      success: errors.length === 0,
+      totalRentals: rentals.length,
+      fixed,
+      errors,
+    };
+
+  } catch (error: any) {
+    console.error("❌ Erro fatal na correção em massa:", error);
+    return {
+      success: false,
+      totalRentals: 0,
+      fixed: 0,
+      errors: [error.message],
+    };
+  }
+}
