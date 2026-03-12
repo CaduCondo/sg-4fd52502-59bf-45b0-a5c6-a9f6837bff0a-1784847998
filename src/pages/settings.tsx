@@ -44,7 +44,9 @@ import {
   Trash2,
   Users,
   Shield,
-  Wallet
+  Wallet,
+  Wrench,
+  RefreshCw
 } from "lucide-react";
 
 // Services
@@ -53,6 +55,7 @@ import {
   updateConfig 
 } from "@/services/configService";
 import * as locationService from "@/services/locationService";
+import { fixAllRentalsPayments } from "@/services/paymentService";
 
 // Helpers
 import {
@@ -488,6 +491,10 @@ export default function Settings() {
               <MapPin className="h-4 w-4" />
               Locais
             </TabsTrigger>
+            <TabsTrigger value="maintenance" className="gap-2 py-3">
+              <Wrench className="h-4 w-4" />
+              Manutenção
+            </TabsTrigger>
           </TabsList>
 
           {/* DADOS DA EMPRESA */}
@@ -887,6 +894,57 @@ export default function Settings() {
                 {/* Footer */}
                 <div className="mt-3 pt-3 border-t text-xs text-muted-foreground text-center">
                   {filteredLocations.length} local(is) • {searchLocation && "Filtrado"}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* MANUTENÇÃO */}
+          <TabsContent value="maintenance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ferramentas de Manutenção</CardTitle>
+                <CardDescription>
+                  Utilitários para correção e recálculo de dados do sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Recalcular Todos os Recebimentos
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-2 mb-4">
+                    Esta ação irá <strong>DELETAR TODOS</strong> os recebimentos (pagos ou não) de todas as locações e <strong>RECRIÁ-LOS</strong> seguindo as regras atuais de faturamento (1 por mês sem pular, proporcionais exatos, numeração de parcelas correta). Use com extrema cautela, pois os pagamentos que já constavam como "Pagos" voltarão para "Pendente".
+                  </p>
+                  <Button 
+                    onClick={async () => {
+                      if(confirm("Tem certeza absoluta que deseja DELETAR e RECRIAR TODOS os recebimentos do sistema? Esta ação pode demorar alguns minutos e não pode ser desfeita.")) {
+                        toast({ title: "Iniciando correção em massa..." });
+                        try {
+                          const result = await fixAllRentalsPayments();
+                          if(result.success) {
+                            toast({ 
+                              title: `Concluído com sucesso!`, 
+                              description: `${result.fixed} locações corrigidas. Recarregue a página de locações para ver os novos recebimentos.` 
+                            });
+                          } else {
+                            toast({ 
+                              title: `Concluído com erros`, 
+                              description: `${result.fixed} corrigidas, ${result.errors.length} erros encontrados.`,
+                              variant: "destructive"
+                            });
+                          }
+                        } catch(e: any) {
+                          toast({ title: "Erro na correção", description: e.message, variant: "destructive" });
+                        }
+                      }
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Executar Correção em Massa
+                  </Button>
                 </div>
               </CardContent>
             </Card>
