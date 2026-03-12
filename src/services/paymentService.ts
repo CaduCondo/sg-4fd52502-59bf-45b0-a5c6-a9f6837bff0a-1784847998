@@ -718,7 +718,6 @@ export async function fixAllRentalsPayments(): Promise<{
 
     for (let i = 0; i < rentals.length; i++) {
       const rental = rentals[i];
-      // @ts-expect-error - Ignore type error for properties
       const propertyName = rental.properties?.property_identifier || "Sem identificação";
       
       console.log(`\n${"=".repeat(80)}`);
