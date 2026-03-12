@@ -1,228 +1,157 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-function formatDateLocal(dateString: string): Date {
-  if (!dateString) return new Date();
-  return new Date(dateString + "T00:00:00");
-}
-
-function calculateDaysBetweenDates(startDate: string, paymentDay: number): number {
-  const start = formatDateLocal(startDate);
-  const startDay = start.getDate();
-  if (startDay === paymentDay) return 30;
-
-  const paymentDate = new Date(start);
-  if (startDay > paymentDay) {
-    paymentDate.setMonth(paymentDate.getMonth() + 1);
-  }
-  paymentDate.setDate(paymentDay);
-
-  const diffTime = paymentDate.getTime() - start.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
 serve(async (req) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  }
-
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Bypasses RLS perfectly
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     )
 
-    const logs: string[] = [];
-    const log = (msg: string) => {
-      logs.push(msg);
-      console.log(msg);
-    };
-
-    log("🔍 Iniciando correção inteligente de recebimentos...");
-
-    const { data: rentals, error: rentalsError } = await supabase
+    const { data: rentals, error: rErr } = await supabaseClient
       .from("rentals")
-      .select(`
-        id, start_date, end_date, rent_value, rent_due_day, has_garage, garage_value,
-        properties ( property_identifier )
-      `)
-      .neq("status", "terminated");
+      .select("*")
+      .neq("status", "terminated")
 
-    if (rentalsError) throw rentalsError;
+    if (rErr) throw rErr;
 
-    log(`Encontradas ${rentals?.length || 0} locações ativas.`);
+    const { data: allPayments, error: pErr } = await supabaseClient
+      .from("payments")
+      .select("*")
 
-    let fixedCount = 0;
+    if (pErr) throw pErr;
 
-    for (const rental of (rentals || [])) {
-      const propName = rental.properties?.property_identifier || rental.id;
-      log(`
-🏠 Processando: ${propName}`);
+    let fixedRentals = 0;
+    let logOutput = [];
 
-      const { data: currentPayments } = await supabase
-        .from("payments")
-        .select("id, reference_month, reference_year, is_paid, expected_amount, installment, total_installments, notes")
-        .eq("rental_id", rental.id)
-        .order("reference_year", { ascending: true })
-        .order("reference_month", { ascending: true });
+    for (const rental of rentals) {
+      let payments = allPayments.filter(p => p.rental_id === rental.id);
+      if (payments.length === 0) continue;
 
-      const totalRentValue = Number(rental.rent_value || 0) + (rental.has_garage ? Number(rental.garage_value || 0) : 0);
+      payments = payments.map(p => ({
+          ...p,
+          ref_date: new Date(Number(p.reference_year), Number(p.reference_month) - 1, 1)
+      }));
 
-      const startDate = formatDateLocal(rental.start_date);
-      const startYear = startDate.getFullYear();
-      const startMonth = startDate.getMonth() + 1;
-
-      let endDate = rental.end_date ? formatDateLocal(rental.end_date) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
-      const endYear = endDate.getFullYear();
-      const endMonth = endDate.getMonth() + 1;
-
-      let currentYear = startYear;
-      let currentMonth = startMonth;
-
-      const firstMonthDays = calculateDaysBetweenDates(rental.start_date, rental.rent_due_day);
-      let installmentCounter = 1;
-
-      const expectedPayments = [];
-
-      while (
-        currentYear < endYear ||
-        (currentYear === endYear && currentMonth <= endMonth)
-      ) {
-        const isFirstMonthOfContract = currentYear === startYear && currentMonth === startMonth;
-        const isLastMonthOfContract = currentYear === endYear && currentMonth === endMonth;
-
-        let expectedAmount = totalRentValue;
-        let currentInstallment = 0;
-        let isProportional = false;
-
-        if (isFirstMonthOfContract) {
-          if (firstMonthDays === 30) {
-            expectedAmount = totalRentValue;
-            currentInstallment = installmentCounter++;
-          } else {
-            isProportional = true;
-            expectedAmount = Math.round((totalRentValue / 30) * firstMonthDays * 100) / 100;
-            if (firstMonthDays < 15) {
-              currentInstallment = 0; // Prorata (não conta parcela)
-            } else {
-              currentInstallment = installmentCounter++; // Conta como primeira
-            }
-          }
-        } else if (isLastMonthOfContract) {
-          const lastDay = endDate.getDate();
-          if (lastDay !== rental.rent_due_day) {
-            isProportional = true;
-            let lastMonthDays = lastDay;
-            if (rental.rent_due_day < lastDay) {
-              lastMonthDays = lastDay - rental.rent_due_day;
-            }
-            if (lastMonthDays < 30) {
-               expectedAmount = Math.round((totalRentValue / 30) * lastMonthDays * 100) / 100;
-            }
-          }
-          currentInstallment = installmentCounter++;
-        } else {
-          currentInstallment = installmentCounter++;
-        }
-
-        expectedPayments.push({
-          month: currentMonth.toString().padStart(2, '0'),
-          year: currentYear.toString(),
-          amount: expectedAmount,
-          installment: currentInstallment,
-          isProportional
-        });
-
-        currentMonth++;
-        if (currentMonth > 12) {
-          currentMonth = 1;
-          currentYear++;
-        }
+      let minDate = new Date(3000, 0, 1);
+      let maxDate = new Date(1970, 0, 1);
+      for(const p of payments) {
+         if (p.ref_date < minDate) minDate = p.ref_date;
+         if (p.ref_date > maxDate) maxDate = p.ref_date;
       }
 
-      const maxInstallment = installmentCounter - 1;
-
-      let locationFixed = false;
-
-      // CRUZAMENTO DE DADOS (CRIA O QUE FALTA E ARRUMA TEXTOS DE O QUE EXISTE)
-      for (const ideal of expectedPayments) {
-        const existing = currentPayments?.find(p => p.reference_month === ideal.month && p.reference_year === ideal.year);
-
-        if (!existing) {
-          log(`  ➕ Faltando mês ${ideal.month}/${ideal.year}. Inserindo...`);
-
-          let dueDateObj = new Date(Number(ideal.year), Number(ideal.month) - 1, rental.rent_due_day);
-          let actualDueDateStr = `${dueDateObj.getFullYear()}-${(dueDateObj.getMonth()+1).toString().padStart(2, '0')}-${dueDateObj.getDate().toString().padStart(2, '0')}`;
-
-          await supabase.from("payments").insert({
-            rental_id: rental.id,
-            reference_month: ideal.month,
-            reference_year: ideal.year,
-            expected_amount: ideal.amount,
-            due_date: actualDueDateStr,
-            status: "pending",
-            is_paid: false,
-            installment: ideal.installment > 0 ? ideal.installment : null,
-            total_installments: maxInstallment,
-            notes: ideal.isProportional ? "Parcela Proporcional" : ""
-          });
-          locationFixed = true;
-        } else {
-          let needsUpdate = false;
-          let updateData: any = {};
-
-          const idealInstallmentToSave = ideal.installment > 0 ? ideal.installment : null;
-
-          if (existing.installment !== idealInstallmentToSave) {
-             needsUpdate = true;
-             updateData.installment = idealInstallmentToSave;
-          }
-
-          if (existing.total_installments !== maxInstallment) {
-             needsUpdate = true;
-             updateData.total_installments = maxInstallment;
-          }
-
-          const idealNote = ideal.isProportional ? "Parcela Proporcional" : "";
-          
-          // Tratando a correção da nota de "Parcela Proporcional" 
-          if (existing.notes === "Parcela Proporcional" && !ideal.isProportional) {
-              needsUpdate = true;
-              updateData.notes = ""; // Limpa a nota de março, por exemplo
-          } else if (existing.notes !== "Parcela Proporcional" && ideal.isProportional) {
-              needsUpdate = true;
-              updateData.notes = "Parcela Proporcional"; // Adiciona se precisar
-          }
-
-          // Se tiver valor errado E não estiver pago, arruma
-          if (!existing.is_paid && Math.abs(Number(existing.expected_amount) - ideal.amount) > 0.01) {
-              needsUpdate = true;
-              updateData.expected_amount = ideal.amount;
-          }
-
-          if (needsUpdate) {
-             log(`  🔄 Atualizando: ${ideal.month}/${ideal.year} -> Parcela ${idealInstallmentToSave || 'Prorata'}, Nota: ${updateData.notes !== undefined ? updateData.notes : existing.notes}`);
-             await supabase.from("payments").update(updateData).eq("id", existing.id);
-             locationFixed = true;
-          }
+      let currentD = new Date(minDate);
+      while (currentD <= maxDate) {
+        const m = currentD.getMonth() + 1;
+        const y = currentD.getFullYear();
+        if (!payments.find(p => Number(p.reference_month) === m && Number(p.reference_year) === y)) {
+           payments.push({
+              isNew: true,
+              rental_id: rental.id,
+              reference_month: m.toString(),
+              reference_year: y.toString(),
+              expected_amount: rental.rent_value,
+              is_paid: false,
+              notes: null,
+              ref_date: new Date(y, m - 1, 1)
+           });
         }
+        currentD.setMonth(currentD.getMonth() + 1);
       }
 
-      if (locationFixed) {
-        fixedCount++;
+      payments.sort((a, b) => a.ref_date.getTime() - b.ref_date.getTime());
+
+      let currentInstallment = 1;
+      let needsUpdate = false;
+      let rentalLog = `
+🏠 Analisando Locação: ${rental.property_identifier || rental.id}
+`;
+
+      const [sYear, sMonth, sDay] = rental.start_date.split('-').map(Number);
+      const daysInMonth = new Date(sYear, sMonth, 0).getDate();
+      const daysLived = daysInMonth - sDay + 1;
+      const isFirstProrata = daysLived < 15;
+
+      for (let i = 0; i < payments.length; i++) {
+         let p = payments[i];
+         let isFirst = (i === 0);
+         
+         p.origInstallment = p.installment;
+         p.origNotes = p.notes;
+
+         let cleanNotes = (p.notes || "").replace(/Parcela Proporcional/gi, "").replace(/^[- \s]+|[- \s]+$/g, "");
+         if (cleanNotes === "") cleanNotes = null;
+
+         if (isFirst && isFirstProrata) {
+            p.installment = null;
+            p.notes = cleanNotes ? cleanNotes + " - Parcela Proporcional" : "Parcela Proporcional";
+         } else {
+            p.installment = currentInstallment++;
+            p.notes = cleanNotes;
+         }
+
+         if (p.installment !== p.origInstallment || p.notes !== p.origNotes || p.isNew) {
+             needsUpdate = true;
+         }
+      }
+
+      if (needsUpdate) {
+          fixedRentals++;
+          const total_installments = currentInstallment - 1;
+
+          for (const p of payments) {
+              if (p.isNew) {
+                  rentalLog += `  ➕ Criando mês faltante: ${p.reference_month}/${p.reference_year}
+`;
+                  await supabaseClient.from('payments').insert({
+                      rental_id: p.rental_id,
+                      reference_month: p.reference_month,
+                      reference_year: p.reference_year,
+                      expected_amount: p.expected_amount,
+                      installment: p.installment,
+                      total_installments: total_installments,
+                      is_paid: false,
+                      notes: p.notes
+                  });
+              } else if (p.installment !== p.origInstallment || p.notes !== p.origNotes) {
+                  rentalLog += `  ✏️  Atualizando parcela ${p.reference_month}/${p.reference_year} -> Num: ${p.installment || 'Prorata'}, Notas: ${p.notes || 'Corrigido'}
+`;
+                  await supabaseClient.from('payments').update({
+                      installment: p.installment,
+                      total_installments: total_installments,
+                      notes: p.notes
+                  }).eq('id', p.id);
+              } else {
+                  await supabaseClient.from('payments').update({
+                      total_installments: total_installments,
+                  }).eq('id', p.id);
+              }
+          }
+          logOutput.push(rentalLog);
       }
     }
 
-    log(`
-✅ Correção finalizada com sucesso! ${fixedCount} locações ajustadas.`);
-    
-    return new Response(JSON.stringify({ success: true, fixedCount, logs }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: `✅ Correção concluída! Locações corrigidas: ${fixedRentals}`,
+      details: logOutput.join("")
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    })
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    })
   }
 })
