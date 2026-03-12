@@ -357,7 +357,7 @@ export default function Settings() {
           title: "Sucesso",
           description: "Os recebimentos desta locação foram corrigidos mantendo status e anexos.",
         });
-        await handleAnalyzePayments(); // Refresh list
+        await handleAnalyzePayments();
       } else {
         toast({
           title: "Erro",
