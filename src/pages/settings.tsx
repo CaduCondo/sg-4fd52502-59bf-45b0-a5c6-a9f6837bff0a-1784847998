@@ -1,37 +1,3 @@
-import { useState, useEffect } from "react";
-import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { 
   Save, 
   MapPin, 
@@ -42,147 +8,89 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Users,
+  Check,
+  User,
   Shield,
-  Wallet,
+  Settings,
+  Users,
   Wrench,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
-
-// Services
-import { 
-  getConfig, 
-  updateConfig 
-} from "@/services/configService";
-import * as locationService from "@/services/locationService";
-import { fixAllRentalsPayments } from "@/services/paymentService";
-
-// Helpers
+import { useEffect, useState } from "react";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  applyCnpjMask,
-  applyPhoneMask,
-  applyCepMask,
-  parsePercentageToFloat,
-  formatPercentage,
-  applyPercentageMask
-} from "@/lib/masks";
-
-// Types
-import { Location, CompanyConfig } from "@/types";
-
-// New modular components
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
+import * as configService from "@/services/configService";
+import * as locationService from "@/services/locationService";
+import * as igpmService from "@/services/igpmService";
+import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
+import * as locationExpenseService from "@/services/locationExpenseService";
+import { fixAllRentalsPayments } from "@/services/paymentService";
+import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
+import { FeeExemptionDialog } from "@/components/settings/FeeExemptionDialog";
 import { UsersTab } from "@/components/settings/UsersTab";
 import { PermissionsTab } from "@/components/settings/PermissionsTab";
-import { FeeExemptionDialog } from "@/components/settings/FeeExemptionDialog";
-import { UserDialog } from "@/components/settings/UserDialog";
-
-// Custom hooks
-import { useUsers } from "@/hooks/useUsers";
-import { usePermissions } from "@/hooks/usePermissions";
-import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
+import type { 
+  Location, 
+  AdminFeeExemption, 
+  LocationExpense 
+} from "@/types";
 
 export default function Settings() {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("company");
+  const { hasPermission } = usePermissions();
 
-  // Config State
-  const [config, setConfig] = useState<CompanyConfig>({
-    id: "",
-    company_name: "",
-    cnpj: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zip_code: "",
-    admin_fee_percentage: 0,
-    management_fee_percentage: 0,
-    late_fee_percentage: 0,
-    interest_rate_percentage: 0,
-    logo_url: null,
-    primary_color: null,
-    secondary_color: null,
-    created_at: "",
-    updated_at: "",
-  });
-
-  // State for form inputs (strings to handle formatting)
-  const [adminFee, setAdminFee] = useState("0,000");
-  const [managementFee, setManagementFee] = useState("0,000");
-  const [lateFee, setLateFee] = useState("0,000");
-  const [interestRate, setInterestRate] = useState("0,000");
-
-  // Locations State
+  const [feePercentage, setFeePercentage] = useState<string>("");
   const [locations, setLocations] = useState<Location[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
-  const [searchLocation, setSearchLocation] = useState("");
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [locationForm, setLocationForm] = useState({
-    name: "",
-    street: "",
-    number: "",
-    complement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zip_code: "",
-    is_active: true,
-  });
-  const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
-  const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
+  const [newLocation, setNewLocation] = useState("");
+  const [igpmRates, setIgpmRates] = useState<
+    Array<{ month: number; year: number; rate: number }>
+  >([]);
+  const [newIgpmMonth, setNewIgpmMonth] = useState<number | "">("");
+  const [newIgpmYear, setNewIgpmYear] = useState<number | "">("");
+  const [newIgpmRate, setNewIgpmRate] = useState<number | "">("");
+  const [exemptions, setExemptions] = useState<AdminFeeExemption[]>([]);
+  const [isExemptionDialogOpen, setIsExemptionDialogOpen] = useState(false);
+  const [selectedExemption, setSelectedExemption] = useState<AdminFeeExemption | undefined>();
+  const [locationExpenses, setLocationExpenses] = useState<LocationExpense[]>([]);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<LocationExpense | undefined>();
+  const [isFixingPayments, setIsFixingPayments] = useState(false);
 
-  // Use custom hooks for users and permissions
-  const { 
-    permissions, 
-    loading: permissionsLoading, 
-    updateRoleMenuPermission, 
-    saveLocationPermissions, 
-    saveFeeExemptions,
-    getUserLocationPermissions,
-    getFeeExemptions
-  } = usePermissions();
-
-  const { 
-    users, 
-    isLoading: usersLoading,
-    error: usersError, 
-    refresh: refreshUsers,
-    handleCreateUser,
-    handleUpdateUser,
-    handleDeleteUser,
-    handleToggleUserStatus
-  } = useUsers();
+  const canManageSettings = hasPermission("manage_settings");
+  const canManageUsers = hasPermission("manage_users");
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
-      
-      try {
-        await Promise.all([
-          loadConfig(),
-          fetchLocations()
-        ]);
-      } catch (err) {
-        console.error("Error loading settings data:", err);
-      }
-    };
+    loadSettings();
+  }, []);
 
-    loadData();
-  }, [user?.id]);
-
-  const loadConfig = async () => {
+  const loadSettings = async () => {
     try {
-      const data = await getConfig();
-      if (data) {
-        setConfig(data);
-        setAdminFee(formatPercentage(data.admin_fee_percentage));
-        setManagementFee(formatPercentage(data.management_fee_percentage || 0));
-        setLateFee(formatPercentage(data.late_fee_percentage));
-        setInterestRate(formatPercentage(data.interest_rate_percentage));
-      }
+      const config = await configService.get();
+      setFeePercentage(config.adminFeePercentage.toString());
+
+      const locationsData = await locationService.getAll();
+      setLocations(locationsData);
+
+      const rates = await igpmService.getAll();
+      setIgpmRates(rates);
+
+      const exemptionsData = await adminFeeExemptionService.getAll();
+      setExemptions(exemptionsData);
+
+      const expensesData = await locationExpenseService.getAll();
+      setLocationExpenses(expensesData);
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast({
@@ -193,939 +101,658 @@ export default function Settings() {
     }
   };
 
-  const fetchLocations = async () => {
-    console.log("[UI] fetchLocations called - loading locations from database...");
+  const handleSaveFee = async () => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para alterar configurações.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const data = await locationService.getLocations();
-      console.log(`[UI] Loaded ${data.length} locations from database:`, data.map(l => ({ id: l.id, name: l.name })));
-      setLocations(data);
+      await configService.update({ adminFeePercentage: Number(feePercentage) });
+      toast({
+        title: "Sucesso",
+        description: "Taxa de administração atualizada.",
+      });
     } catch (error) {
-      console.error("[UI ERROR] Failed to fetch locations:", error);
-      toast({ 
-        title: "Erro ao carregar locais",
-        description: "Não foi possível carregar a lista de locais.",
-        variant: "destructive" 
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a taxa.",
+        variant: "destructive",
       });
     }
   };
 
-  const handleConfigSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const updatedConfig = {
-      ...config,
-      admin_fee_percentage: parsePercentageToFloat(adminFee),
-      management_fee_percentage: parsePercentageToFloat(managementFee),
-      late_fee_percentage: parsePercentageToFloat(lateFee),
-      interest_rate_percentage: parsePercentageToFloat(interestRate),
-    };
+  const handleAddLocation = async () => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para adicionar locais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newLocation.trim()) return;
+
     try {
-      await updateConfig(updatedConfig);
-      toast({ title: "Configurações salvas com sucesso!" });
+      await locationService.create({ name: newLocation.trim() });
+      setNewLocation("");
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Local adicionado.",
+      });
     } catch (error) {
-      console.error("Erro ao salvar config:", error);
-      toast({ title: "Erro ao salvar configurações", variant: "destructive" });
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o local.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleCepLookup = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, "");
-    if (cleanCep.length !== 8) return;
+  const handleDeleteLocation = async (id: string) => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para excluir locais.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
+      await locationService.remove(id);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Local removido.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o local.",
+        variant: "destructive",
+      });
+    }
+  };
 
-      if (data && !data.erro) {
-        setLocationForm((prev) => ({
-          ...prev,
-          street: data.logradouro,
-          neighborhood: data.bairro,
-          city: data.localidade,
-          state: data.uf,
-          is_active: prev.is_active,
-        }));
+  const handleAddIgpmRate = async () => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para adicionar taxas IGPM.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newIgpmMonth === "" || newIgpmYear === "" || newIgpmRate === "") return;
+
+    try {
+      await igpmService.create({
+        month: Number(newIgpmMonth),
+        year: Number(newIgpmYear),
+        rate: Number(newIgpmRate),
+      });
+      setNewIgpmMonth("");
+      setNewIgpmYear("");
+      setNewIgpmRate("");
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Taxa IGPM adicionada.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a taxa IGPM.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteIgpmRate = async (id: string) => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para excluir taxas IGPM.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await igpmService.remove(id);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Taxa IGPM removida.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a taxa IGPM.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddExemption = () => {
+    setSelectedExemption(undefined);
+    setIsExemptionDialogOpen(true);
+  };
+
+  const handleEditExemption = (exemption: AdminFeeExemption) => {
+    setSelectedExemption(exemption);
+    setIsExemptionDialogOpen(true);
+  };
+
+  const handleDeleteExemption = async (id: string) => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para excluir isenções.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await adminFeeExemptionService.remove(id);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Isenção removida.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a isenção.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddExpense = () => {
+    setSelectedExpense(undefined);
+    setIsExpenseDialogOpen(true);
+  };
+
+  const handleEditExpense = (expense: LocationExpense) => {
+    setSelectedExpense(expense);
+    setIsExpenseDialogOpen(true);
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para excluir despesas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await locationExpenseService.remove(id);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Despesa removida.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a despesa.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFixAllPayments = async () => {
+    if (!canManageSettings) {
+      toast({
+        title: "Sem permissão",
+        description: "Você não tem permissão para executar esta operação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm("⚠️ ATENÇÃO: Esta operação irá DELETAR e RECRIAR todos os recebimentos de todas as locações.\n\nTodos os status de pagamento serão perdidos e recriados como 'Pendente'.\n\nDeseja continuar?")) {
+      return;
+    }
+
+    setIsFixingPayments(true);
+
+    try {
+      const result = await fixAllRentalsPayments();
+      
+      if (result.success) {
+        toast({
+          title: "Sucesso",
+          description: `${result.fixed} locações corrigidas de ${result.totalRentals} processadas.`,
+        });
       } else {
         toast({
-          title: "CEP não encontrado",
-          description: "Verifique o CEP informado.",
+          title: "Erro",
+          description: `Foram encontrados ${result.errors.length} erros durante o processamento.`,
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Error fetching CEP:", error);
+      console.error("Erro ao corrigir pagamentos:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível buscar o CEP.",
+        description: "Não foi possível corrigir os pagamentos.",
         variant: "destructive",
       });
-    }
-  };
-
-  const handleLocationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log("[SUBMIT] Form data:", locationForm);
-    console.log("[SUBMIT] Editing location:", editingLocation);
-    
-    try {
-      if (editingLocation) {
-        console.log("[UPDATE] Updating location:", editingLocation.id);
-        await locationService.updateLocation(editingLocation.id, {
-          name: locationForm.name,
-          street: locationForm.street,
-          number: locationForm.number,
-          complement: locationForm.complement || undefined,
-          neighborhood: locationForm.neighborhood,
-          city: locationForm.city,
-          state: locationForm.state,
-          zip_code: locationForm.zip_code,
-        });
-        toast({
-          title: "Sucesso",
-          description: "Local atualizado com sucesso.",
-        });
-      } else {
-        console.log("[CREATE] Creating new location");
-        await locationService.createLocation({
-          name: locationForm.name,
-          street: locationForm.street,
-          number: locationForm.number,
-          complement: locationForm.complement || undefined,
-          neighborhood: locationForm.neighborhood,
-          city: locationForm.city,
-          state: locationForm.state,
-          zip_code: locationForm.zip_code,
-        });
-        toast({
-          title: "Sucesso",
-          description: "Local cadastrado com sucesso.",
-        });
-      }
-
-      setIsLocationDialogOpen(false);
-      setEditingLocation(null);
-      setLocationForm({
-        name: "",
-        street: "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        zip_code: "",
-        is_active: true,
-      });
-      await fetchLocations();
-    } catch (error: any) {
-      console.error("[ERROR] Failed to save location:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível salvar o local.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const openLocationDialog = (location?: Location) => {
-    if (location) {
-      console.log("[DIALOG] Opening for edit:", location);
-      setEditingLocation(location);
-      setLocationForm({
-        name: location.name,
-        street: location.street || "",
-        number: location.number || "",
-        complement: location.complement || "",
-        neighborhood: location.neighborhood || "",
-        city: location.city,
-        state: location.state,
-        zip_code: location.zip_code || "",
-        is_active: location.is_active !== false,
-      });
-    } else {
-      console.log("[DIALOG] Opening for create");
-      setEditingLocation(null);
-      setLocationForm({
-        name: "",
-        street: "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        zip_code: "",
-        is_active: true,
-      });
-    }
-    setIsLocationDialogOpen(true);
-  };
-
-  const confirmDeleteLocation = async () => {
-    if (!locationToDelete) return;
-
-    console.log(`[UI DELETE] Starting deletion process for: ${locationToDelete.name} (${locationToDelete.id})`);
-    
-    // Close dialog immediately
-    setLocationToDelete(null);
-    setIsLoadingLocations(true);
-
-    try {
-      // Show processing toast
-      toast({
-        title: "Processando...",
-        description: "Removendo local do sistema...",
-      });
-
-      console.log(`[UI DELETE] Calling locationService.deleteLocation(${locationToDelete.id})`);
-      
-      // Delete from database
-      await locationService.deleteLocation(locationToDelete.id);
-      
-      console.log("[UI DELETE] Delete successful from database, updating UI...");
-
-      // Remove from local state immediately (optimistic update)
-      const oldCount = locations.length;
-      setLocations(prev => prev.filter(loc => loc.id !== locationToDelete.id));
-      const newCount = locations.length - 1;
-      console.log(`[UI DELETE] Removed from state. Old count: ${oldCount}, New count: ${newCount}`);
-
-      // Show success toast
-      toast({
-        title: "Sucesso!",
-        description: "Local excluído com sucesso.",
-      });
-
-      // Wait a moment for database to sync
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Force complete reload from database
-      console.log("[UI DELETE] Reloading locations list from database...");
-      await fetchLocations();
-
-      console.log("[UI DELETE] Process complete!");
-
-    } catch (error: any) {
-      console.error("[UI DELETE ERROR]", error);
-      
-      let errorMessage = "Não foi possível excluir o local.";
-      
-      if (error.message?.includes("propriedades") || 
-          error.message?.includes("despesas") || 
-          error.message?.includes("permissões")) {
-        errorMessage = "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.";
-      } else if (error.message?.includes("foreign key")) {
-        errorMessage = "Este local possui dados vinculados e não pode ser excluído.";
-      }
-
-      toast({
-        title: "Erro",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
-      // Reload to ensure UI shows current state
-      await fetchLocations();
     } finally {
-      setIsLoadingLocations(false);
+      setIsFixingPayments(false);
     }
   };
 
-  const filteredLocations = locations.filter((location) => {
-    const search = searchLocation.toLowerCase();
+  if (!canManageSettings && !canManageUsers) {
     return (
-      location.name?.toLowerCase().includes(search) ||
-      location.city?.toLowerCase().includes(search) ||
-      location.neighborhood?.toLowerCase().includes(search)
+      <Layout>
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Você não tem permissão para acessar as configurações do sistema.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
     );
-  });
-
-  const handleResetPassword = async (userId: string) => {
-    if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
-    try {
-      // NOTA: Em produção, isso deve usar bcrypt antes de salvar
-      const { error } = await supabase
-        .from("system_users")
-        .update({ password_hash: "mudar123" })
-        .eq("id", userId);
-
-      if (error) throw error;
-      toast({ title: "Senha resetada com sucesso! Nova senha: mudar123" });
-    } catch (error) {
-      console.error("Erro ao resetar senha:", error);
-      toast({ title: "Erro ao resetar senha", variant: "destructive" });
-    }
-  };
+  }
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Configurações</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie os dados da empresa, usuários e parâmetros do sistema
-          </p>
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Configurações</h1>
+            <p className="text-muted-foreground">
+              Gerencie as configurações do sistema
+            </p>
+          </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-auto">
-            <TabsTrigger value="company" className="gap-2 py-3">
-              <Building2 className="h-4 w-4" />
-              Dados da Empresa
-            </TabsTrigger>
-            <TabsTrigger value="admin-fees" className="gap-2 py-3">
-              <Percent className="h-4 w-4" />
-              Taxas Admin
-            </TabsTrigger>
-            <TabsTrigger value="fines" className="gap-2 py-3">
-              <AlertCircle className="h-4 w-4" />
-              Multas e Juros
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 py-3">
-              <Users className="h-4 w-4" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-2 py-3">
-              <Shield className="h-4 w-4" />
-              Permissões
-            </TabsTrigger>
-            <TabsTrigger value="locations" className="gap-2 py-3">
-              <MapPin className="h-4 w-4" />
-              Locais
-            </TabsTrigger>
-            <TabsTrigger value="maintenance" className="gap-2 py-3">
-              <Wrench className="h-4 w-4" />
-              Manutenção
-            </TabsTrigger>
+        <Tabs defaultValue="general" className="space-y-4">
+          <TabsList>
+            {canManageSettings && (
+              <>
+                <TabsTrigger value="general">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Geral
+                </TabsTrigger>
+                <TabsTrigger value="locations">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Locais
+                </TabsTrigger>
+                <TabsTrigger value="igpm">
+                  <Percent className="w-4 h-4 mr-2" />
+                  IGPM
+                </TabsTrigger>
+                <TabsTrigger value="exemptions">
+                  <Coins className="w-4 h-4 mr-2" />
+                  Isenções
+                </TabsTrigger>
+                <TabsTrigger value="expenses">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Despesas
+                </TabsTrigger>
+                <TabsTrigger value="maintenance">
+                  <Wrench className="w-4 h-4 mr-2" />
+                  Manutenção
+                </TabsTrigger>
+              </>
+            )}
+            {canManageUsers && (
+              <>
+                <TabsTrigger value="users">
+                  <Users className="w-4 h-4 mr-2" />
+                  Usuários
+                </TabsTrigger>
+                <TabsTrigger value="permissions">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Permissões
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
-          {/* DADOS DA EMPRESA */}
-          <TabsContent value="company">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados da Empresa</CardTitle>
-                <CardDescription>
-                  Informações cadastrais exibidas em relatórios e contratos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Razão Social</Label>
-                      <Input 
-                        id="companyName" 
-                        value={config.company_name}
-                        onChange={(e) => setConfig({...config, company_name: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cnpj">CNPJ</Label>
-                      <Input 
-                        id="cnpj" 
-                        value={config.cnpj}
-                        onChange={(e) => setConfig({...config, cnpj: applyCnpjMask(e.target.value)})}
-                        maxLength={18}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input 
-                        id="email" 
-                        type="email"
-                        value={config.email}
-                        onChange={(e) => setConfig({...config, email: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
-                      <Input 
-                        id="phone" 
-                        value={config.phone}
-                        onChange={(e) => setConfig({...config, phone: applyPhoneMask(e.target.value)})}
-                        maxLength={15}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Input 
-                      id="address" 
-                      value={config.address}
-                      onChange={(e) => setConfig({...config, address: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">Cidade</Label>
-                      <Input 
-                        id="city" 
-                        value={config.city}
-                        onChange={(e) => setConfig({...config, city: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">Estado</Label>
-                      <Input 
-                        id="state" 
-                        value={config.state}
-                        onChange={(e) => setConfig({...config, state: e.target.value})}
-                        maxLength={2}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">CEP</Label>
-                      <Input 
-                        id="zipCode" 
-                        value={config.zip_code}
-                        onChange={(e) => setConfig({...config, zip_code: applyCepMask(e.target.value)})}
-                        maxLength={9}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Alterações
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* TAXAS ADMINISTRATIVAS & GERENCIAMENTO */}
-          <TabsContent value="admin-fees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Taxas e Comissões</CardTitle>
-                <CardDescription>
-                  Configure as taxas cobradas sobre os aluguéis
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="adminFee" className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-emerald-600" />
-                        Taxa de Administração (%)
+          {canManageSettings && (
+            <>
+              <TabsContent value="general" className="space-y-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">
+                    Taxa de Administração
+                  </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="fee">
+                        Percentual da Taxa (%)
                       </Label>
-                      <div className="relative">
-                        <Input 
-                          id="adminFee" 
-                          type="text"
-                          value={adminFee}
-                          onChange={(e) => setAdminFee(e.target.value)}
-                          className="pr-8"
-                          placeholder="0,000"
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          id="fee"
+                          type="number"
+                          step="0.01"
+                          value={feePercentage}
+                          onChange={(e) => setFeePercentage(e.target.value)}
+                          placeholder="10"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                        <Button onClick={handleSaveFee}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Salvar
+                        </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Incide sobre o valor bruto do aluguel.
-                      </p>
                     </div>
+                  </div>
+                </Card>
+              </TabsContent>
 
+              <TabsContent value="locations" className="space-y-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">Locais</h2>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newLocation}
+                        onChange={(e) => setNewLocation(e.target.value)}
+                        placeholder="Nome do local"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") handleAddLocation();
+                        }}
+                      />
+                      <Button onClick={handleAddLocation}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="managementFee" className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-blue-600" />
-                        Taxa de Gerenciamento (%)
-                      </Label>
-                      <div className="relative">
-                        <Input 
-                          id="managementFee" 
-                          type="text"
-                          value={managementFee}
-                          onChange={(e) => setManagementFee(e.target.value)}
-                          className="pr-8"
-                          placeholder="0,000"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Taxa adicional para gestão de imóveis (opcional).
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-md border border-amber-200 dark:border-amber-800 mt-4">
-                    <div className="flex items-start gap-3">
-                      <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-amber-800 dark:text-amber-300">Exemplo de Cálculo</p>
-                        <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                          Para um boleto de R$ 1.000,00 com 10 dias de atraso:
-                        </p>
-                        <ul className="text-sm text-amber-700 dark:text-amber-400 list-disc ml-5 mt-1">
-                          <li>Multa ({lateFee}%): R$ {(1000 * (parsePercentageToFloat(lateFee)/100)).toFixed(2)}</li>
-                          <li>Juros ({interestRate}% ao dia × 10): R$ {(1000 * (parsePercentageToFloat(interestRate)/100) * 10).toFixed(2)}</li>
-                          <li><strong>Total a Pagar: R$ {(1000 * (1 + (parsePercentageToFloat(lateFee)/100) + ((parsePercentageToFloat(interestRate)/100) * 10))).toFixed(2)}</strong></li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Taxas
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* MULTAS E JUROS */}
-          <TabsContent value="fines">
-            <Card>
-              <CardHeader>
-                <CardTitle>Multas e Juros</CardTitle>
-                <CardDescription>
-                  Configuração de encargos para pagamentos em atraso
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="lateFee">Multa por Atraso (%)</Label>
-                      <div className="relative">
-                        <Input 
-                          id="lateFee" 
-                          type="text"
-                          value={lateFee}
-                          onChange={(e) => setLateFee(e.target.value)}
-                          className="pr-8"
-                          placeholder="0,000"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Cobrado uma única vez sobre o valor do boleto vencido.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="interestRate">Juros Diários (%)</Label>
-                      <div className="relative">
-                        <Input 
-                          id="interestRate" 
-                          type="text"
-                          value={interestRate}
-                          onChange={(e) => setInterestRate(applyPercentageMask(e.target.value))}
-                          className="pr-8"
-                          placeholder="0,000"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Cobrado por dia de atraso (Pro Rata Die).
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-md border border-amber-200 dark:border-amber-800 mt-4">
-                    <div className="flex items-start gap-3">
-                      <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-amber-800 dark:text-amber-300">Exemplo de Cálculo</p>
-                        <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                          Para um boleto de R$ 1.000,00 com 10 dias de atraso:
-                        </p>
-                        <ul className="text-sm text-amber-700 dark:text-amber-400 list-disc ml-5 mt-1">
-                          <li>Multa ({lateFee}%): R$ {(1000 * (parsePercentageToFloat(lateFee)/100)).toFixed(2)}</li>
-                          <li>Juros ({interestRate}% ao dia × 10): R$ {(1000 * (parsePercentageToFloat(interestRate)/100) * 10).toFixed(2)}</li>
-                          <li><strong>Total a Pagar: R$ {(1000 * (1 + (parsePercentageToFloat(lateFee)/100) + ((parsePercentageToFloat(interestRate)/100) * 10))).toFixed(2)}</strong></li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Encargos
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* USUÁRIOS */}
-          <TabsContent value="users">
-            <UsersTab
-              users={users}
-              isLoading={usersLoading}
-              onCreateUser={handleCreateUser}
-              onUpdateUser={handleUpdateUser}
-              onDeleteUser={handleDeleteUser}
-              onToggleStatus={handleToggleUserStatus}
-              onResetPassword={handleResetPassword}
-            />
-          </TabsContent>
-
-          {/* PERMISSÕES */}
-          <TabsContent value="permissions">
-            <PermissionsTab
-              users={users}
-              locations={locations}
-              roleMenuPermissions={permissions}
-              isLoading={permissionsLoading}
-              onUpdateRoleMenuPermission={updateRoleMenuPermission}
-              onSaveLocationPermissions={saveLocationPermissions}
-              onSaveFeeExemptions={saveFeeExemptions}
-              getUserLocationPermissions={getUserLocationPermissions}
-              getFeeExemptions={getFeeExemptions}
-            />
-          </TabsContent>
-
-          {/* LOCAIS */}
-          <TabsContent value="locations" className="space-y-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4" />
-                    Gerenciar Locais
-                  </CardTitle>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Cadastre locais/condomínios e gerencie contas
-                  </p>
-                </div>
-                <Button onClick={() => openLocationDialog()} className="gap-1.5 h-7 text-xs">
-                  <Plus className="h-3 w-3" />
-                  Novo Local
-                </Button>
-              </CardHeader>
-              <CardContent className="pb-3">
-                {/* Busca */}
-                <div className="mb-3">
-                  <input
-                    type="text"
-                    placeholder="Buscar por nome, cidade ou bairro..."
-                    value={searchLocation}
-                    onChange={(e) => setSearchLocation(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:border-slate-700"
-                  />
-                </div>
-
-                {/* Grid de Locais */}
-                {isLoadingLocations ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    Carregando locais...
-                  </div>
-                ) : filteredLocations.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    {searchLocation
-                      ? "Nenhum local encontrado"
-                      : "Nenhum local cadastrado"}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {filteredLocations.map((location) => (
-                      <div
-                        key={location.id}
-                        className="border rounded-lg p-3 hover:bg-accent/50 transition-colors cursor-pointer group"
-                        onClick={() => openLocationDialog(location)}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
-                            <h4 className="font-semibold text-sm truncate">{location.name}</h4>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1 mb-3">
-                          {(location.street || location.number) && (
-                            <p className="text-xs text-muted-foreground flex items-start gap-1">
-                              <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                              <span className="line-clamp-1">
-                                {location.street}
-                                {location.number && `, ${location.number}`}
-                                {location.complement && ` - ${location.complement}`}
-                              </span>
-                            </p>
-                          )}
-                          {location.neighborhood && (
-                            <p className="text-xs text-muted-foreground ml-4 line-clamp-1">
-                              {location.neighborhood}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground ml-4">
-                            {location.city}, {location.state}
-                            {location.zip_code && ` • ${location.zip_code}`}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-1.5">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 gap-1 h-7 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedLocationForExpenses(location);
-                            }}
+                      {locations.map((location) => (
+                        <div
+                          key={location.id}
+                          className="flex justify-between items-center p-3 border rounded-lg"
+                        >
+                          <span>{location.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLocation(location.id)}
                           >
-                            <Wallet className="h-3 w-3" />
-                            Contas a Pagar
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="igpm" className="space-y-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">Taxas IGPM</h2>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-2">
+                      <Input
+                        type="number"
+                        value={newIgpmMonth}
+                        onChange={(e) =>
+                          setNewIgpmMonth(
+                            e.target.value ? Number(e.target.value) : ""
+                          )
+                        }
+                        placeholder="Mês (1-12)"
+                        min="1"
+                        max="12"
+                      />
+                      <Input
+                        type="number"
+                        value={newIgpmYear}
+                        onChange={(e) =>
+                          setNewIgpmYear(
+                            e.target.value ? Number(e.target.value) : ""
+                          )
+                        }
+                        placeholder="Ano"
+                        min="2000"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={newIgpmRate}
+                        onChange={(e) =>
+                          setNewIgpmRate(
+                            e.target.value ? Number(e.target.value) : ""
+                          )
+                        }
+                        placeholder="Taxa (%)"
+                      />
+                      <Button onClick={handleAddIgpmRate}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {igpmRates
+                        .sort((a, b) => {
+                          if (a.year !== b.year) return b.year - a.year;
+                          return b.month - a.month;
+                        })
+                        .map((rate) => (
+                          <div
+                            key={rate.id}
+                            className="flex justify-between items-center p-3 border rounded-lg"
+                          >
+                            <span>
+                              {rate.month.toString().padStart(2, "0")}/
+                              {rate.year} - {rate.rate}%
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteIgpmRate(rate.id!)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="exemptions" className="space-y-4">
+                <Card className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">
+                      Isenções de Taxa de Administração
+                    </h2>
+                    <Button onClick={handleAddExemption}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Isenção
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {exemptions.map((exemption) => (
+                      <div
+                        key={exemption.id}
+                        className="flex justify-between items-center p-3 border rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{exemption.tenantName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {exemption.propertyIdentifier}
+                          </p>
+                          {exemption.reason && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Motivo: {exemption.reason}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditExemption(exemption)}
+                          >
+                            <Pencil className="w-4 h-4" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="gap-1 text-destructive hover:bg-destructive/10 h-7 text-xs px-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocationToDelete(location);
-                            }}
+                            onClick={() => handleDeleteExemption(exemption.id)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
                     ))}
+                    {exemptions.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhuma isenção cadastrada
+                      </p>
+                    )}
                   </div>
-                )}
+                </Card>
+              </TabsContent>
 
-                {/* Footer */}
-                <div className="mt-3 pt-3 border-t text-xs text-muted-foreground text-center">
-                  {filteredLocations.length} local(is) • {searchLocation && "Filtrado"}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="expenses" className="space-y-4">
+                <Card className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">
+                      Despesas dos Locais
+                    </h2>
+                    <Button onClick={handleAddExpense}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Despesa
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {locationExpenses.map((expense) => (
+                      <div
+                        key={expense.id}
+                        className="flex justify-between items-center p-3 border rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{expense.locationName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {expense.expenseType} - R${" "}
+                            {expense.value.toFixed(2)}
+                          </p>
+                          {expense.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {expense.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditExpense(expense)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteExpense(expense.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {locationExpenses.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhuma despesa cadastrada
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </TabsContent>
 
-          {/* MANUTENÇÃO */}
-          <TabsContent value="maintenance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Ferramentas de Manutenção</CardTitle>
-                <CardDescription>
-                  Utilitários para correção e recálculo de dados do sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-                  <h3 className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
-                    Recalcular Todos os Recebimentos
-                  </h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-2 mb-4">
-                    Esta ação irá <strong>DELETAR TODOS</strong> os recebimentos (pagos ou não) de todas as locações e <strong>RECRIÁ-LOS</strong> seguindo as regras atuais de faturamento (1 por mês sem pular, proporcionais exatos, numeração de parcelas correta). Use com extrema cautela, pois os pagamentos que já constavam como "Pagos" voltarão para "Pendente".
-                  </p>
-                  <Button 
-                    onClick={async () => {
-                      if(confirm("Tem certeza absoluta que deseja DELETAR e RECRIAR TODOS os recebimentos do sistema? Esta ação pode demorar alguns minutos e não pode ser desfeita.")) {
-                        toast({ title: "Iniciando correção em massa..." });
-                        try {
-                          const result = await fixAllRentalsPayments();
-                          if(result.success) {
-                            toast({ 
-                              title: `Concluído com sucesso!`, 
-                              description: `${result.fixed} locações corrigidas. Recarregue a página de locações para ver os novos recebimentos.` 
-                            });
-                          } else {
-                            toast({ 
-                              title: `Concluído com erros`, 
-                              description: `${result.fixed} corrigidas, ${result.errors.length} erros encontrados.`,
-                              variant: "destructive"
-                            });
-                          }
-                        } catch(e: any) {
-                          toast({ title: "Erro na correção", description: e.message, variant: "destructive" });
-                        }
-                      }
-                    }}
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Executar Correção em Massa
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="maintenance" className="space-y-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">
+                    Ferramentas de Manutenção
+                  </h2>
+                  
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Atenção:</strong> Estas ferramentas são para manutenção do sistema e devem ser usadas com cuidado.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold mb-2">Recalcular Todos os Recebimentos</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Esta operação irá DELETAR e RECRIAR todos os recebimentos de todas as locações.
+                        Todos os status de pagamento serão perdidos e recriados como "Pendente".
+                      </p>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleFixAllPayments}
+                        disabled={isFixingPayments}
+                      >
+                        {isFixingPayments ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Processando...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Recalcular Todos os Recebimentos
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+            </>
+          )}
+
+          {canManageUsers && (
+            <>
+              <TabsContent value="users">
+                <UsersTab />
+              </TabsContent>
+
+              <TabsContent value="permissions">
+                <PermissionsTab />
+              </TabsContent>
+            </>
+          )}
         </Tabs>
 
         {/* DIALOG DE LOCAL */}
-        <Dialog open={isLocationDialogOpen} onOpenChange={(open) => {
-          if (!open) {
-            setIsLocationDialogOpen(false);
-            setEditingLocation(null);
-            setLocationForm({
-              name: "",
-              street: "",
-              number: "",
-              complement: "",
-              neighborhood: "",
-              city: "",
-              state: "",
-              zip_code: "",
-              is_active: true,
-            });
-          }
-        }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingLocation ? "Editar Local" : "Novo Local"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleLocationSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="locationName">Nome do Local <span className="text-red-500">*</span></Label>
-                <Input
-                  id="locationName"
-                  value={locationForm.name}
-                  onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
-                  placeholder="Ex: Casa 1, Apartamento A, Loja Centro"
-                  required
-                />
-              </div>
+        <FeeExemptionDialog
+          open={isExemptionDialogOpen}
+          onOpenChange={setIsExemptionDialogOpen}
+          exemption={selectedExemption}
+          onSave={loadSettings}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="locationZipCode">CEP <span className="text-red-500">*</span></Label>
-                <Input
-                  id="locationZipCode"
-                  value={locationForm.zip_code}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "").slice(0, 8);
-                    const formatted = value.replace(/(\d{5})(\d)/, "$1-$2");
-                    setLocationForm({ ...locationForm, zip_code: formatted });
-                    if (value.length === 8) {
-                      handleCepLookup(value);
-                    }
-                  }}
-                  placeholder="00000-000"
-                  maxLength={9}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2 md:col-span-3">
-                  <Label htmlFor="locationStreet">Endereço <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="locationStreet"
-                    value={locationForm.street}
-                    onChange={(e) => setLocationForm({ ...locationForm, street: e.target.value })}
-                    placeholder="Rua, Avenida, etc."
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locationNumber">Número <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="locationNumber"
-                    value={locationForm.number}
-                    onChange={(e) => setLocationForm({ ...locationForm, number: e.target.value })}
-                    placeholder="123"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="locationComplement">Complemento</Label>
-                <Input
-                  id="locationComplement"
-                  value={locationForm.complement}
-                  onChange={(e) => setLocationForm({ ...locationForm, complement: e.target.value })}
-                  placeholder="Bloco, Andar, Sala, etc."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="locationNeighborhood">Bairro <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="locationNeighborhood"
-                    value={locationForm.neighborhood}
-                    onChange={(e) => setLocationForm({ ...locationForm, neighborhood: e.target.value })}
-                    placeholder="Centro, Jardins, etc."
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locationCity">Cidade <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="locationCity"
-                    value={locationForm.city}
-                    onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
-                    placeholder="São Paulo"
-                    required
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsLocationDialogOpen(false);
-                    setEditingLocation(null);
-                    setLocationForm({
-                      name: "",
-                      street: "",
-                      number: "",
-                      complement: "",
-                      neighborhood: "",
-                      city: "",
-                      state: "",
-                      zip_code: "",
-                      is_active: true,
-                    });
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingLocation ? "Atualizar" : "Cadastrar"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* ALERT DIALOG PARA CONFIRMAR EXCLUSÃO */}
-        <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir o local <strong>{locationToDelete?.name}</strong>?
-                Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <Button
-                onClick={(e) => {
-                  (e.target as HTMLButtonElement).blur();
-                  confirmDeleteLocation();
-                }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Excluir
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {selectedLocationForExpenses && (
-          <LocationExpensesDialog
-            open={!!selectedLocationForExpenses}
-            onOpenChange={(open) => !open && setSelectedLocationForExpenses(null)}
-            location={selectedLocationForExpenses}
-          />
-        )}
+        <LocationExpensesDialog
+          open={isExpenseDialogOpen}
+          onOpenChange={setIsExpenseDialogOpen}
+          expense={selectedExpense}
+          onSave={loadSettings}
+        />
       </div>
     </Layout>
   );
