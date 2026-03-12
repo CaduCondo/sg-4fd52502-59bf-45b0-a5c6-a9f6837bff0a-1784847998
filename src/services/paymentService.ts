@@ -695,13 +695,10 @@ export async function fixAllRentalsPayments(): Promise<{
         id,
         start_date,
         end_date,
-        monthly_rent,
-        payment_day,
-        has_garage,
-        garage_value,
         value,
+        payment_day,
         status,
-        properties(property_identifier)
+        properties(property_identifier, has_garage, garage_value)
       `)
       .in("status", ["active", "ended"]);
 
@@ -719,12 +716,17 @@ export async function fixAllRentalsPayments(): Promise<{
 
     for (let i = 0; i < rentals.length; i++) {
       const rental = rentals[i];
+      // @ts-ignore - Ignore type error for properties
       const propertyName = rental.properties?.property_identifier || "Sem identificação";
+      // @ts-ignore
+      const hasGarage = rental.properties?.has_garage || false;
+      // @ts-ignore
+      const garageValue = rental.properties?.garage_value || 0;
       
       console.log(`\n${"=".repeat(80)}`);
       console.log(`🏠 [${i + 1}/${rentals.length}] Processando: ${propertyName}`);
       console.log(`📅 Período: ${rental.start_date} até ${rental.end_date}`);
-      console.log(`💰 Valor: R$ ${rental.monthly_rent || rental.value}`);
+      console.log(`💰 Valor: R$ ${rental.value}`);
       console.log(`📆 Vencimento: Dia ${rental.payment_day}`);
 
       try {
@@ -747,10 +749,10 @@ export async function fixAllRentalsPayments(): Promise<{
           rental: rental as any,
           startDate: new Date(rental.start_date + "T00:00:00"),
           endDate: new Date(rental.end_date + "T00:00:00"),
-          monthlyRent: rental.monthly_rent || rental.value || 0,
+          monthlyRent: rental.value || 0,
           paymentDay: rental.payment_day,
-          hasGarage: rental.has_garage,
-          garageValue: rental.garage_value || 0,
+          hasGarage: hasGarage,
+          garageValue: garageValue,
         });
 
         console.log("✅ Recebimentos recriados com sucesso");
