@@ -251,8 +251,8 @@ export async function createPaymentsForRental(params: {
 
   console.log("🔧 createPaymentsForRental - INICIANDO:", {
     rentalId: rental.id,
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
+    startDate: startDate.toISOString().split("T")[0],
+    endDate: endDate.toISOString().split("T")[0],
     monthlyRent,
     paymentDay,
     hasGarage,
@@ -272,78 +272,169 @@ export async function createPaymentsForRental(params: {
   const garage = hasGarage && garageValue ? garageValue : 0;
   const totalMonthlyValue = rentValue + garage;
 
+  const paymentsToCreate: any[] = [];
+  
   const startDay = startDate.getDate();
   const startMonth = startDate.getMonth();
   const startYear = startDate.getFullYear();
   
-  let firstDueDate: Date;
-  if (startDay <= paymentDay) {
-    firstDueDate = new Date(startYear, startMonth, paymentDay);
-  } else {
-    firstDueDate = new Date(startYear, startMonth + 1, paymentDay);
-  }
+  const endDay = endDate.getDate();
+  const endMonth = endDate.getMonth();
+  const endYear = endDate.getFullYear();
   
-  const daysFirstPeriod = Math.ceil((firstDueDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  let currentMonth = startMonth;
+  let currentYear = startYear;
   
-  console.log("📅 Análise do Primeiro Período:", {
-    startDay,
-    paymentDay,
-    firstDueDate: firstDueDate.toISOString().split("T")[0],
-    daysFirstPeriod,
-    isProrataOnly: daysFirstPeriod <= 15,
+  let installmentNumber = 0;
+  let isFirstPayment = true;
+  let hasProrata = false;
+  
+  console.log("📅 Período do contrato:", {
+    inicio: `${startDay}/${startMonth + 1}/${startYear}`,
+    fim: `${endDay}/${endMonth + 1}/${endYear}`,
   });
-
-  const currentDate = new Date(startDate);
-  const end = new Date(endDate);
-
-  const paymentsToCreate: any[] = [];
   
-  const isFirstProrataOnly = daysFirstPeriod <= 15;
-  let installmentNumber = isFirstProrataOnly ? 0 : 1;
-
-  while (currentDate <= end) {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const refKey = `${year}-${month}`;
+  while (
+    currentYear < endYear || 
+    (currentYear === endYear && currentMonth <= endMonth)
+  ) {
+    const refMonth = currentMonth + 1;
+    const refYear = currentYear;
+    const refKey = `${refYear}-${refMonth}`;
 
     if (existingRefs.has(refKey)) {
-      console.log(`⏭️  Pulando ${month}/${year} - já existe`);
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      console.log(`⏭️  Pulando ${refMonth}/${refYear} - já existe`);
+      
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
       continue;
     }
 
-    const isFirstMonth = currentDate.getTime() === startDate.getTime();
-    const isLastMonth = currentDate.getMonth() === end.getMonth() && currentDate.getFullYear() === end.getFullYear();
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    let dueDate = new Date(year, month - 1, Math.min(paymentDay, daysInMonth));
-    let expectedAmount = totalMonthlyValue;
+    const daysInMonth = new Date(refYear, refMonth, 0).getDate();
+    let dueDate: Date;
+    let expectedAmount: number;
     const breakdown: Array<{ description: string; amount: number; type: string }> = [];
 
-    if (isFirstMonth && startDate.getDate() > 1) {
-      const startDay = startDate.getDate();
-      let actualDueDay = paymentDay;
-      if (startDay > paymentDay) {
-        dueDate = new Date(year, month, Math.min(paymentDay, new Date(year, month + 1, 0).getDate()));
-        actualDueDay = paymentDay;
-      }
+    const isFirstMonthOfContract = (currentYear === startYear && currentMonth === startMonth);
+    const isLastMonthOfContract = (currentYear === endYear && currentMonth === endMonth);
 
-      const daysToCharge = actualDueDay - startDay + 1;
+    if (isFirstMonthOfContract && startDay > 1) {
+      let dueDateDay: number;
+      let daysToCharge: number;
+      
+      if (startDay <= paymentDay) {
+        dueDateDay = Math.min(paymentDay, daysInMonth);
+        daysToCharge = dueDateDay - startDay + 1;
+      } else {
+        const nextMonth = currentMonth + 1;
+        const nextYear = nextMonth > 11 ? currentYear + 1 : currentYear;
+        const nextMonthIndex = nextMonth > 11 ? 0 : nextMonth;
+        const daysInNextMonth = new Date(nextYear, nextMonthIndex + 1, 0).getDate();
+        dueDateDay = Math.min(paymentDay, daysInNextMonth);
+        daysToCharge = dueDateDay;
+      }
+      
+      dueDate = startDay <= paymentDay 
+        ? new Date(refYear, currentMonth, dueDateDay)
+        : new Date(refYear, currentMonth + 1, dueDateDay);
+
       const proportionalRent = (rentValue / 30) * daysToCharge;
       const proportionalGarage = hasGarage && garage ? (garage / 30) * daysToCharge : 0;
       expectedAmount = proportionalRent + proportionalGarage;
 
-      const descriptionPrefix = daysToCharge <= 15 ? "Prorata" : "Aluguel Proporcional";
+      const isProrata = daysToCharge < 15;
+      
+      if (isProrata) {
+        hasProrata = true;
+        breakdown.push({
+          description: `Prorata (${daysToCharge} dias - ${startDate.toISOString().split("T")[0]} até ${dueDate.toISOString().split("T")[0]})`,
+          amount: parseFloat(proportionalRent.toFixed(2)),
+          type: "addition",
+        });
+
+        if (hasGarage && proportionalGarage > 0) {
+          breakdown.push({
+            description: `Garagem Proporcional (${daysToCharge} dias)`,
+            amount: parseFloat(proportionalGarage.toFixed(2)),
+            type: "addition",
+          });
+        }
+        
+        paymentsToCreate.push({
+          rental_id: rental.id,
+          reference_month: refMonth,
+          reference_year: refYear,
+          due_date: dueDate.toISOString().split("T")[0],
+          expected_amount: parseFloat(expectedAmount.toFixed(2)),
+          status: "pending",
+          breakdown: breakdown,
+          installment: 0,
+          total_installments: null,
+        });
+        
+        console.log(`📝 Criando PRORATA - ${refMonth}/${refYear}: ${daysToCharge} dias = R$ ${expectedAmount.toFixed(2)}`);
+        
+      } else {
+        installmentNumber = 1;
+        
+        breakdown.push({
+          description: `Aluguel Proporcional - 1ª Parcela (${daysToCharge} dias - ${startDate.toISOString().split("T")[0]} até ${dueDate.toISOString().split("T")[0]})`,
+          amount: parseFloat(proportionalRent.toFixed(2)),
+          type: "addition",
+        });
+
+        if (hasGarage && proportionalGarage > 0) {
+          breakdown.push({
+            description: `Garagem Proporcional (${daysToCharge} dias)`,
+            amount: parseFloat(proportionalGarage.toFixed(2)),
+            type: "addition",
+          });
+        }
+        
+        paymentsToCreate.push({
+          rental_id: rental.id,
+          reference_month: refMonth,
+          reference_year: refYear,
+          due_date: dueDate.toISOString().split("T")[0],
+          expected_amount: parseFloat(expectedAmount.toFixed(2)),
+          status: "pending",
+          breakdown: breakdown,
+          installment: installmentNumber,
+          total_installments: null,
+        });
+        
+        console.log(`📝 Criando PARCELA ${installmentNumber}/XX - ${refMonth}/${refYear}: ${daysToCharge} dias = R$ ${expectedAmount.toFixed(2)}`);
+      }
+      
+      isFirstPayment = false;
+      
+    } else if (isLastMonthOfContract && endDay < daysInMonth) {
+      const dueDateDay = Math.min(paymentDay, daysInMonth);
+      dueDate = new Date(refYear, currentMonth, dueDateDay);
+      
+      const daysToCharge = endDay;
+      const proportionalRent = (rentValue / 30) * daysToCharge;
+      const proportionalGarage = hasGarage && garage ? (garage / 30) * daysToCharge : 0;
+      expectedAmount = proportionalRent + proportionalGarage;
+
+      if (installmentNumber === 0) {
+        installmentNumber = 1;
+      } else {
+        installmentNumber++;
+      }
       
       breakdown.push({
-        description: `${descriptionPrefix} (${daysToCharge} dias - ${startDate.toISOString().split("T")[0]} até ${dueDate.toISOString().split("T")[0]})`,
+        description: `Aluguel Proporcional - Última Parcela (${daysToCharge} dias - até ${endDate.toISOString().split("T")[0]})`,
         amount: parseFloat(proportionalRent.toFixed(2)),
         type: "addition",
       });
 
       if (hasGarage && proportionalGarage > 0) {
         breakdown.push({
-          description: `Garagem Proporcional (${daysToCharge} dias)`,
+          description: `Garagem Proporcional - Última Parcela (${daysToCharge} dias)`,
           amount: parseFloat(proportionalGarage.toFixed(2)),
           type: "addition",
         });
@@ -351,8 +442,8 @@ export async function createPaymentsForRental(params: {
       
       paymentsToCreate.push({
         rental_id: rental.id,
-        reference_month: month,
-        reference_year: year,
+        reference_month: refMonth,
+        reference_year: refYear,
         due_date: dueDate.toISOString().split("T")[0],
         expected_amount: parseFloat(expectedAmount.toFixed(2)),
         status: "pending",
@@ -361,60 +452,20 @@ export async function createPaymentsForRental(params: {
         total_installments: null,
       });
       
-      installmentNumber++;
-      
-    } else if (isLastMonth) {
-      const endDay = end.getDate();
-      const lastDueDay = Math.min(paymentDay, daysInMonth);
-      
-      if (endDay < lastDueDay) {
-        const daysToCharge = endDay - (lastDueDay > daysInMonth ? 1 : lastDueDay) + lastDueDay;
-        const proportionalRent = (rentValue / 30) * daysToCharge;
-        const proportionalGarage = hasGarage && garage ? (garage / 30) * daysToCharge : 0;
-        expectedAmount = proportionalRent + proportionalGarage;
-
-        breakdown.push({
-          description: `Aluguel Proporcional - Último Mês (${daysToCharge} dias - até ${end.toISOString().split("T")[0]})`,
-          amount: parseFloat(proportionalRent.toFixed(2)),
-          type: "addition",
-        });
-
-        if (hasGarage && proportionalGarage > 0) {
-          breakdown.push({
-            description: `Garagem Proporcional - Último Mês (${daysToCharge} dias)`,
-            amount: parseFloat(proportionalGarage.toFixed(2)),
-            type: "addition",
-          });
-        }
-      } else {
-        breakdown.push({
-          description: "Aluguel",
-          amount: parseFloat(rentValue.toFixed(2)),
-          type: "addition",
-        });
-
-        if (hasGarage && garage > 0) {
-          breakdown.push({
-            description: "Garagem",
-            amount: parseFloat(garage.toFixed(2)),
-            type: "addition",
-          });
-        }
-      }
-      
-      paymentsToCreate.push({
-        rental_id: rental.id,
-        reference_month: month,
-        reference_year: year,
-        due_date: dueDate.toISOString().split("T")[0],
-        expected_amount: parseFloat(expectedAmount.toFixed(2)),
-        status: "pending",
-        breakdown: breakdown,
-        installment: installmentNumber,
-        total_installments: null,
-      });
+      console.log(`📝 Criando ÚLTIMA PARCELA ${installmentNumber}/XX - ${refMonth}/${refYear}: ${daysToCharge} dias = R$ ${expectedAmount.toFixed(2)}`);
       
     } else {
+      const dueDateDay = Math.min(paymentDay, daysInMonth);
+      dueDate = new Date(refYear, currentMonth, dueDateDay);
+      expectedAmount = totalMonthlyValue;
+
+      if (isFirstPayment) {
+        installmentNumber = 1;
+        isFirstPayment = false;
+      } else if (installmentNumber > 0) {
+        installmentNumber++;
+      }
+      
       breakdown.push({
         description: "Aluguel",
         amount: parseFloat(rentValue.toFixed(2)),
@@ -431,24 +482,27 @@ export async function createPaymentsForRental(params: {
       
       paymentsToCreate.push({
         rental_id: rental.id,
-        reference_month: month,
-        reference_year: year,
+        reference_month: refMonth,
+        reference_year: refYear,
         due_date: dueDate.toISOString().split("T")[0],
         expected_amount: parseFloat(expectedAmount.toFixed(2)),
         status: "pending",
         breakdown: breakdown,
-        installment: installmentNumber,
+        installment: installmentNumber > 0 ? installmentNumber : 0,
         total_installments: null,
       });
       
-      installmentNumber++;
+      console.log(`📝 Criando PARCELA ${installmentNumber > 0 ? installmentNumber : 'PRORATA'}/XX - ${refMonth}/${refYear}: R$ ${expectedAmount.toFixed(2)}`);
     }
 
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
   }
 
-  const hasProrata = paymentsToCreate.some(p => p.installment === 0);
-  const totalInstallments = paymentsToCreate.length - (hasProrata ? 1 : 0);
+  const totalInstallments = paymentsToCreate.filter(p => p.installment > 0).length;
   
   console.log("📊 Resumo dos Pagamentos:", {
     totalPayments: paymentsToCreate.length,
@@ -488,7 +542,6 @@ export async function updateFuturePayments(
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth() + 1;
 
-  // ✅ PERFORMANCE: Select específico apenas dos campos necessários
   const { data: futurePayments, error } = await supabase
     .from("payments")
     .select("id, reference_month, reference_year, breakdown, status")
@@ -509,7 +562,6 @@ export async function updateFuturePayments(
   const baseRent = rental.monthlyRent || rental.value || 0;
   const garage = rental.hasGarage && rental.garageValue ? rental.garageValue : 0;
 
-  // ✅ PERFORMANCE: Preparar todos os updates em array para batch
   const updates = futurePayments.map((payment) => {
     const breakdown = [
       {
@@ -534,7 +586,6 @@ export async function updateFuturePayments(
     };
   });
 
-  // ✅ PERFORMANCE: Updates paralelos para maior velocidade
   await Promise.all(
     updates.map(async (update) => {
       const { error } = await supabase
