@@ -37,7 +37,6 @@ import * as locationService from "@/services/locationService";
 import * as igpmService from "@/services/igpmService";
 import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
 import * as locationExpenseService from "@/services/locationExpenseService";
-import { analyzeAllRentalsPayments, fixSpecificRentalPayments } from "@/services/paymentService";
 import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
 import { FeeExemptionDialog } from "@/components/settings/FeeExemptionDialog";
 import { UsersTab } from "@/components/settings/UsersTab";
@@ -68,13 +67,6 @@ export default function Settings() {
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<LocationExpense | undefined>();
   
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isFixing, setIsFixing] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<{ 
-    totalRentals: number; 
-    problems: { rentalId: string; propertyName: string; reason: string }[];
-  } | null>(null);
-
   const canManageSettings = hasPermission("manage_settings");
   const canManageUsers = hasPermission("manage_users");
 
@@ -321,55 +313,6 @@ export default function Settings() {
     }
   };
 
-  const handleAnalyzePayments = async () => {
-    if (!canManageSettings) return;
-    setIsAnalyzing(true);
-    try {
-      const result = await analyzeAllRentalsPayments();
-      if (result.success) {
-        setAnalysisResult({
-          totalRentals: result.totalRentals,
-          problems: result.problems
-        });
-        toast({
-          title: "Análise concluída",
-          description: `Foram encontradas ${result.problems.length} locações com inconsistências.`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível analisar os pagamentos.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleFixSpecific = async (rentalId: string) => {
-    if (!canManageSettings) return;
-    setIsFixing(rentalId);
-    try {
-      const success = await fixSpecificRentalPayments(rentalId);
-      if (success) {
-        toast({
-          title: "Sucesso",
-          description: "Os recebimentos desta locação foram corrigidos mantendo status e anexos.",
-        });
-        await handleAnalyzePayments();
-      } else {
-        toast({
-          title: "Erro",
-          description: "Não foi possível corrigir a locação.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsFixing(null);
-    }
-  };
-
   if (!canManageSettings && !canManageUsers) {
     return (
       <Layout>
@@ -420,10 +363,6 @@ export default function Settings() {
                 <TabsTrigger value="expenses">
                   <Building2 className="w-4 h-4 mr-2" />
                   Despesas
-                </TabsTrigger>
-                <TabsTrigger value="maintenance">
-                  <Wrench className="w-4 h-4 mr-2" />
-                  Manutenção
                 </TabsTrigger>
               </>
             )}
@@ -691,90 +630,6 @@ export default function Settings() {
                         Nenhuma despesa cadastrada
                       </p>
                     )}
-                  </div>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="maintenance" className="space-y-4">
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">
-                    Ferramentas de Manutenção de Recebimentos
-                  </h2>
-                  
-                  <Alert className="mb-4 bg-blue-50 text-blue-900 border-blue-200">
-                    <AlertCircle className="h-4 w-4 text-blue-900" />
-                    <AlertTitle>Análise Segura</AlertTitle>
-                    <AlertDescription>
-                      Esta ferramenta analisa os recebimentos atuais e identifica meses faltando ou numeração de parcelas incorretas. Ela <strong>NÃO DELETA</strong> nenhum dado e a correção individual preserva status de pago e anexos.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold">Analisar Inconsistências</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Verifique se alguma locação está com parcelas faltantes ou com a numeração errada (ex: Prorata em loop).
-                          </p>
-                        </div>
-                        <Button 
-                          onClick={handleAnalyzePayments}
-                          disabled={isAnalyzing}
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Analisando...
-                            </>
-                          ) : (
-                            <>
-                              <Search className="w-4 h-4 mr-2" />
-                              Verificar Locações
-                            </>
-                          )}
-                        </Button>
-                      </div>
-
-                      {analysisResult && (
-                        <div className="mt-4 pt-4 border-t">
-                          <p className="font-medium mb-3">
-                            Resultado: {analysisResult.totalRentals} locações verificadas. {analysisResult.problems.length} com problemas.
-                          </p>
-                          
-                          {analysisResult.problems.length > 0 ? (
-                            <div className="space-y-3">
-                              {analysisResult.problems.map((problem) => (
-                                <div key={problem.rentalId} className="flex items-center justify-between bg-red-50 p-3 rounded-md border border-red-100">
-                                  <div>
-                                    <p className="font-semibold text-red-900">{problem.propertyName}</p>
-                                    <p className="text-sm text-red-700">{problem.reason}</p>
-                                  </div>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => handleFixSpecific(problem.rentalId)}
-                                    disabled={isFixing === problem.rentalId}
-                                  >
-                                    {isFixing === problem.rentalId ? (
-                                      <RefreshCw className="w-3 h-3 mr-2 animate-spin" />
-                                    ) : (
-                                      <Wrench className="w-3 h-3 mr-2" />
-                                    )}
-                                    Corrigir Apenas Esta
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="bg-green-50 p-4 rounded-md border border-green-200 flex items-center">
-                              <Check className="w-5 h-5 text-green-600 mr-2" />
-                              <span className="text-green-800 font-medium">Todas as locações estão com os recebimentos perfeitos!</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </Card>
               </TabsContent>
