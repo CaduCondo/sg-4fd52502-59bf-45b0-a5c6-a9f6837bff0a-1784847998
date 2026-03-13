@@ -130,14 +130,10 @@ export default function FixPaymentsPage() {
     setResult(null);
 
     try {
-      // Fetch rentals with properties and tenants
+      // Fetch rentals
       const { data: rentals, error: rentalsError } = await supabase
         .from("rentals")
-        .select(`
-          *,
-          properties(title),
-          tenants(name)
-        `)
+        .select("*")
         .eq("status", "active");
 
       if (rentalsError) throw rentalsError;
@@ -155,8 +151,21 @@ export default function FixPaymentsPage() {
         const rental = rentals[i];
         setProgress(((i + 1) / rentals.length) * 100);
         
-        const propertyName = (rental as any).properties?.title || 'Imóvel';
-        const tenantName = (rental as any).tenants?.name || 'Inquilino';
+        // Fetch property and tenant data separately
+        const { data: property } = await supabase
+          .from("properties")
+          .select("title")
+          .eq("id", rental.property_id)
+          .single();
+        
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("name")
+          .eq("id", rental.tenant_id)
+          .single();
+        
+        const propertyName = property?.title || 'Imóvel';
+        const tenantName = tenant?.name || 'Inquilino';
         
         setCurrentRental(`${propertyName} - ${tenantName}`);
 
