@@ -70,8 +70,8 @@ function generateExpectedPayments(rental: any) {
     
     const daysInPeriod = calculateDaysBetween(periodStart, periodEnd) + 1;
     
-    let description: string;
     let isProportional = false;
+    let description = '';
     
     if (isFirstPayment && daysInPeriod < 30) {
       isProportional = true;
@@ -102,8 +102,11 @@ function generateExpectedPayments(rental: any) {
       due_date: dueDate.toISOString().split('T')[0],
       amount: Math.round(amount * 100) / 100,
       status: 'pending',
-      payment_number: paymentNumber || null,
-      description: description,
+      installment: paymentNumber || null,
+      total_installments: totalMonths,
+      reference_month: (month + 1).toString().padStart(2, '0'),
+      reference_year: year.toString(),
+      description: description, // keeping for UI display only
       period_start: periodStart.toISOString().split('T')[0],
       period_end: periodEnd.toISOString().split('T')[0]
     });
@@ -127,11 +130,15 @@ export default function FixPaymentsPage() {
     setResult(null);
 
     try {
+      // Fetch rentals with properties and tenants
       const { data: rentals, error: rentalsError } = await supabase
-        .from('rentals')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: true });
+        .from("rentals")
+        .select(`
+          *,
+          properties:property_id(title),
+          tenants:tenant_id(name)
+        `)
+        .eq("status", "active");
 
       if (rentalsError) throw rentalsError;
 
@@ -151,13 +158,14 @@ export default function FixPaymentsPage() {
 
         const rentalChanges: string[] = [];
 
+        // Fetch existing payments
         const { data: existingPayments, error: paymentsError } = await supabase
-          .from('rental_payments')
-          .select('*')
-          .eq('rental_id', rental.id)
-          .order('due_date', { ascending: true });
+          .from("payments")
+          .select("*")
+          .eq("rental_id", rental.id)
+          .order("due_date", { ascending: true });
 
-        if (paymentsError) continue;
+        if (paymentsError) throw paymentsError;
 
         const expectedPayments = generateExpectedPayments(rental);
 
@@ -165,48 +173,78 @@ export default function FixPaymentsPage() {
           const existing = existingPayments.find(p => p.due_date === expected.due_date);
 
           if (!existing) {
-            const { error: insertError } = await supabase
-              .from('rental_payments')
-              .insert([expected]);
+            // Create new payment
+            await supabase
+              .from("payments")
+              .insert({
+                rental_id: rental.id,
+                expected_amount: expected.amount,
+                due_date: expected.due_date,
+                installment: expected.installment,
+                total_installments: expected.total_installments,
+                reference_month: expected.reference_month,
+                reference_year: expected.reference_year,
+                status: "pending",
+                notes: expected.description
+              });
 
-            if (!insertError) {
-              summary.paymentsCreated++;
-              rentalChanges.push(`➕ Criada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
-            }
+            summary.paymentsCreated++;
+            rentalChanges.push(`➕ Criada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
           } else if (existing.status !== 'paid') {
-            const needsUpdate = 
-              existing.payment_number !== expected.payment_number ||
-              existing.description !== expected.description ||
-              Math.abs(existing.amount - expected.amount) > 0.01;
+            // Find matching payment for this month/year to update
+            const paymentToUpdate = existingPayments.find(p => {
+              const pDate = new Date((p as any).due_date);
+              return pDate.getMonth() === new Date(expected.due_date).getMonth() && 
+                     pDate.getFullYear() === new Date(expected.due_date).getFullYear();
+            });
 
-            if (needsUpdate) {
-              const { error: updateError } = await supabase
-                .from('rental_payments')
-                .update({
-                  payment_number: expected.payment_number,
-                  description: expected.description,
-                  amount: expected.amount,
-                  period_start: expected.period_start,
-                  period_end: expected.period_end
-                })
-                .eq('id', existing.id);
+            if (paymentToUpdate) {
+              // Determine if it needs updating
+              const needsUpdate = 
+                (paymentToUpdate as any).installment !== expected.installment ||
+                (paymentToUpdate as any).notes !== expected.description ||
+                (paymentToUpdate as any).expected_amount !== expected.amount;
 
-              if (!updateError) {
+              if (needsUpdate && (paymentToUpdate as any).status !== "paid") {
+                await supabase
+                  .from("payments")
+                  .update({
+                    installment: expected.installment,
+                    total_installments: expected.total_installments,
+                    notes: expected.description,
+                    expected_amount: expected.amount
+                  })
+                  .eq("id", paymentToUpdate.id);
+                
                 summary.paymentsUpdated++;
                 rentalChanges.push(`🔄 Atualizada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
+              } else if (needsUpdate && (paymentToUpdate as any).status === "paid" && (paymentToUpdate as any).installment !== expected.installment) {
+                // Only update payment number if it's paid
+                await supabase
+                  .from("payments")
+                  .update({
+                    installment: expected.installment,
+                    total_installments: expected.total_installments,
+                    notes: expected.description
+                  })
+                  .eq("id", paymentToUpdate.id);
+                
+                summary.paymentsUpdated++;
+                rentalChanges.push(`🔢 Ajustada numeração da parcela PAGA para ${expected.description}`);
               }
             }
           } else if (existing.status === 'paid') {
             const needsNumberUpdate = 
-              existing.payment_number !== expected.payment_number ||
-              existing.description !== expected.description;
+              existing.installment !== expected.installment ||
+              existing.notes !== expected.description;
 
             if (needsNumberUpdate) {
               const { error: updateError } = await supabase
-                .from('rental_payments')
+                .from('payments')
                 .update({
-                  payment_number: expected.payment_number,
-                  description: expected.description
+                  installment: expected.installment,
+                  total_installments: expected.total_installments,
+                  notes: expected.description
                 })
                 .eq('id', existing.id);
 
