@@ -38,9 +38,9 @@ interface PermissionsTabProps {
   isLoading: boolean;
   onUpdateRoleMenuPermission: (role: string, menuItem: string, hasAccess: boolean) => Promise<boolean>;
   onSaveLocationPermissions: (userId: string, locationIds: string[]) => Promise<boolean>;
-  onSaveFeeExemptions: (locationIds: string[]) => Promise<boolean>;
+  onSaveFeeExemptions: (userId: string, locationIds: string[]) => Promise<boolean>;
   getUserLocationPermissions: (userId: string) => Promise<string[]>;
-  getFeeExemptions: () => Promise<string[]>;
+  getUserFeeExemptions: (userId: string) => Promise<string[]>;
 }
 
 const roleLabels: Record<string, string> = {
@@ -71,43 +71,53 @@ export function PermissionsTab({
   onSaveLocationPermissions,
   onSaveFeeExemptions,
   getUserLocationPermissions,
-  getFeeExemptions,
+  getUserFeeExemptions,
 }: PermissionsTabProps) {
   const { toast } = useToast();
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
-  
-  // Estado para dialog de isenção (agora global)
-  const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
-  
+  const [selectedUserForFeeExemption, setSelectedUserForFeeExemption] = useState<SystemUser | null>(null);
   const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
+  const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
+  // Estado local para permissões (sincronizado com roleMenuPermissions)
   const [permissionsSet, setPermissionsSet] = useState<Set<string>>(new Set());
 
+  // Sincronizar estado local quando roleMenuPermissions mudar
   useEffect(() => {
+    console.log("🔄 Sincronizando permissões:", roleMenuPermissions);
     const newSet = new Set<string>();
     roleMenuPermissions.forEach(perm => {
       const key = `${perm.role}-${perm.menu_id}`;
       newSet.add(key);
     });
+    console.log("📊 Set de permissões criado:", Array.from(newSet));
     setPermissionsSet(newSet);
   }, [roleMenuPermissions]);
 
   const hasPermission = (role: string, menuItem: string): boolean => {
     const key = `${role}-${menuItem}`;
-    return permissionsSet.has(key);
+    const has = permissionsSet.has(key);
+    console.log(`🔍 Verificando permissão: ${key} = ${has}`);
+    return has;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
-    if (isSaving) return;
-    
+    if (isSaving) {
+      console.log("⏳ Já está salvando, aguarde...");
+      return;
+    }
+
     setIsSaving(true);
     const key = `${role}-${menuItem}`;
     const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
-    
+
+    console.log(`🔄 Toggle: ${key}, Atual: ${currentHasAccess}, Novo: ${newHasAccess}`);
+
+    // Atualiza UI otimisticamente
     setPermissionsSet(prev => {
       const newSet = new Set(prev);
       if (newHasAccess) {
@@ -115,13 +125,16 @@ export function PermissionsTab({
       } else {
         newSet.delete(key);
       }
+      console.log("📊 Novo set:", Array.from(newSet));
       return newSet;
     });
-    
+
     try {
       const success = await onUpdateRoleMenuPermission(role, menuItem, newHasAccess);
       
       if (!success) {
+        // Reverter se falhar
+        console.log("❌ Falha ao salvar, revertendo...");
         setPermissionsSet(prev => {
           const newSet = new Set(prev);
           if (currentHasAccess) {
@@ -131,10 +144,12 @@ export function PermissionsTab({
           }
           return newSet;
         });
+      } else {
+        console.log("✅ Permissão salva com sucesso!");
       }
     } catch (error) {
-      console.error("Erro ao alternar permissão:", error);
-      
+      console.error("❌ Erro ao alternar permissão:", error);
+      // Reverter em caso de erro
       setPermissionsSet(prev => {
         const newSet = new Set(prev);
         if (currentHasAccess) {
@@ -144,7 +159,6 @@ export function PermissionsTab({
         }
         return newSet;
       });
-      
       toast({
         title: "Erro",
         description: "Erro ao atualizar permissão. Tente novamente.",
@@ -177,39 +191,42 @@ export function PermissionsTab({
 
   const handleSaveLocationPermissions = async () => {
     if (!selectedUserForLocations) return;
+
     const success = await onSaveLocationPermissions(selectedUserForLocations.id, userLocationPermissions);
     if (success) {
       setIsLocationPermissionsDialogOpen(false);
     }
   };
 
-  const openFeeExemptionDialog = () => {
+  const openFeeExemptionDialog = (user: SystemUser) => {
+    setSelectedUserForFeeExemption(user);
     setIsFeeExemptionDialogOpen(true);
   };
 
   const handleSaveFeeExemptions = async (locationIds: string[]) => {
-    return await onSaveFeeExemptions(locationIds);
+    if (!selectedUserForFeeExemption) return false;
+    return await onSaveFeeExemptions(selectedUserForFeeExemption.id, locationIds);
   };
 
   return (
-    <div className="space-y-4">
-      {/* Permissões de Menu */}
+    <div className="space-y-6">
+      {/* Permissões de Menu por Perfil */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Shield className="h-4 w-4" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
             Permissões de Menu por Perfil
           </CardTitle>
-          <CardDescription className="text-xs">Controle o acesso de cada perfil aos menus do sistema</CardDescription>
+          <CardDescription>Controle quais menus cada perfil de usuário pode acessar</CardDescription>
         </CardHeader>
-        <CardContent className="pb-3">
-          <div className="rounded-md border overflow-hidden">
+        <CardContent>
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[140px] font-semibold text-xs py-2">Menu</TableHead>
+                <TableRow>
+                  <TableHead className="w-[200px]">Menu</TableHead>
                   {roles.map((role) => (
-                    <TableHead key={role} className="text-center font-semibold text-xs py-2">
+                    <TableHead key={role} className="text-center">
                       {roleLabels[role]}
                     </TableHead>
                   ))}
@@ -217,21 +234,21 @@ export function PermissionsTab({
               </TableHeader>
               <TableBody>
                 {menuItems.map((menuItem) => (
-                  <TableRow key={menuItem} className="hover:bg-muted/30">
-                    <TableCell className="font-medium text-xs py-2">{menuLabels[menuItem]}</TableCell>
+                  <TableRow key={menuItem}>
+                    <TableCell className="font-medium">{menuLabels[menuItem]}</TableCell>
                     {roles.map((role) => {
                       const hasAccess = hasPermission(role, menuItem);
                       return (
-                        <TableCell key={role} className="text-center py-2">
+                        <TableCell key={role} className="text-center">
                           <button
                             onClick={() => togglePermission(role, menuItem)}
                             className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50"
                             disabled={isLoading || isSaving}
                           >
                             {hasAccess ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                             ) : (
-                              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                              <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                             )}
                           </button>
                         </TableCell>
@@ -242,108 +259,120 @@ export function PermissionsTab({
               </TableBody>
             </Table>
           </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            💡 <strong>Dica:</strong> Clique nos ícones para habilitar/desabilitar o acesso de cada perfil aos menus do sistema.
+          </p>
         </CardContent>
       </Card>
 
-      {/* Permissões de Locais por Usuário */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Permissões de Local (Financeiros) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4" />
-              Permissões de Locais
-            </CardTitle>
-            <CardDescription className="text-xs">Usuários Financeiros</CardDescription>
-          </CardHeader>
-          <CardContent className="pb-3">
-            {users.filter((u) => u.role === "financial").length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-xs">
-                Nenhum usuário financeiro
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {users
-                  .filter((u) => u.role === "financial")
-                  .map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-medium text-xs truncate">{user.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
-                        onClick={() => openLocationPermissionsDialog(user)}
-                      >
-                        Gerenciar
-                      </Button>
+      {/* Permissões de Local por Usuário Financeiro */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Permissões de Local (Usuários Financeiros)
+          </CardTitle>
+          <CardDescription>
+            Defina quais locais cada usuário financeiro pode visualizar no Dashboard e na página Financeiro
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {users.filter((u) => u.role === "financial").length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Nenhum usuário com perfil Financeiro cadastrado</div>
+          ) : (
+            <div className="space-y-3">
+              {users
+                .filter((u) => u.role === "financial")
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <User className="h-4 w-4 text-primary" />
+                        {user.name}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
                     </div>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => openLocationPermissionsDialog(user)}>
+                      <MapPin className="h-3 w-3" />
+                      Gerenciar Locais
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Isenção de Taxa (Configuração Global) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <DollarSign className="h-4 w-4" />
-              Isenção de Taxa Admin
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Configure quais locais são isentos de taxa de administração.
-              Esta configuração se aplica a todos os corretores.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-3 flex flex-col justify-center items-center h-[120px]">
-            <Button 
-              variant="outline" 
-              className="w-full max-w-xs gap-2"
-              onClick={openFeeExemptionDialog}
-            >
-              <SettingsIcon className="h-4 w-4" />
-              Gerenciar Locais Isentos
-            </Button>
-            <p className="text-[10px] text-muted-foreground mt-2 text-center max-w-xs">
-              Locais selecionados não gerarão cobrança de taxa de administração no sistema.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Isenção de Taxa de Administração */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Isenção de Taxa de Administração
+          </CardTitle>
+          <CardDescription>Defina quais locais cada corretor NÃO receberá taxa de administração</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {users.filter((u) => u.role === "broker").length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Nenhum corretor cadastrado</div>
+          ) : (
+            <div className="space-y-4">
+              {users
+                .filter((u) => u.role === "broker")
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{user.name}</h4>
+                        <p className="text-sm text-muted-foreground">Configurar locais sem taxa de administração</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => openFeeExemptionDialog(user)}>
+                      <SettingsIcon className="mr-2 h-4 w-4" />
+                      Configurar Isenção
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Dialog de Permissões de Local */}
+      {/* Dialog de Permissões de Locais */}
       <Dialog open={isLocationPermissionsDialogOpen} onOpenChange={setIsLocationPermissionsDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base">Permissões de Locais - {selectedUserForLocations?.name}</DialogTitle>
-            <DialogDescription className="text-xs">Selecione os locais que este usuário pode visualizar</DialogDescription>
+            <DialogTitle>Gerenciar Locais - {selectedUserForLocations?.name}</DialogTitle>
+            <DialogDescription>Selecione os locais que este usuário pode visualizar no Dashboard e na página Financeiro</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {isLoadingPermissions ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">Carregando...</div>
+              <div className="text-center py-8 text-muted-foreground">Carregando locais...</div>
             ) : locations.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">Nenhum local cadastrado</div>
+              <div className="text-center py-8 text-muted-foreground">Nenhum local cadastrado</div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-lg p-3">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-lg p-4">
                 {locations.map((location) => (
-                  <div key={location.id} className="flex items-center gap-2 p-2 border rounded hover:bg-accent/50">
+                  <div key={location.id} className="flex items-center gap-3 p-3 border rounded hover:bg-accent/50 transition-colors">
                     <Checkbox
-                      id={`loc-${location.id}`}
+                      id={`perm-${location.id}`}
                       checked={userLocationPermissions.includes(location.id)}
                       onCheckedChange={() => handleToggleLocationPermission(location.id)}
                     />
-                    <label htmlFor={`loc-${location.id}`} className="flex-1 cursor-pointer">
-                      <p className="font-medium text-sm">{location.name}</p>
-                      <p className="text-xs text-muted-foreground">{location.city}, {location.state}</p>
+                    <label htmlFor={`perm-${location.id}`} className="flex-1 cursor-pointer">
+                      <div className="font-medium">{location.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {location.city}, {location.state}
+                      </div>
                     </label>
                   </div>
                 ))}
@@ -355,20 +384,21 @@ export function PermissionsTab({
               Cancelar
             </Button>
             <Button onClick={handleSaveLocationPermissions} className="bg-emerald-600 hover:bg-emerald-700">
-              Salvar
+              Salvar Permissões
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Dialog de Isenção de Taxa */}
-      {isFeeExemptionDialogOpen && (
+      {isFeeExemptionDialogOpen && selectedUserForFeeExemption && (
         <FeeExemptionDialog
           open={isFeeExemptionDialogOpen}
           onOpenChange={setIsFeeExemptionDialogOpen}
+          user={selectedUserForFeeExemption}
           locations={locations}
           onSave={handleSaveFeeExemptions}
-          getExemptions={getFeeExemptions}
+          getUserExemptions={getUserFeeExemptions}
         />
       )}
     </div>
