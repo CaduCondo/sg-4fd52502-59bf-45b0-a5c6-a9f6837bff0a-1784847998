@@ -351,6 +351,11 @@ export default function FixPaymentsPage() {
               Math.abs(existing.expected_amount - expected.amount) > 0.01;
 
             if (needsUpdate) {
+              console.log(`\n🔄 ATUALIZANDO RECEBIMENTO PENDENTE:`);
+              console.log(`   Vencimento: ${expected.due_date}`);
+              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
+              console.log(`   Valor esperado: R$ ${existing.expected_amount} → R$ ${expected.amount}`);
+              
               await supabase
                 .from("payments")
                 .update({
@@ -364,28 +369,40 @@ export default function FixPaymentsPage() {
               summary.paymentsUpdated++;
               rentalChanges.push(`🔄 Atualizada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
               rentalChanges.push(`   📅 Período: ${expected.period_start} a ${expected.period_end} (${expected.days_in_period} dias)`);
-              rentalChanges.push(`   💰 Valor: R$ ${expected.amount.toFixed(2)}`);
+              rentalChanges.push(`   💰 Valor esperado: R$ ${expected.amount.toFixed(2)}`);
             }
             
           } else {
-            // Recebimento PAGO - apenas atualizar numeração/descrição
+            // Recebimento PAGO - atualizar numeração E expected_amount se estiver errado
             const needsNumberUpdate = 
               existing.installment !== expected.installment ||
               existing.notes !== expected.description ||
               existing.total_installments !== expected.total_installments;
 
-            if (needsNumberUpdate) {
+            const needsExpectedAmountFix = Math.abs(existing.expected_amount - expected.amount) > 0.01;
+
+            if (needsNumberUpdate || needsExpectedAmountFix) {
+              console.log(`\n🔢 AJUSTANDO RECEBIMENTO PAGO:`);
+              console.log(`   Vencimento: ${expected.due_date}`);
+              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
+              if (needsExpectedAmountFix) {
+                console.log(`   ⚠️ Corrigindo expected_amount: R$ ${existing.expected_amount} → R$ ${expected.amount}`);
+              }
+              
               await supabase
                 .from('payments')
                 .update({
                   installment: expected.installment,
                   total_installments: expected.total_installments,
-                  notes: expected.description
+                  notes: expected.description,
+                  expected_amount: expected.amount // SEMPRE atualizar para o valor correto
                 })
                 .eq('id', existing.id);
 
               summary.paymentsUpdated++;
-              rentalChanges.push(`🔢 Ajustada numeração da parcela PAGA para ${expected.description}`);
+              rentalChanges.push(`🔢 Ajustada parcela PAGA para ${expected.description}`);
+              rentalChanges.push(`   📅 Período: ${expected.period_start} a ${expected.period_end} (${expected.days_in_period} dias)`);
+              rentalChanges.push(`   💰 Valor esperado corrigido: R$ ${expected.amount.toFixed(2)}`);
               rentalChanges.push(`   💰 Valor pago preservado: R$ ${existing.paid_amount?.toFixed(2) || existing.expected_amount.toFixed(2)}`);
             }
           }
