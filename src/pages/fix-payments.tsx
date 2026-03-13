@@ -135,8 +135,8 @@ export default function FixPaymentsPage() {
         .from("rentals")
         .select(`
           *,
-          properties!rentals_property_id_fkey(title),
-          tenants!rentals_tenant_id_fkey(name)
+          properties(title),
+          tenants(name)
         `)
         .eq("status", "active");
 
