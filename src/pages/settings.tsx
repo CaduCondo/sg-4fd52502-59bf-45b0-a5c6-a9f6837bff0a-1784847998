@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -476,7 +477,7 @@ export default function Settings() {
     try {
       await locationService.deleteLocation(id);
       toast({ title: "Local excluído com sucesso!" });
-      loadLocations();
+      fetchLocations();
     } catch (error: any) {
       toast({
         title: "Erro ao excluir local",
@@ -879,8 +880,8 @@ export default function Settings() {
                 <div className="mb-4">
                   <Input
                     placeholder="Buscar por nome, cidade ou bairro..."
-                    value={locationSearch}
-                    onChange={(e) => setLocationSearch(e.target.value)}
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
                     className="max-w-md"
                   />
                 </div>
@@ -940,7 +941,7 @@ export default function Settings() {
 
                 {filteredLocations.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
-                    {locationSearch
+                    {searchLocation
                       ? "Nenhum local encontrado com os critérios de busca"
                       : "Nenhum local cadastrado ainda"}
                   </div>
