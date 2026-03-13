@@ -44,9 +44,7 @@ import {
   Trash2,
   Users,
   Shield,
-  Wallet,
-  Wrench,
-  RefreshCw
+  Wallet
 } from "lucide-react";
 
 // Services
@@ -490,10 +488,6 @@ export default function Settings() {
               <MapPin className="h-4 w-4" />
               Locais
             </TabsTrigger>
-            <TabsTrigger value="maintenance" className="gap-2 py-3">
-              <Wrench className="h-4 w-4" />
-              Manutenção
-            </TabsTrigger>
           </TabsList>
 
           {/* DADOS DA EMPRESA */}
@@ -893,36 +887,6 @@ export default function Settings() {
                 {/* Footer */}
                 <div className="mt-3 pt-3 border-t text-xs text-muted-foreground text-center">
                   {filteredLocations.length} local(is) • {searchLocation && "Filtrado"}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* MANUTENÇÃO */}
-          <TabsContent value="maintenance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Ferramentas de Manutenção</CardTitle>
-                <CardDescription>
-                  Utilitários para correção e recálculo de dados do sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-                  <h3 className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
-                    Recalcular Todos os Recebimentos
-                  </h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-2 mb-4">
-                    Esta ação foi migrada de local. Para corrigir pagamentos, acesse a tela de "Locações" e utilize o botão "Corrigir Recebimentos (Seguro)" para uma correção segura.
-                  </p>
-                  <Button 
-                    disabled
-                    className="bg-amber-600 hover:bg-amber-700 text-white opacity-50"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Executar Correção em Massa (Desativado)
-                  </Button>
                 </div>
               </CardContent>
             </Card>
