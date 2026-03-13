@@ -171,6 +171,40 @@ export default function FixPaymentsPage() {
 
         const rentalChanges: string[] = [];
 
+        // Validate rental dates before processing
+        if (!rental.start_date || !rental.end_date) {
+          rentalChanges.push(`⚠️ ERRO: Datas do contrato inválidas (start_date ou end_date ausentes)`);
+          details.push({
+            rentalInfo: `${propertyName} - ${tenantName}`,
+            changes: rentalChanges
+          });
+          continue;
+        }
+
+        // Test if dates are valid
+        const testStartDate = new Date(rental.start_date);
+        const testEndDate = new Date(rental.end_date);
+        
+        if (isNaN(testStartDate.getTime()) || isNaN(testEndDate.getTime())) {
+          rentalChanges.push(`⚠️ ERRO: Datas do contrato inválidas (formato incorreto)`);
+          rentalChanges.push(`  - start_date: ${rental.start_date}`);
+          rentalChanges.push(`  - end_date: ${rental.end_date}`);
+          details.push({
+            rentalInfo: `${propertyName} - ${tenantName}`,
+            changes: rentalChanges
+          });
+          continue;
+        }
+
+        if (!rental.due_day || rental.due_day < 1 || rental.due_day > 31) {
+          rentalChanges.push(`⚠️ ERRO: Dia de vencimento inválido (${rental.due_day})`);
+          details.push({
+            rentalInfo: `${propertyName} - ${tenantName}`,
+            changes: rentalChanges
+          });
+          continue;
+        }
+
         // Fetch existing payments
         const { data: existingPayments, error: paymentsError } = await supabase
           .from("payments")
