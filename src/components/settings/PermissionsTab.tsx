@@ -75,15 +75,11 @@ export function PermissionsTab({
 }: PermissionsTabProps) {
   const { toast } = useToast();
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
-  
-  // Estado para dialog de isenção (agora global)
   const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
-  
   const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [permissionsSet, setPermissionsSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -102,12 +98,11 @@ export function PermissionsTab({
 
   const togglePermission = async (role: string, menuItem: string) => {
     if (isSaving) return;
-    
     setIsSaving(true);
     const key = `${role}-${menuItem}`;
     const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
-    
+
     setPermissionsSet(prev => {
       const newSet = new Set(prev);
       if (newHasAccess) {
@@ -117,10 +112,9 @@ export function PermissionsTab({
       }
       return newSet;
     });
-    
+
     try {
       const success = await onUpdateRoleMenuPermission(role, menuItem, newHasAccess);
-      
       if (!success) {
         setPermissionsSet(prev => {
           const newSet = new Set(prev);
@@ -134,7 +128,6 @@ export function PermissionsTab({
       }
     } catch (error) {
       console.error("Erro ao alternar permissão:", error);
-      
       setPermissionsSet(prev => {
         const newSet = new Set(prev);
         if (currentHasAccess) {
@@ -144,7 +137,6 @@ export function PermissionsTab({
         }
         return newSet;
       });
-      
       toast({
         title: "Erro",
         description: "Erro ao atualizar permissão. Tente novamente.",

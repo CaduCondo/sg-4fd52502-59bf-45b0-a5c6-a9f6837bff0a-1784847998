@@ -48,10 +48,15 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
   useEffect(() => {
-    if (open) {
+    if (open && location?.id) {
       loadExpenses();
     }
-  }, [open, location.id, filterMonth, filterYear]);
+  }, [open, location?.id, filterMonth, filterYear]);
+
+  // Return null if location is not provided
+  if (!location) {
+    return null;
+  }
 
   const loadExpenses = async () => {
     try {
