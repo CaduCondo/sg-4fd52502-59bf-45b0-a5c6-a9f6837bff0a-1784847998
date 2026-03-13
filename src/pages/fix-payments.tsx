@@ -346,7 +346,12 @@ export default function FixPaymentsPage() {
           const existing = existingPayments.find(p => p.due_date === expected.due_date);
 
           if (!existing) {
-            // Criar novo recebimento
+            // ➕ Criar novo recebimento (FALTANTE)
+            console.log(`➕ CRIANDO RECEBIMENTO FALTANTE:`);
+            console.log(`   Vencimento: ${expected.due_date}`);
+            console.log(`   Descrição: ${expected.description}`);
+            console.log(`   Valor: R$ ${expected.amount.toFixed(2)}`);
+            
             await supabase
               .from("payments")
               .insert({
@@ -367,7 +372,7 @@ export default function FixPaymentsPage() {
             rentalChanges.push(`   💰 Valor: R$ ${expected.amount.toFixed(2)}`);
             
           } else if (existing.status !== 'paid') {
-            // Atualizar recebimento pendente se necessário
+            // 🔄 Atualizar recebimento PENDENTE (se necessário)
             const needsUpdate = 
               existing.installment !== expected.installment ||
               existing.notes !== expected.description ||
@@ -375,6 +380,11 @@ export default function FixPaymentsPage() {
               Math.abs(existing.expected_amount - expected.amount) > 0.01;
 
             if (needsUpdate) {
+              console.log(`🔄 ATUALIZANDO RECEBIMENTO PENDENTE:`);
+              console.log(`   Vencimento: ${expected.due_date}`);
+              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
+              console.log(`   Valor esperado: R$ ${existing.expected_amount.toFixed(2)} → R$ ${expected.amount.toFixed(2)}`);
+              
               await supabase
                 .from("payments")
                 .update({
@@ -392,7 +402,7 @@ export default function FixPaymentsPage() {
             }
             
           } else {
-            // Recebimento PAGO - atualizar numeração E expected_amount se estiver errado
+            // 🔢 Recebimento PAGO - atualizar apenas numeração se necessário
             const needsNumberUpdate = 
               existing.installment !== expected.installment ||
               existing.notes !== expected.description ||
@@ -401,6 +411,12 @@ export default function FixPaymentsPage() {
             const needsExpectedAmountFix = Math.abs(existing.expected_amount - expected.amount) > 0.01;
 
             if (needsNumberUpdate || needsExpectedAmountFix) {
+              console.log(`🔢 AJUSTANDO RECEBIMENTO PAGO:`);
+              console.log(`   Vencimento: ${expected.due_date}`);
+              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
+              console.log(`   Expected amount: R$ ${existing.expected_amount.toFixed(2)} → R$ ${expected.amount.toFixed(2)}`);
+              console.log(`   ✅ Mantendo paid_amount: R$ ${existing.paid_amount?.toFixed(2) || existing.expected_amount.toFixed(2)}`);
+              
               await supabase
                 .from('payments')
                 .update({
