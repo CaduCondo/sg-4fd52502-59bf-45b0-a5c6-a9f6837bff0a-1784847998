@@ -220,6 +220,53 @@ export default function FixPaymentsPage() {
 
       console.log(`📋 Total de locações ativas: ${rentals.length}\n`);
 
+      // 🔍 DIAGNÓSTICO: Verificar quais locações deveriam ter recebimento em março/2026
+      console.log("\n🔍 ============================================");
+      console.log("🔍   DIAGNÓSTICO DE MARÇO/2026");
+      console.log("🔍 ============================================\n");
+
+      const marchStart = new Date('2026-03-01');
+      const marchEnd = new Date('2026-03-31');
+      
+      const rentalsShouldHaveMarch = rentals.filter(r => {
+        const start = new Date(r.start_date);
+        const end = new Date(r.end_date);
+        return start <= marchEnd && end >= marchStart;
+      });
+
+      console.log(`📊 Locações que DEVERIAM ter recebimento em março/2026: ${rentalsShouldHaveMarch.length}`);
+
+      // Verificar quais TÊM recebimento em março
+      const { data: marchPayments } = await supabase
+        .from('payments')
+        .select('rental_id, due_date, description, amount')
+        .gte('due_date', '2026-03-01')
+        .lte('due_date', '2026-03-31');
+
+      const rentalsWithMarchPayment = new Set(marchPayments?.map(p => p.rental_id) || []);
+      
+      console.log(`✅ Locações que JÁ TÊM recebimento em março: ${rentalsWithMarchPayment.size}`);
+      console.log(`❌ Locações FALTANDO recebimento em março: ${rentalsShouldHaveMarch.length - rentalsWithMarchPayment.size}\n`);
+
+      // Listar as locações que faltam
+      const missingMarch = rentalsShouldHaveMarch.filter(r => !rentalsWithMarchPayment.has(r.id));
+      
+      if (missingMarch.length > 0) {
+        console.log("🚨 LOCAÇÕES SEM RECEBIMENTO EM MARÇO:");
+        for (const rental of missingMarch.slice(0, 10)) { // Mostrar primeiras 10
+          const { data: property } = await supabase
+            .from('properties')
+            .select('property_identifier')
+            .eq('id', rental.property_id)
+            .single();
+          
+          console.log(`   ❌ ${property?.property_identifier || rental.property_id.substring(0, 8)} | ${rental.start_date} a ${rental.end_date}`);
+        }
+        if (missingMarch.length > 10) {
+          console.log(`   ... e mais ${missingMarch.length - 10} locações\n`);
+        }
+      }
+
       const summary = {
         totalRentals: rentals.length,
         totalFixed: 0,
