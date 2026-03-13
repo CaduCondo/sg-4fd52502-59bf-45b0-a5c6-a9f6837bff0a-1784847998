@@ -535,6 +535,15 @@ export function RentalTerminationDialog({
                       </>
                     ) : (
                       <>
+                        <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                          <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                          {lastInstallmentDate && (
+                            <p>Data base: {format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR })}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            (Sem correção aplicável ou período muito curto)
+                          </p>
+                        </div>
                         <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
                           R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </p>
