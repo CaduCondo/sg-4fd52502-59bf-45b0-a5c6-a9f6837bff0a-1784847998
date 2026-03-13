@@ -4,9 +4,11 @@ import { locationPermissionService } from "@/services/locationPermissionService"
 import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
 import { RoleMenuPermission } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function usePermissions() {
   const { toast } = useToast();
+  const { userProfile } = useAuth();
   const [permissions, setPermissions] = useState<RoleMenuPermission[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -105,6 +107,17 @@ export function usePermissions() {
     }
   };
 
+  const hasPermission = useCallback((menuItem: string) => {
+    if (!userProfile) return false;
+    // Admins have access to everything
+    if (userProfile.role === 'admin' || userProfile.role === 'administrador') return true;
+    
+    const permission = permissions.find(
+      p => p.role === userProfile.role && p.menu_item === menuItem
+    );
+    return permission ? permission.has_access : false;
+  }, [userProfile, permissions]);
+
   return {
     permissions,
     loading,
@@ -114,5 +127,6 @@ export function usePermissions() {
     saveFeeExemptions,
     getFeeExemptions,
     getUserLocationPermissions,
+    hasPermission,
   };
 }
