@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function usePermissions() {
   const { toast } = useToast();
-  const { userProfile } = useAuth();
+  const { user } = useAuth();
   const [permissions, setPermissions] = useState<RoleMenuPermission[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -108,15 +108,15 @@ export function usePermissions() {
   };
 
   const hasPermission = useCallback((menuItem: string) => {
-    if (!userProfile) return false;
+    if (!user) return false;
     // Admins have access to everything
-    if (userProfile.role === 'admin' || userProfile.role === 'administrador') return true;
+    if (user.role === 'admin' || user.role === 'administrador') return true;
     
     const permission = permissions.find(
-      p => p.role === userProfile.role && p.menu_item === menuItem
+      p => p.role === user.role && p.menu === menuItem
     );
-    return permission ? permission.has_access : false;
-  }, [userProfile, permissions]);
+    return permission ? (permission.can_view || permission.can_edit || permission.can_delete) : false;
+  }, [user, permissions]);
 
   return {
     permissions,
