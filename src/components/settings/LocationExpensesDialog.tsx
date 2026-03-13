@@ -47,6 +47,11 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [newExpenseStatus, setNewExpenseStatus] = useState<"pending" | "paid" | "overdue">("pending");
   const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
+  // Return null if location is not provided
+  if (!location) {
+    return null;
+  }
+
   useEffect(() => {
     if (open && location?.id) {
       loadExpenses();
@@ -56,9 +61,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      if (!location.id) {
-        throw new Error("Location ID is not available.");
-      }
       const data = await locationExpenseService.getByLocation(location.id);
       
       const filtered = data.filter(
