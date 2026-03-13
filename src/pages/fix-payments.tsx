@@ -305,20 +305,41 @@ export default function FixPaymentsPage() {
 
         const expectedPayments = generateExpectedPayments(rental);
 
-        // DELETAR recebimentos que não deveriam existir
-        for (const existing of existingPayments) {
-          const shouldExist = expectedPayments.find(p => p.due_date === existing.due_date);
-          
-          if (!shouldExist && existing.status !== 'paid') {
-            await supabase
-              .from("payments")
-              .delete()
-              .eq("id", existing.id);
+        // ⚠️ DELEÇÃO ULTRA-CONSERVADORA: Só remove DUPLICATAS CONFIRMADAS
+        // Agrupar recebimentos existentes por data de vencimento
+        const paymentsByDueDate = new Map<string, typeof existingPayments>();
+        for (const payment of existingPayments) {
+          const existing = paymentsByDueDate.get(payment.due_date) || [];
+          existing.push(payment);
+          paymentsByDueDate.set(payment.due_date, existing);
+        }
+
+        // Deletar apenas se houver 2+ recebimentos na MESMA data (duplicata real)
+        for (const [dueDate, payments] of paymentsByDueDate) {
+          if (payments.length > 1) {
+            // Há duplicata nesta data - manter apenas o primeiro/mais antigo
+            const toKeep = payments[0];
+            const toDelete = payments.slice(1);
             
-            summary.paymentsDeleted++;
-            rentalChanges.push(`🗑️ Removido recebimento EXTRA indevido - Vencimento: ${existing.due_date}`);
+            for (const duplicate of toDelete) {
+              if (duplicate.status !== 'paid') {
+                console.log(`🗑️ DELETANDO DUPLICATA: ${dueDate} (ID: ${duplicate.id})`);
+                
+                await supabase
+                  .from("payments")
+                  .delete()
+                  .eq("id", duplicate.id);
+                
+                summary.paymentsDeleted++;
+                rentalChanges.push(`🗑️ Removida DUPLICATA - Vencimento: ${dueDate} (mantido ID: ${toKeep.id})`);
+              } else {
+                console.log(`⚠️ DUPLICATA PAGA (não deletando): ${dueDate} (ID: ${duplicate.id})`);
+              }
+            }
           }
         }
+
+        console.log(`✅ Após remoção de duplicatas, recebimentos: ${existingPayments.length - summary.paymentsDeleted}`);
 
         // Criar ou atualizar recebimentos esperados
         for (const expected of expectedPayments) {
