@@ -763,7 +763,7 @@ export default function Settings() {
               onUpdateUser={handleUpdateUser}
               onDeleteUser={async (id) => { await handleDeleteUser(id); return true; }}
               onToggleStatus={async (id) => { const user = users.find(u => u.id === id); if (user) return await handleToggleUserStatus(user); return false; }}
-              onResetPassword={handleResetPassword}
+              onResetPassword={async (id) => { await handleResetPassword(id); return true; }}
             />
           </TabsContent>
 

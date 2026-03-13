@@ -192,7 +192,7 @@ export function UsersTab({
         open={isUserDialogOpen}
         onOpenChange={setIsUserDialogOpen}
         user={selectedUser}
-        onSave={selectedUser ? onUpdateUser : onCreateUser}
+        onSave={selectedUser ? (data) => onUpdateUser(selectedUser.id, data) : onCreateUser}
       />
 
       <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
