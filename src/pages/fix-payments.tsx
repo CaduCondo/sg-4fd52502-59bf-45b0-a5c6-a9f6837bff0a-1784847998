@@ -237,6 +237,13 @@ export default function FixPaymentsPage() {
         const tenantName = tenant?.name || 'Inquilino';
         
         setCurrentRental(`${propertyName} - ${tenantName}`);
+        
+        console.log(`\n🏠 ============================================`);
+        console.log(`🏠 PROCESSANDO LOCAÇÃO ${i + 1}/${rentals.length}`);
+        console.log(`🏠 ${propertyName} - ${tenantName}`);
+        console.log(`🏠 Período: ${rental.start_date} a ${rental.end_date}`);
+        console.log(`🏠 Dia vencimento: ${rental.rent_due_day}`);
+        console.log(`🏠 ============================================`);
 
         const rentalChanges: string[] = [];
 
@@ -282,8 +289,18 @@ export default function FixPaymentsPage() {
           .order("due_date", { ascending: true });
 
         if (paymentsError) throw paymentsError;
+        
+        console.log(`📋 Recebimentos existentes: ${existingPayments.length}`);
+        existingPayments.forEach(p => {
+          console.log(`   - ${p.due_date} | ${p.status} | ${p.notes || 'sem nota'} | R$ ${p.expected_amount}`);
+        });
 
         const expectedPayments = generateExpectedPayments(rental);
+        
+        console.log(`✅ Recebimentos esperados: ${expectedPayments.length}`);
+        expectedPayments.forEach(p => {
+          console.log(`   - ${p.due_date} | ${p.description} | R$ ${p.amount.toFixed(2)}`);
+        });
 
         // DELETAR recebimentos que não deveriam existir
         for (const existing of existingPayments) {
@@ -380,7 +397,14 @@ export default function FixPaymentsPage() {
             rentalInfo: `${propertyName} - ${tenantName}`,
             changes: rentalChanges
           });
+        } else {
+          console.log(`✅ Locação sem alterações necessárias`);
         }
+        
+        console.log(`\n📊 RESUMO DESTA LOCAÇÃO:`);
+        console.log(`   Criados: ${rentalChanges.filter(c => c.startsWith('➕')).length}`);
+        console.log(`   Atualizados: ${rentalChanges.filter(c => c.startsWith('🔄') || c.startsWith('🔢')).length}`);
+        console.log(`   Deletados: ${rentalChanges.filter(c => c.startsWith('🗑️')).length}`);
       }
 
       setResult({
