@@ -38,6 +38,7 @@ interface UsersTabProps {
   onUpdateUser: (id: string, userData: Partial<SystemUser>) => Promise<boolean>;
   onDeleteUser: (id: string) => Promise<boolean>;
   onResetPassword: (id: string) => Promise<boolean>;
+  onToggleStatus: (id: string) => Promise<boolean>;
 }
 
 const roleLabels: Record<string, string> = {
@@ -53,6 +54,7 @@ export function UsersTab({
   onUpdateUser,
   onDeleteUser,
   onResetPassword,
+  onToggleStatus,
 }: UsersTabProps) {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | undefined>();
@@ -79,8 +81,8 @@ export function UsersTab({
     }
   };
 
-  const handleToggleActive = async (user: SystemUser) => {
-    await onUpdateUser(user.id, { is_active: !user.is_active });
+  const handleToggleActive = async (userId: string) => {
+    await onToggleStatus(userId);
   };
 
   const handleResetPassword = async (userId: string) => {
@@ -128,7 +130,7 @@ export function UsersTab({
                         <Badge variant="outline">{roleLabels[user.role]}</Badge>
                       </TableCell>
                       <TableCell>
-                        {user.is_active ? (
+                        {user.active ? (
                           <Badge variant="default" className="gap-1 bg-green-600">
                             <CheckCircle className="h-3 w-3" />
                             Ativo
@@ -152,8 +154,8 @@ export function UsersTab({
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleActive(user)}>
-                              {user.is_active ? (
+                            <DropdownMenuItem onClick={() => handleToggleActive(user.id)}>
+                              {user.active ? (
                                 <>
                                   <Ban className="mr-2 h-4 w-4" />
                                   Bloquear
