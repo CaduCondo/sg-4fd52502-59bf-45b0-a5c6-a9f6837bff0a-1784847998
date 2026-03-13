@@ -35,7 +35,7 @@ function generateExpectedPayments(rental: any) {
   const payments = [];
   const startDate = new Date(rental.start_date);
   const endDate = new Date(rental.end_date);
-  const dueDay = rental.due_day;
+  const dueDay = rental.rent_due_day;
   
   const totalMonths = getMonthsDifference(rental.start_date, rental.end_date);
   
@@ -196,8 +196,8 @@ export default function FixPaymentsPage() {
           continue;
         }
 
-        if (!rental.due_day || rental.due_day < 1 || rental.due_day > 31) {
-          rentalChanges.push(`⚠️ ERRO: Dia de vencimento inválido (${rental.due_day})`);
+        if (!rental.rent_due_day || rental.rent_due_day < 1 || rental.rent_due_day > 31) {
+          rentalChanges.push(`⚠️ ERRO: Dia de vencimento inválido (${rental.rent_due_day})`);
           details.push({
             rentalInfo: `${propertyName} - ${tenantName}`,
             changes: rentalChanges
