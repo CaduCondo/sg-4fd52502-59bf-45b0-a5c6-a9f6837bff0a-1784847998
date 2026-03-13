@@ -44,7 +44,8 @@ import {
   Trash2,
   Users,
   Shield,
-  Wallet
+  Wallet,
+  Wrench
 } from "lucide-react";
 
 // Services
@@ -452,6 +453,79 @@ export default function Settings() {
     }
   };
 
+  const [isExpensesDialogOpen, setIsExpensesDialogOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+
+  const [isFixingPayments, setIsFixingPayments] = useState(false);
+  const [fixingProgress, setFixingProgress] = useState<{
+    current: number;
+    total: number;
+    currentRental: string;
+  } | null>(null);
+  const [fixingResults, setFixingResults] = useState<{
+    totalRentals: number;
+    totalFixed: number;
+    paymentsCreated: number;
+    paymentsUpdated: number;
+    details: Array<{ rentalInfo: string; changes: string }>;
+  } | null>(null);
+
+  const handleDeleteLocation = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este local?")) return;
+    
+    try {
+      await locationService.deleteLocation(id);
+      toast({ title: "Local excluído com sucesso!" });
+      loadLocations();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir local",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFixAllRentalsPayments = async () => {
+    setIsFixingPayments(true);
+    setFixingProgress({ current: 0, total: 0, currentRental: "Iniciando..." });
+    setFixingResults(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-all-rentals-payments');
+
+      if (error) throw error;
+
+      if (data.success) {
+        setFixingResults({
+          totalRentals: data.totalRentals || 0,
+          totalFixed: data.rentalsFixed || 0,
+          paymentsCreated: data.paymentsCreated || 0,
+          paymentsUpdated: data.paymentsUpdated || 0,
+          details: data.details || [],
+        });
+
+        toast({
+          title: "Correção concluída com sucesso!",
+          description: `${data.rentalsFixed} locações foram corrigidas.`,
+        });
+      } else {
+        throw new Error(data.error || "Erro desconhecido ao corrigir recebimentos");
+      }
+    } catch (error: any) {
+      console.error("Error fixing payments:", error);
+      toast({
+        title: "Erro ao corrigir recebimentos",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFixingPayments(false);
+      setFixingProgress(null);
+    }
+  };
+
+  // Load initial data
   return (
     <Layout>
       <div className="space-y-6">
@@ -484,9 +558,14 @@ export default function Settings() {
               <Shield className="h-4 w-4" />
               Permissões
             </TabsTrigger>
-            <TabsTrigger value="locations" className="gap-2 py-3">
+            <TabsTrigger value="locations" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Locais
+            </TabsTrigger>
+
+            <TabsTrigger value="maintenance" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" />
+              Manutenção
             </TabsTrigger>
           </TabsList>
 
@@ -779,115 +858,251 @@ export default function Settings() {
           {/* LOCAIS */}
           <TabsContent value="locations" className="space-y-3">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4" />
-                    Gerenciar Locais
-                  </CardTitle>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Cadastre locais/condomínios e gerencie contas
-                  </p>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <MapPin className="h-5 w-5" />
+                      Gerenciar Locais
+                    </CardTitle>
+                    <CardDescription className="mt-1.5">
+                      Cadastre locais/condomínios e gerencie contas
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setIsLocationDialogOpen(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Local
+                  </Button>
                 </div>
-                <Button onClick={() => openLocationDialog()} className="gap-1.5 h-7 text-xs">
-                  <Plus className="h-3 w-3" />
-                  Novo Local
-                </Button>
               </CardHeader>
-              <CardContent className="pb-3">
-                {/* Busca */}
-                <div className="mb-3">
-                  <input
-                    type="text"
+              <CardContent>
+                <div className="mb-4">
+                  <Input
                     placeholder="Buscar por nome, cidade ou bairro..."
-                    value={searchLocation}
-                    onChange={(e) => setSearchLocation(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:border-slate-700"
+                    value={locationSearch}
+                    onChange={(e) => setLocationSearch(e.target.value)}
+                    className="max-w-md"
                   />
                 </div>
 
-                {/* Grid de Locais */}
-                {isLoadingLocations ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    Carregando locais...
-                  </div>
-                ) : filteredLocations.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    {searchLocation
-                      ? "Nenhum local encontrado"
-                      : "Nenhum local cadastrado"}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {filteredLocations.map((location) => (
-                      <div
-                        key={location.id}
-                        className="border rounded-lg p-3 hover:bg-accent/50 transition-colors cursor-pointer group"
-                        onClick={() => openLocationDialog(location)}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
-                            <h4 className="font-semibold text-sm truncate">{location.name}</h4>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1 mb-3">
-                          {(location.street || location.number) && (
-                            <p className="text-xs text-muted-foreground flex items-start gap-1">
-                              <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                              <span className="line-clamp-1">
-                                {location.street}
-                                {location.number && `, ${location.number}`}
-                                {location.complement && ` - ${location.complement}`}
-                              </span>
-                            </p>
-                          )}
-                          {location.neighborhood && (
-                            <p className="text-xs text-muted-foreground ml-4 line-clamp-1">
-                              {location.neighborhood}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground ml-4">
-                            {location.city}, {location.state}
-                            {location.zip_code && ` • ${location.zip_code}`}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-1.5">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 gap-1 h-7 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedLocationForExpenses(location);
-                            }}
-                          >
-                            <Wallet className="h-3 w-3" />
-                            Contas a Pagar
-                          </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredLocations.map((location) => (
+                    <Card key={location.id} className="relative">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-start justify-between">
+                          <span className="flex-1">{location.name}</span>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="gap-1 text-destructive hover:bg-destructive/10 h-7 text-xs px-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocationToDelete(location);
-                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteLocation(location.id)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </div>
-                    ))}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {location.address && (
+                            <div className="space-y-0.5">
+                              <div>{location.address}</div>
+                              {(location.neighborhood || location.city) && (
+                                <div>
+                                  {[location.neighborhood, location.city]
+                                    .filter(Boolean)
+                                    .join(" - ")}
+                                </div>
+                              )}
+                              {location.state && location.zip_code && (
+                                <div>
+                                  {location.state} · CEP {location.zip_code}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            setSelectedLocation(location);
+                            setIsExpensesDialogOpen(true);
+                          }}
+                        >
+                          <Wallet className="h-4 w-4 mr-2" />
+                          Contas a Pagar
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {filteredLocations.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    {locationSearch
+                      ? "Nenhum local encontrado com os critérios de busca"
+                      : "Nenhum local cadastrado ainda"}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                {/* Footer */}
-                <div className="mt-3 pt-3 border-t text-xs text-muted-foreground text-center">
-                  {filteredLocations.length} local(is) • {searchLocation && "Filtrado"}
+          {/* MANUTENÇÃO */}
+          <TabsContent value="maintenance" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Wrench className="h-5 w-5" />
+                      Correção de Recebimentos
+                    </CardTitle>
+                    <CardDescription className="mt-1.5">
+                      Analise e corrija todos os recebimentos das locações
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setIsLocationDialogOpen(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Local
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Esta ferramenta irá analisar todas as locações e corrigir automaticamente:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Parcelas faltantes (1 recebimento por mês do contrato)</li>
+                      <li>Numeração incorreta das parcelas</li>
+                      <li>Primeira parcela proporcional (&lt; 15 dias = sem número)</li>
+                      <li>Última parcela proporcional quando necessário</li>
+                      <li>Valores com reajuste IGPM aplicado corretamente</li>
+                    </ul>
+                    <div className="mt-3 font-semibold">
+                      ⚠️ Recebimentos já pagos: valores, status e anexos serão preservados
+                    </div>
+                  </AlertDescription>
+                </Alert>
+
+                {fixingProgress && (
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">Progresso</span>
+                          <span className="text-muted-foreground">
+                            {fixingProgress.current} de {fixingProgress.total} locações
+                          </span>
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${(fixingProgress.current / fixingProgress.total) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        {fixingProgress.currentRental && (
+                          <div className="text-sm text-muted-foreground">
+                            Processando: {fixingProgress.currentRental}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {fixingResults && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-center gap-2 text-green-700 font-semibold">
+                        <AlertCircle className="h-5 w-5" />
+                        Correção Concluída!
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold text-green-700">
+                            {fixingResults.totalRentals}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Locações analisadas
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold text-green-700">
+                            {fixingResults.totalFixed}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Locações corrigidas
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold text-blue-700">
+                            {fixingResults.paymentsCreated}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Parcelas criadas
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold text-amber-700">
+                            {fixingResults.paymentsUpdated}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Parcelas atualizadas
+                          </div>
+                        </div>
+                      </div>
+
+                      {fixingResults.details && fixingResults.details.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="font-semibold text-sm">Detalhes das Correções:</div>
+                          <div className="max-h-64 overflow-y-auto space-y-2 bg-white rounded-lg p-3">
+                            {fixingResults.details.map((detail, index) => (
+                              <div key={index} className="text-sm border-b pb-2 last:border-0">
+                                <div className="font-medium">{detail.rentalInfo}</div>
+                                <div className="text-muted-foreground text-xs mt-1">
+                                  {detail.changes}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setFixingResults(null);
+                          setFixingProgress(null);
+                        }}
+                        className="w-full"
+                      >
+                        Fechar Relatório
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Button
+                  onClick={handleFixAllRentalsPayments}
+                  disabled={isFixingPayments}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isFixingPayments ? (
+                    <>Corrigindo Recebimentos...</>
+                  ) : (
+                    <>
+                      <Wrench className="h-4 w-4 mr-2" />
+                      Iniciar Correção de Todos os Recebimentos
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
