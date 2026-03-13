@@ -154,7 +154,11 @@ export default function FixPaymentsPage() {
       for (let i = 0; i < rentals.length; i++) {
         const rental = rentals[i];
         setProgress(((i + 1) / rentals.length) * 100);
-        setCurrentRental(`${rental.property_name || 'Imóvel'} - ${rental.tenant_name || 'Inquilino'}`);
+        
+        const propertyName = (rental as any).properties?.title || 'Imóvel';
+        const tenantName = (rental as any).tenants?.name || 'Inquilino';
+        
+        setCurrentRental(`${propertyName} - ${tenantName}`);
 
         const rentalChanges: string[] = [];
 
@@ -259,7 +263,7 @@ export default function FixPaymentsPage() {
         if (rentalChanges.length > 0) {
           summary.totalFixed++;
           details.push({
-            rentalInfo: `${rental.property_name || 'Imóvel'} - ${rental.tenant_name || 'Inquilino'}`,
+            rentalInfo: `${propertyName} - ${tenantName}`,
             changes: rentalChanges
           });
         }
