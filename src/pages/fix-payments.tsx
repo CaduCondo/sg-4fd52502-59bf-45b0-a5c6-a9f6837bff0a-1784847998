@@ -154,7 +154,7 @@ export default function FixPaymentsPage() {
         // Fetch property and tenant data separately
         const { data: property } = await supabase
           .from("properties")
-          .select("address, number")
+          .select("property_identifier")
           .eq("id", rental.property_id)
           .single();
         
@@ -164,7 +164,7 @@ export default function FixPaymentsPage() {
           .eq("id", rental.tenant_id)
           .single();
         
-        const propertyName = property ? `${property.address}, ${property.number}` : 'Imóvel';
+        const propertyName = property?.property_identifier ? `Imóvel: ${property.property_identifier}` : `Imóvel ID: ${rental.property_id.substring(0, 8)}`;
         const tenantName = tenant?.name || 'Inquilino';
         
         setCurrentRental(`${propertyName} - ${tenantName}`);
