@@ -75,7 +75,6 @@ export default function RentalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [isFixingPayments, setIsFixingPayments] = useState(false);
 
   // Debounce search term
   useEffect(() => {
@@ -390,42 +389,6 @@ export default function RentalsPage() {
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
 
-  // Handler para chamar a função de correção segura
-  const handleFixPayments = async () => {
-    try {
-      setIsFixingPayments(true);
-      toast({
-        title: "Corrigindo recebimentos...",
-        description: "Aguarde, processando todas as locações de forma segura.",
-      });
-
-      const { data, error } = await supabase.functions.invoke('fix-all-rentals-payments');
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso!",
-        description: data?.message || "Recebimentos corrigidos com sucesso.",
-        className: "bg-green-500 text-white border-none",
-      });
-
-      if (data?.details) {
-        console.log("Detalhes da correção:", data.details);
-      }
-
-      await loadRentalsData();
-    } catch (error: any) {
-      console.error("Erro ao corrigir recebimentos:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Ocorreu um erro ao corrigir os recebimentos.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsFixingPayments(false);
-    }
-  };
-
   return (
     <>
       <SEO title="Locações - Gerenciador de Locações" />
@@ -437,15 +400,6 @@ export default function RentalsPage() {
               <p className="text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="border-purple-500 text-purple-600 hover:bg-purple-50"
-                onClick={handleFixPayments}
-                disabled={isFixingPayments}
-              >
-                <Wand2 className={`mr-2 h-4 w-4 ${isFixingPayments ? 'animate-spin' : ''}`} />
-                {isFixingPayments ? "Corrigindo..." : "Corrigir Recebimentos (Seguro)"}
-              </Button>
               <div className="flex border rounded-lg overflow-hidden">
                 <Button
                   variant={viewMode === "grid" ? "default" : "ghost"}
