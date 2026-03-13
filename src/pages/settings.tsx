@@ -28,8 +28,8 @@ import * as configService from "@/services/configService";
 import * as locationService from "@/services/locationService";
 import * as locationExpenseService from "@/services/locationExpenseService";
 import * as systemUserService from "@/services/systemUserService";
-import * as roleMenuPermissionService from "@/services/roleMenuPermissionService";
-import * as locationPermissionService from "@/services/locationPermissionService";
+import { roleMenuPermissionService } from "@/services/roleMenuPermissionService";
+import { locationPermissionService } from "@/services/locationPermissionService";
 import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
 import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
 import { UsersTab } from "@/components/settings/UsersTab";
@@ -91,7 +91,7 @@ export default function Settings() {
       setIsLoadingPermissions(true);
       
       const [usersData, permissionsData] = await Promise.all([
-        systemUserService.getAllUsers(),
+        systemUserService.getSystemUsers(),
         roleMenuPermissionService.getAll()
       ]);
       
@@ -235,11 +235,7 @@ export default function Settings() {
 
   const handleUpdateRoleMenuPermission = async (role: string, menuItem: string, hasAccess: boolean): Promise<boolean> => {
     try {
-      if (hasAccess) {
-        await roleMenuPermissionService.create({ role, menu_id: menuItem });
-      } else {
-        await roleMenuPermissionService.remove(role, menuItem);
-      }
+      await roleMenuPermissionService.updatePermission(role, menuItem, hasAccess);
       await loadUsersAndPermissions();
       return true;
     } catch (error) {
@@ -250,7 +246,20 @@ export default function Settings() {
 
   const handleSaveLocationPermissions = async (userId: string, locationIds: string[]): Promise<boolean> => {
     try {
-      await locationPermissionService.updateUserPermissions(userId, locationIds);
+      // Buscar permissões atuais para saber o que adicionar/remover
+      const currentPerms = await locationPermissionService.getUserPermissions(userId);
+      const currentIds = currentPerms.map(p => p.location_id);
+      
+      const toAdd = locationIds.filter(id => !currentIds.includes(id));
+      const toRemove = currentIds.filter(id => !locationIds.includes(id));
+      
+      for (const id of toAdd) {
+        await locationPermissionService.grantFullAccess(userId, id);
+      }
+      for (const id of toRemove) {
+        await locationPermissionService.revokeAccess(userId, id);
+      }
+      
       toast({ title: "Sucesso", description: "Permissões de locais atualizadas com sucesso." });
       return true;
     } catch (error) {
@@ -262,7 +271,7 @@ export default function Settings() {
 
   const handleSaveFeeExemptions = async (locationIds: string[]): Promise<boolean> => {
     try {
-      await adminFeeExemptionService.updateExemptions(locationIds);
+      await adminFeeExemptionService.setExemptLocations(locationIds);
       toast({ title: "Sucesso", description: "Isenções de taxa atualizadas com sucesso." });
       return true;
     } catch (error) {
@@ -274,7 +283,8 @@ export default function Settings() {
 
   const getUserLocationPermissions = async (userId: string): Promise<string[]> => {
     try {
-      return await locationPermissionService.getUserPermissions(userId);
+      const permissions = await locationPermissionService.getUserPermissions(userId);
+      return permissions.map(p => p.location_id);
     } catch (error) {
       console.error("Erro ao buscar permissões do usuário:", error);
       return [];
@@ -283,7 +293,7 @@ export default function Settings() {
 
   const getFeeExemptions = async (): Promise<string[]> => {
     try {
-      return await adminFeeExemptionService.getExemptions();
+      return await adminFeeExemptionService.getExemptLocations();
     } catch (error) {
       console.error("Erro ao buscar isenções:", error);
       return [];
