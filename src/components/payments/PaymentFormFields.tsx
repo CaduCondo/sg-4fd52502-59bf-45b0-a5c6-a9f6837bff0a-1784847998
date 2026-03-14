@@ -11,7 +11,6 @@ interface PaymentFormFieldsProps {
     payment_time: string;
     amount_to_pay: string;
     notes: string;
-    pix_code_type: string;
   };
   paymentHour: string;
   paymentMinute: string;
@@ -77,26 +76,6 @@ export const PaymentFormFields = memo(function PaymentFormFields({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
-          <div>
-            <Label htmlFor="payment_code_type">C/C Recebimento</Label>
-            <Select
-              value={formData.pix_code_type}
-              onValueChange={(value) => onFormDataChange({ ...formData, pix_code_type: value })}
-              disabled={isReadOnly}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CP">CP</SelectItem>
-                <SelectItem value="CD">CD</SelectItem>
-                <SelectItem value="CE">CE</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         {formData.payment_method === "pix" && (
           <div>
             <Label htmlFor="payment_time">Horário do Recebimento</Label>

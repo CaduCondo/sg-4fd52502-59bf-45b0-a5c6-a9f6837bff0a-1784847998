@@ -104,7 +104,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment_time: "",
     amount_to_pay: "",
     notes: "",
-    pix_code_type: "",
   });
   
   const [paymentHour, setPaymentHour] = useState<string>("");
@@ -329,7 +328,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           ? formatCurrency(paymentData.paid_amount.toFixed(2))
           : "",
         notes: paymentData.notes || "",
-        pix_code_type: (paymentData as any).pix_code_type || "", // ❌ BUG #1: Campo sempre vazio para preenchimento manual
       });
 
       if ((paymentData as any).payment_time) {
@@ -849,7 +847,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         late_fee: removeLateFee ? 0 : values.multa,
         interest: removeInterest ? 0 : values.juros,
         updated_at: new Date().toISOString(),
-        pix_code_type: formData.pix_code_type,
+        pix_code_type: null,
         breakdown: updatedBreakdown,
         expected_amount: Math.abs(expectedTotal),
       };
