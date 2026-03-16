@@ -786,8 +786,13 @@ export async function fixSpecificRentalPayments(rentalId: string): Promise<boole
 }
 
 /**
- * Identifica e remove recebimentos duplicados
- * Duplicatas = mesmo rental_id + reference_month + reference_year
+ * NOVA LÓGICA: Identifica e remove recebimentos duplicados baseado na análise do contrato
+ * 
+ * Para cada grupo de duplicatas:
+ * 1. Busca o contrato para calcular qual deveria ser a parcela correta naquele mês
+ * 2. Mantém o recebimento cuja parcela está mais próxima da esperada
+ * 3. Se ambos são PAID, gera alerta e não deleta (requer análise manual)
+ * 4. Se um é PAID e outro PENDING, mantém o PAID sempre
  */
 export async function findAndRemoveDuplicatePayments(): Promise<{
   success: boolean;
@@ -799,7 +804,16 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
     year: number;
     total: number;
     kept: string;
-    removed: string[];
+    keptInstallment: string;
+    removed: Array<{id: string; installment: string; status: string}>;
+    reason: string;
+  }>;
+  warnings: Array<{
+    rentalId: string;
+    month: number;
+    year: number;
+    message: string;
+    payments: Array<{id: string; installment: string; status: string}>;
   }>;
   errors: string[];
 }> {
@@ -809,22 +823,51 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
     year: number;
     total: number;
     kept: string;
-    removed: string[];
+    keptInstallment: string;
+    removed: Array<{id: string; installment: string; status: string}>;
+    reason: string;
+  }> = [];
+  
+  const warnings: Array<{
+    rentalId: string;
+    month: number;
+    year: number;
+    message: string;
+    payments: Array<{id: string; installment: string; status: string}>;
   }> = [];
   
   const errors: string[] = [];
   let duplicatesRemoved = 0;
 
   try {
-    // Buscar todos os recebimentos
+    // Buscar todos os recebimentos com dados do contrato
     const { data: allPayments, error: paymentsError } = await supabase
       .from("payments")
-      .select("*")
+      .select(`
+        *,
+        rental:rentals(
+          id,
+          start_date,
+          end_date,
+          rent_due_day,
+          rent_value,
+          has_garage,
+          garage_value,
+          properties(property_identifier)
+        )
+      `)
       .order("created_at", { ascending: true });
 
     if (paymentsError) throw paymentsError;
     if (!allPayments || allPayments.length === 0) {
-      return { success: true, duplicatesFound: 0, duplicatesRemoved: 0, details: [], errors: [] };
+      return { 
+        success: true, 
+        duplicatesFound: 0, 
+        duplicatesRemoved: 0, 
+        details: [], 
+        warnings: [],
+        errors: [] 
+      };
     }
 
     // Agrupar por rental_id + reference_month + reference_year
@@ -840,29 +883,180 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
 
     // Processar grupos com duplicatas
     for (const [key, payments] of grouped.entries()) {
-      if (payments.length <= 1) continue; // Não é duplicata
+      if (payments.length <= 1) continue;
 
       console.log(`🔍 Duplicata encontrada: ${key} (${payments.length} recebimentos)`);
 
-      // Ordenar por prioridade:
-      // 1. Status 'paid' (mantém sempre)
-      // 2. created_at mais recente
-      const sorted = payments.sort((a, b) => {
-        // Priorizar pagos
-        if (a.status === "paid" && b.status !== "paid") return -1;
-        if (a.status !== "paid" && b.status === "paid") return 1;
+      const firstPayment = payments[0];
+      const rental = firstPayment.rental;
+      const propertyName = rental?.properties?.property_identifier || "Imóvel sem nome";
+
+      // Verificar se temos os dados do contrato
+      if (!rental || !rental.start_date || !rental.rent_due_day) {
+        warnings.push({
+          rentalId: firstPayment.rental_id,
+          month: Number(firstPayment.reference_month),
+          year: Number(firstPayment.reference_year),
+          message: "Dados do contrato incompletos - não é possível determinar parcela correta",
+          payments: payments.map(p => ({
+            id: p.id,
+            installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+            status: p.status
+          }))
+        });
+        continue;
+      }
+
+      // Calcular qual deveria ser a parcela esperada para este mês
+      const expectedPayments = generateExpectedPayments({
+        rentalId: rental.id,
+        startDate: rental.start_date,
+        endDate: rental.end_date,
+        monthlyRent: rental.rent_value || 0,
+        paymentDay: rental.rent_due_day,
+        hasGarage: rental.has_garage || false,
+        garageValue: rental.garage_value || 0,
+      });
+
+      const expectedForThisMonth = expectedPayments.find(
+        exp => exp.reference_month === Number(firstPayment.reference_month) && 
+               exp.reference_year === Number(firstPayment.reference_year)
+      );
+
+      if (!expectedForThisMonth) {
+        console.log(`⚠️ Este mês não deveria ter recebimento segundo o contrato`);
+        // Todos são inválidos - deletar todos PENDING, alertar se houver PAID
+        const paidOnes = payments.filter(p => p.status === 'paid');
+        const pendingOnes = payments.filter(p => p.status === 'pending');
+
+        if (paidOnes.length > 0) {
+          warnings.push({
+            rentalId: firstPayment.rental_id,
+            month: Number(firstPayment.reference_month),
+            year: Number(firstPayment.reference_year),
+            message: `Mês fora do período do contrato, mas tem ${paidOnes.length} recebimento(s) PAGO(S)`,
+            payments: payments.map(p => ({
+              id: p.id,
+              installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+              status: p.status
+            }))
+          });
+        }
+
+        // Deletar os pending
+        for (const payment of pendingOnes) {
+          const { error: deleteError } = await supabase
+            .from("payments")
+            .delete()
+            .eq("id", payment.id);
+
+          if (deleteError) {
+            errors.push(`Erro ao deletar ${payment.id}: ${deleteError.message}`);
+          } else {
+            duplicatesRemoved++;
+          }
+        }
+
+        if (pendingOnes.length > 0) {
+          details.push({
+            rentalId: firstPayment.rental_id,
+            month: Number(firstPayment.reference_month),
+            year: Number(firstPayment.reference_year),
+            total: payments.length,
+            kept: paidOnes[0]?.id || 'nenhum',
+            keptInstallment: paidOnes[0] ? `${paidOnes[0].installment}/${paidOnes[0].total_installments}` : 'N/A',
+            removed: pendingOnes.map(p => ({
+              id: p.id,
+              installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+              status: p.status
+            })),
+            reason: "Mês fora do período do contrato"
+          });
+        }
+
+        continue;
+      }
+
+      const expectedInstallment = expectedForThisMonth.installment;
+      console.log(`📊 Parcela esperada para ${firstPayment.reference_month}/${firstPayment.reference_year}: ${expectedInstallment}/${expectedForThisMonth.total_installments}`);
+
+      // Verificar se há múltiplos PAIDs (isso é um problema grave)
+      const paidPayments = payments.filter(p => p.status === 'paid');
+      
+      if (paidPayments.length > 1) {
+        warnings.push({
+          rentalId: firstPayment.rental_id,
+          month: Number(firstPayment.reference_month),
+          year: Number(firstPayment.reference_year),
+          message: `ATENÇÃO: ${paidPayments.length} recebimentos PAGOS para o mesmo mês - requer análise manual`,
+          payments: payments.map(p => ({
+            id: p.id,
+            installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+            status: p.status
+          }))
+        });
+        continue; // Não deletar nada se há múltiplos pagos
+      }
+
+      // Se há 1 PAID e N PENDING, manter o PAID
+      if (paidPayments.length === 1) {
+        const toKeep = paidPayments[0];
+        const toRemove = payments.filter(p => p.id !== toKeep.id);
+
+        console.log(`✅ Mantendo recebimento PAGO: ${toKeep.id} - Parcela ${toKeep.installment}/${toKeep.total_installments}`);
+        console.log(`❌ Removendo ${toRemove.length} recebimentos PENDING`);
+
+        for (const payment of toRemove) {
+          const { error: deleteError } = await supabase
+            .from("payments")
+            .delete()
+            .eq("id", payment.id);
+
+          if (deleteError) {
+            errors.push(`Erro ao deletar ${payment.id}: ${deleteError.message}`);
+          } else {
+            duplicatesRemoved++;
+          }
+        }
+
+        details.push({
+          rentalId: firstPayment.rental_id,
+          month: Number(firstPayment.reference_month),
+          year: Number(firstPayment.reference_year),
+          total: payments.length,
+          kept: toKeep.id,
+          keptInstallment: `${toKeep.installment}/${toKeep.total_installments}`,
+          removed: toRemove.map(p => ({
+            id: p.id,
+            installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+            status: p.status
+          })),
+          reason: `Mantido recebimento PAGO (${propertyName})`
+        });
+
+        continue;
+      }
+
+      // Se todos são PENDING, manter o que tem a parcela mais próxima da esperada
+      const pendingPayments = payments.filter(p => p.status === 'pending');
+      
+      // Ordenar por proximidade com parcela esperada
+      const sorted = pendingPayments.sort((a, b) => {
+        const diffA = Math.abs((a.installment || 0) - expectedInstallment);
+        const diffB = Math.abs((b.installment || 0) - expectedInstallment);
         
-        // Se ambos são paid ou ambos não são, usar created_at (mais recente primeiro)
+        if (diffA !== diffB) return diffA - diffB;
+        
+        // Se empate, usar created_at (mais recente)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
       const toKeep = sorted[0];
       const toRemove = sorted.slice(1);
 
-      console.log(`✅ Mantendo: ${toKeep.id} (${toKeep.status}) - Parcela ${toKeep.installment}/${toKeep.total_installments}`);
-      console.log(`❌ Removendo: ${toRemove.map(p => `${p.id} (${p.status}) - Parcela ${p.installment}/${p.total_installments}`).join(", ")}`);
+      console.log(`✅ Mantendo: ${toKeep.id} - Parcela ${toKeep.installment}/${toKeep.total_installments} (esperada: ${expectedInstallment})`);
+      console.log(`❌ Removendo: ${toRemove.map(p => `${p.id} (${p.installment}/${p.total_installments})`).join(", ")}`);
 
-      // Deletar os duplicados
       for (const payment of toRemove) {
         const { error: deleteError } = await supabase
           .from("payments")
@@ -871,20 +1065,24 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
 
         if (deleteError) {
           errors.push(`Erro ao deletar ${payment.id}: ${deleteError.message}`);
-          console.error(`❌ Erro ao deletar ${payment.id}:`, deleteError);
         } else {
           duplicatesRemoved++;
-          console.log(`✅ Deletado: ${payment.id}`);
         }
       }
 
       details.push({
-        rentalId: toKeep.rental_id,
-        month: Number(toKeep.reference_month),
-        year: Number(toKeep.reference_year),
+        rentalId: firstPayment.rental_id,
+        month: Number(firstPayment.reference_month),
+        year: Number(firstPayment.reference_year),
         total: payments.length,
         kept: toKeep.id,
-        removed: toRemove.map(p => p.id),
+        keptInstallment: `${toKeep.installment}/${toKeep.total_installments}`,
+        removed: toRemove.map(p => ({
+          id: p.id,
+          installment: p.installment ? `${p.installment}/${p.total_installments || '?'}` : 'N/A',
+          status: p.status
+        })),
+        reason: `Mantido o mais próximo da parcela esperada ${expectedInstallment} (${propertyName})`
       });
     }
 
@@ -893,6 +1091,7 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
       duplicatesFound: details.length,
       duplicatesRemoved,
       details,
+      warnings,
       errors,
     };
   } catch (error: any) {
@@ -902,6 +1101,7 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
       duplicatesFound: 0,
       duplicatesRemoved: 0,
       details: [],
+      warnings: [],
       errors: [error.message],
     };
   }

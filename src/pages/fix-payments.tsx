@@ -5,24 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle, XCircle, Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/router";
-import { findAndRemoveDuplicatePayments } from "@/services/paymentService";
+import { findAndRemoveDuplicatePayments, generateExpectedPayments } from "@/services/paymentService";
 
 interface FixReport {
   success: boolean;
-  totalRentals: number;
-  rentalsFixed: number;
-  paymentsCreated: number;
-  paymentsUpdated: number;
-  paymentsDeleted: number;
-  paidPaymentsRenumbered: number;
+  summary: {
+    totalRentals: number;
+    totalFixed: number;
+    paymentsCreated: number;
+    paymentsUpdated: number;
+    paymentsDeleted: number;
+    paidPaymentsRenumbered: number;
+  };
   details: Array<{
-    rentalId: string;
-    propertyName: string;
-    paidChanges: Array<{ paymentId: string; oldInstallment: string; newInstallment: string }>;
-    pendingChanges: Array<{ action: string; details: string }>;
+    rentalInfo: string;
+    paidPaymentsChanges: string[];
+    changes: string[];
   }>;
   errors: string[];
 }
@@ -47,6 +47,7 @@ export default function FixPaymentsPage() {
   const [loading, setLoading] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentRental, setCurrentRental] = useState("");
   const [report, setReport] = useState<FixReport | null>(null);
   const [duplicatesReport, setDuplicatesReport] = useState<DuplicatesReport | null>(null);
 
@@ -76,18 +77,6 @@ export default function FixPaymentsPage() {
     setProgress(0);
     setReport(null);
 
-    const report: FixReport = {
-      success: true,
-      totalRentals: 0,
-      rentalsFixed: 0,
-      paymentsCreated: 0,
-      paymentsUpdated: 0,
-      paymentsDeleted: 0,
-      paidPaymentsRenumbered: 0,
-      details: [],
-      errors: [],
-    };
-
     try {
       console.log("\n🚀 ============================================");
       console.log("🚀   INICIANDO CORREÇÃO DE RECEBIMENTOS");
@@ -101,10 +90,10 @@ export default function FixPaymentsPage() {
 
       if (rentalsError) throw rentalsError;
 
-      console.log(`📋 Total de locações ativas/finalizadas: ${rentals.length}\n`);
+      console.log(`📋 Total de locações ativas/finalizadas: ${rentals?.length || 0}\n`);
 
       const summary = {
-        totalRentals: rentals.length,
+        totalRentals: rentals?.length || 0,
         totalFixed: 0,
         paymentsCreated: 0,
         paymentsUpdated: 0,
@@ -113,6 +102,10 @@ export default function FixPaymentsPage() {
       };
 
       const details: Array<{ rentalInfo: string; changes: string[]; paidPaymentsChanges: string[] }> = [];
+
+      if (!rentals) {
+        throw new Error("Nenhuma locação encontrada");
+      }
 
       for (let i = 0; i < rentals.length; i++) {
         const rental = rentals[i];
@@ -167,7 +160,15 @@ export default function FixPaymentsPage() {
         console.log(`📋 Recebimentos existentes: ${existingPayments.length}`);
 
         // Generate expected payments
-        const expectedPayments = generateExpectedPayments(rental);
+        const expectedPayments = generateExpectedPayments({
+          rentalId: rental.id,
+          startDate: rental.start_date,
+          endDate: rental.end_date,
+          monthlyRent: rental.rent_value || 0,
+          paymentDay: rental.rent_due_day || 5,
+          hasGarage: rental.has_garage || false,
+          garageValue: rental.garage_value || 0
+        });
 
         console.log(`\n📊 COMPARAÇÃO:`);
         console.log(`   Existentes: ${existingPayments.length}`);
@@ -186,8 +187,8 @@ export default function FixPaymentsPage() {
         for (const paidPayment of paidPayments) {
           // Encontrar o recebimento esperado correspondente (mesmo mês/ano)
           const expectedMatch = expectedPayments.find(exp => 
-            exp.reference_month === String(paidPayment.reference_month).padStart(2, '0') &&
-            exp.reference_year === String(paidPayment.reference_year)
+            String(exp.reference_month).padStart(2, '0') === String(paidPayment.reference_month).padStart(2, '0') &&
+            String(exp.reference_year) === String(paidPayment.reference_year)
           );
 
           if (expectedMatch) {
@@ -226,7 +227,7 @@ export default function FixPaymentsPage() {
         // Criar um map de recebimentos esperados por mês/ano
         const expectedMap = new Map<string, typeof expectedPayments[0]>();
         expectedPayments.forEach(exp => {
-          const key = `${exp.reference_year}-${exp.reference_month}`;
+          const key = `${exp.reference_year}-${String(exp.reference_month).padStart(2, '0')}`;
           expectedMap.set(key, exp);
         });
 
@@ -256,8 +257,8 @@ export default function FixPaymentsPage() {
                 due_date: expected.due_date,
                 installment: expected.installment,
                 total_installments: expected.total_installments,
-                reference_month: expected.reference_month,
-                reference_year: expected.reference_year,
+                reference_month: String(expected.reference_month),
+                reference_year: String(expected.reference_year),
                 status: "pending",
                 breakdown: expected.breakdown
               });
@@ -276,12 +277,12 @@ export default function FixPaymentsPage() {
             const needsUpdate = 
               pending.installment !== expected.installment ||
               pending.total_installments !== expected.total_installments ||
-              Math.abs(pending.expected_amount - expected.expected_amount) > 0.01;
+              Math.abs(Number(pending.expected_amount) - Number(expected.expected_amount)) > 0.01;
 
             if (needsUpdate) {
               console.log(`   🔄 Atualizando pendente: ${pending.due_date}`);
               console.log(`      Parcela: ${pending.installment}/${pending.total_installments} → ${expected.installment}/${expected.total_installments}`);
-              console.log(`      Valor: R$ ${pending.expected_amount.toFixed(2)} → R$ ${expected.expected_amount.toFixed(2)}`);
+              console.log(`      Valor: R$ ${Number(pending.expected_amount).toFixed(2)} → R$ ${Number(expected.expected_amount).toFixed(2)}`);
               
               await supabase
                 .from("payments")
@@ -321,10 +322,11 @@ export default function FixPaymentsPage() {
         }
       }
 
-      setResult({
+      setReport({
         success: true,
         summary,
-        details
+        details,
+        errors: []
       });
 
       console.log("\n✅ ============================================");
@@ -340,7 +342,7 @@ export default function FixPaymentsPage() {
 
     } catch (error: any) {
       console.error("❌ ERRO:", error);
-      setResult({
+      setReport({
         success: false,
         summary: { 
           totalRentals: 0, 
@@ -350,14 +352,11 @@ export default function FixPaymentsPage() {
           paymentsDeleted: 0,
           paidPaymentsRenumbered: 0
         },
-        details: [{ 
-          rentalInfo: 'Erro', 
-          changes: [error.message],
-          paidPaymentsChanges: []
-        }]
+        details: [],
+        errors: [error.message]
       });
     } finally {
-      setIsRunning(false);
+      setLoading(false);
       setProgress(100);
     }
   };
@@ -496,41 +495,46 @@ export default function FixPaymentsPage() {
             {loading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Processando locações...</span>
+                  <span>Processando: {currentRental}</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <Progress value={progress} />
               </div>
             )}
 
-            {result && (
-              <div className="space-y-6">
-                <Alert className={result.success ? "border-green-500" : "border-red-500"}>
-                  {result.success ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+            {report && (
+              <div className="space-y-6 mt-6">
+                <Alert className={report.success ? "border-green-500" : "border-red-500"}>
+                  {report.success ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                   ) : (
                     <AlertCircle className="h-4 w-4 text-red-500" />
                   )}
                   <AlertDescription>
                     <div className="font-semibold mb-2">
-                      {result.success ? "✅ Correção Concluída com Sucesso!" : "❌ Erro na Correção"}
+                      {report.success ? "✅ Correção Concluída com Sucesso!" : "❌ Erro na Correção"}
                     </div>
+                    {report.errors.length > 0 && (
+                      <div className="mb-4 text-red-500 text-sm">
+                        {report.errors.map((e, i) => <div key={i}>{e}</div>)}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>📋 Total de locações: <strong>{result.summary.totalRentals}</strong></div>
-                      <div>✅ Locações corrigidas: <strong>{result.summary.totalFixed}</strong></div>
-                      <div>➕ Recebimentos criados: <strong>{result.summary.paymentsCreated}</strong></div>
-                      <div>🔄 Recebimentos atualizados: <strong>{result.summary.paymentsUpdated}</strong></div>
-                      <div>🗑️ Recebimentos deletados: <strong>{result.summary.paymentsDeleted}</strong></div>
-                      <div>🔢 Recebimentos pagos renumerados: <strong>{result.summary.paidPaymentsRenumbered}</strong></div>
+                      <div>📋 Total de locações: <strong>{report.summary.totalRentals}</strong></div>
+                      <div>✅ Locações corrigidas: <strong>{report.summary.totalFixed}</strong></div>
+                      <div>➕ Recebimentos criados: <strong>{report.summary.paymentsCreated}</strong></div>
+                      <div>🔄 Recebimentos atualizados: <strong>{report.summary.paymentsUpdated}</strong></div>
+                      <div>🗑️ Recebimentos deletados: <strong>{report.summary.paymentsDeleted}</strong></div>
+                      <div>🔢 Recebimentos pagos renumerados: <strong>{report.summary.paidPaymentsRenumbered}</strong></div>
                     </div>
                   </AlertDescription>
                 </Alert>
 
-                {result.details.length > 0 && (
+                {report.details.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">📝 Detalhes por Locação</h3>
                     <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                      {result.details.map((detail, index) => (
+                      {report.details.map((detail, index) => (
                         <Card key={index}>
                           <CardHeader className="pb-3">
                             <CardTitle className="text-base">{detail.rentalInfo}</CardTitle>
@@ -563,7 +567,7 @@ export default function FixPaymentsPage() {
                   </div>
                 )}
 
-                <Button onClick={() => window.location.href = '/payments'} className="w-full">
+                <Button onClick={() => router.push('/payments')} className="w-full">
                   Ver Recebimentos Corrigidos
                 </Button>
               </div>
