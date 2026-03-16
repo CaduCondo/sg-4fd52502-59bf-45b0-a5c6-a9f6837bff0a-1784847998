@@ -101,7 +101,12 @@ export const PaymentCard = memo(function PaymentCard({
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   
   const isPartial = payment.status === "partial";
-  const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
+  
+  // Calcular o valor total esperado incluindo multa e juros
+  const totalExpectedAmount = expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
+  
+  // Calcular o valor restante correto
+  const remainingAmount = isPartial ? totalExpectedAmount - payment.paidAmount : totalExpectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
 
   const colors = useMemo(() => 
