@@ -37,7 +37,16 @@ interface DuplicatesReport {
     year: number;
     total: number;
     kept: string;
-    removed: string[];
+    keptInstallment: string;
+    removed: Array<{ id: string; installment: string; status: string }>;
+    reason: string;
+  }>;
+  warnings: Array<{
+    rentalId: string;
+    month: number;
+    year: number;
+    message: string;
+    payments: Array<{ id: string; installment: string; status: string }>;
   }>;
   errors: string[];
 }
@@ -438,12 +447,33 @@ export default function FixPaymentsPage() {
                               <div>
                                 <span className="font-semibold">Total encontrado:</span> {detail.total}
                               </div>
-                              <div className="text-green-600">
-                                <span className="font-semibold">✓ Mantido:</span> {detail.kept}
+                              <div className="mt-1">
+                                <span className="font-semibold">Motivo:</span> {detail.reason}
+                              </div>
+                              <div className="text-green-600 mt-1">
+                                <span className="font-semibold">✓ Mantido:</span> {detail.kept} (Parcela: {detail.keptInstallment})
                               </div>
                               <div className="text-red-600">
-                                <span className="font-semibold">✗ Removidos:</span> {detail.removed.join(", ")}
+                                <span className="font-semibold">✗ Removidos:</span> {detail.removed.map(r => `[${r.status.toUpperCase()}] Parcela ${r.installment} (ID: ${r.id})`).join(", ")}
                               </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {duplicatesReport.warnings && duplicatesReport.warnings.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm font-semibold text-yellow-600">⚠️ Avisos (Requerem análise manual):</p>
+                        <div className="max-h-40 overflow-y-auto space-y-2">
+                          {duplicatesReport.warnings.map((warning, idx) => (
+                            <div key={idx} className="text-xs bg-yellow-50 border border-yellow-200 p-2 rounded text-yellow-800">
+                              <div className="font-semibold mb-1">{warning.month}/{warning.year}: {warning.message}</div>
+                              <ul className="list-disc list-inside">
+                                {warning.payments.map((p, i) => (
+                                  <li key={i}>[{p.status.toUpperCase()}] Parcela: {p.installment} (ID: {p.id})</li>
+                                ))}
+                              </ul>
                             </div>
                           ))}
                         </div>
