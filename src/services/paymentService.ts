@@ -784,3 +784,125 @@ export async function fixSpecificRentalPayments(rentalId: string): Promise<boole
     return false;
   }
 }
+
+/**
+ * Identifica e remove recebimentos duplicados
+ * Duplicatas = mesmo rental_id + reference_month + reference_year
+ */
+export async function findAndRemoveDuplicatePayments(): Promise<{
+  success: boolean;
+  duplicatesFound: number;
+  duplicatesRemoved: number;
+  details: Array<{
+    rentalId: string;
+    month: number;
+    year: number;
+    total: number;
+    kept: string;
+    removed: string[];
+  }>;
+  errors: string[];
+}> {
+  const details: Array<{
+    rentalId: string;
+    month: number;
+    year: number;
+    total: number;
+    kept: string;
+    removed: string[];
+  }> = [];
+  
+  const errors: string[] = [];
+  let duplicatesRemoved = 0;
+
+  try {
+    // Buscar todos os recebimentos
+    const { data: allPayments, error: paymentsError } = await supabase
+      .from("payments")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (paymentsError) throw paymentsError;
+    if (!allPayments || allPayments.length === 0) {
+      return { success: true, duplicatesFound: 0, duplicatesRemoved: 0, details: [], errors: [] };
+    }
+
+    // Agrupar por rental_id + reference_month + reference_year
+    const grouped = new Map<string, any[]>();
+    
+    for (const payment of allPayments) {
+      const key = `${payment.rental_id}-${payment.reference_month}-${payment.reference_year}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(payment);
+    }
+
+    // Processar grupos com duplicatas
+    for (const [key, payments] of grouped.entries()) {
+      if (payments.length <= 1) continue; // Não é duplicata
+
+      console.log(`🔍 Duplicata encontrada: ${key} (${payments.length} recebimentos)`);
+
+      // Ordenar por prioridade:
+      // 1. Status 'paid' (mantém sempre)
+      // 2. created_at mais recente
+      const sorted = payments.sort((a, b) => {
+        // Priorizar pagos
+        if (a.status === "paid" && b.status !== "paid") return -1;
+        if (a.status !== "paid" && b.status === "paid") return 1;
+        
+        // Se ambos são paid ou ambos não são, usar created_at (mais recente primeiro)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      const toKeep = sorted[0];
+      const toRemove = sorted.slice(1);
+
+      console.log(`✅ Mantendo: ${toKeep.id} (${toKeep.status}) - Parcela ${toKeep.installment}/${toKeep.total_installments}`);
+      console.log(`❌ Removendo: ${toRemove.map(p => `${p.id} (${p.status}) - Parcela ${p.installment}/${p.total_installments}`).join(", ")}`);
+
+      // Deletar os duplicados
+      for (const payment of toRemove) {
+        const { error: deleteError } = await supabase
+          .from("payments")
+          .delete()
+          .eq("id", payment.id);
+
+        if (deleteError) {
+          errors.push(`Erro ao deletar ${payment.id}: ${deleteError.message}`);
+          console.error(`❌ Erro ao deletar ${payment.id}:`, deleteError);
+        } else {
+          duplicatesRemoved++;
+          console.log(`✅ Deletado: ${payment.id}`);
+        }
+      }
+
+      details.push({
+        rentalId: toKeep.rental_id,
+        month: Number(toKeep.reference_month),
+        year: Number(toKeep.reference_year),
+        total: payments.length,
+        kept: toKeep.id,
+        removed: toRemove.map(p => p.id),
+      });
+    }
+
+    return {
+      success: true,
+      duplicatesFound: details.length,
+      duplicatesRemoved,
+      details,
+      errors,
+    };
+  } catch (error: any) {
+    console.error("Erro ao buscar duplicatas:", error);
+    return {
+      success: false,
+      duplicatesFound: 0,
+      duplicatesRemoved: 0,
+      details: [],
+      errors: [error.message],
+    };
+  }
+}
