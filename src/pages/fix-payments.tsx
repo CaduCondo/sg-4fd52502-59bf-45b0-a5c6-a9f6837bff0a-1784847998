@@ -14,236 +14,239 @@ interface FixResult {
     paymentsCreated: number;
     paymentsUpdated: number;
     paymentsDeleted: number;
+    paidPaymentsRenumbered: number;
   };
   details: Array<{
     rentalInfo: string;
     changes: string[];
+    paidPaymentsChanges: string[];
   }>;
 }
 
-function calculateMonthsBetweenDates(startDate: Date, endDate: Date): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  let months = 0;
-  let current = new Date(start);
-  
-  while (current < end || (current.getFullYear() === end.getFullYear() && 
-                           current.getMonth() === end.getMonth() && 
-                           current.getDate() <= end.getDate())) {
-    months++;
-    current = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate());
-  }
-  
-  return months;
+/**
+ * Calcula o número de dias entre duas datas (inclusivo)
+ */
+function daysBetween(start: Date, end: Date): number {
+  const oneDay = 1000 * 60 * 60 * 24;
+  const diffTime = end.getTime() - start.getTime();
+  return Math.ceil(diffTime / oneDay) + 1;
 }
 
+/**
+ * Nova lógica de geração de recebimentos esperados
+ * Segue as regras definidas pelo usuário
+ */
 function generateExpectedPayments(rental: any) {
   const payments = [];
   const startDate = new Date(rental.start_date);
   const endDate = new Date(rental.end_date);
-  const dueDay = rental.rent_due_day;
+  const paymentDay = rental.rent_due_day;
   const rentValue = parseFloat(rental.rent_value || 0);
+  const garageValue = rental.has_garage ? parseFloat(rental.garage_value || 0) : 0;
   
   console.log(`\n=== GERANDO RECEBIMENTOS PARA LOCAÇÃO ${rental.id} ===`);
-  console.log(`Período: ${rental.start_date} até ${rental.end_date}`);
-  console.log(`Dia vencimento: ${dueDay}`);
-  console.log(`Valor mensal: R$ ${rentValue}`);
+  console.log(`📅 Período: ${rental.start_date} até ${rental.end_date}`);
+  console.log(`💵 Valor mensal: R$ ${rentValue.toFixed(2)} ${garageValue > 0 ? `+ Garagem R$ ${garageValue.toFixed(2)}` : ''}`);
+  console.log(`📌 Dia vencimento: ${paymentDay}`);
+  console.log(`📅 Data início: dia ${startDate.getDate()} do mês ${startDate.getMonth() + 1}`);
+
+  // **ETAPA 1: Determinar o primeiro mês de cobrança**
+  let firstPaymentMonth: number;
+  let firstPaymentYear: number;
+  let firstPaymentDaysToCharge: number;
+  let firstPaymentStartDate: Date;
+  let firstPaymentEndDate: Date;
+
+  const startDay = startDate.getDate();
+  const startMonth = startDate.getMonth() + 1;
+  const startYear = startDate.getFullYear();
+
+  if (startDay <= paymentDay) {
+    // Primeiro recebimento no MESMO mês
+    firstPaymentMonth = startMonth;
+    firstPaymentYear = startYear;
+    firstPaymentStartDate = new Date(startDate);
+    firstPaymentEndDate = new Date(startYear, startMonth - 1, paymentDay);
+    firstPaymentDaysToCharge = daysBetween(firstPaymentStartDate, firstPaymentEndDate);
+    
+    console.log(`✅ Primeiro recebimento no MESMO mês (${startDay} <= ${paymentDay})`);
+    console.log(`   Período: ${firstPaymentStartDate.toISOString().split('T')[0]} até ${firstPaymentEndDate.toISOString().split('T')[0]}`);
+    console.log(`   Dias a cobrar: ${firstPaymentDaysToCharge}`);
+  } else {
+    // Primeiro recebimento no MÊS SEGUINTE
+    firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
+    firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
+    firstPaymentStartDate = new Date(startDate);
+    firstPaymentEndDate = new Date(firstPaymentYear, firstPaymentMonth - 1, paymentDay);
+    firstPaymentDaysToCharge = daysBetween(firstPaymentStartDate, firstPaymentEndDate);
+    
+    console.log(`✅ Primeiro recebimento no MÊS SEGUINTE (${startDay} > ${paymentDay})`);
+    console.log(`   Período: ${firstPaymentStartDate.toISOString().split('T')[0]} até ${firstPaymentEndDate.toISOString().split('T')[0]}`);
+    console.log(`   Dias a cobrar: ${firstPaymentDaysToCharge}`);
+  }
+
+  // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
+  const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
   
-  // Calcular total de MESES do contrato
-  const totalContractMonths = calculateMonthsBetweenDates(startDate, endDate);
-  console.log(`🎯 TOTAL DE MESES DO CONTRATO: ${totalContractMonths}`);
-  
-  let installmentNumber = 0;
-  
-  // NUNCA PULAR MESES: Usar contador de meses ao invés de adicionar à data
-  let monthOffset = 0;
-  let isFirstPayment = true;
-  
+  const firstProportionalRent = (rentValue / 30) * firstPaymentDaysToCharge;
+  const firstProportionalGarage = garageValue > 0 ? (garageValue / 30) * firstPaymentDaysToCharge : 0;
+  const firstPaymentAmount = firstProportionalRent + firstProportionalGarage;
+
+  const firstPaymentBreakdown: Array<{ description: string; amount: number; type: string }> = [
+    {
+      description: `Aluguel - Parcela 1 (${firstPaymentDaysToCharge} dias)`,
+      amount: parseFloat(firstProportionalRent.toFixed(2)),
+      type: "addition",
+    }
+  ];
+
+  if (garageValue > 0) {
+    firstPaymentBreakdown.push({
+      description: `Garagem Proporcional (${firstPaymentDaysToCharge} dias)`,
+      amount: parseFloat(firstProportionalGarage.toFixed(2)),
+      type: "addition",
+    });
+  }
+
+  payments.push({
+    rental_id: rental.id,
+    reference_month: String(firstPaymentMonth).padStart(2, '0'),
+    reference_year: String(firstPaymentYear),
+    due_date: firstPaymentDueDate,
+    expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
+    status: "pending",
+    breakdown: firstPaymentBreakdown,
+    installment: 1,
+    period_start: firstPaymentStartDate.toISOString().split('T')[0],
+    period_end: firstPaymentEndDate.toISOString().split('T')[0],
+    days_charged: firstPaymentDaysToCharge
+  });
+
+  console.log(`📝 Primeiro recebimento: 1/XX - ${firstPaymentDueDate} - R$ ${firstPaymentAmount.toFixed(2)}`);
+
+  // **ETAPA 3: Criar recebimentos intermediários (valor integral)**
+  let currentMonth = firstPaymentMonth;
+  let currentYear = firstPaymentYear;
+  let installmentNumber = 1;
+
+  // Loop para criar recebimentos até o último mês
   while (true) {
-    // Calcula o mês e ano atual baseado no início + offset
-    const currentMonth = startDate.getMonth() + monthOffset;
-    const currentYear = startDate.getFullYear() + Math.floor(currentMonth / 12);
-    const normalizedMonth = currentMonth % 12;
-    
-    // Data base para verificações de período
-    const currentDate = new Date(currentYear, normalizedMonth, startDate.getDate());
-    
-    // Se passamos do fim do contrato (e não é o primeiro mês), paramos
-    if (currentDate > endDate && monthOffset > 0) {
+    // Avançar para o próximo mês
+    currentMonth++;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    }
+
+    // Verificar se chegamos no último mês do contrato
+    const endMonth = endDate.getMonth() + 1;
+    const endYear = endDate.getFullYear();
+
+    // Se passou do último mês, parar
+    if (currentYear > endYear || (currentYear === endYear && currentMonth > endMonth)) {
       break;
     }
+
+    const dueDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
     
-    // Determinar data de vencimento deste mês
-    let dueDate = new Date(currentYear, normalizedMonth, dueDay);
-    
-    // Se o dia não existe no mês (ex: 31 de fevereiro), usar último dia do mês
-    if (dueDate.getMonth() !== normalizedMonth) {
-      dueDate = new Date(currentYear, normalizedMonth + 1, 0);
-    }
-    
-    // Se o contrato começa DEPOIS do vencimento no mês inicial, 
-    // o primeiro vencimento cai no mês SEGUINTE
-    if (isFirstPayment && startDate.getDate() > dueDay) {
-      dueDate = new Date(currentYear, normalizedMonth + 1, dueDay);
-      if (dueDate.getMonth() !== (normalizedMonth + 1) % 12) {
-        dueDate = new Date(currentYear, normalizedMonth + 2, 0);
-      }
-    }
-    
-    // Calcular período e valor
-    let periodStart: Date;
-    let periodEnd: Date;
-    let daysInPeriod: number;
-    let amount: number;
-    let description: string;
-    let installment: number | null;
-    
-    if (isFirstPayment) {
-      // PRIMEIRA PARCELA
-      periodStart = new Date(startDate);
-      periodEnd = new Date(dueDate);
-      periodEnd.setDate(periodEnd.getDate() - 1);
-      
-      if (periodEnd > endDate) {
-        periodEnd = new Date(endDate);
-      }
-      
-      daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // REGRA: < 15 dias = "Parcela Proporcional" (não conta na numeração)
-      if (daysInPeriod < 15) {
-        amount = (rentValue / 30) * daysInPeriod;
-        installment = null;
-        description = "Parcela Proporcional";
-        console.log(`📌 Primeira parcela: ${daysInPeriod} dias (<15) = "Parcela Proporcional" (não conta na numeração)`);
-      } else {
-        // Se for 15 dias ou mais, conta como 1/XX, mas o valor ainda pode ser proporcional se não for mês completo
-        // Assumimos mês completo se for >= 28 dias
-        if (daysInPeriod >= 28) {
-          amount = rentValue;
-        } else {
-          amount = (rentValue / 30) * daysInPeriod;
+    // Verificar se este é o ÚLTIMO recebimento
+    const isLastPayment = (currentYear === endYear && currentMonth === endMonth);
+
+    if (isLastPayment) {
+      // **ÚLTIMO RECEBIMENTO (proporcional)**
+      const lastPaymentStartDate = new Date(currentYear, currentMonth - 1, paymentDay);
+      const lastPaymentEndDate = new Date(endDate);
+      const lastPaymentDaysToCharge = daysBetween(lastPaymentStartDate, lastPaymentEndDate);
+
+      const lastProportionalRent = (rentValue / 30) * lastPaymentDaysToCharge;
+      const lastProportionalGarage = garageValue > 0 ? (garageValue / 30) * lastPaymentDaysToCharge : 0;
+      const lastPaymentAmount = lastProportionalRent + lastProportionalGarage;
+
+      installmentNumber++;
+
+      const lastPaymentBreakdown: Array<{ description: string; amount: number; type: string }> = [
+        {
+          description: `Aluguel - Última Parcela (${lastPaymentDaysToCharge} dias)`,
+          amount: parseFloat(lastProportionalRent.toFixed(2)),
+          type: "addition",
         }
-        
-        installmentNumber = 1;
-        installment = 1;
-        description = `1/${totalContractMonths}`;
-        console.log(`📌 Primeira parcela: ${daysInPeriod} dias (≥15) = "1/${totalContractMonths}" (conta na numeração)`);
-      }
-      
-      console.log(`   💰 Valor: R$ ${amount.toFixed(2)}`);
-      isFirstPayment = false;
-      
-    } else {
-      // PARCELAS SEGUINTES
-      
-      // Verificar se esta é a última parcela
-      const nextDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, dueDay);
-      if (nextDueDate.getMonth() !== (dueDate.getMonth() + 1) % 12) {
-        nextDueDate.setDate(0);
-      }
-      
-      if (nextDueDate > endDate) {
-        // ÚLTIMA PARCELA (pode ser proporcional)
-        periodStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1); // Simplificado
-        periodEnd = new Date(endDate);
-        
-        daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        
-        // Se for um mês quase completo (≥28 dias), considerar mês completo
-        if (daysInPeriod >= 28) {
-          amount = rentValue;
-          installmentNumber++;
-          installment = installmentNumber;
-          description = `${installmentNumber}/${totalContractMonths}`;
-          console.log(`📌 Última parcela (mês completo): ${daysInPeriod} dias = "${description}"`);
-        } else {
-          amount = (rentValue / 30) * daysInPeriod;
-          installment = null;
-          description = "Parcela Proporcional Final";
-          console.log(`📌 Última parcela proporcional: ${daysInPeriod} dias = "Parcela Proporcional Final"`);
-        }
-        
-        console.log(`   💰 Valor: R$ ${amount.toFixed(2)}`);
-        
-        // Finaliza o loop pois chegamos na última
-        payments.push({
-          rental_id: rental.id,
-          due_date: dueDate.toISOString().split('T')[0],
-          amount: Math.round(amount * 100) / 100,
-          status: 'pending',
-          installment: installment,
-          total_installments: totalContractMonths,
-          reference_month: (dueDate.getMonth() + 1).toString().padStart(2, '0'),
-          reference_year: dueDate.getFullYear().toString(),
-          description: description,
-          period_start: periodStart.toISOString().split('T')[0],
-          period_end: periodEnd.toISOString().split('T')[0],
-          days_in_period: daysInPeriod
+      ];
+
+      if (garageValue > 0) {
+        lastPaymentBreakdown.push({
+          description: `Garagem Proporcional (${lastPaymentDaysToCharge} dias)`,
+          amount: parseFloat(lastProportionalGarage.toFixed(2)),
+          type: "addition",
         });
-        break; // ÚLTIMA PARCELA!
-        
-      } else {
-        // PARCELA INTERMEDIÁRIA (mês completo)
-        // Para parcelas intermediárias, o período é sempre do dia seguinte do último vencimento até este vencimento
-        const lastDueDate = new Date(dueDate);
-        lastDueDate.setMonth(lastDueDate.getMonth() - 1);
-        
-        periodStart = new Date(lastDueDate);
-        periodEnd = new Date(dueDate);
-        periodEnd.setDate(periodEnd.getDate() - 1);
-        
-        daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        amount = rentValue;
-        
-        // Só incrementa se não tiver estourado o total de parcelas
-        if (installmentNumber < totalContractMonths) {
-          installmentNumber++;
-          installment = installmentNumber;
-          description = `${installmentNumber}/${totalContractMonths}`;
-        } else {
-          // Se já passou do total (não deveria acontecer se as datas de início e fim estiverem corretas)
-          installment = null;
-          description = "Parcela Extra";
-        }
-        
-        console.log(`📌 Parcela ${description}: mês completo = R$ ${amount.toFixed(2)}`);
       }
-    }
-    
-    // Evitar criar pagamentos com vencimento antes do início do contrato (pode acontecer com alguns setups de dias)
-    if (dueDate >= new Date(startDate.getFullYear(), startDate.getMonth(), 1)) {
-      // Adicionar pagamento
+
       payments.push({
         rental_id: rental.id,
-        due_date: dueDate.toISOString().split('T')[0],
-        amount: Math.round(amount * 100) / 100,
-        status: 'pending',
-        installment: installment,
-        total_installments: totalContractMonths,
-        reference_month: (dueDate.getMonth() + 1).toString().padStart(2, '0'),
-        reference_year: dueDate.getFullYear().toString(),
-        description: description,
-        period_start: periodStart.toISOString().split('T')[0],
-        period_end: periodEnd.toISOString().split('T')[0],
-        days_in_period: daysInPeriod
+        reference_month: String(currentMonth).padStart(2, '0'),
+        reference_year: String(currentYear),
+        due_date: dueDate,
+        expected_amount: parseFloat(lastPaymentAmount.toFixed(2)),
+        status: "pending",
+        breakdown: lastPaymentBreakdown,
+        installment: installmentNumber,
+        period_start: lastPaymentStartDate.toISOString().split('T')[0],
+        period_end: lastPaymentEndDate.toISOString().split('T')[0],
+        days_charged: lastPaymentDaysToCharge
       });
-    }
-    
-    // AVANÇAR PARA O PRÓXIMO MÊS
-    monthOffset++;
-    
-    // Trava de segurança para loop infinito
-    if (monthOffset > 120) { // Máximo de 10 anos
-      console.log(`⚠️ ALERTA: Loop interrompido forçadamente em 120 meses`);
-      break;
+
+      console.log(`📝 Último recebimento: ${installmentNumber}/XX - ${dueDate} - R$ ${lastPaymentAmount.toFixed(2)} (${lastPaymentDaysToCharge} dias)`);
+      
+      break; // Saímos do loop pois criamos o último
+    } else {
+      // **RECEBIMENTO INTERMEDIÁRIO (valor integral)**
+      const totalMonthlyValue = rentValue + garageValue;
+
+      installmentNumber++;
+
+      const breakdown: Array<{ description: string; amount: number; type: string }> = [
+        {
+          description: "Aluguel",
+          amount: parseFloat(rentValue.toFixed(2)),
+          type: "addition",
+        }
+      ];
+
+      if (garageValue > 0) {
+        breakdown.push({
+          description: "Garagem",
+          amount: parseFloat(garageValue.toFixed(2)),
+          type: "addition",
+        });
+      }
+
+      payments.push({
+        rental_id: rental.id,
+        reference_month: String(currentMonth).padStart(2, '0'),
+        reference_year: String(currentYear),
+        due_date: dueDate,
+        expected_amount: parseFloat(totalMonthlyValue.toFixed(2)),
+        status: "pending",
+        breakdown: breakdown,
+        installment: installmentNumber,
+        period_start: null,
+        period_end: null,
+        days_charged: 30
+      });
+
+      console.log(`📝 Recebimento ${installmentNumber}/XX - ${dueDate} - R$ ${totalMonthlyValue.toFixed(2)} (mês completo)`);
     }
   }
+
+  // **ETAPA 4: Adicionar total_installments a todos os recebimentos**
+  const totalInstallments = payments.length;
   
-  console.log(`✅ Total de ${payments.length} recebimentos gerados`);
-  console.log(`✅ Parcelas numeradas: ${installmentNumber}/${totalContractMonths}`);
-  
+  payments.forEach(payment => {
+    payment.total_installments = totalInstallments;
+  });
+
+  console.log(`✅ Total de recebimentos gerados: ${totalInstallments}`);
+  console.log(`✅ Numeração: 1/${totalInstallments} até ${totalInstallments}/${totalInstallments}`);
+
   return payments;
 }
 
@@ -263,78 +266,32 @@ export default function FixPaymentsPage() {
       console.log("🚀   INICIANDO CORREÇÃO DE RECEBIMENTOS");
       console.log("🚀 ============================================\n");
 
-      // Fetch rentals
+      // Fetch all active and ended rentals
       const { data: rentals, error: rentalsError } = await supabase
         .from("rentals")
         .select("*")
-        .eq("status", "active");
+        .in("status", ["active", "ended"]);
 
       if (rentalsError) throw rentalsError;
 
-      console.log(`📋 Total de locações ativas: ${rentals.length}\n`);
-
-      // 🔍 DIAGNÓSTICO: Verificar quais locações deveriam ter recebimento em março/2026
-      console.log("\n🔍 ============================================");
-      console.log("🔍   DIAGNÓSTICO DE MARÇO/2026");
-      console.log("🔍 ============================================\n");
-
-      const marchStart = new Date('2026-03-01');
-      const marchEnd = new Date('2026-03-31');
-      
-      const rentalsShouldHaveMarch = rentals.filter(r => {
-        const start = new Date(r.start_date);
-        const end = new Date(r.end_date);
-        return start <= marchEnd && end >= marchStart;
-      });
-
-      console.log(`📊 Locações que DEVERIAM ter recebimento em março/2026: ${rentalsShouldHaveMarch.length}`);
-
-      // Verificar quais TÊM recebimento em março
-      const { data: marchPayments } = await supabase
-        .from('payments')
-        .select('rental_id, due_date, notes, expected_amount')
-        .gte('due_date', '2026-03-01')
-        .lte('due_date', '2026-03-31');
-
-      const rentalsWithMarchPayment = new Set(marchPayments?.map(p => p.rental_id) || []);
-      
-      console.log(`✅ Locações que JÁ TÊM recebimento em março: ${rentalsWithMarchPayment.size}`);
-      console.log(`❌ Locações FALTANDO recebimento em março: ${rentalsShouldHaveMarch.length - rentalsWithMarchPayment.size}\n`);
-
-      // Listar as locações que faltam
-      const missingMarch = rentalsShouldHaveMarch.filter(r => !rentalsWithMarchPayment.has(r.id));
-      
-      if (missingMarch.length > 0) {
-        console.log("🚨 LOCAÇÕES SEM RECEBIMENTO EM MARÇO:");
-        for (const rental of missingMarch.slice(0, 10)) { // Mostrar primeiras 10
-          const { data: property } = await supabase
-            .from('properties')
-            .select('property_identifier')
-            .eq('id', rental.property_id)
-            .single();
-          
-          console.log(`   ❌ ${property?.property_identifier || rental.property_id.substring(0, 8)} | ${rental.start_date} a ${rental.end_date}`);
-        }
-        if (missingMarch.length > 10) {
-          console.log(`   ... e mais ${missingMarch.length - 10} locações\n`);
-        }
-      }
+      console.log(`📋 Total de locações ativas/finalizadas: ${rentals.length}\n`);
 
       const summary = {
         totalRentals: rentals.length,
         totalFixed: 0,
         paymentsCreated: 0,
         paymentsUpdated: 0,
-        paymentsDeleted: 0
+        paymentsDeleted: 0,
+        paidPaymentsRenumbered: 0
       };
 
-      const details: Array<{ rentalInfo: string; changes: string[] }> = [];
+      const details: Array<{ rentalInfo: string; changes: string[]; paidPaymentsChanges: string[] }> = [];
 
       for (let i = 0; i < rentals.length; i++) {
         const rental = rentals[i];
         setProgress(((i + 1) / rentals.length) * 100);
         
-        // Fetch property and tenant data separately
+        // Fetch property and tenant data
         const { data: property } = await supabase
           .from("properties")
           .select("property_identifier")
@@ -347,7 +304,7 @@ export default function FixPaymentsPage() {
           .eq("id", rental.tenant_id)
           .single();
         
-        const propertyName = property?.property_identifier ? `Imóvel: ${property.property_identifier}` : `Imóvel ID: ${rental.property_id.substring(0, 8)}`;
+        const propertyName = property?.property_identifier || `Imóvel ID: ${rental.property_id.substring(0, 8)}`;
         const tenantName = tenant?.name || 'Inquilino';
         
         setCurrentRental(`${propertyName} - ${tenantName}`);
@@ -355,39 +312,18 @@ export default function FixPaymentsPage() {
         console.log(`\n🏠 ============================================`);
         console.log(`🏠 PROCESSANDO LOCAÇÃO ${i + 1}/${rentals.length}`);
         console.log(`🏠 ${propertyName} - ${tenantName}`);
-        console.log(`🏠 Período: ${rental.start_date} a ${rental.end_date}`);
-        console.log(`🏠 Dia vencimento: ${rental.rent_due_day}`);
         console.log(`🏠 ============================================`);
 
         const rentalChanges: string[] = [];
+        const paidPaymentsChanges: string[] = [];
 
-        // Validate rental dates before processing
-        if (!rental.start_date || !rental.end_date) {
-          rentalChanges.push(`⚠️ ERRO: Datas do contrato inválidas (start_date ou end_date ausentes)`);
+        // Validate rental data
+        if (!rental.start_date || !rental.end_date || !rental.rent_due_day) {
+          rentalChanges.push(`⚠️ ERRO: Dados do contrato inválidos`);
           details.push({
             rentalInfo: `${propertyName} - ${tenantName}`,
-            changes: rentalChanges
-          });
-          continue;
-        }
-
-        const testStartDate = new Date(rental.start_date);
-        const testEndDate = new Date(rental.end_date);
-        
-        if (isNaN(testStartDate.getTime()) || isNaN(testEndDate.getTime())) {
-          rentalChanges.push(`⚠️ ERRO: Datas do contrato inválidas (formato incorreto)`);
-          details.push({
-            rentalInfo: `${propertyName} - ${tenantName}`,
-            changes: rentalChanges
-          });
-          continue;
-        }
-
-        if (!rental.rent_due_day || rental.rent_due_day < 1 || rental.rent_due_day > 31) {
-          rentalChanges.push(`⚠️ ERRO: Dia de vencimento inválido (${rental.rent_due_day})`);
-          details.push({
-            rentalInfo: `${propertyName} - ${tenantName}`,
-            changes: rentalChanges
+            changes: rentalChanges,
+            paidPaymentsChanges: []
           });
           continue;
         }
@@ -403,144 +339,157 @@ export default function FixPaymentsPage() {
         
         console.log(`📋 Recebimentos existentes: ${existingPayments.length}`);
 
+        // Generate expected payments
         const expectedPayments = generateExpectedPayments(rental);
 
-        // ⚠️ DELEÇÃO ULTRA-CONSERVADORA: Só remove DUPLICATAS CONFIRMADAS
-        // Agrupar recebimentos existentes por data de vencimento
-        const paymentsByDueDate = new Map<string, typeof existingPayments>();
-        for (const payment of existingPayments) {
-          const existing = paymentsByDueDate.get(payment.due_date) || [];
-          existing.push(payment);
-          paymentsByDueDate.set(payment.due_date, existing);
-        }
+        console.log(`\n📊 COMPARAÇÃO:`);
+        console.log(`   Existentes: ${existingPayments.length}`);
+        console.log(`   Esperados: ${expectedPayments.length}`);
 
-        // Deletar apenas se houver 2+ recebimentos na MESMA data (duplicata real)
-        for (const [dueDate, payments] of paymentsByDueDate) {
-          if (payments.length > 1) {
-            // Há duplicata nesta data - manter apenas o primeiro/mais antigo
-            const toKeep = payments[0];
-            const toDelete = payments.slice(1);
-            
-            for (const duplicate of toDelete) {
-              if (duplicate.status !== 'paid') {
-                console.log(`🗑️ DELETANDO DUPLICATA: ${dueDate} (ID: ${duplicate.id})`);
-                
-                await supabase
-                  .from("payments")
-                  .delete()
-                  .eq("id", duplicate.id);
-                
-                summary.paymentsDeleted++;
-                rentalChanges.push(`🗑️ Removida DUPLICATA - Vencimento: ${dueDate} (mantido ID: ${toKeep.id})`);
-              } else {
-                console.log(`⚠️ DUPLICATA PAGA (não deletando): ${dueDate} (ID: ${duplicate.id})`);
-              }
+        // Separate paid and pending payments
+        const paidPayments = existingPayments.filter(p => p.status === 'paid');
+        const pendingPayments = existingPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
+
+        console.log(`   Pagos: ${paidPayments.length}`);
+        console.log(`   Pendentes: ${pendingPayments.length}`);
+
+        // **PROCESSO 1: Atualizar numeração de recebimentos PAGOS**
+        console.log(`\n💰 ATUALIZANDO NUMERAÇÃO DE RECEBIMENTOS PAGOS...`);
+        
+        for (const paidPayment of paidPayments) {
+          // Encontrar o recebimento esperado correspondente (mesmo mês/ano)
+          const expectedMatch = expectedPayments.find(exp => 
+            exp.reference_month === String(paidPayment.reference_month).padStart(2, '0') &&
+            exp.reference_year === String(paidPayment.reference_year)
+          );
+
+          if (expectedMatch) {
+            const needsUpdate = 
+              paidPayment.installment !== expectedMatch.installment ||
+              paidPayment.total_installments !== expectedMatch.total_installments;
+
+            if (needsUpdate) {
+              console.log(`   🔢 Atualizando: ${paidPayment.due_date}`);
+              console.log(`      Parcela: ${paidPayment.installment || 'null'}/${paidPayment.total_installments || 'null'} → ${expectedMatch.installment}/${expectedMatch.total_installments}`);
+              
+              await supabase
+                .from("payments")
+                .update({
+                  installment: expectedMatch.installment,
+                  total_installments: expectedMatch.total_installments
+                })
+                .eq("id", paidPayment.id);
+
+              summary.paidPaymentsRenumbered++;
+              paidPaymentsChanges.push(
+                `🔢 Recebimento PAGO atualizado: ${paidPayment.due_date} - Parcela ${paidPayment.installment || 'null'}/${paidPayment.total_installments || 'null'} → ${expectedMatch.installment}/${expectedMatch.total_installments}`
+              );
             }
+          } else {
+            console.log(`   ⚠️ Recebimento pago sem correspondência: ${paidPayment.due_date} (${paidPayment.reference_month}/${paidPayment.reference_year})`);
+            paidPaymentsChanges.push(
+              `⚠️ Recebimento PAGO sem correspondência nos esperados: ${paidPayment.due_date} - Mantido sem alterações`
+            );
           }
         }
 
-        console.log(`✅ Após remoção de duplicatas, recebimentos: ${existingPayments.length - summary.paymentsDeleted}`);
+        // **PROCESSO 2: Gerenciar recebimentos PENDENTES**
+        console.log(`\n📝 GERENCIANDO RECEBIMENTOS PENDENTES...`);
 
-        // Criar ou atualizar recebimentos esperados
-        for (const expected of expectedPayments) {
-          const existing = existingPayments.find(p => p.due_date === expected.due_date);
+        // Criar um map de recebimentos esperados por mês/ano
+        const expectedMap = new Map<string, typeof expectedPayments[0]>();
+        expectedPayments.forEach(exp => {
+          const key = `${exp.reference_year}-${exp.reference_month}`;
+          expectedMap.set(key, exp);
+        });
 
-          if (!existing) {
-            // ➕ Criar novo recebimento (FALTANTE)
-            console.log(`➕ CRIANDO RECEBIMENTO FALTANTE:`);
-            console.log(`   Vencimento: ${expected.due_date}`);
-            console.log(`   Descrição: ${expected.description}`);
-            console.log(`   Valor: R$ ${expected.amount.toFixed(2)}`);
+        // Criar um map de recebimentos pendentes existentes por mês/ano
+        const pendingMap = new Map<string, typeof pendingPayments[0]>();
+        pendingPayments.forEach(pend => {
+          const key = `${pend.reference_year}-${String(pend.reference_month).padStart(2, '0')}`;
+          pendingMap.set(key, pend);
+        });
+
+        // **2A: Criar recebimentos faltantes**
+        for (const [key, expected] of expectedMap) {
+          // Verificar se já existe (pago ou pendente)
+          const existsPaid = paidPayments.some(p => 
+            `${p.reference_year}-${String(p.reference_month).padStart(2, '0')}` === key
+          );
+          const existsPending = pendingMap.has(key);
+
+          if (!existsPaid && !existsPending) {
+            console.log(`   ➕ Criando faltante: ${expected.due_date} - Parcela ${expected.installment}/${expected.total_installments}`);
             
             await supabase
               .from("payments")
               .insert({
                 rental_id: rental.id,
-                expected_amount: expected.amount,
+                expected_amount: expected.expected_amount,
                 due_date: expected.due_date,
                 installment: expected.installment,
                 total_installments: expected.total_installments,
                 reference_month: expected.reference_month,
                 reference_year: expected.reference_year,
                 status: "pending",
-                notes: expected.description
+                breakdown: expected.breakdown
               });
 
             summary.paymentsCreated++;
-            rentalChanges.push(`➕ Criada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
-            rentalChanges.push(`   📅 Período: ${expected.period_start} a ${expected.period_end} (${expected.days_in_period} dias)`);
-            rentalChanges.push(`   💰 Valor: R$ ${expected.amount.toFixed(2)}`);
-            
-          } else if (existing.status !== 'paid') {
-            // 🔄 Atualizar recebimento PENDENTE (se necessário)
+            rentalChanges.push(`➕ Recebimento criado: ${expected.due_date} - Parcela ${expected.installment}/${expected.total_installments} - R$ ${expected.expected_amount.toFixed(2)}`);
+          }
+        }
+
+        // **2B: Atualizar recebimentos pendentes existentes**
+        for (const [key, pending] of pendingMap) {
+          const expected = expectedMap.get(key);
+
+          if (expected) {
+            // Existe correspondência - atualizar se necessário
             const needsUpdate = 
-              existing.installment !== expected.installment ||
-              existing.notes !== expected.description ||
-              existing.total_installments !== expected.total_installments ||
-              Math.abs(existing.expected_amount - expected.amount) > 0.01;
+              pending.installment !== expected.installment ||
+              pending.total_installments !== expected.total_installments ||
+              Math.abs(pending.expected_amount - expected.expected_amount) > 0.01;
 
             if (needsUpdate) {
-              console.log(`🔄 ATUALIZANDO RECEBIMENTO PENDENTE:`);
-              console.log(`   Vencimento: ${expected.due_date}`);
-              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
-              console.log(`   Valor esperado: R$ ${existing.expected_amount.toFixed(2)} → R$ ${expected.amount.toFixed(2)}`);
+              console.log(`   🔄 Atualizando pendente: ${pending.due_date}`);
+              console.log(`      Parcela: ${pending.installment}/${pending.total_installments} → ${expected.installment}/${expected.total_installments}`);
+              console.log(`      Valor: R$ ${pending.expected_amount.toFixed(2)} → R$ ${expected.expected_amount.toFixed(2)}`);
               
               await supabase
                 .from("payments")
                 .update({
                   installment: expected.installment,
                   total_installments: expected.total_installments,
-                  notes: expected.description,
-                  expected_amount: expected.amount
+                  expected_amount: expected.expected_amount,
+                  breakdown: expected.breakdown,
+                  due_date: expected.due_date
                 })
-                .eq("id", existing.id);
-              
+                .eq("id", pending.id);
+
               summary.paymentsUpdated++;
-              rentalChanges.push(`🔄 Atualizada parcela ${expected.description} - Vencimento: ${expected.due_date}`);
-              rentalChanges.push(`   📅 Período: ${expected.period_start} a ${expected.period_end} (${expected.days_in_period} dias)`);
-              rentalChanges.push(`   💰 Valor esperado: R$ ${expected.amount.toFixed(2)}`);
+              rentalChanges.push(`🔄 Recebimento atualizado: ${expected.due_date} - Parcela ${expected.installment}/${expected.total_installments} - R$ ${expected.expected_amount.toFixed(2)}`);
             }
-            
           } else {
-            // 🔢 Recebimento PAGO - atualizar apenas numeração se necessário
-            const needsNumberUpdate = 
-              existing.installment !== expected.installment ||
-              existing.notes !== expected.description ||
-              existing.total_installments !== expected.total_installments;
+            // Não existe correspondência - deletar (recebimento incorreto)
+            console.log(`   🗑️ Deletando incorreto: ${pending.due_date} (${key})`);
+            
+            await supabase
+              .from("payments")
+              .delete()
+              .eq("id", pending.id);
 
-            const needsExpectedAmountFix = Math.abs(existing.expected_amount - expected.amount) > 0.01;
-
-            if (needsNumberUpdate || needsExpectedAmountFix) {
-              console.log(`🔢 AJUSTANDO RECEBIMENTO PAGO:`);
-              console.log(`   Vencimento: ${expected.due_date}`);
-              console.log(`   Parcela: ${existing.installment || 'null'} → ${expected.installment || 'Proporcional'}`);
-              console.log(`   Expected amount: R$ ${existing.expected_amount.toFixed(2)} → R$ ${expected.amount.toFixed(2)}`);
-              console.log(`   ✅ Mantendo paid_amount: R$ ${existing.paid_amount?.toFixed(2) || existing.expected_amount.toFixed(2)}`);
-              
-              await supabase
-                .from('payments')
-                .update({
-                  installment: expected.installment,
-                  total_installments: expected.total_installments,
-                  notes: expected.description,
-                  expected_amount: expected.amount
-                })
-                .eq('id', existing.id);
-
-              summary.paymentsUpdated++;
-              rentalChanges.push(`🔢 Ajustada parcela PAGA para ${expected.description}`);
-              rentalChanges.push(`   📅 Período: ${expected.period_start} a ${expected.period_end} (${expected.days_in_period} dias)`);
-              rentalChanges.push(`   💰 Valor esperado corrigido: R$ ${expected.amount.toFixed(2)}`);
-              rentalChanges.push(`   💰 Valor pago preservado: R$ ${existing.paid_amount?.toFixed(2) || existing.expected_amount.toFixed(2)}`);
-            }
+            summary.paymentsDeleted++;
+            rentalChanges.push(`🗑️ Recebimento deletado (incorreto): ${pending.due_date}`);
           }
         }
 
-        if (rentalChanges.length > 0) {
+        if (rentalChanges.length > 0 || paidPaymentsChanges.length > 0) {
           summary.totalFixed++;
           details.push({
             rentalInfo: `${propertyName} - ${tenantName}`,
-            changes: rentalChanges
+            changes: rentalChanges,
+            paidPaymentsChanges: paidPaymentsChanges
           });
         }
       }
@@ -551,11 +500,34 @@ export default function FixPaymentsPage() {
         details
       });
 
+      console.log("\n✅ ============================================");
+      console.log("✅   CORREÇÃO CONCLUÍDA COM SUCESSO");
+      console.log("✅ ============================================\n");
+      console.log(`📊 Resumo:`);
+      console.log(`   Total de locações: ${summary.totalRentals}`);
+      console.log(`   Locações corrigidas: ${summary.totalFixed}`);
+      console.log(`   Recebimentos criados: ${summary.paymentsCreated}`);
+      console.log(`   Recebimentos atualizados: ${summary.paymentsUpdated}`);
+      console.log(`   Recebimentos deletados: ${summary.paymentsDeleted}`);
+      console.log(`   Recebimentos pagos renumerados: ${summary.paidPaymentsRenumbered}`);
+
     } catch (error: any) {
+      console.error("❌ ERRO:", error);
       setResult({
         success: false,
-        summary: { totalRentals: 0, totalFixed: 0, paymentsCreated: 0, paymentsUpdated: 0, paymentsDeleted: 0 },
-        details: [{ rentalInfo: 'Erro', changes: [error.message] }]
+        summary: { 
+          totalRentals: 0, 
+          totalFixed: 0, 
+          paymentsCreated: 0, 
+          paymentsUpdated: 0, 
+          paymentsDeleted: 0,
+          paidPaymentsRenumbered: 0
+        },
+        details: [{ 
+          rentalInfo: 'Erro', 
+          changes: [error.message],
+          paidPaymentsChanges: []
+        }]
       });
     } finally {
       setIsRunning(false);
@@ -567,9 +539,9 @@ export default function FixPaymentsPage() {
     <div className="container mx-auto p-8 max-w-6xl">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl">Correção de Recebimentos</CardTitle>
+          <CardTitle className="text-3xl">Correção Completa de Recebimentos</CardTitle>
           <CardDescription>
-            Sistema automático de correção e validação de recebimentos de todas as locações
+            Sistema automático de correção aplicando as novas regras para todas as locações
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -578,14 +550,15 @@ export default function FixPaymentsPage() {
             <AlertDescription>
               <strong>Regras aplicadas:</strong>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>✅ Total de parcelas NUMERADAS = meses do contrato (12, 24, 30...)</li>
-                <li>✅ Primeira parcela &lt;15 dias = "Parcela Proporcional" (NÃO conta na numeração)</li>
-                <li>✅ Primeira parcela ≥15 dias = "1/XX" (conta na numeração)</li>
-                <li>✅ Parcelas intermediárias sempre numeradas sequencialmente</li>
-                <li>✅ Última parcela proporcional quando necessário</li>
-                <li>✅ Recebimentos pagos: preserva valores, status e anexos (só ajusta numeração)</li>
-                <li>✅ Valores proporcionais: (valor_mensal / 30) × dias</li>
-                <li>✅ Remove recebimentos extras indevidos</li>
+                <li>✅ Primeiro recebimento: se dia_inicio ≤ dia_vencimento → mesmo mês (proporcional)</li>
+                <li>✅ Primeiro recebimento: se dia_inicio &gt; dia_vencimento → mês seguinte (proporcional ~30 dias)</li>
+                <li>✅ Primeiro recebimento SEMPRE é parcela 1/XX</li>
+                <li>✅ Recebimentos intermediários: valor integral, 1 por mês</li>
+                <li>✅ Último recebimento: proporcional aos dias do último mês</li>
+                <li>✅ Total de parcelas = total de recebimentos criados</li>
+                <li>✅ Não pula meses, não duplica meses</li>
+                <li>🔒 Recebimentos PAGOS: apenas atualiza numeração (installment/total_installments)</li>
+                <li>🔄 Recebimentos PENDENTES: atualiza valores, cria faltantes, deleta incorretos</li>
               </ul>
             </AlertDescription>
           </Alert>
@@ -625,11 +598,12 @@ export default function FixPaymentsPage() {
                     {result.success ? "✅ Correção Concluída com Sucesso!" : "❌ Erro na Correção"}
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>📋 Total de locações analisadas: <strong>{result.summary.totalRentals}</strong></div>
-                    <div>✅ Total de locações corrigidas: <strong>{result.summary.totalFixed}</strong></div>
-                    <div>➕ Total de parcelas criadas: <strong>{result.summary.paymentsCreated}</strong></div>
-                    <div>🔄 Total de parcelas atualizadas: <strong>{result.summary.paymentsUpdated}</strong></div>
-                    <div>🗑️ Total de parcelas removidas: <strong>{result.summary.paymentsDeleted}</strong></div>
+                    <div>📋 Total de locações: <strong>{result.summary.totalRentals}</strong></div>
+                    <div>✅ Locações corrigidas: <strong>{result.summary.totalFixed}</strong></div>
+                    <div>➕ Recebimentos criados: <strong>{result.summary.paymentsCreated}</strong></div>
+                    <div>🔄 Recebimentos atualizados: <strong>{result.summary.paymentsUpdated}</strong></div>
+                    <div>🗑️ Recebimentos deletados: <strong>{result.summary.paymentsDeleted}</strong></div>
+                    <div>🔢 Recebimentos pagos renumerados: <strong>{result.summary.paidPaymentsRenumbered}</strong></div>
                   </div>
                 </AlertDescription>
               </Alert>
@@ -643,12 +617,27 @@ export default function FixPaymentsPage() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-base">{detail.rentalInfo}</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                          <ul className="space-y-1 text-sm">
-                            {detail.changes.map((change, i) => (
-                              <li key={i} className={change.startsWith('   ') ? 'ml-4 text-muted-foreground' : ''}>{change}</li>
-                            ))}
-                          </ul>
+                        <CardContent className="space-y-4">
+                          {detail.paidPaymentsChanges.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm mb-2">💰 Recebimentos Pagos (apenas numeração):</h4>
+                              <ul className="space-y-1 text-sm">
+                                {detail.paidPaymentsChanges.map((change, i) => (
+                                  <li key={i} className="text-blue-600">{change}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {detail.changes.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm mb-2">🔄 Recebimentos Pendentes:</h4>
+                              <ul className="space-y-1 text-sm">
+                                {detail.changes.map((change, i) => (
+                                  <li key={i}>{change}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
