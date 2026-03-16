@@ -786,6 +786,152 @@ export async function fixSpecificRentalPayments(rentalId: string): Promise<boole
 }
 
 /**
+ * Corrige uma locação específica deletando todos os PENDING e recriando do zero
+ * Mantém apenas os recebimentos PAID intactos
+ */
+export async function fixSpecificRentalByRecalculation(rentalId: string): Promise<{
+  success: boolean;
+  message: string;
+  details: {
+    deletedPending: number;
+    createdNew: number;
+    keptPaid: number;
+  };
+}> {
+  try {
+    console.log(`🔧 Iniciando correção total da locação ${rentalId}`);
+
+    // 1. Buscar dados do contrato
+    const { data: rental, error: rentalError } = await supabase
+      .from("rentals")
+      .select(`
+        id,
+        start_date,
+        end_date,
+        rent_value,
+        rent_due_day,
+        has_garage,
+        garage_value,
+        properties(property_identifier)
+      `)
+      .eq("id", rentalId)
+      .single();
+
+    if (rentalError || !rental) {
+      throw new Error(`Erro ao buscar locação: ${rentalError?.message}`);
+    }
+
+    console.log(`📋 Locação encontrada:`, {
+      property: rental.properties?.property_identifier,
+      period: `${rental.start_date} até ${rental.end_date}`,
+      dueDay: rental.rent_due_day
+    });
+
+    // 2. Buscar recebimentos existentes
+    const { data: existingPayments } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("rental_id", rentalId);
+
+    const paidPayments = (existingPayments || []).filter(p => p.status === 'paid');
+    const pendingPayments = (existingPayments || []).filter(p => p.status === 'pending');
+
+    console.log(`📊 Recebimentos existentes:`, {
+      total: existingPayments?.length || 0,
+      paid: paidPayments.length,
+      pending: pendingPayments.length
+    });
+
+    // 3. Deletar todos os PENDING
+    if (pendingPayments.length > 0) {
+      const pendingIds = pendingPayments.map(p => p.id);
+      const { error: deleteError } = await supabase
+        .from("payments")
+        .delete()
+        .in("id", pendingIds);
+
+      if (deleteError) throw deleteError;
+      console.log(`🗑️ Deletados ${pendingPayments.length} recebimentos PENDING`);
+    }
+
+    // 4. Gerar novos recebimentos corretos
+    const expectedPayments = generateExpectedPayments({
+      rentalId: rental.id,
+      startDate: rental.start_date,
+      endDate: rental.end_date,
+      monthlyRent: rental.rent_value || 0,
+      paymentDay: rental.rent_due_day || 5,
+      hasGarage: rental.has_garage || false,
+      garageValue: rental.garage_value || 0,
+    });
+
+    console.log(`📝 Recebimentos esperados: ${expectedPayments.length}`);
+
+    // 5. Filtrar apenas os que NÃO conflitam com PAID existentes
+    const paidRefs = new Set(
+      paidPayments.map(p => `${p.reference_year}-${p.reference_month}`)
+    );
+
+    const paymentsToCreate = expectedPayments.filter(
+      exp => !paidRefs.has(`${exp.reference_year}-${exp.reference_month}`)
+    );
+
+    console.log(`➕ Recebimentos a criar: ${paymentsToCreate.length}`);
+
+    // 6. Inserir novos recebimentos
+    if (paymentsToCreate.length > 0) {
+      const { error: insertError } = await supabase
+        .from("payments")
+        .insert(paymentsToCreate);
+
+      if (insertError) throw insertError;
+    }
+
+    // 7. Atualizar numeração dos PAID para ficarem na sequência correta
+    for (const paid of paidPayments) {
+      const expectedForThisMonth = expectedPayments.find(
+        exp => exp.reference_month === Number(paid.reference_month) && 
+               exp.reference_year === Number(paid.reference_year)
+      );
+
+      if (expectedForThisMonth) {
+        await supabase
+          .from("payments")
+          .update({
+            installment: expectedForThisMonth.installment,
+            total_installments: expectedForThisMonth.total_installments
+          })
+          .eq("id", paid.id);
+      }
+    }
+
+    console.log(`✅ Correção concluída com sucesso!`);
+
+    return {
+      success: true,
+      message: `Locação corrigida com sucesso! ${paymentsToCreate.length} recebimentos criados, ${paidPayments.length} pagos mantidos.`,
+      details: {
+        deletedPending: pendingPayments.length,
+        createdNew: paymentsToCreate.length,
+        keptPaid: paidPayments.length
+      }
+    };
+
+  } catch (error: any) {
+    console.error("❌ Erro ao corrigir locação:", error);
+    return {
+      success: false,
+      message: `Erro: ${error.message}`,
+      details: {
+        deletedPending: 0,
+        createdNew: 0,
+        keptPaid: 0
+      }
+    };
+  }
+}
+
+/**
  * NOVA LÓGICA: Identifica e remove recebimentos duplicados baseado na análise do contrato
  * 
  * Para cada grupo de duplicatas:
