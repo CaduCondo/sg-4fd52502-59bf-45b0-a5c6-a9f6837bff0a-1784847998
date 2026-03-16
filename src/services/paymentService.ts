@@ -238,10 +238,24 @@ export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> 
   if (error) throw error;
 };
 
+/**
+ * NOVA LÓGICA DE GERAÇÃO DE RECEBIMENTOS
+ * 
+ * Regras:
+ * 1. Primeiro recebimento (sempre parcela 1/XX):
+ *    - Se dia_inicio <= dia_vencimento: criar no mesmo mês, proporcional
+ *    - Se dia_inicio > dia_vencimento: criar no mês seguinte, proporcional (~30 dias)
+ * 
+ * 2. Recebimentos intermediários: valor integral, 1 por mês
+ * 
+ * 3. Último recebimento: proporcional aos dias do último mês
+ * 
+ * 4. Não pular meses, não duplicar meses
+ */
 export function generateExpectedPayments(params: {
   rentalId: string;
-  startDate: string; // ISO string YYYY-MM-DD
-  endDate: string; // ISO string YYYY-MM-DD
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
   monthlyRent: number;
   paymentDay: number;
   hasGarage?: boolean;
@@ -249,181 +263,214 @@ export function generateExpectedPayments(params: {
 }) {
   const { rentalId, startDate, endDate, monthlyRent, paymentDay, hasGarage, garageValue } = params;
   
+  console.log("🔄 [generateExpectedPayments] Iniciando geração de recebimentos:", {
+    rentalId,
+    startDate,
+    endDate,
+    monthlyRent,
+    paymentDay,
+    hasGarage,
+    garageValue
+  });
+  
   const rentValue = monthlyRent;
   const garage = hasGarage && garageValue ? garageValue : 0;
   const totalMonthlyValue = rentValue + garage;
 
   const paymentsToCreate: any[] = [];
   
+  // Parse das datas
   const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
   const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
   
-  let currentMonth = sMonth;
-  let currentYear = sYear;
+  console.log("📅 Datas parseadas:", { sYear, sMonth, sDay, eYear, eMonth, eDay });
+
+  // **ETAPA 1: Determinar o primeiro mês de cobrança**
+  let firstPaymentMonth: number;
+  let firstPaymentYear: number;
+  let daysToChargeFirstPayment: number;
   
-  let installmentNumber = 0;
+  if (sDay <= paymentDay) {
+    // Primeiro recebimento no mesmo mês do início do contrato
+    firstPaymentMonth = sMonth;
+    firstPaymentYear = sYear;
+    daysToChargeFirstPayment = paymentDay - sDay + 1;
+    console.log("✅ Primeiro recebimento no MESMO mês:", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
+  } else {
+    // Primeiro recebimento no mês seguinte
+    firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
+    firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
+    
+    // Calcular dias: do dia_inicio até o final do mês + do início do próximo mês até o dia_vencimento
+    const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
+    const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1;
+    daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
+    
+    console.log("✅ Primeiro recebimento no PRÓXIMO mês:", { 
+      firstPaymentMonth, 
+      firstPaymentYear, 
+      daysToChargeFirstPayment,
+      daysUntilEndOfStartMonth,
+      daysInNextMonth: paymentDay
+    });
+  }
+
+  // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
+  const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
   
+  const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
+  const proportionalGarage = garage > 0 ? (garage / 30) * daysToChargeFirstPayment : 0;
+  const firstPaymentAmount = proportionalRent + proportionalGarage;
+
+  const firstPaymentBreakdown: Array<{ description: string; amount: number; type: string }> = [
+    {
+      description: `Aluguel - Parcela 1 (${daysToChargeFirstPayment} dias)`,
+      amount: parseFloat(proportionalRent.toFixed(2)),
+      type: "addition",
+    }
+  ];
+
+  if (garage > 0) {
+    firstPaymentBreakdown.push({
+      description: `Garagem Proporcional (${daysToChargeFirstPayment} dias)`,
+      amount: parseFloat(proportionalGarage.toFixed(2)),
+      type: "addition",
+    });
+  }
+
+  paymentsToCreate.push({
+    rental_id: rentalId,
+    reference_month: firstPaymentMonth,
+    reference_year: firstPaymentYear,
+    due_date: firstPaymentDueDate,
+    expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
+    status: "pending",
+    breakdown: firstPaymentBreakdown,
+    installment: 1,
+  });
+
+  console.log("📝 Primeiro recebimento criado:", paymentsToCreate[0]);
+
+  // **ETAPA 3: Criar recebimentos intermediários (valor integral)**
+  let currentMonth = firstPaymentMonth + 1;
+  let currentYear = firstPaymentYear;
+  
+  if (currentMonth > 12) {
+    currentMonth = 1;
+    currentYear++;
+  }
+
+  let installmentNumber = 2; // Começa da parcela 2
+
+  // Loop até o penúltimo mês (o último será tratado separadamente)
   while (
     currentYear < eYear || 
-    (currentYear === eYear && currentMonth <= eMonth)
+    (currentYear === eYear && currentMonth < eMonth)
   ) {
-    const refMonth = currentMonth;
-    const refYear = currentYear;
-
-    const daysInMonth = new Date(refYear, refMonth, 0).getDate();
-    let dueDateDay: number;
-    let expectedAmount: number;
-    const breakdown: Array<{ description: string; amount: number; type: string }> = [];
-
-    const isFirstMonthOfContract = (currentYear === sYear && currentMonth === sMonth);
-    const isLastMonthOfContract = (currentYear === eYear && currentMonth === eMonth);
-
-    if (isFirstMonthOfContract && sDay > 1) {
-      let daysToCharge: number;
-      
-      if (sDay <= paymentDay) {
-        dueDateDay = Math.min(paymentDay, daysInMonth);
-        daysToCharge = dueDateDay - sDay + 1;
-      } else {
-        const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-        const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
-        const daysInNextMonth = new Date(nextYear, nextMonth, 0).getDate();
-        dueDateDay = Math.min(paymentDay, daysInNextMonth);
-        daysToCharge = dueDateDay;
-      }
-      
-      const dueMonth = sDay <= paymentDay ? refMonth : (refMonth === 12 ? 1 : refMonth + 1);
-      const dueYear = sDay <= paymentDay ? refYear : (refMonth === 12 ? refYear + 1 : refYear);
-      
-      const dueDate = `${dueYear}-${String(dueMonth).padStart(2, '0')}-${String(dueDateDay).padStart(2, '0')}`;
-
-      const proportionalRent = (rentValue / 30) * daysToCharge;
-      const proportionalGarage = garage > 0 ? (garage / 30) * daysToCharge : 0;
-      expectedAmount = proportionalRent + proportionalGarage;
-
-      const isProrata = daysToCharge < 15;
-      
-      if (isProrata) {
-        installmentNumber = 0;
-        breakdown.push({
-          description: `Prorata (${daysToCharge} dias)`,
-          amount: parseFloat(proportionalRent.toFixed(2)),
-          type: "addition",
-        });
-        if (garage > 0) {
-          breakdown.push({
-            description: `Garagem Proporcional (${daysToCharge} dias)`,
-            amount: parseFloat(proportionalGarage.toFixed(2)),
-            type: "addition",
-          });
-        }
-      } else {
-        installmentNumber = 1;
-        breakdown.push({
-          description: `Aluguel Proporcional - 1ª Parcela (${daysToCharge} dias)`,
-          amount: parseFloat(proportionalRent.toFixed(2)),
-          type: "addition",
-        });
-        if (garage > 0) {
-          breakdown.push({
-            description: `Garagem Proporcional (${daysToCharge} dias)`,
-            amount: parseFloat(proportionalGarage.toFixed(2)),
-            type: "addition",
-          });
-        }
-      }
-      
-      paymentsToCreate.push({
-        rental_id: rentalId,
-        reference_month: refMonth,
-        reference_year: refYear,
-        due_date: dueDate,
-        expected_amount: parseFloat(expectedAmount.toFixed(2)),
-        status: "pending",
-        breakdown: breakdown,
-        installment: installmentNumber,
-      });
-      
-    } else if (isLastMonthOfContract && eDay < daysInMonth) {
-      dueDateDay = Math.min(paymentDay, daysInMonth);
-      const dueDate = `${refYear}-${String(refMonth).padStart(2, '0')}-${String(dueDateDay).padStart(2, '0')}`;
-      
-      const daysToCharge = eDay;
-      const proportionalRent = (rentValue / 30) * daysToCharge;
-      const proportionalGarage = garage > 0 ? (garage / 30) * daysToCharge : 0;
-      expectedAmount = proportionalRent + proportionalGarage;
-
-      installmentNumber++;
-      
-      breakdown.push({
-        description: `Aluguel Proporcional - Última Parcela (${daysToCharge} dias)`,
-        amount: parseFloat(proportionalRent.toFixed(2)),
-        type: "addition",
-      });
-
-      if (garage > 0) {
-        breakdown.push({
-          description: `Garagem Proporcional (${daysToCharge} dias)`,
-          amount: parseFloat(proportionalGarage.toFixed(2)),
-          type: "addition",
-        });
-      }
-      
-      paymentsToCreate.push({
-        rental_id: rentalId,
-        reference_month: refMonth,
-        reference_year: refYear,
-        due_date: dueDate,
-        expected_amount: parseFloat(expectedAmount.toFixed(2)),
-        status: "pending",
-        breakdown: breakdown,
-        installment: installmentNumber,
-      });
-      
-    } else {
-      dueDateDay = Math.min(paymentDay, daysInMonth);
-      const dueDate = `${refYear}-${String(refMonth).padStart(2, '0')}-${String(dueDateDay).padStart(2, '0')}`;
-      expectedAmount = totalMonthlyValue;
-
-      installmentNumber++;
-
-      breakdown.push({
+    const dueDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+    
+    const breakdown: Array<{ description: string; amount: number; type: string }> = [
+      {
         description: "Aluguel",
         amount: parseFloat(rentValue.toFixed(2)),
         type: "addition",
-      });
-
-      if (garage > 0) {
-        breakdown.push({
-          description: "Garagem",
-          amount: parseFloat(garage.toFixed(2)),
-          type: "addition",
-        });
       }
-      
-      paymentsToCreate.push({
-        rental_id: rentalId,
-        reference_month: refMonth,
-        reference_year: refYear,
-        due_date: dueDate,
-        expected_amount: parseFloat(expectedAmount.toFixed(2)),
-        status: "pending",
-        breakdown: breakdown,
-        installment: installmentNumber,
+    ];
+
+    if (garage > 0) {
+      breakdown.push({
+        description: "Garagem",
+        amount: parseFloat(garage.toFixed(2)),
+        type: "addition",
       });
     }
 
+    paymentsToCreate.push({
+      rental_id: rentalId,
+      reference_month: currentMonth,
+      reference_year: currentYear,
+      due_date: dueDate,
+      expected_amount: parseFloat(totalMonthlyValue.toFixed(2)),
+      status: "pending",
+      breakdown: breakdown,
+      installment: installmentNumber,
+    });
+
+    console.log(`📝 Recebimento intermediário criado - Parcela ${installmentNumber}:`, {
+      month: currentMonth,
+      year: currentYear,
+      amount: totalMonthlyValue
+    });
+
+    installmentNumber++;
     currentMonth++;
+    
     if (currentMonth > 12) {
       currentMonth = 1;
       currentYear++;
     }
   }
 
-  const totalInstallments = paymentsToCreate.filter(p => p.installment > 0).length;
+  // **ETAPA 4: Criar o último recebimento (proporcional)**
+  if (currentYear === eYear && currentMonth === eMonth) {
+    const daysToChargeLastPayment = eDay;
+    
+    const lastProportionalRent = (rentValue / 30) * daysToChargeLastPayment;
+    const lastProportionalGarage = garage > 0 ? (garage / 30) * daysToChargeLastPayment : 0;
+    const lastPaymentAmount = lastProportionalRent + lastProportionalGarage;
+
+    const lastDueDate = `${eYear}-${String(eMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+
+    const lastPaymentBreakdown: Array<{ description: string; amount: number; type: string }> = [
+      {
+        description: `Aluguel - Última Parcela (${daysToChargeLastPayment} dias)`,
+        amount: parseFloat(lastProportionalRent.toFixed(2)),
+        type: "addition",
+      }
+    ];
+
+    if (garage > 0) {
+      lastPaymentBreakdown.push({
+        description: `Garagem Proporcional (${daysToChargeLastPayment} dias)`,
+        amount: parseFloat(lastProportionalGarage.toFixed(2)),
+        type: "addition",
+      });
+    }
+
+    paymentsToCreate.push({
+      rental_id: rentalId,
+      reference_month: eMonth,
+      reference_year: eYear,
+      due_date: lastDueDate,
+      expected_amount: parseFloat(lastPaymentAmount.toFixed(2)),
+      status: "pending",
+      breakdown: lastPaymentBreakdown,
+      installment: installmentNumber,
+    });
+
+    console.log(`📝 Último recebimento criado - Parcela ${installmentNumber}:`, {
+      month: eMonth,
+      year: eYear,
+      days: daysToChargeLastPayment,
+      amount: lastPaymentAmount
+    });
+  }
+
+  // **ETAPA 5: Adicionar total_installments a todos os recebimentos**
+  const totalInstallments = paymentsToCreate.length;
   
   paymentsToCreate.forEach(payment => {
     payment.total_installments = totalInstallments;
+  });
+
+  console.log("✅ [generateExpectedPayments] Recebimentos gerados:", {
+    total: totalInstallments,
+    payments: paymentsToCreate.map(p => ({
+      month: p.reference_month,
+      year: p.reference_year,
+      installment: p.installment,
+      amount: p.expected_amount
+    }))
   });
 
   return paymentsToCreate;
