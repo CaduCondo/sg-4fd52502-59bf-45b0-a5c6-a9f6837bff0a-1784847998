@@ -74,6 +74,7 @@ export default function FixPaymentsPage() {
         duplicatesFound: 0,
         duplicatesRemoved: 0,
         details: [],
+        warnings: [],
         errors: [error instanceof Error ? error.message : "Erro desconhecido"],
       });
     } finally {
