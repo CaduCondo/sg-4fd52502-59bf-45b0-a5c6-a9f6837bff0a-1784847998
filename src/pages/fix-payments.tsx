@@ -3,17 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, CheckCircle, XCircle, Loader2, Trash2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/router";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   analyzeAllRentalsPayments,
   fixSpecificRentalPayments,
   findAndRemoveDuplicatePayments,
   fixSpecificRentalByRecalculation,
+  generateExpectedPayments
 } from "@/services/paymentService";
 
 interface FixReport {
