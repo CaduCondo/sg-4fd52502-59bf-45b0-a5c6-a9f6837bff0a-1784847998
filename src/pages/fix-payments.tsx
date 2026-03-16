@@ -5,9 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, CheckCircle, XCircle, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Loader2, Trash2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/router";
-import { findAndRemoveDuplicatePayments, generateExpectedPayments } from "@/services/paymentService";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
+import {
+  analyzeAllRentalsPayments,
+  fixSpecificRentalPayments,
+  findAndRemoveDuplicatePayments,
+  fixSpecificRentalByRecalculation,
+} from "@/services/paymentService";
 
 interface FixReport {
   success: boolean;
@@ -54,11 +61,23 @@ interface DuplicatesReport {
 export default function FixPaymentsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentRental, setCurrentRental] = useState("");
   const [report, setReport] = useState<FixReport | null>(null);
   const [duplicatesReport, setDuplicatesReport] = useState<DuplicatesReport | null>(null);
+  const [fixingSpecific, setFixingSpecific] = useState(false);
+  const [specificRentalId, setSpecificRentalId] = useState("");
+  const [specificFixResult, setSpecificFixResult] = useState<{
+    success: boolean;
+    message: string;
+    details: {
+      deletedPending: number;
+      createdNew: number;
+      keptPaid: number;
+    };
+  } | null>(null);
 
   const handleRemoveDuplicates = async () => {
     setRemovingDuplicates(true);
@@ -79,6 +98,51 @@ export default function FixPaymentsPage() {
       });
     } finally {
       setRemovingDuplicates(false);
+    }
+  };
+
+  const handleFixSpecificRental = async () => {
+    if (!specificRentalId.trim()) {
+      toast({
+        title: "Erro",
+        description: "Por favor, insira o ID da locação",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFixingSpecific(true);
+    setSpecificFixResult(null);
+
+    try {
+      const result = await fixSpecificRentalByRecalculation(specificRentalId.trim());
+      setSpecificFixResult(result);
+
+      if (result.success) {
+        toast({
+          title: "Sucesso!",
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao corrigir locação",
+        description: error.message,
+        variant: "destructive",
+      });
+      setSpecificFixResult({
+        success: false,
+        message: error.message,
+        details: { deletedPending: 0, createdNew: 0, keptPaid: 0 }
+      });
+    } finally {
+      setFixingSpecific(false);
     }
   };
 
@@ -498,6 +562,183 @@ export default function FixPaymentsPage() {
               )}
             </div>
 
+            <div className="border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">2. Corrigir Todos os Recebimentos</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Após remover duplicatas, execute a correção completa dos recebimentos
+                  </p>
+                </div>
+                <Button
+                  onClick={handleFixAllPayments}
+                  disabled={loading || removingDuplicates}
+                  size="lg"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Iniciar Correção"
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {loading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Processando: {currentRental}</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+                <Progress value={progress} />
+              </div>
+            )}
+
+            {report && (
+              <div className="space-y-6 mt-6">
+                <Alert className={report.success ? "border-green-500" : "border-red-500"}>
+                  {report.success ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  )}
+                  <AlertDescription>
+                    <div className="font-semibold mb-2">
+                      {report.success ? "✅ Correção Concluída com Sucesso!" : "❌ Erro na Correção"}
+                    </div>
+                    {report.errors.length > 0 && (
+                      <div className="mb-4 text-red-500 text-sm">
+                        {report.errors.map((e, i) => <div key={i}>{e}</div>)}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>📋 Total de locações: <strong>{report.summary.totalRentals}</strong></div>
+                      <div>✅ Locações corrigidas: <strong>{report.summary.totalFixed}</strong></div>
+                      <div>➕ Recebimentos criados: <strong>{report.summary.paymentsCreated}</strong></div>
+                      <div>🔄 Recebimentos atualizados: <strong>{report.summary.paymentsUpdated}</strong></div>
+                      <div>🗑️ Recebimentos deletados: <strong>{report.summary.paymentsDeleted}</strong></div>
+                      <div>🔢 Recebimentos pagos renumerados: <strong>{report.summary.paidPaymentsRenumbered}</strong></div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+
+                {report.details.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">📝 Detalhes por Locação</h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {report.details.map((detail, index) => (
+                        <Card key={index}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">{detail.rentalInfo}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {detail.paidPaymentsChanges.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-sm mb-2">💰 Recebimentos Pagos (apenas numeração):</h4>
+                                <ul className="space-y-1 text-sm">
+                                  {detail.paidPaymentsChanges.map((change, i) => (
+                                    <li key={i} className="text-blue-600">{change}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {detail.changes.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-sm mb-2">🔄 Recebimentos Pendentes:</h4>
+                                <ul className="space-y-1 text-sm">
+                                  {detail.changes.map((change, i) => (
+                                    <li key={i}>{change}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={() => router.push('/payments')} className="w-full">
+                  Ver Recebimentos Corrigidos
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Correção de Locação Específica */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Passo 2: Corrigir Locação Específica
+            </CardTitle>
+            <CardDescription>
+              Deleta todos os recebimentos PENDING e recria do zero. Mantém recebimentos PAID intactos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="ID da Locação (rental_id)"
+                value={specificRentalId}
+                onChange={(e) => setSpecificRentalId(e.target.value)}
+                disabled={fixingSpecific}
+              />
+              <Button
+                onClick={handleFixSpecificRental}
+                disabled={fixingSpecific || !specificRentalId.trim()}
+                className="min-w-[200px]"
+              >
+                {fixingSpecific ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Corrigindo...
+                  </>
+                ) : (
+                  "Corrigir Locação"
+                )}
+              </Button>
+            </div>
+
+            {specificFixResult && (
+              <Alert variant={specificFixResult.success ? "default" : "destructive"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>
+                  {specificFixResult.success ? "Correção Concluída!" : "Erro na Correção"}
+                </AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">{specificFixResult.message}</p>
+                  
+                  {specificFixResult.success && (
+                    <div className="mt-3 space-y-1 text-sm">
+                      <p>📊 <strong>Resumo:</strong></p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>🗑️ Recebimentos PENDING deletados: {specificFixResult.details.deletedPending}</li>
+                        <li>✅ Novos recebimentos criados: {specificFixResult.details.createdNew}</li>
+                        <li>💰 Recebimentos PAID mantidos: {specificFixResult.details.keptPaid}</li>
+                      </ul>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Correção Geral */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Passo 3: Corrigir Todos os Recebimentos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <div className="border-t pt-6">
               <div className="flex items-center justify-between">
                 <div>
