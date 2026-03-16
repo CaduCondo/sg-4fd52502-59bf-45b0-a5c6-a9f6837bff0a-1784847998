@@ -104,7 +104,7 @@ export default function PaymentsPage() {
   }, []);
 
   const getExpectedAmount = useCallback((payment: Payment) => {
-    return payment.expectedAmount;
+    return payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
   }, []);
 
   const getMonthName = useCallback((month: number) => {
