@@ -18,8 +18,8 @@ interface PaymentToUpdate {
   id: string;
   installment: number | null;
   total_installments: number | null;
-  reference_month: number;
-  reference_year: number;
+  reference_month: string;
+  reference_year: string;
   due_date: string;
   expected_amount: number;
   status: string;
@@ -293,8 +293,8 @@ export const rentalUpdateService = {
       // Atualizar due_date de todos os recebimentos pendentes
       for (const payment of pendingPayments) {
         const newDueDate = calculateDueDate(
-          payment.reference_month, 
-          payment.reference_year, 
+          Number(payment.reference_month), 
+          Number(payment.reference_year), 
           newChanges.paymentDay
         );
         
