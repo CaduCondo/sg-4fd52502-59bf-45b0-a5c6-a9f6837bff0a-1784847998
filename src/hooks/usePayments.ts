@@ -16,12 +16,12 @@ let paymentsCache: {
 } = {
   data: null,
   key: "",
-  timestamp: 0, // FORÇAR RELOAD: timestamp zerado
+  timestamp: 0,
 };
 
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
-// Invalidar cache - ATUALIZADO para funcionar melhor
+// Invalidar cache
 export const invalidatePaymentsCache = () => {
   paymentsCache = { data: null, key: "", timestamp: 0 };
   console.log("🗑️ [usePayments] Cache invalidado");
@@ -160,19 +160,6 @@ export function usePayments() {
         loadingRef.current = false;
         return;
       }
-
-      console.log("🔍 [usePayments] Dados retornados do banco:", {
-        total: paymentsData.length,
-        primeiros3: paymentsData.slice(0, 3).map(p => ({
-          id: p.id,
-          rental_id: p.rental_id,
-          due_date: p.due_date,
-          installment: p.installment,
-          property: p.rentals?.properties?.complement,
-          location: p.rentals?.properties?.locations?.name,
-          tenant: p.rentals?.tenants?.name
-        }))
-      });
 
       // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
       const rentalsMap = new Map<string, Rental>();

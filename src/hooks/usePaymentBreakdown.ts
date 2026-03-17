@@ -33,7 +33,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         let proportionalDays = 0;
         
         if (payment.installment === null || payment.installment === 1) {
-          const diffTime = dueDate.getTime() - startDate.getTime();
+          const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+          const diffTime = endOfMonth.getTime() - startDate.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         } else if (endDate && payment.installment === payment.total_installments) {
           const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -131,7 +132,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         let proportionalDays = 0;
         
         if (payment.installment === null || payment.installment === 1) {
-          const diffTime = dueDate.getTime() - startDate.getTime();
+          const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+          const diffTime = endOfMonth.getTime() - startDate.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         } else if (endDate && payment.installment === payment.total_installments) {
           const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -189,7 +191,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
           let proportionalDays = 0;
           
           if (payment.installment === null || payment.installment === 1) {
-            const diffTime = dueDate.getTime() - startDate.getTime();
+            const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            const diffTime = endOfMonth.getTime() - startDate.getTime();
             proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           } else if (endDate && payment.installment === payment.total_installments) {
             const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -247,7 +250,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         let proportionalDays = 0;
         
         if (payment.installment === null || payment.installment === 1) {
-          const diffTime = dueDate.getTime() - startDate.getTime();
+          const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+          const diffTime = endOfMonth.getTime() - startDate.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         } else if (endDate && payment.installment === payment.total_installments) {
           const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
