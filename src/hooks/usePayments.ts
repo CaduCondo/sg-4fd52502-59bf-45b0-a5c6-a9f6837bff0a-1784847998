@@ -16,12 +16,12 @@ let paymentsCache: {
 } = {
   data: null,
   key: "",
-  timestamp: 0, // ← FORÇADO A ZERO para invalidar cache completamente
+  timestamp: 0,
 };
 
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
-// Invalidar cache - ATUALIZADO para funcionar melhor
+// Invalidar cache
 export const invalidatePaymentsCache = () => {
   paymentsCache = { data: null, key: "", timestamp: 0 };
   console.log("🗑️ [usePayments] Cache invalidado");
