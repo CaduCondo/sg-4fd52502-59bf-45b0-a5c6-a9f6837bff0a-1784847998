@@ -131,6 +131,10 @@ export const rentalUpdateService = {
       
       if (firstPayment && (firstPayment.status === "pending" || firstPayment.status === "overdue")) {
         const newStartDate = new Date(newChanges.startDate + "T00:00:00");
+        const startDay = newStartDate.getDate();
+        const startMonth = newStartDate.getMonth() + 1;
+        const startYear = newStartDate.getFullYear();
+        
         const paymentDay = newChanges.paymentDay ?? oldRental.paymentDay;
         const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
         const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
@@ -138,20 +142,46 @@ export const rentalUpdateService = {
           : 0;
         const totalMonthlyRent = monthlyRent + garageAmount;
 
-        // Calcular nova data de vencimento
-        const newDueDate = new Date(newStartDate);
-        newDueDate.setDate(paymentDay);
-        if (newDueDate < newStartDate) {
-          newDueDate.setMonth(newDueDate.getMonth() + 1);
+        // Determinar o mês do primeiro pagamento
+        let firstPaymentMonth: number;
+        let firstPaymentYear: number;
+        let daysToCharge: number;
+        
+        // REGRA: Se dia_inicio === dia_vencimento, primeira parcela no mês seguinte (integral)
+        if (startDay === paymentDay) {
+          console.log("🎯 REGRA: Dia início === Dia vencimento → Primeira parcela no MÊS SEGUINTE (integral)");
+          firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
+          firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
+          daysToCharge = 30; // Mês completo
+        }
+        // REGRA: Se dia_inicio < dia_vencimento, primeira parcela no mesmo mês (proporcional)
+        else if (startDay < paymentDay) {
+          console.log("🎯 REGRA: Dia início < Dia vencimento → Primeira parcela no MESMO MÊS (proporcional)");
+          firstPaymentMonth = startMonth;
+          firstPaymentYear = startYear;
+          daysToCharge = paymentDay - startDay + 1;
+        }
+        // REGRA: Se dia_inicio > dia_vencimento, primeira parcela no próximo mês (proporcional)
+        else {
+          console.log("🎯 REGRA: Dia início > Dia vencimento → Primeira parcela no PRÓXIMO MÊS (proporcional)");
+          firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
+          firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
+          
+          // Calcular dias proporcionais
+          const daysInStartMonth = new Date(startYear, startMonth, 0).getDate();
+          const daysUntilEndOfStartMonth = daysInStartMonth - startDay + 1;
+          daysToCharge = daysUntilEndOfStartMonth + paymentDay;
         }
 
+        // Calcular a data de vencimento correta
+        const newDueDate = new Date(firstPaymentYear, firstPaymentMonth - 1, paymentDay);
+
         // Verificar se é proporcional
-        const isProportional = !isStartOfMonth(newStartDate, paymentDay);
+        const isProportional = daysToCharge !== 30;
         
         if (isProportional) {
-          // Calcular dias e valor proporcional
-          const days = getDaysBetween(newStartDate, newDueDate);
-          const proportionalAmount = calculateProportionalAmount(totalMonthlyRent, days);
+          // Calcular valor proporcional
+          const proportionalAmount = calculateProportionalAmount(totalMonthlyRent, daysToCharge);
           
           updates.push({
             id: firstPayment.id,
@@ -161,7 +191,7 @@ export const rentalUpdateService = {
             }
           });
           
-          console.log(`✅ Primeira parcela (proporcional): ${days} dias = R$ ${proportionalAmount.toFixed(2)}`);
+          console.log(`✅ Primeira parcela (proporcional): ${daysToCharge} dias = R$ ${proportionalAmount.toFixed(2)}`);
         } else {
           updates.push({
             id: firstPayment.id,
