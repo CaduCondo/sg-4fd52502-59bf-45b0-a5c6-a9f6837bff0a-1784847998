@@ -118,6 +118,61 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         breakdownData = itemsArray;
       }
       
+      const isProportional = payment?.installment === null || 
+                            payment?.installment === 1 || 
+                            payment?.installment === payment?.total_installments;
+      
+      let rentalDescription = "Aluguel";
+      
+      if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
+        const startDate = new Date(payment.rentals.start_date);
+        const dueDate = new Date(payment.due_date);
+        const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
+        
+        let proportionalDays = 0;
+        
+        if (payment.installment === null || payment.installment === 1) {
+          const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+          const diffTime = endOfMonth.getTime() - startDate.getTime();
+          proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        } else if (endDate && payment.installment === payment.total_installments) {
+          const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+          const diffTime = endDate.getTime() - startOfMonth.getTime();
+          proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        }
+        
+        if (proportionalDays > 0 && proportionalDays < 31) {
+          rentalDescription = `Aluguel (${proportionalDays} dias)`;
+        }
+      }
+
+      if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+        // 🚀 CORREÇÃO CRUCIAL: Se o JSON no banco estiver com valor cheio, 
+        // nós forçamos a usar o valor proporcional correto (rentalValue)
+        breakdownData = breakdownData.map(item => {
+          const desc = (item.description || '').toLowerCase();
+          
+          if (desc.includes('aluguel') && !desc.includes('desconto')) {
+            return {
+              ...item,
+              description: rentalDescription,
+              amount: rentalValue,
+              value: rentalValue
+            };
+          }
+          
+          if (desc.includes('vaga') || desc.includes('garagem')) {
+            return {
+              ...item,
+              amount: garageValue,
+              value: garageValue
+            };
+          }
+          
+          return item;
+        });
+      }
+      
       if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
         const hasGarage = garageValue > 0;
         const total = rentalValue + garageValue;

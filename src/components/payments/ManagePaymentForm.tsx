@@ -36,6 +36,7 @@ interface Attachment {
 interface PaymentFormData {
   id?: string;
   paid_amount?: number;
+  expected_amount?: number;
   payment_date?: string;
   payment_time?: string;
   payment_method?: string;
