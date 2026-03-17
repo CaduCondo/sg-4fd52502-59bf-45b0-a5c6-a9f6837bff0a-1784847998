@@ -21,6 +21,7 @@ import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
 import { useRentalForm } from "@/hooks/useRentalForm";
+import { rentalUpdateService } from "@/services/rentalUpdateService";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -252,13 +253,46 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       const fullUpdateData = { ...commonData, ...depositData };
 
       if (rental) {
+        console.log("🔄 Editando locação existente...");
+        
+        // Detectar mudanças que afetam recebimentos
+        const changes: any = {};
+        if (startDate !== rental.startDate) {
+          changes.startDate = startDate;
+          console.log("📅 Mudança detectada: Data de início");
+        }
+        if (endDate !== rental.endDate) {
+          changes.endDate = endDate;
+          console.log("📅 Mudança detectada: Data de término");
+        }
+        if (baseRent !== rental.monthlyRent) {
+          changes.monthlyRent = baseRent;
+          console.log("💰 Mudança detectada: Valor do aluguel");
+        }
+        if (parseInt(paymentDay) !== rental.paymentDay) {
+          changes.paymentDay = parseInt(paymentDay);
+          console.log("📆 Mudança detectada: Dia de pagamento");
+        }
+        if (hasGarage !== rental.hasGarage) {
+          changes.hasGarage = hasGarage;
+          console.log("🚗 Mudança detectada: Garagem");
+        }
+        if (hasGarage && garageAmount !== (rental.garageValue || 0)) {
+          changes.garageValue = garageAmount;
+          console.log("💰 Mudança detectada: Valor da garagem");
+        }
+
+        // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
-        const rentalForUpdate = { ...rental, ...updatedRental };
-        await updateFuturePayments(rental.id, totalValue, rentalForUpdate);
-
-        if (rental.paymentDay !== parseInt(paymentDay)) {
-          await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
+        // Se houve mudanças que afetam recebimentos, atualizar
+        if (Object.keys(changes).length > 0) {
+          console.log("🔄 Atualizando recebimentos afetados pelas mudanças...");
+          await rentalUpdateService.updatePaymentsOnRentalEdit(
+            rental.id,
+            rental,
+            changes
+          );
         }
 
         const mergedRental: Rental = {
@@ -277,16 +311,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           depositInstallment2PixCode: depositData.depositInstallment2PixCode,
           depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
-
-        await createPaymentsForRental({
-          rental: mergedRental,
-          startDate: new Date(mergedRental.startDate),
-          endDate: mergedRental.endDate ? new Date(mergedRental.endDate) : new Date(new Date(mergedRental.startDate).setFullYear(new Date(mergedRental.startDate).getFullYear() + 1)),
-          monthlyRent: Number(mergedRental.value),
-          paymentDay: Number(mergedRental.paymentDay),
-          hasGarage: mergedRental.hasGarage,
-          garageValue: mergedRental.garageValue || 0,
-        });
         
         setCreatedRentalData({
           rental: mergedRental,
