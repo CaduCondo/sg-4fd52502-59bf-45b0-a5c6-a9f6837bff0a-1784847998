@@ -164,47 +164,6 @@ export function PaymentBreakdownCard({
   const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
 
-  // Calculate proportional days info
-  const isProportional = payment?.installment === null || 
-                        payment?.installment === 1 || 
-                        payment?.installment === payment?.total_installments;
-  
-  let proportionalInfo = null;
-  if (isProportional && rental && !isTerminationPayment) {
-    const startDate = payment?.installment === 1 || payment?.installment === null 
-      ? new Date(rental.start_date) 
-      : null;
-    const endDate = payment?.installment === payment?.total_installments 
-      ? new Date(rental.end_date) 
-      : null;
-    
-    if (startDate) {
-      const year = startDate.getFullYear();
-      const month = startDate.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const startDay = startDate.getDate();
-      const proportionalDays = daysInMonth - startDay + 1;
-      
-      proportionalInfo = {
-        type: 'first',
-        days: proportionalDays,
-        totalDays: daysInMonth,
-        period: `${startDay}/${month + 1}/${year} - ${daysInMonth}/${month + 1}/${year}`
-      };
-    } else if (endDate) {
-      const year = endDate.getFullYear();
-      const month = endDate.getMonth();
-      const endDay = endDate.getDate();
-      
-      proportionalInfo = {
-        type: 'last',
-        days: endDay,
-        totalDays: new Date(year, month + 1, 0).getDate(),
-        period: `01/${month + 1}/${year} - ${endDay}/${month + 1}/${year}`
-      };
-    }
-  }
-
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
       <CardHeader>
@@ -368,26 +327,6 @@ export function PaymentBreakdownCard({
             </>
           ) : (
             <>
-              {proportionalInfo && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 text-lg">📅</span>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                        {proportionalInfo.type === 'first' ? 'Primeira Parcela - Período Proporcional' : 'Última Parcela - Período Proporcional'}
-                      </p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        <span className="font-bold">{proportionalInfo.days} dias</span> de cobrança
-                        <span className="text-muted-foreground"> ({proportionalInfo.period})</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Cálculo: (Valor mensal ÷ {proportionalInfo.totalDays} dias) × {proportionalInfo.days} dias
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="bg-muted/30 p-4 rounded-lg space-y-2">
                 {displayBreakdown.items.map((item: any, index: number) => {
                   const itemValue = item.value || item.amount || 0;
