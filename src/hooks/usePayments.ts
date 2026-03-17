@@ -161,6 +161,19 @@ export function usePayments() {
         return;
       }
 
+      console.log("🔍 [usePayments] Dados retornados do banco:", {
+        total: paymentsData.length,
+        primeiros3: paymentsData.slice(0, 3).map(p => ({
+          id: p.id,
+          rental_id: p.rental_id,
+          due_date: p.due_date,
+          installment: p.installment,
+          property_identifier: p.rentals?.properties?.property_identifier,
+          location: p.rentals?.properties?.locations?.name,
+          tenant: p.rentals?.tenants?.name
+        }))
+      });
+
       // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
       const rentalsMap = new Map<string, Rental>();
       const propertiesMap = new Map<string, Property>();
