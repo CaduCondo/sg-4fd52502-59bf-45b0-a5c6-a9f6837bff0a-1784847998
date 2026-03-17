@@ -340,8 +340,8 @@ export function generateExpectedPayments(params: {
 
   paymentsToCreate.push({
     rental_id: rentalId,
-    reference_month: firstPaymentMonth,
-    reference_year: firstPaymentYear,
+    reference_month: String(firstPaymentMonth),
+    reference_year: String(firstPaymentYear),
     due_date: firstPaymentDueDate,
     expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
     status: "pending",
