@@ -981,6 +981,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           paidAmount={payment?.paid_amount}
           onSaveExpensesAndDiscount={handleSaveExpensesAndDiscount}
           isSaving={isSavingExpenses}
+          payment={payment}
+          rental={rental}
         />
 
         <Card>
