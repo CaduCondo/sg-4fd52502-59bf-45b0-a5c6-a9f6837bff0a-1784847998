@@ -331,6 +331,7 @@ export function generateExpectedPayments(params: {
   }
 
   // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
+  // CORREÇÃO CRÍTICA: A data de vencimento deve ser no mês do pagamento, não no mês de início
   const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
   
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
