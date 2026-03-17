@@ -601,10 +601,18 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
     const refYear = typeof payment.reference_year === 'string' ? parseInt(payment.reference_year) : payment.reference_year;
     const refMonth = typeof payment.reference_month === 'string' ? parseInt(payment.reference_month) : payment.reference_month;
 
-    const dueDate = setDate(
-      new Date(refYear, refMonth - 1, 1),
-      Math.min(newPaymentDay, 28)
-    );
+    // Criar data manualmente para evitar problemas com setDate
+    const year = refYear;
+    const month = refMonth - 1; // JavaScript Date usa 0-11 para meses
+    const day = Math.min(newPaymentDay, 28);
+    
+    const dueDate = new Date(year, month, day);
+    
+    // Validar se a data é válida
+    if (isNaN(dueDate.getTime())) {
+      console.error(`Data inválida criada: year=${year}, month=${month}, day=${day}`);
+      throw new Error(`Data inválida para pagamento: ${refMonth}/${refYear}`);
+    }
 
     return {
       id: payment.id,
