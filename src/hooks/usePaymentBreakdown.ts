@@ -8,43 +8,46 @@ interface UsePaymentBreakdownParams {
 
 export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePaymentBreakdownParams) {
   return useMemo(() => {
+    console.log("🔍 [usePaymentBreakdown] Input values:", { 
+      rentalValue, 
+      garageValue,
+      paymentBreakdown: payment?.breakdown,
+      expectedAmount: payment?.expected_amount 
+    });
+
     if (!payment || !payment.breakdown) {
       const hasGarage = garageValue > 0;
       const total = rentalValue + garageValue;
       
-      // Check if it's proportional payment
       const isProportional = payment?.installment === null || 
                             payment?.installment === 1 || 
                             payment?.installment === payment?.total_installments;
       
-      let rentalDescription = "Valor Aluguel";
+      let rentalDescription = "Aluguel";
       
       if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
         const startDate = new Date(payment.rentals.start_date);
         const dueDate = new Date(payment.due_date);
         const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
         
-        // Calculate proportional days
         let proportionalDays = 0;
         
         if (payment.installment === null || payment.installment === 1) {
-          // First installment: from start_date to end of month
           const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
           const diffTime = endOfMonth.getTime() - startDate.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         } else if (endDate && payment.installment === payment.total_installments) {
-          // Last installment: from start of month to end_date
           const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
           const diffTime = endDate.getTime() - startOfMonth.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         }
         
         if (proportionalDays > 0 && proportionalDays < 31) {
-          rentalDescription = `Valor Aluguel (${proportionalDays} dias)`;
+          rentalDescription = `Aluguel (${proportionalDays} dias)`;
         }
       }
       
-      return {
+      const result = {
         items: [
           { description: rentalDescription, amount: rentalValue },
           ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
@@ -52,6 +55,9 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         total: total,
         hasMultipleItems: hasGarage
       };
+      
+      console.log("✅ [usePaymentBreakdown] NO BREAKDOWN - Returning:", result);
+      return result;
     }
 
     try {
@@ -59,7 +65,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         ? JSON.parse(payment.breakdown) 
         : (payment.breakdown || {});
       
-      // Se for um objeto (novo formato), converter para array
       if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
         const itemsArray: any[] = [];
         
@@ -67,7 +72,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
           if (value && typeof value === 'object') {
             let description = key;
             
-            // Se for proporcional, calcular e adicionar os dias
             if (value.label === "PROPORCIONAL") {
               const dueDate = payment.due_date ? new Date(payment.due_date) : null;
               const startDate = payment.rentals?.start_date ? new Date(payment.rentals.start_date) : null;
@@ -75,17 +79,15 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
               
               let proportionalDays = 0;
               
-              // Parcela 1: calcular dias desde início até vencimento
               if (dueDate && startDate) {
                 const diffTime = dueDate.getTime() - startDate.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia inicial
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
                 
                 if (diffDays > 0 && diffDays < 31) {
                   proportionalDays = diffDays;
                 }
               }
               
-              // Última parcela: calcular dias desde vencimento anterior até fim do contrato
               if (proportionalDays === 0 && dueDate && endDate) {
                 const diffTime = endDate.getTime() - dueDate.getTime();
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -120,39 +122,35 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         const hasGarage = garageValue > 0;
         const total = rentalValue + garageValue;
         
-        // Check if it's proportional payment
         const isProportional = payment?.installment === null || 
                               payment?.installment === 1 || 
                               payment?.installment === payment?.total_installments;
         
-        let rentalDescription = "Valor Aluguel";
+        let rentalDescription = "Aluguel";
         
         if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
           const startDate = new Date(payment.rentals.start_date);
           const dueDate = new Date(payment.due_date);
           const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
           
-          // Calculate proportional days
           let proportionalDays = 0;
           
           if (payment.installment === null || payment.installment === 1) {
-            // First installment: from start_date to end of month
             const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
             const diffTime = endOfMonth.getTime() - startDate.getTime();
             proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           } else if (endDate && payment.installment === payment.total_installments) {
-            // Last installment: from start of month to end_date
             const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
             const diffTime = endDate.getTime() - startOfMonth.getTime();
             proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           }
           
           if (proportionalDays > 0 && proportionalDays < 31) {
-            rentalDescription = `Valor Aluguel (${proportionalDays} dias)`;
+            rentalDescription = `Aluguel (${proportionalDays} dias)`;
           }
         }
         
-        return {
+        const result = {
           items: [
             { description: rentalDescription, amount: rentalValue },
             ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
@@ -160,6 +158,9 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
           total: total,
           hasMultipleItems: hasGarage
         };
+        
+        console.log("✅ [usePaymentBreakdown] EMPTY BREAKDOWN ARRAY - Returning:", result);
+        return result;
       }
 
       const hasMultipleItems = breakdownData.length > 1;
@@ -167,45 +168,44 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         return sum + (item.value || item.amount || 0);
       }, 0);
 
-      return {
+      const result = {
         items: breakdownData,
         total: total,
         hasMultipleItems: hasMultipleItems
       };
+      
+      console.log("✅ [usePaymentBreakdown] WITH BREAKDOWN - Returning:", result);
+      return result;
     } catch (error) {
-      console.error("Erro ao processar breakdown:", error);
+      console.error("❌ [usePaymentBreakdown] Error processing breakdown:", error);
       const hasGarage = garageValue > 0;
       const total = rentalValue + garageValue;
       
-      // Check if it's proportional payment
       const isProportional = payment?.installment === null || 
                             payment?.installment === 1 || 
                             payment?.installment === payment?.total_installments;
       
-      let rentalDescription = "Valor Aluguel";
+      let rentalDescription = "Aluguel";
       
       if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
         const startDate = new Date(payment.rentals.start_date);
         const dueDate = new Date(payment.due_date);
         const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
         
-        // Calculate proportional days
         let proportionalDays = 0;
         
         if (payment.installment === null || payment.installment === 1) {
-          // First installment: from start_date to end of month
           const endOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
           const diffTime = endOfMonth.getTime() - startDate.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         } else if (endDate && payment.installment === payment.total_installments) {
-          // Last installment: from start of month to end_date
           const startOfMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
           const diffTime = endDate.getTime() - startOfMonth.getTime();
           proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         }
         
         if (proportionalDays > 0 && proportionalDays < 31) {
-          rentalDescription = `Valor Aluguel (${proportionalDays} dias)`;
+          rentalDescription = `Aluguel (${proportionalDays} dias)`;
         }
       }
       
