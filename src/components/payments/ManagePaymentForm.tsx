@@ -397,6 +397,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     garageValue: effectiveGarageValue,
   });
 
+  // 🔍 DEBUG: Log para ver o que está sendo exibido
+  useEffect(() => {
+    if (payment && displayBreakdown) {
+      console.log("🔍 [ManagePaymentForm] Display Breakdown:", {
+        displayBreakdown,
+        effectiveRentalValue,
+        effectiveGarageValue,
+        paymentExpectedAmount: payment.expected_amount,
+        paymentBreakdown: payment.breakdown
+      });
+    }
+  }, [payment, displayBreakdown, effectiveRentalValue, effectiveGarageValue]);
+
   useEffect(() => {
     if (loading || !payment) return;
     
