@@ -290,14 +290,29 @@ export function generateExpectedPayments(params: {
   let firstPaymentYear: number;
   let daysToChargeFirstPayment: number;
   
-  if (sDay <= paymentDay) {
-    // Primeiro recebimento no mesmo mês do início do contrato
+  // REGRA NOVA: Se dia de início === dia de vencimento, primeira parcela no mês seguinte (integral)
+  if (sDay === paymentDay) {
+    console.log("🎯 REGRA ESPECIAL: Dia início === Dia vencimento → Primeira parcela no MÊS SEGUINTE (integral)");
+    
+    // Primeiro recebimento no mês seguinte (valor integral)
+    firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
+    firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
+    daysToChargeFirstPayment = 30; // Mês completo
+    
+    console.log("✅ Primeira parcela no PRÓXIMO mês (INTEGRAL):", { 
+      firstPaymentMonth, 
+      firstPaymentYear, 
+      daysToChargeFirstPayment: 30,
+      reason: "Dia início = Dia vencimento"
+    });
+  } else if (sDay < paymentDay) {
+    // Primeiro recebimento no mesmo mês do início do contrato (proporcional)
     firstPaymentMonth = sMonth;
     firstPaymentYear = sYear;
     daysToChargeFirstPayment = paymentDay - sDay + 1;
-    console.log("✅ Primeiro recebimento no MESMO mês:", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
+    console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
   } else {
-    // Primeiro recebimento no mês seguinte
+    // Primeiro recebimento no mês seguinte (proporcional)
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
@@ -306,7 +321,7 @@ export function generateExpectedPayments(params: {
     const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1;
     daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
     
-    console.log("✅ Primeiro recebimento no PRÓXIMO mês:", { 
+    console.log("✅ Primeiro recebimento no PRÓXIMO mês (PROPORCIONAL):", { 
       firstPaymentMonth, 
       firstPaymentYear, 
       daysToChargeFirstPayment,
