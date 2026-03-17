@@ -168,7 +168,7 @@ export function usePayments() {
           rental_id: p.rental_id,
           due_date: p.due_date,
           installment: p.installment,
-          property_identifier: p.rentals?.properties?.property_identifier,
+          property: p.rentals?.properties?.complement,
           location: p.rentals?.properties?.locations?.name,
           tenant: p.rentals?.tenants?.name
         }))
