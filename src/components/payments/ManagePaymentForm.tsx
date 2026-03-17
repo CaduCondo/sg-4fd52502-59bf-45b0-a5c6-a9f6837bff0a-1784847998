@@ -203,15 +203,35 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
+      // ✅ FIX: Para parcelas proporcionais, usar expected_amount ao invés do valor mensal cheio
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
-      effectiveRentalValue = paymentData.rentals.rent_value || 0;
-      
-      if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-        effectiveGarageValue = paymentData.rentals.garage_value;
+      const isProportional = paymentData.installment === null || 
+                            paymentData.installment === 1 || 
+                            paymentData.installment === paymentData.total_installments;
+
+      if (isProportional && paymentData.expected_amount) {
+        // ✅ Para proporcionais: usar o expected_amount que já está calculado corretamente
+        console.log("📅 Pagamento PROPORCIONAL detectado - usando expected_amount:", paymentData.expected_amount);
+        
+        // Se tiver garagem, precisa subtrair do expected_amount
+        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
+          effectiveGarageValue = paymentData.rentals.garage_value;
+          effectiveRentalValue = paymentData.expected_amount - effectiveGarageValue;
+        } else {
+          effectiveRentalValue = paymentData.expected_amount;
+          effectiveGarageValue = 0;
+        }
       } else {
-        effectiveGarageValue = 0;
+        // ✅ Para parcelas normais: usar o valor mensal da locação
+        effectiveRentalValue = paymentData.rentals.rent_value || 0;
+        
+        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
+          effectiveGarageValue = paymentData.rentals.garage_value;
+        } else {
+          effectiveGarageValue = 0;
+        }
       }
       
       console.log("💰 Valores CORRETOS - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
