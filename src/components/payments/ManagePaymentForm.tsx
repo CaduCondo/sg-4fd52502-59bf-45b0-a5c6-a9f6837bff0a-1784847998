@@ -117,6 +117,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [location, setLocation] = useState<any>(null);
   const [rentalValue, setRentalValue] = useState(0);
   const [garageValue, setGarageValue] = useState(0);
+  const [effectiveRentalValue, setEffectiveRentalValue] = useState(0);
+  const [effectiveGarageValue, setEffectiveGarageValue] = useState(0);
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
@@ -238,6 +240,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       setRentalValue(effectiveRentalValue);
       setGarageValue(effectiveGarageValue);
+      setEffectiveRentalValue(effectiveRentalValue);
+      setEffectiveGarageValue(effectiveGarageValue);
 
       const alreadyPaid = paymentData.status === "paid";
       setIsPaid(alreadyPaid);
@@ -389,8 +393,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const displayBreakdown = usePaymentBreakdown({
     payment,
-    rentalValue,
-    garageValue,
+    rentalValue: effectiveRentalValue,
+    garageValue: effectiveGarageValue,
   });
 
   useEffect(() => {
