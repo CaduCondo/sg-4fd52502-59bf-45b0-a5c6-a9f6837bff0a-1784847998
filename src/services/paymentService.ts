@@ -283,7 +283,11 @@ export function generateExpectedPayments(params: {
   const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
   const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
   
-  console.log("📅 Datas parseadas:", { sYear, sMonth, sDay, eYear, eMonth, eDay });
+  console.log("📅 Datas parseadas:", { 
+    startDate: `${sDay}/${sMonth}/${sYear}`,
+    endDate: `${eDay}/${eMonth}/${eYear}`,
+    paymentDay 
+  });
 
   // **ETAPA 1: Determinar o primeiro mês de cobrança**
   let firstPaymentMonth: number;
@@ -317,6 +321,13 @@ export function generateExpectedPayments(params: {
 
   // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
   const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+  
+  console.log("📅 PRIMEIRA PARCELA:", {
+    dueDate: firstPaymentDueDate,
+    days: daysToChargeFirstPayment,
+    startDate: `${sDay}/${sMonth}/${sYear}`,
+    paymentDay: paymentDay
+  });
   
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
   const proportionalGarage = garage > 0 ? (garage / 30) * daysToChargeFirstPayment : 0;
