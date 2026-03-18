@@ -104,6 +104,42 @@ export default function PaymentsPage() {
   }, []);
 
   const getExpectedAmount = useCallback((payment: Payment) => {
+    // 🔥 CORREÇÃO: Calcular valor total a partir do breakdown quando ele existir
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+        
+        // Se o breakdown for um array, somar todos os valores
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          const breakdownTotal = breakdownData.reduce((sum: number, item: any) => {
+            return sum + (item.value || item.amount || 0);
+          }, 0);
+          
+          // Adicionar multa e juros ao total do breakdown
+          return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
+        }
+        
+        // Se o breakdown for um objeto, processar as chaves
+        if (typeof breakdownData === 'object' && !Array.isArray(breakdownData)) {
+          let breakdownTotal = 0;
+          Object.values(breakdownData).forEach((value: any) => {
+            if (value && typeof value === 'object') {
+              breakdownTotal += (value.value || value.amount || 0);
+            }
+          });
+          
+          if (breakdownTotal > 0) {
+            return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
+      }
+    }
+    
+    // Fallback: usar expected_amount base + multa + juros
     return payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
   }, []);
 
