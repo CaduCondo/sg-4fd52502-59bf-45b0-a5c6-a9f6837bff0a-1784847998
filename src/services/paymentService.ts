@@ -846,7 +846,8 @@ export async function fixSpecificRentalByRecalculation(rentalId: string): Promis
         rent_value,
         rent_due_day,
         has_garage,
-        garage_value
+        garage_value,
+        properties(property_identifier)
       `)
       .eq("id", rentalId)
       .single();
@@ -856,7 +857,7 @@ export async function fixSpecificRentalByRecalculation(rentalId: string): Promis
     }
 
     console.log(`📋 Locação encontrada:`, {
-      property: rental.properties?.property_identifier,
+      property: (rental.properties as any)?.property_identifier,
       period: `${rental.start_date} até ${rental.end_date}`,
       dueDay: rental.rent_due_day
     });
