@@ -320,12 +320,76 @@ export const rentalUpdateService = {
     if (newChanges.paymentDay !== undefined && newChanges.paymentDay !== oldRental.paymentDay) {
       console.log("📆 Detectada mudança no dia de pagamento");
       
-      // Atualizar due_date de todos os recebimentos pendentes
-      for (const payment of pendingPayments) {
+      const oldPaymentDay = oldRental.paymentDay;
+      const newPaymentDay = newChanges.paymentDay;
+      const daysDifference = Math.abs(newPaymentDay - oldPaymentDay);
+      
+      console.log(`📊 Mudança de vencimento: Dia ${oldPaymentDay} → Dia ${newPaymentDay} (${daysDifference} dias de diferença)`);
+      
+      const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
+      const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
+        ? (newChanges.garageValue ?? oldRental.garageValue ?? 0) 
+        : 0;
+      const totalMonthlyRent = monthlyRent + garageAmount;
+      
+      // Calcular o valor proporcional dos dias extras
+      const extraDaysValue = calculateProportionalAmount(totalMonthlyRent, daysDifference);
+      
+      console.log(`💰 Valor dos ${daysDifference} dias extras: R$ ${extraDaysValue.toFixed(2)}`);
+      
+      // Atualizar o primeiro recebimento pendente com a cobrança dos dias extras
+      const firstPendingPayment = pendingPayments[0];
+      
+      if (firstPendingPayment) {
+        const newDueDate = calculateDueDate(
+          Number(firstPendingPayment.reference_month), 
+          Number(firstPendingPayment.reference_year), 
+          newPaymentDay
+        );
+        
+        // Criar breakdown detalhado
+        const referenceMonth = firstPendingPayment.reference_month;
+        const referenceYear = firstPendingPayment.reference_year;
+        const monthName = new Date(Number(referenceYear), Number(referenceMonth) - 1).toLocaleString('pt-BR', { month: 'long' });
+        const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        
+        const breakdown = [
+          {
+            label: `Aluguel ${capitalizedMonth}/${referenceYear}`,
+            value: totalMonthlyRent
+          },
+          {
+            label: "Mudança data de vencimento",
+            value: 0,
+            description: `De dia ${oldPaymentDay} para dia ${newPaymentDay} (${daysDifference} dias extras)`,
+            extraValue: extraDaysValue
+          }
+        ];
+        
+        const newExpectedAmount = totalMonthlyRent + extraDaysValue;
+        
+        updates.push({
+          id: firstPendingPayment.id,
+          changes: {
+            due_date: newDueDate,
+            expected_amount: newExpectedAmount,
+            breakdown: breakdown,
+          }
+        });
+        
+        console.log(`✅ Primeiro recebimento pendente atualizado:`);
+        console.log(`   - Nova data: ${newDueDate}`);
+        console.log(`   - Novo valor: R$ ${newExpectedAmount.toFixed(2)}`);
+        console.log(`   - Breakdown com ${daysDifference} dias extras`);
+      }
+      
+      // Atualizar due_date dos demais recebimentos pendentes (sem cobrar dias extras)
+      for (let i = 1; i < pendingPayments.length; i++) {
+        const payment = pendingPayments[i];
         const newDueDate = calculateDueDate(
           Number(payment.reference_month), 
           Number(payment.reference_year), 
-          newChanges.paymentDay
+          newPaymentDay
         );
         
         const existingUpdate = updates.find(u => u.id === payment.id);
@@ -340,7 +404,7 @@ export const rentalUpdateService = {
           });
         }
         
-        console.log(`✅ Parcela ${payment.installment}: Nova data ${newDueDate}`);
+        console.log(`✅ Recebimento ${payment.installment}: Nova data ${newDueDate}`);
       }
     }
 
