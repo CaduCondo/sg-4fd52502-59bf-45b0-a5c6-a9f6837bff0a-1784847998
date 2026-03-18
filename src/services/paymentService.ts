@@ -308,10 +308,15 @@ export function generateExpectedPayments(params: {
     // Primeiro recebimento no mesmo mês (proporcional)
     firstPaymentMonth = sMonth;
     firstPaymentYear = sYear;
-    // Contar dias do início até o vencimento (inclusive ambos)
+    // Contar dias do início até o vencimento (INCLUSIVE)
     // Exemplo: dia 1 até dia 5 = dias 1,2,3,4,5 = 5 dias
     daysToChargeFirstPayment = paymentDay - sDay + 1;
-    console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
+    console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { 
+      firstPaymentMonth, 
+      firstPaymentYear, 
+      daysToChargeFirstPayment,
+      calculation: `${paymentDay} - ${sDay} + 1 = ${daysToChargeFirstPayment} dias`
+    });
   } else {
     // Primeiro recebimento no mês seguinte (proporcional)
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
@@ -319,7 +324,7 @@ export function generateExpectedPayments(params: {
     
     // Contar dias do início até fim do mês atual + dias do próximo mês até o vencimento
     // Exemplo: Início dia 25/02, vencimento dia 5
-    // Fevereiro (28 dias): 25, 26, 27, 28 = 4 dias
+    // Fevereiro (28 dias): 25, 26, 27, 28 = 4 dias (28 - 25 + 1)
     // Março: 1, 2, 3, 4, 5 = 5 dias
     // Total: 9 dias
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
