@@ -334,6 +334,7 @@ export function generateExpectedPayments(params: {
   // CORREÇÃO CRÍTICA: A data de vencimento deve ser no mês do pagamento, não no mês de início
   const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
   
+  // CORREÇÃO: Garantir que aluguel e garagem usem os MESMOS dias
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
   const proportionalGarage = garage > 0 ? (garage / 30) * daysToChargeFirstPayment : 0;
   const firstPaymentAmount = proportionalRent + proportionalGarage;
@@ -431,6 +432,7 @@ export function generateExpectedPayments(params: {
   if (currentYear === eYear && currentMonth === eMonth) {
     const daysToChargeLastPayment = eDay;
     
+    // CORREÇÃO: Garantir que aluguel e garagem usem os MESMOS dias no último recebimento também
     const lastProportionalRent = (rentValue / 30) * daysToChargeLastPayment;
     const lastProportionalGarage = garage > 0 ? (garage / 30) * daysToChargeLastPayment : 0;
     const lastPaymentAmount = lastProportionalRent + lastProportionalGarage;
@@ -835,8 +837,7 @@ export async function fixSpecificRentalByRecalculation(rentalId: string): Promis
         rent_value,
         rent_due_day,
         has_garage,
-        garage_value,
-        properties(property_identifier)
+        garage_value
       `)
       .eq("id", rentalId)
       .single();
