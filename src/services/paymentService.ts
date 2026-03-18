@@ -273,6 +273,8 @@ export function generateExpectedPayments(params: {
     garageValue
   });
   
+  // ✅ CRÍTICO: monthlyRent deve ser APENAS o valor do aluguel (sem garagem)
+  // A garagem é adicionada separadamente no breakdown
   const rentValue = monthlyRent;
   const garage = hasGarage && garageValue ? garageValue : 0;
   const totalMonthlyValue = rentValue + garage;
@@ -308,14 +310,14 @@ export function generateExpectedPayments(params: {
     // Primeiro recebimento no mesmo mês (proporcional)
     firstPaymentMonth = sMonth;
     firstPaymentYear = sYear;
-    // Contar dias do início até o vencimento (INCLUSIVE)
-    // Exemplo: dia 1 até dia 5 = dias 1,2,3,4,5 = 5 dias
-    daysToChargeFirstPayment = paymentDay - sDay + 1;
+    // Contar dias do início até o vencimento (NÃO-INCLUSIVO do dia vencimento)
+    // Exemplo: dia 1 até dia 5 = dias 1,2,3,4 = 4 dias
+    daysToChargeFirstPayment = paymentDay - sDay;
     console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { 
       firstPaymentMonth, 
       firstPaymentYear, 
       daysToChargeFirstPayment,
-      calculation: `${paymentDay} - ${sDay} + 1 = ${daysToChargeFirstPayment} dias`
+      calculation: `${paymentDay} - ${sDay} = ${daysToChargeFirstPayment} dias`
     });
   } else {
     // Primeiro recebimento no mês seguinte (proporcional)
@@ -323,12 +325,8 @@ export function generateExpectedPayments(params: {
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
     // Contar dias do início até fim do mês atual + dias do próximo mês até o vencimento
-    // Exemplo: Início dia 25/02, vencimento dia 5
-    // Fevereiro (28 dias): 25, 26, 27, 28 = 4 dias (28 - 25 + 1)
-    // Março: 1, 2, 3, 4, 5 = 5 dias
-    // Total: 9 dias
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
-    const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1; // Incluindo o dia de início
+    const daysUntilEndOfStartMonth = daysInStartMonth - sDay; // NÃO incluir o dia de início
     daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
     
     console.log("✅ Primeiro recebimento no PRÓXIMO mês (PROPORCIONAL):", { 
@@ -342,10 +340,9 @@ export function generateExpectedPayments(params: {
   }
 
   // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
-  // CORREÇÃO CRÍTICA: A data de vencimento deve ser no mês do pagamento, não no mês de início
   const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
   
-  // CORREÇÃO: Garantir que aluguel e garagem usem os MESMOS dias
+  // ✅ CORREÇÃO CRÍTICA: Garantir que aluguel e garagem usem os MESMOS dias
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
   const proportionalGarage = garage > 0 ? (garage / 30) * daysToChargeFirstPayment : 0;
   const firstPaymentAmount = proportionalRent + proportionalGarage;
@@ -360,7 +357,7 @@ export function generateExpectedPayments(params: {
 
   if (garage > 0) {
     firstPaymentBreakdown.push({
-      description: `Garagem Proporcional (${daysToChargeFirstPayment} dias)`,
+      description: `Garagem (${daysToChargeFirstPayment} dias)`,
       amount: parseFloat(proportionalGarage.toFixed(2)),
       type: "addition",
     });
@@ -441,11 +438,10 @@ export function generateExpectedPayments(params: {
 
   // **ETAPA 4: Criar o último recebimento (proporcional)**
   if (currentYear === eYear && currentMonth === eMonth) {
-    // CORREÇÃO: Contagem correta de dias até o final
-    // Se término dia 15, cobrar dias 1 até 15 = 15 dias
+    // Contagem de dias até o final (NÃO-INCLUSIVO)
     const daysToChargeLastPayment = eDay;
     
-    // CORREÇÃO: Garantir que aluguel e garagem usem os MESMOS dias no último recebimento também
+    // ✅ CORREÇÃO CRÍTICA: Garantir que aluguel e garagem usem os MESMOS dias no último recebimento
     const lastProportionalRent = (rentValue / 30) * daysToChargeLastPayment;
     const lastProportionalGarage = garage > 0 ? (garage / 30) * daysToChargeLastPayment : 0;
     const lastPaymentAmount = lastProportionalRent + lastProportionalGarage;
@@ -462,7 +458,7 @@ export function generateExpectedPayments(params: {
 
     if (garage > 0) {
       lastPaymentBreakdown.push({
-        description: `Garagem Proporcional (${daysToChargeLastPayment} dias)`,
+        description: `Garagem (${daysToChargeLastPayment} dias)`,
         amount: parseFloat(lastProportionalGarage.toFixed(2)),
         type: "addition",
       });

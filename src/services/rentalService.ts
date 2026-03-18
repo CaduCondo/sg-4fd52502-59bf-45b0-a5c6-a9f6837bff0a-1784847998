@@ -304,7 +304,7 @@ export const rentalService = {
       tenant_id: rental.tenantId,
       start_date: rental.startDate,
       end_date: rental.endDate,
-      rent_value: rental.value,
+      rent_value: rental.monthlyRent || rental.value,
       rent_due_day: rental.paymentDay,
       deposit_value: rental.depositAmount ? rental.depositAmount : null,
       status: rental.status,
@@ -368,8 +368,8 @@ export const rentalService = {
     if (rental.tenantId !== undefined) dbData.tenant_id = rental.tenantId;
     if (rental.startDate !== undefined) dbData.start_date = rental.startDate;
     if (rental.endDate !== undefined) dbData.end_date = rental.endDate;
-    if (rental.value !== undefined) {
-      dbData.rent_value = rental.value;
+    if (rental.value !== undefined || rental.monthlyRent !== undefined) {
+      dbData.rent_value = rental.monthlyRent || rental.value;
     }
     if (rental.paymentDay !== undefined) dbData.rent_due_day = rental.paymentDay;
     if (rental.depositAmount !== undefined) dbData.deposit_value = rental.depositAmount;
