@@ -20,70 +20,91 @@ export const BreakdownItem = memo(({ item, isDeduction, igpmCorrection, formatCu
     ? igpmCorrection.correctedAmount 
     : Math.abs(item.amount);
 
+  // 🔥 NOVO: Detectar se é mudança de vencimento (tem extraValue e description adicional)
+  const isDueDateChange = item.extraValue && item.extraValue > 0 && item.description && item.description.includes("De dia");
+
   return (
     <div>
-      <div className="flex justify-between items-start text-sm">
-        <div className="flex-1">
-          <span className={isDepositDeduction ? "block" : ""}>
-            {isDepositDeduction ? "Devolução de Caução" : item.description}
-          </span>
-          {isDepositDeduction && igpmCorrection && (
-            <span className="block text-xs text-muted-foreground mt-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
-                      (corrigido pela Taxa da Poupança)
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
-                    <div className="space-y-3 p-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
-                        <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
-                          💰 Resumo da Correção
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Valor Original:</span>
-                            <p className="font-semibold text-blue-900 dark:text-blue-100">
-                              {formatCurrency(igpmCorrection.originalAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Valor Corrigido:</span>
-                            <p className="font-semibold text-green-600 dark:text-green-400">
-                              {formatCurrency(igpmCorrection.correctedAmount)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
-                          <span className="text-muted-foreground text-xs">Correção Total:</span>
-                          <p className="font-bold text-base text-blue-900 dark:text-blue-100">
-                            {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                        <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
-                          📅 Taxas Mensais Aplicadas
-                        </p>
-                        <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                          {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
-                        </div>
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+      {isDueDateChange ? (
+        // Layout especial para mudança de vencimento
+        <div className="space-y-1">
+          <div className="text-sm font-medium">
+            {item.label || "Mudança data de vencimento"}
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground ml-2">
+              {item.description}
             </span>
-          )}
+            <span className="font-medium whitespace-nowrap ml-4">
+              {formatCurrency(item.extraValue)}
+            </span>
+          </div>
         </div>
-        <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
-          {isDeduction ? "- " : ""}
-          {formatCurrency(displayAmount)}
-        </span>
-      </div>
+      ) : (
+        // Layout padrão para outros itens
+        <div className="flex justify-between items-start text-sm">
+          <div className="flex-1">
+            <span className={isDepositDeduction ? "block" : ""}>
+              {isDepositDeduction ? "Devolução de Caução" : item.description}
+            </span>
+            {isDepositDeduction && igpmCorrection && (
+              <span className="block text-xs text-muted-foreground mt-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
+                        (corrigido pela Taxa da Poupança)
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
+                      <div className="space-y-3 p-4">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
+                          <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                            💰 Resumo da Correção
+                          </p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Valor Original:</span>
+                              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                {formatCurrency(igpmCorrection.originalAmount)}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Valor Corrigido:</span>
+                              <p className="font-semibold text-green-600 dark:text-green-400">
+                                {formatCurrency(igpmCorrection.correctedAmount)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                            <span className="text-muted-foreground text-xs">Correção Total:</span>
+                            <p className="font-bold text-base text-blue-900 dark:text-blue-100">
+                              {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                          <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
+                            📅 Taxas Mensais Aplicadas
+                          </p>
+                          <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                            {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
+                          </div>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            )}
+          </div>
+          <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
+            {isDeduction ? "- " : ""}
+            {formatCurrency(displayAmount)}
+          </span>
+        </div>
+      )}
     </div>
   );
 });
