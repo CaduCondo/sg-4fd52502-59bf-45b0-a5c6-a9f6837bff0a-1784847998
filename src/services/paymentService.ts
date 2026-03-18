@@ -290,14 +290,13 @@ export function generateExpectedPayments(params: {
   let firstPaymentYear: number;
   let daysToChargeFirstPayment: number;
   
-  // REGRA NOVA: Se dia de início === dia de vencimento, primeira parcela no mês seguinte (integral)
+  // REGRA: Se dia de início === dia de vencimento, primeira parcela no mês seguinte (integral)
   if (sDay === paymentDay) {
     console.log("🎯 REGRA ESPECIAL: Dia início === Dia vencimento → Primeira parcela no MÊS SEGUINTE (integral)");
     
-    // Primeiro recebimento no mês seguinte (valor integral)
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
-    daysToChargeFirstPayment = 30; // Mês completo
+    daysToChargeFirstPayment = 30;
     
     console.log("✅ Primeira parcela no PRÓXIMO mês (INTEGRAL):", { 
       firstPaymentMonth, 
@@ -306,12 +305,11 @@ export function generateExpectedPayments(params: {
       reason: "Dia início = Dia vencimento"
     });
   } else if (sDay < paymentDay) {
-    // Primeiro recebimento no mesmo mês do início do contrato (proporcional)
+    // Primeiro recebimento no mesmo mês (proporcional)
     firstPaymentMonth = sMonth;
     firstPaymentYear = sYear;
-    // CORREÇÃO: Não adicionar +1, contar dias inclusive
-    // Exemplo: dia 25 até dia 5 = dia 25 (1 dia)
-    // Se início dia 1 e vencimento dia 5 = dias 1,2,3,4,5 = 5 dias
+    // Contar dias do início até o vencimento (inclusive ambos)
+    // Exemplo: dia 1 até dia 5 = dias 1,2,3,4,5 = 5 dias
     daysToChargeFirstPayment = paymentDay - sDay + 1;
     console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
   } else {
@@ -319,10 +317,10 @@ export function generateExpectedPayments(params: {
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
-    // CORREÇÃO CRÍTICA: Calcular dias corretamente
+    // Contar dias do início até fim do mês atual + dias do próximo mês até o vencimento
     // Exemplo: Início dia 25/02, vencimento dia 5
-    // Dias em fevereiro: 25, 26, 27, 28 = 4 dias
-    // Dias em março: 1, 2, 3, 4, 5 = 5 dias
+    // Fevereiro (28 dias): 25, 26, 27, 28 = 4 dias
+    // Março: 1, 2, 3, 4, 5 = 5 dias
     // Total: 9 dias
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
     const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1; // Incluindo o dia de início
@@ -332,8 +330,9 @@ export function generateExpectedPayments(params: {
       firstPaymentMonth, 
       firstPaymentYear, 
       daysToChargeFirstPayment,
-      daysUntilEndOfStartMonth,
-      daysInNextMonth: paymentDay
+      daysInCurrentMonth: daysUntilEndOfStartMonth,
+      daysInNextMonth: paymentDay,
+      calculation: `${daysUntilEndOfStartMonth} (fev) + ${paymentDay} (mar) = ${daysToChargeFirstPayment}`
     });
   }
 
@@ -1235,7 +1234,7 @@ export async function findAndRemoveDuplicatePayments(): Promise<{
       const toRemove = sorted.slice(1);
 
       console.log(`✅ Mantendo: ${toKeep.id} - Parcela ${toKeep.installment}/${toKeep.total_installments} (esperada: ${expectedInstallment})`);
-      console.log(`❌ Removendo: ${toRemove.map(p => `${p.id} (${p.installment}/${p.total_installments})`).join(", ")}`);
+      console.log(`❌ Removendo: ${toRemove.map(p => `${p.id} (${p.installment}/${p.total_installments || '?'})`).join(", ")}`);
 
       for (const payment of toRemove) {
         const { error: deleteError } = await supabase
