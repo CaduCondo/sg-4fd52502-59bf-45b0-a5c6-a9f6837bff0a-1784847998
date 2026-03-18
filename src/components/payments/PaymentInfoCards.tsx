@@ -132,7 +132,7 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
           <div>
             <p className="text-xs text-muted-foreground">Aluguel Mensal</p>
             <p className="text-sm font-medium">
-              R$ {(rental?.rent_value || 0).toFixed(2).replace('.', ',')}
+              R$ {((rental?.rent_value || 0) + (rental?.garage_value || 0)).toFixed(2).replace('.', ',')}
             </p>
           </div>
           <div>
