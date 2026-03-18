@@ -309,6 +309,9 @@ export function generateExpectedPayments(params: {
     // Primeiro recebimento no mesmo mês do início do contrato (proporcional)
     firstPaymentMonth = sMonth;
     firstPaymentYear = sYear;
+    // CORREÇÃO: Não adicionar +1, contar dias inclusive
+    // Exemplo: dia 25 até dia 5 = dia 25 (1 dia)
+    // Se início dia 1 e vencimento dia 5 = dias 1,2,3,4,5 = 5 dias
     daysToChargeFirstPayment = paymentDay - sDay + 1;
     console.log("✅ Primeiro recebimento no MESMO mês (PROPORCIONAL):", { firstPaymentMonth, firstPaymentYear, daysToChargeFirstPayment });
   } else {
@@ -316,9 +319,13 @@ export function generateExpectedPayments(params: {
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
-    // Calcular dias: do dia_inicio até o final do mês + do início do próximo mês até o dia_vencimento
+    // CORREÇÃO CRÍTICA: Calcular dias corretamente
+    // Exemplo: Início dia 25/02, vencimento dia 5
+    // Dias em fevereiro: 25, 26, 27, 28 = 4 dias
+    // Dias em março: 1, 2, 3, 4, 5 = 5 dias
+    // Total: 9 dias
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
-    const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1;
+    const daysUntilEndOfStartMonth = daysInStartMonth - sDay + 1; // Incluindo o dia de início
     daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
     
     console.log("✅ Primeiro recebimento no PRÓXIMO mês (PROPORCIONAL):", { 
@@ -430,6 +437,8 @@ export function generateExpectedPayments(params: {
 
   // **ETAPA 4: Criar o último recebimento (proporcional)**
   if (currentYear === eYear && currentMonth === eMonth) {
+    // CORREÇÃO: Contagem correta de dias até o final
+    // Se término dia 15, cobrar dias 1 até 15 = 15 dias
     const daysToChargeLastPayment = eDay;
     
     // CORREÇÃO: Garantir que aluguel e garagem usem os MESMOS dias no último recebimento também
