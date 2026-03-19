@@ -205,38 +205,56 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      const isProportional = paymentData.installment === null || 
-                            paymentData.installment === 1 || 
-                            paymentData.installment === paymentData.total_installments;
-
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
-      if (isProportional && paymentData.expected_amount) {
-        console.log("📅 Pagamento PROPORCIONAL detectado - usando expected_amount:", paymentData.expected_amount);
-        
-        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-          const totalMonthlyValue = paymentData.rentals.rent_value + paymentData.rentals.garage_value;
-          const proportionRental = paymentData.rentals.rent_value / totalMonthlyValue;
-          const proportionGarage = paymentData.rentals.garage_value / totalMonthlyValue;
+      if (paymentData.breakdown && typeof paymentData.breakdown === 'string') {
+        try {
+          const breakdown = JSON.parse(paymentData.breakdown);
           
-          effectiveRentalValue = paymentData.expected_amount * proportionRental;
-          effectiveGarageValue = paymentData.expected_amount * proportionGarage;
-        } else {
-          effectiveRentalValue = paymentData.expected_amount;
-          effectiveGarageValue = 0;
-        }
-      } else {
-        effectiveRentalValue = paymentData.rentals.rent_value || 0;
-        
-        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-          effectiveGarageValue = paymentData.rentals.garage_value;
-        } else {
-          effectiveGarageValue = 0;
+          if (Array.isArray(breakdown) && breakdown.length > 0) {
+            console.log("🔍 Using breakdown from database:", breakdown);
+            
+            breakdown.forEach((item: any) => {
+              const itemAmount = item.amount || item.value || 0;
+              const itemDesc = (item.description || item.label || "").toLowerCase();
+              
+              if (itemDesc.includes("aluguel") || itemDesc.includes("rent")) {
+                effectiveRentalValue = Math.abs(itemAmount);
+              } else if (itemDesc.includes("garagem") || itemDesc.includes("vaga") || itemDesc.includes("garage")) {
+                effectiveGarageValue = Math.abs(itemAmount);
+              }
+            });
+            
+            console.log("💰 Valores extraídos do breakdown - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
+          }
+        } catch (error) {
+          console.error("Erro ao parsear breakdown:", error);
         }
       }
       
-      console.log("💰 Valores CORRETOS - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
+      if (effectiveRentalValue === 0 && effectiveGarageValue === 0) {
+        console.log("⚠️ Breakdown vazio ou inválido, usando expected_amount");
+        
+        if (paymentData.expected_amount) {
+          if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
+            const totalMonthlyValue = paymentData.rentals.rent_value + paymentData.rentals.garage_value;
+            const proportionRental = paymentData.rentals.rent_value / totalMonthlyValue;
+            const proportionGarage = paymentData.rentals.garage_value / totalMonthlyValue;
+            
+            effectiveRentalValue = paymentData.expected_amount * proportionRental;
+            effectiveGarageValue = paymentData.expected_amount * proportionGarage;
+          } else {
+            effectiveRentalValue = paymentData.expected_amount;
+            effectiveGarageValue = 0;
+          }
+        } else {
+          effectiveRentalValue = paymentData.rentals.rent_value || 0;
+          effectiveGarageValue = paymentData.rentals.has_garage ? (paymentData.rentals.garage_value || 0) : 0;
+        }
+      }
+      
+      console.log("💰 Valores FINAIS - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
 
       setRentalValue(effectiveRentalValue);
       setGarageValue(effectiveGarageValue);
