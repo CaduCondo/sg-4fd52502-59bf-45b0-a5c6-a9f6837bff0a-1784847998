@@ -145,22 +145,17 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       }
 
       if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-        // 🚀 CORREÇÃO CRUCIAL: Apenas atualizar a descrição do Aluguel se for proporcional
-        // NÃO sobrescrever valores - usar os valores corretos que vêm do breakdown
+        // 🚀 CORREÇÃO: Manter a estrutura original do breakdown
+        // Apenas garantir que todos os campos necessários estejam presentes
         breakdownData = breakdownData.map(item => {
-          const desc = (item.description || '').toLowerCase();
-          
-          // Apenas atualizar descrição do aluguel se for proporcional
-          if (desc.includes('aluguel') && !desc.includes('desconto')) {
-            return {
-              ...item,
-              description: rentalDescription,
-              // Manter o valor original do breakdown
-            };
-          }
-          
-          // Para todos os outros itens, manter como está
-          return item;
+          return {
+            label: item.label || item.description || "",
+            description: item.description || "",
+            amount: item.extraValue || item.value || item.amount || 0,
+            value: item.extraValue || item.value || item.amount || 0,
+            extraValue: item.extraValue,
+            type: item.type || "addition"
+          };
         });
       }
       
