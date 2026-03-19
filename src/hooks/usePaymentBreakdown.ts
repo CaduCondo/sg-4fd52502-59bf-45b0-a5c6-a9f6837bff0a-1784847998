@@ -17,11 +17,33 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
 
     if (!payment || !payment.breakdown) {
       const hasGarage = garageValue > 0;
-      const total = rentalValue + garageValue;
       
+      // 🔥 CORREÇÃO: Usar expected_amount se for proporcional
       const isProportional = payment?.installment === null || 
                             payment?.installment === 1 || 
                             payment?.installment === payment?.total_installments;
+      
+      let finalRentalValue = rentalValue;
+      let finalGarageValue = garageValue;
+      
+      if (isProportional && payment?.expected_amount) {
+        const totalExpected = payment.expected_amount;
+        
+        if (hasGarage) {
+          // Manter proporção original entre aluguel e garagem
+          const totalOriginal = rentalValue + garageValue;
+          const proportionRental = rentalValue / totalOriginal;
+          const proportionGarage = garageValue / totalOriginal;
+          
+          finalRentalValue = totalExpected * proportionRental;
+          finalGarageValue = totalExpected * proportionGarage;
+        } else {
+          finalRentalValue = totalExpected;
+          finalGarageValue = 0;
+        }
+      }
+      
+      const total = finalRentalValue + finalGarageValue;
       
       let rentalDescription = "Aluguel";
       
@@ -48,8 +70,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       
       const result = {
         items: [
-          { description: rentalDescription, amount: rentalValue },
-          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+          { description: rentalDescription, amount: finalRentalValue },
+          ...(hasGarage ? [{ description: "Valor Vaga", amount: finalGarageValue }] : [])
         ],
         total: total,
         hasMultipleItems: hasGarage
@@ -145,8 +167,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       }
 
       if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-        // 🚀 CORREÇÃO: Manter a estrutura original do breakdown
-        // Apenas garantir que todos os campos necessários estejam presentes
         breakdownData = breakdownData.map(item => {
           return {
             label: item.label || item.description || "",
@@ -161,11 +181,32 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       
       if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
         const hasGarage = garageValue > 0;
-        const total = rentalValue + garageValue;
         
+        // 🔥 CORREÇÃO: Usar expected_amount se for proporcional
         const isProportional = payment?.installment === null || 
                               payment?.installment === 1 || 
                               payment?.installment === payment?.total_installments;
+        
+        let finalRentalValue = rentalValue;
+        let finalGarageValue = garageValue;
+        
+        if (isProportional && payment?.expected_amount) {
+          const totalExpected = payment.expected_amount;
+          
+          if (hasGarage) {
+            const totalOriginal = rentalValue + garageValue;
+            const proportionRental = rentalValue / totalOriginal;
+            const proportionGarage = garageValue / totalOriginal;
+            
+            finalRentalValue = totalExpected * proportionRental;
+            finalGarageValue = totalExpected * proportionGarage;
+          } else {
+            finalRentalValue = totalExpected;
+            finalGarageValue = 0;
+          }
+        }
+        
+        const total = finalRentalValue + finalGarageValue;
         
         let rentalDescription = "Aluguel";
         
@@ -192,8 +233,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         
         const result = {
           items: [
-            { description: rentalDescription, amount: rentalValue },
-            ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+            { description: rentalDescription, amount: finalRentalValue },
+            ...(hasGarage ? [{ description: "Valor Vaga", amount: finalGarageValue }] : [])
           ],
           total: total,
           hasMultipleItems: hasGarage
@@ -219,11 +260,32 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
     } catch (error) {
       console.error("❌ [usePaymentBreakdown] Error processing breakdown:", error);
       const hasGarage = garageValue > 0;
-      const total = rentalValue + garageValue;
       
+      // 🔥 CORREÇÃO: Usar expected_amount se for proporcional
       const isProportional = payment?.installment === null || 
                             payment?.installment === 1 || 
                             payment?.installment === payment?.total_installments;
+      
+      let finalRentalValue = rentalValue;
+      let finalGarageValue = garageValue;
+      
+      if (isProportional && payment?.expected_amount) {
+        const totalExpected = payment.expected_amount;
+        
+        if (hasGarage) {
+          const totalOriginal = rentalValue + garageValue;
+          const proportionRental = rentalValue / totalOriginal;
+          const proportionGarage = garageValue / totalOriginal;
+          
+          finalRentalValue = totalExpected * proportionRental;
+          finalGarageValue = totalExpected * proportionGarage;
+        } else {
+          finalRentalValue = totalExpected;
+          finalGarageValue = 0;
+        }
+      }
+      
+      const total = finalRentalValue + finalGarageValue;
       
       let rentalDescription = "Aluguel";
       
@@ -250,8 +312,8 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       
       return {
         items: [
-          { description: rentalDescription, amount: rentalValue },
-          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+          { description: rentalDescription, amount: finalRentalValue },
+          ...(hasGarage ? [{ description: "Valor Vaga", amount: finalGarageValue }] : [])
         ],
         total: total,
         hasMultipleItems: hasGarage
