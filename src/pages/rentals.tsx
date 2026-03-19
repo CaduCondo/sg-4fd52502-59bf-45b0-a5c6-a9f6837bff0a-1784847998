@@ -659,7 +659,7 @@ export default function RentalsPage() {
                                 Valor do Aluguel
                               </p>
                               <p className="text-2xl font-bold text-emerald-600">
-                                {formatCurrency(rental.value || 0)}
+                                {formatCurrency((rental.value || 0) + (rental.garageValue || 0))}
                               </p>
                             </div>
                             {rental.isActive && (
