@@ -123,7 +123,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
-  // Memoizar funções de formatação
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
     const number = parseFloat(numericValue) / 100;
@@ -206,28 +205,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      // ✅ FIX: Para parcelas proporcionais, usar expected_amount ao invés do valor mensal cheio
-      let effectiveRentalValue = 0;
-      let effectiveGarageValue = 0;
-
       const isProportional = paymentData.installment === null || 
                             paymentData.installment === 1 || 
                             paymentData.installment === paymentData.total_installments;
 
+      let effectiveRentalValue = 0;
+      let effectiveGarageValue = 0;
+
       if (isProportional && paymentData.expected_amount) {
-        // ✅ Para proporcionais: usar o expected_amount que já está calculado corretamente
         console.log("📅 Pagamento PROPORCIONAL detectado - usando expected_amount:", paymentData.expected_amount);
         
-        // Se tiver garagem, precisa subtrair do expected_amount
         if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-          effectiveGarageValue = paymentData.rentals.garage_value;
-          effectiveRentalValue = paymentData.expected_amount - effectiveGarageValue;
+          const totalMonthlyValue = paymentData.rentals.rent_value + paymentData.rentals.garage_value;
+          const proportionRental = paymentData.rentals.rent_value / totalMonthlyValue;
+          const proportionGarage = paymentData.rentals.garage_value / totalMonthlyValue;
+          
+          effectiveRentalValue = paymentData.expected_amount * proportionRental;
+          effectiveGarageValue = paymentData.expected_amount * proportionGarage;
         } else {
           effectiveRentalValue = paymentData.expected_amount;
           effectiveGarageValue = 0;
         }
       } else {
-        // ✅ Para parcelas normais: usar o valor mensal da locação
         effectiveRentalValue = paymentData.rentals.rent_value || 0;
         
         if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
@@ -308,7 +307,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           console.log("✅✅✅ PARCELAS DO CAUÇÃO CARREGADAS:", installments);
           
           if (installments && installments.length > 0) {
-            // Calculate total from ALL installments found
             const totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
             
             console.log(`💰 SOMA TOTAL (2 parcelas?): R$ ${totalDeposit.toFixed(2)}`);
@@ -398,7 +396,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     garageValue: effectiveGarageValue,
   });
 
-  // 🔍 DEBUG: Log para ver o que está sendo exibido
   useEffect(() => {
     if (payment && displayBreakdown) {
       console.log("🔍 [ManagePaymentForm] Display Breakdown:", {
@@ -443,8 +440,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       setCalculatedTotal(newTotal);
       
-      // ✅ CORREÇÃO: Não preencher se estamos editando um pagamento já pago
-      // Apenas preenche para pagamentos novos (não pagos) ou quando não estamos em modo de edição
       if (isEditMode && !isPaid) {
         setFormData(prev => ({
           ...prev,
@@ -452,7 +447,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode && !isPaid) {
-      // ✅ CORREÇÃO: Apenas preenche para pagamentos novos (não pagos)
       const subtotal = displayBreakdown.total;
       const lateFees = (removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros);
       const totalValue = subtotal + lateFees;
@@ -471,7 +465,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     removeInterest,
     calculateValues,
     isEditMode,
-    isPaid, // ✅ Adicionar isPaid nas dependências
+    isPaid,
     loading,
     payment,
     igpmCorrection,
@@ -601,7 +595,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
     
-    // ✅ BUG #2 FIX: Zerar campo "Valor a Pagar" ao habilitar edição
     setFormData(prev => ({
       ...prev,
       amount_to_pay: ""
@@ -615,7 +608,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const handleCancelEdit = useCallback(() => {
     setIsEditMode(false);
-    // ✅ Recarregar dados para restaurar valores originais
     loadPaymentData();
     toast({
       title: "Edição Cancelada",
@@ -745,7 +737,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, [repairExpenses, discountAmount, handleSaveExpensesAndDiscount, isTerminationPayment, loading, payment, igpmCorrection]);
 
   const handleSubmit = async () => {
-    // ✅ CORREÇÃO: Remover obrigatoriedade do campo amount_to_pay
     if (!formData.payment_date || !formData.payment_method) {
       toast({
         title: "Atenção",
@@ -758,7 +749,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      // ✅ Permitir valor zerado - se vazio, mantém o paid_amount anterior
       const paidAmount = formData.amount_to_pay 
         ? parseCurrency(formData.amount_to_pay)
         : 0;
@@ -846,14 +836,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let paymentStatus: string;
       let finalPaidAmount: number;
       
-      // ✅ CORREÇÃO: Se amount_to_pay estiver vazio, mantém o paid_amount anterior
       if (paidAmount === 0) {
-        // Editando sem alterar valor pago - mantém status e valor anterior
         finalPaidAmount = payment?.paid_amount || 0;
         paymentStatus = payment?.status || "pending";
         console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
-        // Adicionando novo pagamento ou alterando valor
         if (isTerminationPayment) {
           const expectedAbs = Math.abs(expectedTotal);
           const difference = Math.abs(paidAmount - expectedAbs);
@@ -941,7 +928,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
-  // Memoizar installment info
   const installmentInfo = useMemo(() => {
     if (payment?.installment === null || payment?.installment === undefined) {
       return "Proporcional";
