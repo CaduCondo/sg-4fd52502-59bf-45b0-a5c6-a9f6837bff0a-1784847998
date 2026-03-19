@@ -45,7 +45,7 @@ export const BreakdownItem = memo(({ item, isDeduction, igpmCorrection, formatCu
         <div className="flex justify-between items-start text-sm">
           <div className="flex-1">
             <span className={isDepositDeduction ? "block" : ""}>
-              {isDepositDeduction ? "Devolução de Caução" : item.description}
+              {item.label || item.description}
             </span>
             {isDepositDeduction && igpmCorrection && (
               <span className="block text-xs text-muted-foreground mt-1">
