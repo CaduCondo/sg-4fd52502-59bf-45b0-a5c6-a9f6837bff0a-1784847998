@@ -75,8 +75,9 @@ export function PaymentReceipt({
   const interest = Number(paymentData.interest || propInterest || 0);
   const paidAmount = Number(paymentData.paid_amount || payment.paidAmount || 0);
   const expectedAmount = Number(paymentData.expected_amount || payment.expectedAmount || 0);
+  const discount = Number(paymentData.discount || 0); // ADICIONAR DESCONTO
   
-  console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount });
+  console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount, discount });
 
   // Usar breakdown do banco
   const paymentBreakdown = paymentData.breakdown;
@@ -171,6 +172,15 @@ export function PaymentReceipt({
             description: "Despesas Adicionais",
             amount: additionalExpenses,
             type: "addition"
+          });
+        }
+
+        // Adicionar desconto se existir
+        if (discount > 0) {
+          breakdownItems.push({
+            description: "Desconto Aplicado",
+            amount: discount,
+            type: "deduction"
           });
         }
       }
@@ -268,6 +278,16 @@ export function PaymentReceipt({
         description: "Juros por Atraso",
         amount: interest,
         type: "addition"
+      });
+    }
+    
+    // Adicionar DESCONTO se existir e for maior que zero
+    if (discount > 0) {
+      console.log(`  ✅ Desconto Aplicado: ${discount}`);
+      breakdownItems.push({
+        description: "Desconto Aplicado",
+        amount: discount,
+        type: "deduction"
       });
     }
     
