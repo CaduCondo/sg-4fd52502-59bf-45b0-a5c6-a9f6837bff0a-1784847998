@@ -411,6 +411,7 @@ export type Database = {
           payment_location: string | null
           payment_method: string | null
           payment_time: string | null
+          pix_code: string | null
           pix_code_type: string | null
           reference_month: string
           reference_year: string
@@ -440,6 +441,7 @@ export type Database = {
           payment_location?: string | null
           payment_method?: string | null
           payment_time?: string | null
+          pix_code?: string | null
           pix_code_type?: string | null
           reference_month: string
           reference_year: string
@@ -469,6 +471,7 @@ export type Database = {
           payment_location?: string | null
           payment_method?: string | null
           payment_time?: string | null
+          pix_code?: string | null
           pix_code_type?: string | null
           reference_month?: string
           reference_year?: string

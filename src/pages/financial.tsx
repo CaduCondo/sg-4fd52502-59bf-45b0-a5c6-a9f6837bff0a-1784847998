@@ -165,6 +165,7 @@ export default function Financial() {
           payment_method,
           installment,
           total_installments,
+          pix_code,
           rentals!payments_rental_id_fkey (
             id,
             rent_value,
@@ -173,7 +174,6 @@ export default function Financial() {
             rent_due_day,
             start_date,
             end_date,
-            pix_code,
             properties!rentals_property_id_fkey (
               id,
               property_identifier,
@@ -241,6 +241,7 @@ export default function Financial() {
           paymentMethod: payment.payment_method,
           installment: payment.installment,
           totalInstallments: payment.total_installments,
+          pixCode: payment.pix_code,
           createdAt: payment.created_at,
           updatedAt: payment.updated_at,
           rental: rental ? {
@@ -262,8 +263,7 @@ export default function Financial() {
             autoRenew: false,
             hasPartnerBroker: false,
             installments: 1,
-            totalInstallments: 1,
-            pixCode: rental.pix_code
+            totalInstallments: 1
           } : undefined,
           property: property ? {
             id: property.id,
@@ -384,7 +384,7 @@ export default function Financial() {
       complemento: property?.complement || "N/A",
       tenantName: tenant?.name || "N/A",
       rental: rental,
-      pixCode: rental?.pixCode || "",
+      pixCode: payment.pixCode || "",
       paymentTime: payment.paymentTime || "",
     };
   }, []);
@@ -500,17 +500,11 @@ export default function Financial() {
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
     try {
-      // Encontrar o payment para pegar o rental_id
-      const payment = payments.find(p => p.id === paymentId);
-      if (!payment || !payment.rentalId) {
-        throw new Error("Locação não encontrada");
-      }
-
-      // Atualizar na tabela rentals (onde o campo pix_code existe)
+      // ✅ CORREÇÃO: Salvar na tabela payments, não rentals
       const { error } = await supabase
-        .from("rentals")
+        .from("payments")
         .update({ pix_code: pixCode })
-        .eq("id", payment.rentalId);
+        .eq("id", paymentId);
 
       if (error) throw error;
 
@@ -519,16 +513,13 @@ export default function Financial() {
         description: "Código PIX atualizado com sucesso!",
       });
 
-      // Atualizar estado local corretamente
+      // ✅ Atualizar estado local corretamente
       setPayments(prevPayments =>
         prevPayments.map(p => {
-          if (p.id === paymentId && p.rental) {
+          if (p.id === paymentId) {
             return {
               ...p,
-              rental: {
-                ...p.rental,
-                pixCode: pixCode
-              }
+              pixCode: pixCode
             };
           }
           return p;
