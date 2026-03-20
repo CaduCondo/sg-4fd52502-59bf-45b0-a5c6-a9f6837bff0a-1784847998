@@ -253,6 +253,7 @@ export interface Payment {
   breakdown?: any;
   installment?: number;
   totalInstallments?: number;
+  pixCode?: string;
   rental?: Rental;
   property?: Property;
   tenant?: Tenant;
