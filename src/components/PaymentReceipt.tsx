@@ -75,10 +75,10 @@ export function PaymentReceipt({
   const interest = Number(paymentData.interest || propInterest || 0);
   const paidAmount = Number(paymentData.paid_amount || payment.paidAmount || 0);
   const expectedAmount = Number(paymentData.expected_amount || payment.expectedAmount || 0);
-  const discount = Number(paymentData.discount || 0);
+  const discount = Number(paymentData.discount_amount || 0);
   
   console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount, discount });
-  console.log("📊 DISCOUNT DO BANCO:", paymentData.discount, "CONVERTIDO:", discount);
+  console.log("📊 DISCOUNT DO BANCO:", paymentData.discount_amount, "CONVERTIDO:", discount);
 
   // Usar breakdown do banco
   const paymentBreakdown = paymentData.breakdown;
