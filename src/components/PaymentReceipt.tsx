@@ -75,9 +75,10 @@ export function PaymentReceipt({
   const interest = Number(paymentData.interest || propInterest || 0);
   const paidAmount = Number(paymentData.paid_amount || payment.paidAmount || 0);
   const expectedAmount = Number(paymentData.expected_amount || payment.expectedAmount || 0);
-  const discount = Number(paymentData.discount || 0); // ADICIONAR DESCONTO
+  const discount = Number(paymentData.discount || 0);
   
   console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount, discount });
+  console.log("📊 DISCOUNT DO BANCO:", paymentData.discount, "CONVERTIDO:", discount);
 
   // Usar breakdown do banco
   const paymentBreakdown = paymentData.breakdown;
@@ -184,6 +185,8 @@ export function PaymentReceipt({
           });
         }
       }
+      
+      console.log("📋 BREAKDOWN DE RESCISÃO PROCESSADO:", breakdownItems);
     } catch (e) {
       console.error("❌ ERRO ao processar breakdown de rescisão:", e);
     }
@@ -299,6 +302,7 @@ export function PaymentReceipt({
   }
 
   console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
+  console.log("🔍 VERIFICAR SE DESCONTO ESTÁ NO BREAKDOWN:", breakdownItems.find(item => item.description.includes("Desconto")));
 
   // Calcular total baseado no breakdown
   let totalAmount = 0;
