@@ -889,6 +889,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
         late_fee: removeLateFee ? 0 : values.multa,
         interest: removeInterest ? 0 : values.juros,
+        discount_amount: discountAmount,
         updated_at: new Date().toISOString(),
         pix_code_type: null,
         breakdown: updatedBreakdown,
@@ -897,7 +898,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       const { error: updateError } = await supabase
         .from("payments")
-        .update(paymentDataUpdate)
+        .update({
+          ...paymentDataUpdate,
+          discount_amount: discountAmount,
+        })
         .eq("id", paymentId);
 
       if (updateError) throw updateError;
