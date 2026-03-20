@@ -201,7 +201,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       console.log("🔍 TODOS OS CAMPOS DO PAYMENT:", {
         id: paymentData.id,
         discount_amount: paymentData.discount_amount,
-        discount: paymentData.discount,
+        discount: (paymentData as any).discount,
         expected_amount: paymentData.expected_amount,
         paid_amount: paymentData.paid_amount,
         late_fee: paymentData.late_fee,
