@@ -93,13 +93,13 @@ export default function PaymentsPage() {
   }, [rentals, tenants]);
 
   const getPaymentInstallment = useCallback((payment: Payment) => {
-    // Primeira proporcional: installment = NULL → retorna "Proporcional"
-    if (payment.installment === null || payment.installment === undefined) {
-      return "Proporcional";
+    // Todos os pagamentos devem ter installment e totalInstallments definidos
+    // Formato sempre: "X/Y" mesmo para parcelas proporcionais
+    if (!payment.installment || !payment.totalInstallments) {
+      console.warn("Payment sem installment ou totalInstallments:", payment);
+      return "?/?";
     }
-    // Parcelas únicas (sem total_installments)
-    if (!payment.totalInstallments) return "Única";
-    // Parcelas numeradas normais + última proporcional (que é total+1)
+    
     return `${payment.installment}/${payment.totalInstallments}`;
   }, []);
 
