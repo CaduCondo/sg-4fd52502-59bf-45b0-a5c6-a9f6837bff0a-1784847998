@@ -710,6 +710,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       console.log("💾 AUTO-SAVE - Breakdown Total:", breakdownTotal);
       console.log("💾 AUTO-SAVE - Novo Expected Total (com desconto):", newExpectedTotal);
       
+      console.log("💾 SALVANDO NO BANCO:", {
+        breakdown: breakdownData,
+        expected_amount: Math.abs(newExpectedTotal),
+        discount_amount: discountAmount
+      });
+      
       const { error: updateError } = await supabase
         .from("payments")
         .update({
@@ -723,6 +729,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (updateError) throw updateError;
       
       console.log("✅ Valores salvos com sucesso!");
+      
+      // Recarregar os dados do pagamento para garantir que estão atualizados
+      await loadPaymentData();
       
       invalidateCache('payments');
       
