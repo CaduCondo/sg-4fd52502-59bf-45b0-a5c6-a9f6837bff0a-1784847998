@@ -175,15 +175,6 @@ export function PaymentReceipt({
             type: "addition"
           });
         }
-
-        // Adicionar desconto se existir
-        if (discount > 0) {
-          breakdownItems.push({
-            description: "Desconto Aplicado",
-            amount: discount,
-            type: "deduction"
-          });
-        }
       }
       
       console.log("📋 BREAKDOWN DE RESCISÃO PROCESSADO:", breakdownItems);
@@ -284,21 +275,32 @@ export function PaymentReceipt({
       });
     }
     
-    // Adicionar DESCONTO se existir e for maior que zero
-    if (discount > 0) {
-      console.log(`  ✅ Desconto Aplicado: ${discount}`);
-      breakdownItems.push({
-        description: "Desconto Aplicado",
-        amount: discount,
-        type: "deduction"
-      });
-    }
-    
     // Adicionar outros itens do breakdown
     otherItems.forEach(item => {
       console.log(`  ✅ Item adicional: ${item.description} = ${item.amount}`);
       breakdownItems.push(item);
     });
+  }
+  
+  // CRÍTICO: Adicionar desconto AO FINAL do processamento (tanto para rescisão quanto para pagamento normal)
+  // Isso garante que o desconto sempre apareça no breakdown, independente do tipo de pagamento
+  if (discount > 0) {
+    console.log(`  ✅ Desconto Aplicado (adicionado ao final): ${discount}`);
+    // Verificar se já não existe no breakdown (evitar duplicação)
+    const descontoJaExiste = breakdownItems.some(item => 
+      item.description.toLowerCase().includes("desconto")
+    );
+    
+    if (!descontoJaExiste) {
+      breakdownItems.push({
+        description: "Desconto Aplicado",
+        amount: discount,
+        type: "deduction"
+      });
+      console.log("  ✅ Desconto adicionado ao breakdown!");
+    } else {
+      console.log("  ⚠️ Desconto já existe no breakdown, não duplicar");
+    }
   }
 
   console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
