@@ -307,7 +307,7 @@ export default function TenantsPage() {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               statusFilter={statusFilter}
-              onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
+              onStatusFilterChange={setStatusFilter}
               sortBy={sortBy}
               onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
               totalCount={filteredTenants.length}
@@ -318,11 +318,11 @@ export default function TenantsPage() {
         {filteredTenants.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              {searchTerm || statusFilter !== "all" 
+              {searchTerm || statusFilter.length !== 3 
                 ? "Nenhum inquilino encontrado com os filtros aplicados." 
                 : "Nenhum inquilino encontrado."}
             </p>
-            {!searchTerm && statusFilter === "all" && (
+            {!searchTerm && statusFilter.length === 3 && (
               <Button onClick={handleCreateNew} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Inquilino
