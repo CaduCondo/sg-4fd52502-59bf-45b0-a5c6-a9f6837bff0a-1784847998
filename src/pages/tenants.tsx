@@ -43,7 +43,7 @@ export default function TenantsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]);
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const formatDocument = useCallback((tenant: Tenant) => {
@@ -79,8 +79,8 @@ export default function TenantsPage() {
       });
     }
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((t) => t.status === statusFilter);
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter((t) => statusFilter.includes(t.status));
     }
 
     if (sortBy === "alphabetical") {

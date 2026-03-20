@@ -1,17 +1,26 @@
 import { memo, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Filter } from "lucide-react";
 
 interface TenantFiltersProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
+  statusFilter: string[];
+  onStatusFilterChange: (value: string[]) => void;
   sortBy: "alphabetical" | "recent";
   onSortChange: (value: "alphabetical" | "recent") => void;
   totalCount: number;
 }
+
+const STATUS_OPTIONS = [
+  { value: "active", label: "Ativo" },
+  { value: "rented", label: "Locatário" },
+  { value: "inactive", label: "Inativo" },
+];
 
 export const TenantFilters = memo(function TenantFilters({
   searchTerm,
@@ -27,6 +36,23 @@ export const TenantFilters = memo(function TenantFilters({
     [totalCount]
   );
 
+  const statusText = useMemo(() => {
+    if (statusFilter.length === 0) return "Nenhum";
+    if (statusFilter.length === STATUS_OPTIONS.length) return "Todos";
+    return STATUS_OPTIONS
+      .filter(opt => statusFilter.includes(opt.value))
+      .map(opt => opt.label)
+      .join(", ");
+  }, [statusFilter]);
+
+  const handleStatusToggle = (value: string) => {
+    if (statusFilter.includes(value)) {
+      onStatusFilterChange(statusFilter.filter(s => s !== value));
+    } else {
+      onStatusFilterChange([...statusFilter, value]);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -35,7 +61,7 @@ export const TenantFilters = memo(function TenantFilters({
         </div>
         
         <div className="hidden lg:flex gap-3">
-          <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
+          <div className="w-[180px] text-sm font-medium text-foreground">Status:</div>
           <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
         </div>
       </div>
@@ -54,16 +80,30 @@ export const TenantFilters = memo(function TenantFilters({
         </div>
 
         <div className="hidden lg:flex gap-3 ml-auto">
-          <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-            <SelectTrigger className="w-[140px] h-10">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[180px] h-10 justify-between">
+                <span className="truncate">{statusText}</span>
+                <Filter className="ml-2 h-4 w-4 shrink-0" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[180px] p-3" align="start">
+              <div className="space-y-2">
+                {STATUS_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                  >
+                    <Checkbox
+                      checked={statusFilter.includes(option.value)}
+                      onCheckedChange={() => handleStatusToggle(option.value)}
+                    />
+                    <span className="text-sm">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
             <SelectTrigger className="w-[140px] h-10">
