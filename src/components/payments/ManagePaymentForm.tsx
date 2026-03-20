@@ -198,6 +198,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (paymentError) throw paymentError;
 
       console.log("📦 Payment data loaded:", paymentData);
+      console.log("🔍 TODOS OS CAMPOS DO PAYMENT:", {
+        id: paymentData.id,
+        discount_amount: paymentData.discount_amount,
+        discount: paymentData.discount,
+        expected_amount: paymentData.expected_amount,
+        paid_amount: paymentData.paid_amount,
+        late_fee: paymentData.late_fee,
+        interest: paymentData.interest
+      });
 
       setPayment(paymentData);
       setRental(paymentData.rentals);
@@ -306,6 +315,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           console.error("Erro ao parsear breakdown:", error);
           setOriginalBreakdown([]);
         }
+      }
+      
+      // CRITICAL: Carregar discount_amount do banco de dados
+      if (paymentData.discount_amount !== undefined && paymentData.discount_amount !== null) {
+        console.log("💰 CARREGANDO DISCOUNT_AMOUNT DO BANCO:", paymentData.discount_amount);
+        setDiscountAmount(paymentData.discount_amount);
+        setDiscountAmountInput(formatCurrency(paymentData.discount_amount.toFixed(2)));
       }
 
       if (isTermination && paymentData.rentals) {
@@ -710,14 +726,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       console.log("💾 AUTO-SAVE - Breakdown Total:", breakdownTotal);
       console.log("💾 AUTO-SAVE - Novo Expected Total (com desconto):", newExpectedTotal);
       
+      const updateData = {
+        breakdown: JSON.stringify(breakdownData),
+        expected_amount: Math.abs(newExpectedTotal),
+        discount_amount: discountAmount,
+        updated_at: new Date().toISOString(),
+      };
+      
+      console.log("💾 SALVANDO NO BANCO:", updateData);
+      
       const { error: updateError } = await supabase
         .from("payments")
-        .update({
-          breakdown: JSON.stringify(breakdownData),
-          expected_amount: Math.abs(newExpectedTotal),
-          discount_amount: discountAmount,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", paymentId);
 
       if (updateError) throw updateError;
