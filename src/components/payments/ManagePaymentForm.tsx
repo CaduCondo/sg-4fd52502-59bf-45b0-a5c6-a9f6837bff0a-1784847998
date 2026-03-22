@@ -214,61 +214,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      let effectiveRentalValue = 0;
-      let effectiveGarageValue = 0;
-
-      if (paymentData.breakdown && typeof paymentData.breakdown === 'string') {
-        try {
-          const breakdown = JSON.parse(paymentData.breakdown);
-          
-          if (Array.isArray(breakdown) && breakdown.length > 0) {
-            console.log("🔍 Using breakdown from database:", breakdown);
-            
-            breakdown.forEach((item: any) => {
-              const itemAmount = item.amount || item.value || 0;
-              const itemDesc = (item.description || item.label || "").toLowerCase();
-              
-              if (itemDesc.includes("aluguel") || itemDesc.includes("rent")) {
-                effectiveRentalValue = Math.abs(itemAmount);
-              } else if (itemDesc.includes("garagem") || itemDesc.includes("vaga") || itemDesc.includes("garage")) {
-                effectiveGarageValue = Math.abs(itemAmount);
-              }
-            });
-            
-            console.log("💰 Valores extraídos do breakdown - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
-          }
-        } catch (error) {
-          console.error("Erro ao parsear breakdown:", error);
-        }
-      }
+      // SEMPRE usar valores do contrato - NUNCA extrair do breakdown
+      // O breakdown pode conter valores incorretos de cálculos anteriores
+      const baseRentalValue = paymentData.rentals.rent_value || 0;
+      const baseGarageValue = paymentData.rentals.has_garage ? (paymentData.rentals.garage_value || 0) : 0;
       
-      if (effectiveRentalValue === 0 && effectiveGarageValue === 0) {
-        console.log("⚠️ Breakdown vazio ou inválido, usando expected_amount");
-        
-        if (paymentData.expected_amount) {
-          if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-            const totalMonthlyValue = paymentData.rentals.rent_value + paymentData.rentals.garage_value;
-            const proportionRental = paymentData.rentals.rent_value / totalMonthlyValue;
-            const proportionGarage = paymentData.rentals.garage_value / totalMonthlyValue;
-            
-            effectiveRentalValue = paymentData.expected_amount * proportionRental;
-            effectiveGarageValue = paymentData.expected_amount * proportionGarage;
-          } else {
-            effectiveRentalValue = paymentData.expected_amount;
-            effectiveGarageValue = 0;
-          }
-        } else {
-          effectiveRentalValue = paymentData.rentals.rent_value || 0;
-          effectiveGarageValue = paymentData.rentals.has_garage ? (paymentData.rentals.garage_value || 0) : 0;
-        }
-      }
-      
-      console.log("💰 Valores FINAIS - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
+      console.log("💰 Valores do CONTRATO - Aluguel:", baseRentalValue, "Garagem:", baseGarageValue);
 
-      setRentalValue(effectiveRentalValue);
-      setGarageValue(effectiveGarageValue);
-      setEffectiveRentalValue(effectiveRentalValue);
-      setEffectiveGarageValue(effectiveGarageValue);
+      setRentalValue(baseRentalValue);
+      setGarageValue(baseGarageValue);
+      setEffectiveRentalValue(baseRentalValue);
+      setEffectiveGarageValue(baseGarageValue);
 
       const alreadyPaid = paymentData.status === "paid";
       setIsPaid(alreadyPaid);
