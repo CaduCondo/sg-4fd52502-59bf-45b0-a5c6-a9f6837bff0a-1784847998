@@ -32,7 +32,7 @@ async function fixRentalPayments() {
   try {
     // 1. Buscar o contrato da Thaynara (Aluguel Mensal: R$ 1.400,00)
     console.log('📋 Buscando contrato...');
-    const { data: rentals, error: rentalError } = await supabase
+    const { data: rental, error: rentalError } = await supabase
       .from('rentals')
       .select(`
         id,
@@ -46,6 +46,7 @@ async function fixRentalPayments() {
         )
       `)
       .eq('rent_value', 1400.00)
+      .eq('properties.complement', 'APTO 10')
       .limit(1)
       .single();
 
@@ -54,22 +55,22 @@ async function fixRentalPayments() {
       return;
     }
 
-    if (!rentals) {
+    if (!rental) {
       console.error('❌ Contrato não encontrado!');
       return;
     }
 
-    console.log(`✅ Contrato encontrado: ${rentals.tenants?.name || 'N/A'}`);
-    console.log(`   Aluguel: R$ ${rentals.rent_value.toFixed(2)}`);
-    console.log(`   Garagem: R$ ${(rentals.garage_value || 0).toFixed(2)}`);
-    console.log(`   ID: ${rentals.id}\n`);
+    console.log(`✅ Contrato encontrado: ${rental.tenants?.name || 'N/A'}`);
+    console.log(`   Aluguel: R$ ${rental.rent_value.toFixed(2)}`);
+    console.log(`   Garagem: R$ ${(rental.garage_value || 0).toFixed(2)}`);
+    console.log(`   ID: ${rental.id}\n`);
 
     // 2. Buscar todos os pagamentos deste contrato
     console.log('💰 Buscando pagamentos do contrato...');
     const { data: payments, error: paymentsError } = await supabase
       .from('payments')
       .select('*')
-      .eq('rental_id', rentals.id)
+      .eq('rental_id', rental.id)
       .order('due_date', { ascending: true });
 
     if (paymentsError) {
@@ -115,7 +116,7 @@ async function fixRentalPayments() {
         );
 
         // Verifica se precisa corrigir
-        const hasIncorrectValue = rentalItem && Math.abs(rentalItem.amount - rentals.rent_value) > 0.01;
+        const hasIncorrectValue = rentalItem && Math.abs(rentalItem.amount - rental.rent_value) > 0.01;
 
         if (!hasIncorrectValue) {
           console.log(`✓ Parcela ${payment.installment}/${payment.total_installments} - Valores corretos, pulando...`);
@@ -125,7 +126,7 @@ async function fixRentalPayments() {
 
         console.log(`\n🔧 Corrigindo Parcela ${payment.installment}/${payment.total_installments}:`);
         console.log(`   Valor atual no breakdown: R$ ${rentalItem.amount.toFixed(2)}`);
-        console.log(`   Valor correto: R$ ${rentals.rent_value.toFixed(2)}`);
+        console.log(`   Valor correto: R$ ${rental.rent_value.toFixed(2)}`);
 
         // Reconstrói o breakdown com valores corretos
         const newBreakdown = [];
@@ -133,15 +134,15 @@ async function fixRentalPayments() {
         // 1. Adiciona aluguel com valor correto
         newBreakdown.push({
           description: `Valor mensal do aluguel - Parcela ${payment.installment}/${payment.total_installments}`,
-          amount: rentals.rent_value,
+          amount: rental.rent_value,
           type: 'addition'
         });
 
         // 2. Adiciona garagem se houver
-        if (rentals.has_garage && rentals.garage_value > 0) {
+        if (rental.has_garage && rental.garage_value > 0) {
           newBreakdown.push({
             description: 'Valor mensal da garagem',
-            amount: rentals.garage_value,
+            amount: rental.garage_value,
             type: 'addition'
           });
         }
@@ -163,7 +164,7 @@ async function fixRentalPayments() {
         }
 
         // 4. Calcula novo expected_amount
-        const baseAmount = rentals.rent_value + (rentals.has_garage ? (rentals.garage_value || 0) : 0);
+        const baseAmount = rental.rent_value + (rental.has_garage ? (rental.garage_value || 0) : 0);
         const lateFee = payment.late_fee || 0;
         const interest = payment.interest || 0;
         const discount = payment.discount_amount || 0;
