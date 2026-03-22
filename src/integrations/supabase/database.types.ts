@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -401,8 +401,10 @@ export type Database = {
           id: string
           installment: number | null
           interest: number | null
+          interest_waived: boolean | null
           is_paid: boolean | null
           late_fee: number | null
+          late_fee_waived: boolean | null
           notes: string | null
           paid_amount: number | null
           partial_payments: Json | null
@@ -431,8 +433,10 @@ export type Database = {
           id?: string
           installment?: number | null
           interest?: number | null
+          interest_waived?: boolean | null
           is_paid?: boolean | null
           late_fee?: number | null
+          late_fee_waived?: boolean | null
           notes?: string | null
           paid_amount?: number | null
           partial_payments?: Json | null
@@ -461,8 +465,10 @@ export type Database = {
           id?: string
           installment?: number | null
           interest?: number | null
+          interest_waived?: boolean | null
           is_paid?: boolean | null
           late_fee?: number | null
+          late_fee_waived?: boolean | null
           notes?: string | null
           paid_amount?: number | null
           partial_payments?: Json | null

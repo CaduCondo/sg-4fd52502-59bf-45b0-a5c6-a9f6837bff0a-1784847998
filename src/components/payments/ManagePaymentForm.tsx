@@ -233,6 +233,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
       
+      // CRITICAL: Carregar estados dos checkboxes salvos no banco
+      const waiveLateFee = (paymentData as any).late_fee_waived || false;
+      const waiveInterest = (paymentData as any).interest_waived || false;
+      
+      console.log("📋 Carregando estados salvos - Multa perdoada:", waiveLateFee, "Juros perdoados:", waiveInterest);
+      
+      setRemoveLateFee(waiveLateFee);
+      setRemoveInterest(waiveInterest);
+      
       if (paymentData.breakdown) {
         try {
           let breakdownData = paymentData.breakdown;
