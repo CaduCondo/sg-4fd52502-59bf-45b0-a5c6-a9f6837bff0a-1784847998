@@ -483,7 +483,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } else if (!isTerminationPayment && isEditMode && !isPaid) {
       const subtotal = displayBreakdown.total;
       const lateFees = (removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros);
-      const totalValue = subtotal + lateFees;
+      const totalValue = subtotal + lateFees - discountAmount;
       
       setFormData(prev => ({
         ...prev,
@@ -887,7 +887,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         } else {
           const previousPaid = payment?.paid_amount || 0;
           finalPaidAmount = previousPaid + paidAmount;
-          paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
+          const totalExpected = Math.abs(expectedTotal);
+          paymentStatus = finalPaidAmount >= totalExpected ? "paid" : "partial";
         }
       }
 

@@ -418,10 +418,34 @@ export function PaymentBreakdownCard({
                 </>
               )}
 
+              <div className="border-t border-dashed my-2"></div>
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4 items-center text-sm bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded">
+                  <span className="font-medium">Valor de Desconto</span>
+                  
+                  {isEditMode ? (
+                    <Input
+                      type="text"
+                      placeholder="R$ 0,00"
+                      value={discountAmountInput}
+                      onChange={(e) => onDiscountAmountChange(e.target.value)}
+                      className="text-right"
+                      disabled={isReadOnly}
+                    />
+                  ) : (
+                    <span className="font-medium text-right text-red-600">
+                      {discountAmount > 0 ? "- " : ""}
+                      {formatCurrency(discountAmount)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                 <span className="font-bold text-base">VALOR TOTAL</span>
                 <span className="font-bold text-base text-primary">
-                  {formatCurrency(displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)))}
+                  {formatCurrency(displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)) - discountAmount)}
                 </span>
               </div>
 
