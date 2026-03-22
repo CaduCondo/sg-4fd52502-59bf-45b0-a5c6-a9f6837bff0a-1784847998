@@ -26,55 +26,42 @@ async function fixAllPayments() {
   console.log('🔧 Iniciando correção COMPLETA de valores...\n');
 
   try {
-    // 1. Buscar contrato do SIGNORE APTO 10
-    console.log('📋 Buscando contrato do SIGNORE APTO 10...');
-    const { data: rentals, error: rentalError } = await supabase
-      .from('rentals')
-      .select('id, rent_value, garage_value, has_garage')
-      .eq('property_id', (await supabase
-        .from('properties')
-        .select('id')
-        .eq('local', 'SIGNORE')
-        .eq('complement', 'APTO 10')
-        .single()
-      ).data.id)
+    // 1. Buscar propriedade SIGNORE APTO 10
+    console.log('📋 Buscando propriedade SIGNORE APTO 10...');
+    const { data: property, error: propError } = await supabase
+      .from('properties')
+      .select('id, local, complement')
+      .eq('local', 'SIGNORE')
+      .eq('complement', 'APTO 10')
       .single();
 
-    if (rentalError || !rentals) {
-      // Fallback: buscar por rent_value
-      console.log('⚠️ Tentando fallback por rent_value = 1400...');
-      const { data: allRentals } = await supabase
-        .from('rentals')
-        .select('id, rent_value, garage_value, has_garage, property_id');
-      
-      const { data: properties } = await supabase
-        .from('properties')
-        .select('id, local, complement')
-        .in('id', allRentals?.map(r => r.property_id) || []);
+    if (propError || !property) {
+      console.error('❌ Propriedade não encontrada:', propError);
+      return;
+    }
 
-      const rental = allRentals?.find(r => {
-        const prop = properties?.find(p => p.id === r.property_id);
-        return prop?.complement === 'APTO 10' && r.rent_value === 1400;
-      });
+    console.log(`✅ Propriedade encontrada: ${property.local} ${property.complement}`);
 
-      if (!rental) {
-        console.error('❌ Contrato não encontrado!');
-        return;
-      }
+    // 2. Buscar contrato ativo dessa propriedade
+    console.log('📋 Buscando contrato...');
+    const { data: rental, error: rentalError } = await supabase
+      .from('rentals')
+      .select('id, rent_value, garage_value, has_garage')
+      .eq('property_id', property.id)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
 
-      console.log(`✅ Contrato encontrado via fallback`);
-      console.log(`   Aluguel contratado: R$ ${rental.rent_value.toFixed(2)}`);
-      console.log(`   Garagem: R$ ${(rental.garage_value || 0).toFixed(2)}\n`);
-
-      await processPayments(rental);
+    if (rentalError || !rental) {
+      console.error('❌ Contrato não encontrado:', rentalError);
       return;
     }
 
     console.log(`✅ Contrato encontrado`);
-    console.log(`   Aluguel contratado: R$ ${rentals.rent_value.toFixed(2)}`);
-    console.log(`   Garagem: R$ ${(rentals.garage_value || 0).toFixed(2)}\n`);
+    console.log(`   Aluguel contratado: R$ ${rental.rent_value.toFixed(2)}`);
+    console.log(`   Garagem: R$ ${(rental.garage_value || 0).toFixed(2)}\n`);
 
-    await processPayments(rentals);
+    await processPayments(rental);
 
   } catch (error) {
     console.error('❌ Erro:', error);
