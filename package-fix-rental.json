@@ -1,0 +1,12 @@
+{
+  "name": "fix-rental-payments",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "fix": "node fix-rental-payments-values.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
+  }
+}
