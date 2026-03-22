@@ -28,19 +28,32 @@ async function fixAllPayments() {
   try {
     // 1. Buscar propriedade SIGNORE APTO 10
     console.log('📋 Buscando propriedade SIGNORE APTO 10...');
-    const { data: property, error: propError } = await supabase
+    const { data: properties, error: propError } = await supabase
       .from('properties')
-      .select('id, local, complement')
-      .eq('local', 'SIGNORE')
-      .eq('complement', 'APTO 10')
-      .single();
+      .select(`
+        id,
+        complement,
+        locations!inner (
+          name
+        )
+      `)
+      .eq('complement', 'APTO 10');
 
-    if (propError || !property) {
-      console.error('❌ Propriedade não encontrada:', propError);
+    if (propError) {
+      console.error('❌ Erro ao buscar propriedade:', propError);
       return;
     }
 
-    console.log(`✅ Propriedade encontrada: ${property.local} ${property.complement}`);
+    // Filtrar pelo local SIGNORE
+    const property = properties?.find(p => p.locations?.name === 'SIGNORE');
+
+    if (!property) {
+      console.error('❌ Propriedade SIGNORE APTO 10 não encontrada');
+      console.log('Propriedades encontradas:', properties);
+      return;
+    }
+
+    console.log(`✅ Propriedade encontrada: ${property.locations.name} ${property.complement}\n`);
 
     // 2. Buscar contrato ativo dessa propriedade
     console.log('📋 Buscando contrato...');
@@ -170,7 +183,6 @@ async function processPayments(rental) {
         .from('payments')
         .update({
           expected_amount: newExpectedAmount,
-          amount_to_pay: newAmountToPay,
           breakdown: JSON.stringify(newBreakdown),
           updated_at: new Date().toISOString()
         })
