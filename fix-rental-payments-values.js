@@ -119,6 +119,11 @@ async function processPayments(rental) {
         console.log(`⚠️ Breakdown inválido na parcela ${payment.installment}`);
       }
 
+      // DEBUG: Mostrar breakdown atual
+      console.log(`\n📋 Parcela ${payment.installment}/${payment.total_installments}:`);
+      console.log(`   Expected Amount: R$ ${payment.expected_amount?.toFixed(2) || '0.00'}`);
+      console.log(`   Breakdown atual:`, JSON.stringify(currentBreakdown, null, 2));
+
       // Encontra valor atual do aluguel no breakdown
       const rentalItem = currentBreakdown.find(item =>
         item.description?.toLowerCase().includes('aluguel')
