@@ -875,6 +875,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
         late_fee: removeLateFee ? 0 : values.multa,
         interest: removeInterest ? 0 : values.juros,
+        late_fee_waived: removeLateFee,
+        interest_waived: removeInterest,
         discount_amount: discountAmount,
         updated_at: new Date().toISOString(),
         pix_code_type: null,
