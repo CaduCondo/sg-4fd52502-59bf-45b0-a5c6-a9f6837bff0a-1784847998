@@ -1019,6 +1019,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               onPaymentMinuteChange={setPaymentMinute}
               onPaymentSecondChange={setPaymentSecond}
               formatCurrency={formatCurrency}
+              isTerminationPayment={isTerminationPayment}
             />
           </CardContent>
         </Card>
