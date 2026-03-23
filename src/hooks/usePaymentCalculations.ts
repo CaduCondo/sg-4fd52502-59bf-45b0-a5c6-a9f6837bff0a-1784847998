@@ -167,7 +167,7 @@ export function usePaymentCalculations({
     }
 
     const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
-    const valorAPagar = removeLateFee && removeInterest ? valorAluguel : valorTotalSemIsencao;
+    const valorAPagar = removeLateFee ? (removeInterest ? valorAluguel : Math.round((valorAluguel + juros) * 100) / 100) : Math.round((valorAluguel + multa) * 100) / 100;
     
     const valorJaPago = payment?.paid_amount || 0;
     const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
