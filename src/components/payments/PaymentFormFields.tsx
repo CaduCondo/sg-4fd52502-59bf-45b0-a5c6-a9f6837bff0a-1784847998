@@ -22,6 +22,7 @@ interface PaymentFormFieldsProps {
   onPaymentMinuteChange: (value: string) => void;
   onPaymentSecondChange: (value: string) => void;
   formatCurrency: (value: string) => string;
+  isTerminationPayment?: boolean;
 }
 
 export const PaymentFormFields = memo(function PaymentFormFields({
