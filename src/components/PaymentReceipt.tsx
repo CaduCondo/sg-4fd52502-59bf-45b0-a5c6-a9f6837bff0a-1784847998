@@ -550,7 +550,7 @@ export function PaymentReceipt({
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
                 anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
-                <strong>{formatDate(rental.startDate)}</strong>.
+                <strong>{formatDate(rental.start_date)}</strong>.
               </p>
             )}
           </div>
