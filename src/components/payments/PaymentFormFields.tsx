@@ -37,6 +37,7 @@ export const PaymentFormFields = memo(function PaymentFormFields({
   onPaymentMinuteChange,
   onPaymentSecondChange,
   formatCurrency,
+  isTerminationPayment,
 }: PaymentFormFieldsProps) {
   return (
     <div className="space-y-4">
@@ -139,11 +140,35 @@ export const PaymentFormFields = memo(function PaymentFormFields({
           <Input
             id="amount_to_pay"
             type="text"
-            placeholder="R$ 0,00"
             value={formData.amount_to_pay}
             onChange={(e) => {
-              const formatted = formatCurrency(e.target.value);
-              onFormDataChange({ ...formData, amount_to_pay: formatted });
+              const value = e.target.value;
+              
+              // CRITICAL: Para rescisões, permitir sinal negativo
+              if (isTerminationPayment) {
+                // Detecta se começou a digitar o sinal negativo
+                const isNegative = value.startsWith('-');
+                
+                // Remove tudo exceto números e vírgula/ponto
+                const cleanValue = value.replace(/[^\d,.-]/g, '');
+                
+                // Se tem números, formata
+                if (cleanValue.replace(/[-.,]/g, '').length > 0) {
+                  // Remove o sinal temporariamente para formatar
+                  const valueToFormat = cleanValue.replace('-', '');
+                  const formatted = formatCurrency(valueToFormat);
+                  
+                  // Adiciona o sinal negativo de volta se estava presente
+                  const finalValue = isNegative ? `-${formatted}` : formatted;
+                  onFormDataChange({ ...formData, amount_to_pay: finalValue });
+                } else {
+                  // Permite apenas o sinal negativo sozinho
+                  onFormDataChange({ ...formData, amount_to_pay: isNegative ? '-' : '' });
+                }
+              } else {
+                // Para pagamentos normais, não permite negativo
+                onFormDataChange({ ...formData, amount_to_pay: formatCurrency(value) });
+              }
             }}
             required
             disabled={isReadOnly}
