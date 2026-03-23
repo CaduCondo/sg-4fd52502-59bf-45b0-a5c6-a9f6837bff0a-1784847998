@@ -180,10 +180,26 @@ export function PaymentBreakdownCard({
 
   const finalTotal = isTerminationPayment 
     ? Math.abs(calculatedTotal)
-    : (displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)));
+    : (displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)) - discountAmount);
 
   const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
+
+  console.log("💰 PaymentBreakdownCard - Cálculos:", {
+    isTerminationPayment,
+    displayBreakdownTotal: displayBreakdown.total,
+    multa: values.multa,
+    juros: values.juros,
+    removeLateFee,
+    removeInterest,
+    multaAplicada: removeLateFee ? 0 : values.multa,
+    jurosAplicados: removeInterest ? 0 : values.juros,
+    discountAmount,
+    finalTotal,
+    paidAmount,
+    remainingDue,
+    paymentStatus
+  });
 
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
