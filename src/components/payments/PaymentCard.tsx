@@ -102,8 +102,9 @@ export const PaymentCard = memo(function PaymentCard({
   
   const isPartial = payment.status === "partial";
   
-  // Calcular o valor total esperado incluindo multa e juros
-  const totalExpectedAmount = expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
+  // 🔥 CORREÇÃO: expectedAmount JÁ INCLUI lateFee e interest (calculado em payments.tsx)
+  // Não somar novamente para evitar duplicação
+  const totalExpectedAmount = expectedAmount;
   
   // Calcular o valor restante correto
   const remainingAmount = isPartial ? totalExpectedAmount - payment.paidAmount : totalExpectedAmount;
