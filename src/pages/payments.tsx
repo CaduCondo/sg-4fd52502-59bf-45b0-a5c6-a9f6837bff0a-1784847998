@@ -111,13 +111,13 @@ export default function PaymentsPage() {
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
         
-        // Se o breakdown for um array, somar todos os valores
+        // Se o breakdown for um array, somar todos os valores PRESERVANDO SINAIS NEGATIVOS
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
           const breakdownTotal = breakdownData.reduce((sum: number, item: any) => {
             return sum + (item.value || item.amount || 0);
           }, 0);
           
-          // Adicionar multa e juros ao total do breakdown
+          // Adicionar multa e juros ao total do breakdown (podem ser removidos se negativos)
           return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
         }
         
@@ -130,7 +130,7 @@ export default function PaymentsPage() {
             }
           });
           
-          if (breakdownTotal > 0) {
+          if (breakdownTotal > 0 || breakdownTotal < 0) {
             return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
           }
         }
