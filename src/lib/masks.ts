@@ -5,10 +5,16 @@ export const formatCurrency = (value: string | number): string => {
   // Handle null, undefined, or NaN
   if (value === null || value === undefined || isNaN(numValue)) return "R$ 0,00";
   
-  return numValue.toLocaleString("pt-BR", {
+  // Preserve negative sign
+  const isNegative = numValue < 0;
+  const absoluteValue = Math.abs(numValue);
+  
+  const formatted = absoluteValue.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
   });
+  
+  return isNegative ? `- ${formatted}` : formatted;
 };
 
 export const parseCurrency = (value: string): number => {

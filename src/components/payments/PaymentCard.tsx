@@ -106,14 +106,24 @@ export const PaymentCard = memo(function PaymentCard({
   // Não somar novamente para evitar duplicação
   const totalExpectedAmount = expectedAmount;
   
-  // Calcular o valor restante correto
+  // Calcular o valor restante correto - PRESERVAR SINAL NEGATIVO
   const remainingAmount = isPartial ? totalExpectedAmount - payment.paidAmount : totalExpectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
+
+  // Determinar cor baseado no sinal do valor E status do pagamento
+  const getAmountColor = (): string => {
+    if (isPaid) return "text-green-600";
+    if (displayAmount < 0) return "text-red-600"; // Valor negativo = vermelho
+    if (isPartial) return "text-yellow-600";
+    return getDueDateColor(payment.dueDate, isPaid).amount;
+  };
 
   const colors = useMemo(() => 
     getDueDateColor(payment.dueDate, isPaid),
     [payment.dueDate, isPaid]
   );
+
+  const amountColor = getAmountColor();
 
   const formattedDisplayAmount = useMemo(() => 
     formatCurrency(displayAmount),
@@ -194,7 +204,7 @@ export const PaymentCard = memo(function PaymentCard({
               </span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
+              <p className={`text-2xl sm:text-3xl font-bold ${amountColor}`}>
                 {formattedDisplayAmount}
               </p>
               {hasAttachments(payment) && (
@@ -347,7 +357,7 @@ export const PaymentCard = memo(function PaymentCard({
                 <p className="text-xs text-muted-foreground mb-1">
                   {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
                 </p>
-                <p className={`text-xl sm:text-2xl font-bold ${colors.amount}`}>
+                <p className={`text-xl sm:text-2xl font-bold ${amountColor}`}>
                   {formattedDisplayAmount}
                 </p>
                 {isPartial && payment.paidAmount > 0 && (
