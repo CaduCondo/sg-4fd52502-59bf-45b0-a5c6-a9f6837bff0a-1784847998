@@ -20,7 +20,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
     if (!payment || !payment.breakdown) {
       const hasGarage = garageValue > 0;
       
-      // Verificar se é proporcional baseado na parcela (1ª ou última)
       const isProportional = payment?.installment === 1 || 
                             payment?.installment === payment?.total_installments;
       
@@ -31,7 +30,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         const totalExpected = payment.expected_amount;
         
         if (hasGarage) {
-          // Manter proporção original entre aluguel e garagem
           const totalOriginal = rentalValue + garageValue;
           const proportionRental = rentalValue / totalOriginal;
           const proportionGarage = garageValue / totalOriginal;
@@ -46,7 +44,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       
       const total = finalRentalValue + finalGarageValue;
       
-      // Calcular dias proporcionais para exibição
       let rentalDescription = "Aluguel";
       let garageDescription = "Garagem";
       
@@ -59,11 +56,9 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
           let proportionalDays = 0;
           
           if (payment.installment === 1) {
-            // Primeira parcela: contar do início até o vencimento
             const diffTime = dueDate.getTime() - startDate.getTime();
             proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           } else if (endDate && payment.installment === payment.total_installments) {
-            // Última parcela: contar dias do mês final
             proportionalDays = endDate.getDate();
           }
           
@@ -104,7 +99,6 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         ? JSON.parse(payment.breakdown) 
         : (payment.breakdown || {});
       
-      // Converter objeto em array se necessário
       if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
         const itemsArray: any[] = [];
         
@@ -112,9 +106,7 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
           if (value && typeof value === 'object') {
             let description = key;
             
-            // SEMPRE adicionar informação de parcela
             if (payment?.installment && payment?.total_installments) {
-              // Processar label PROPORCIONAL
               if (value.label === "PROPORCIONAL") {
                 const dueDate = payment.due_date ? new Date(payment.due_date) : null;
                 const startDate = payment.rentals?.start_date ? new Date(payment.rentals.start_date) : null;
@@ -141,11 +133,24 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
               }
             }
             
+            // 🔥 CORREÇÃO: Garantir que o valor seja sempre numérico e tenha o sinal correto
+            let itemAmount = value.value || value.amount || 0;
+            const itemType = value.type || "addition";
+            
+            // Se for dedução, garantir que o valor seja negativo
+            if (itemType === "deduction" && itemAmount > 0) {
+              itemAmount = -itemAmount;
+            }
+            // Se for adição, garantir que o valor seja positivo
+            if (itemType === "addition" && itemAmount < 0) {
+              itemAmount = Math.abs(itemAmount);
+            }
+            
             itemsArray.push({
               description: description,
-              amount: value.value || value.amount || 0,
-              value: value.value || value.amount || 0,
-              type: value.type || "addition"
+              amount: itemAmount,
+              value: itemAmount,
+              type: itemType
             });
           }
         });
@@ -153,18 +158,15 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
         breakdownData = itemsArray;
       }
       
-      // Processar array de breakdown
       if (Array.isArray(breakdownData) && breakdownData.length > 0) {
         breakdownData = breakdownData.map(item => {
           let description = item.description || item.label || "";
           
-          // SEMPRE adicionar informação de parcela se não estiver presente
           if (payment?.installment && payment?.total_installments && !description.includes("Parcela")) {
             const isProportional = payment.installment === 1 || 
                                   payment.installment === payment.total_installments;
             
             if (isProportional) {
-              // Extrair dias se estiver no formato "(X dias)"
               const daysMatch = description.match(/\((\d+)\s*dias?\)/i);
               if (daysMatch) {
                 const days = daysMatch[1];
@@ -178,18 +180,30 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
             }
           }
           
+          // 🔥 CORREÇÃO: Garantir que o valor tenha o sinal correto baseado no tipo
+          let itemAmount = item.extraValue || item.value || item.amount || 0;
+          const itemType = item.type || "addition";
+          
+          // Se for dedução, garantir que o valor seja negativo
+          if (itemType === "deduction" && itemAmount > 0) {
+            itemAmount = -itemAmount;
+          }
+          // Se for adição, garantir que o valor seja positivo
+          if (itemType === "addition" && itemAmount < 0) {
+            itemAmount = Math.abs(itemAmount);
+          }
+          
           return {
             label: item.label || description,
             description: description,
-            amount: item.extraValue || item.value || item.amount || 0,
-            value: item.extraValue || item.value || item.amount || 0,
+            amount: itemAmount,
+            value: itemAmount,
             extraValue: item.extraValue,
-            type: item.type || "addition"
+            type: itemType
           };
         });
       }
       
-      // Fallback caso breakdown esteja vazio
       if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
         const hasGarage = garageValue > 0;
         
@@ -268,8 +282,11 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
       }
 
       const hasMultipleItems = breakdownData.length > 1;
+      
+      // 🔥 CORREÇÃO CRÍTICA: Calcular o total somando valores com seus sinais corretos
       const total = breakdownData.reduce((sum: number, item: any) => {
-        return sum + (item.value || item.amount || 0);
+        const itemValue = item.value || item.amount || 0;
+        return sum + itemValue;
       }, 0);
 
       const result = {

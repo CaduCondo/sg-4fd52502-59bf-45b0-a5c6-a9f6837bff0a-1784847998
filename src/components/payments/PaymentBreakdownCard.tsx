@@ -178,11 +178,12 @@ export function PaymentBreakdownCard({
     isTerminationPayment
   });
 
+  // 🔥 CORREÇÃO CRÍTICA: Calcular finalTotal baseado no total do breakdown (que já considera sinais)
   const finalTotal = isTerminationPayment 
-    ? Math.abs(calculatedTotal)
+    ? calculatedTotal // Para rescisões, usar calculatedTotal diretamente (já vem com sinal correto)
     : (displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)) - discountAmount);
 
-  const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
+  const remainingDue = Math.max(0, Math.abs(finalTotal) - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
 
   console.log("💰 PaymentBreakdownCard - Cálculos:", {
@@ -331,9 +332,9 @@ export function PaymentBreakdownCard({
 
               <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                 <span className="font-bold text-base">VALOR TOTAL</span>
-                <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
-                  {calculatedTotal < 0 ? "- " : ""}
-                  {formatCurrency(Math.abs(calculatedTotal))}
+                <span className={`font-bold text-base ${finalTotal < 0 ? "text-red-600" : "text-primary"}`}>
+                  {finalTotal < 0 ? "- " : ""}
+                  {formatCurrency(Math.abs(finalTotal))}
                 </span>
               </div>
 
@@ -374,7 +375,7 @@ export function PaymentBreakdownCard({
                         {item.description}
                       </span>
                       <span className="text-lg font-semibold">
-                        {formatCurrency(itemValue)}
+                        {formatCurrency(Math.abs(itemValue))}
                       </span>
                     </div>
                   );
@@ -461,7 +462,7 @@ export function PaymentBreakdownCard({
               <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                 <span className="font-bold text-base">VALOR TOTAL</span>
                 <span className="font-bold text-base text-primary">
-                  {formatCurrency(displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)) - discountAmount)}
+                  {formatCurrency(Math.abs(finalTotal))}
                 </span>
               </div>
 
