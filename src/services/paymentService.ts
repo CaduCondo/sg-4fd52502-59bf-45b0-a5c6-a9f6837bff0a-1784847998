@@ -324,9 +324,11 @@ export function generateExpectedPayments(params: {
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
-    // Contar dias do início até fim do mês atual + dias do próximo mês até o vencimento
+    // ✅ CORREÇÃO: Incluir o dia de início na contagem
+    // Contar dias do início até fim do mês atual (INCLUINDO o dia de início)
+    // + dias do próximo mês até o vencimento (NÃO-INCLUSIVO do vencimento)
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
-    const daysUntilEndOfStartMonth = daysInStartMonth - sDay; // NÃO incluir o dia de início
+    const daysUntilEndOfStartMonth = (daysInStartMonth - sDay) + 1; // +1 para incluir o dia de início
     daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
     
     console.log("✅ Primeiro recebimento no PRÓXIMO mês (PROPORCIONAL):", { 
@@ -335,7 +337,7 @@ export function generateExpectedPayments(params: {
       daysToChargeFirstPayment,
       daysInCurrentMonth: daysUntilEndOfStartMonth,
       daysInNextMonth: paymentDay,
-      calculation: `${daysUntilEndOfStartMonth} (fev) + ${paymentDay} (mar) = ${daysToChargeFirstPayment}`
+      calculation: `${daysUntilEndOfStartMonth} (mês atual) + ${paymentDay} (próximo mês) = ${daysToChargeFirstPayment}`
     });
   }
 
