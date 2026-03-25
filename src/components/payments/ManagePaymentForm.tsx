@@ -133,8 +133,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, []);
 
   const parseCurrency = useCallback((value: string): number => {
+    // 🔥 CORREÇÃO CRÍTICA: Preservar sinal negativo
+    const isNegative = value.trim().startsWith('-');
     const numericValue = value.replace(/[^\d,]/g, "").replace(",", ".");
-    return parseFloat(numericValue) || 0;
+    const parsedValue = parseFloat(numericValue) || 0;
+    return isNegative ? -parsedValue : parsedValue;
   }, []);
 
   const loadConfig = useCallback(async () => {
@@ -752,9 +755,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
+      // 🔥 CORREÇÃO CRÍTICA: Preservar sinal negativo do valor digitado
       const paidAmount = formData.amount_to_pay 
         ? parseCurrency(formData.amount_to_pay)
         : 0;
+      
+      console.log("💰 VALOR DIGITADO:", formData.amount_to_pay);
+      console.log("💰 VALOR PARSEADO (COM SINAL):", paidAmount);
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -834,7 +841,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         console.log("💰 PAGAMENTO NORMAL - Expected Total:", expectedTotal);
       }
       
-      console.log("📊 VALOR FINAL A SER SALVO - expected_amount:", Math.abs(expectedTotal));
+      // 🔥 CORREÇÃO: NÃO usar Math.abs() - preservar sinal do expectedTotal
+      console.log("📊 VALOR FINAL A SER SALVO - expected_amount:", expectedTotal);
       
       let paymentStatus: string;
       let finalPaidAmount: number;
@@ -844,11 +852,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paymentStatus = payment?.status || "pending";
         console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
+        // 🔥 CORREÇÃO CRÍTICA: Não usar Math.abs() em rescisões - preservar sinal negativo
         if (isTerminationPayment) {
-          const expectedAbs = Math.abs(expectedTotal);
-          const difference = Math.abs(paidAmount - expectedAbs);
+          // Para rescisões, comparar valores considerando sinais
+          const difference = Math.abs(Math.abs(paidAmount) - Math.abs(expectedTotal));
           paymentStatus = difference < 0.01 ? "paid" : "partial";
-          finalPaidAmount = paidAmount;
+          finalPaidAmount = paidAmount; // Preservar sinal do valor digitado
         } else {
           const previousPaid = payment?.paid_amount || 0;
           finalPaidAmount = previousPaid + paidAmount;
@@ -856,6 +865,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           paymentStatus = finalPaidAmount >= totalExpected ? "paid" : "partial";
         }
       }
+
+      console.log("💾 VALORES A SEREM SALVOS:", {
+        paid_amount: finalPaidAmount,
+        expected_amount: expectedTotal,
+        status: paymentStatus
+      });
 
       const attachmentsToSave = attachments.filter(a => a.url).map(a => ({
         url: a.url,
@@ -869,7 +884,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_time: formData.payment_method === "pix" 
           ? `${paymentHour.padStart(2, '0')}:${paymentMinute.padStart(2, '0')}:${paymentSecond.padStart(2, '0')}`
           : null,
-        paid_amount: finalPaidAmount,
+        paid_amount: finalPaidAmount, // 🔥 Preservar sinal negativo
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
@@ -881,7 +896,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         updated_at: new Date().toISOString(),
         pix_code_type: null,
         breakdown: updatedBreakdown,
-        expected_amount: Math.abs(expectedTotal),
+        expected_amount: expectedTotal, // 🔥 Preservar sinal negativo
       };
 
       const { error: updateError } = await supabase
@@ -899,7 +914,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         description: paidAmount === 0
           ? "Pagamento atualizado com sucesso!"
           : paymentStatus === "partial" 
-            ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
+            ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - Math.abs(paidAmount)).toFixed(2))}`
             : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 

@@ -144,25 +144,24 @@ export const PaymentFormFields = memo(function PaymentFormFields({
             onChange={(e) => {
               const value = e.target.value;
               
-              // CRITICAL: Para rescisões, permitir sinal negativo
+              // 🔥 CORREÇÃO CRÍTICA: Preservar sinal negativo corretamente
               if (isTerminationPayment) {
                 // Detecta se começou a digitar o sinal negativo
                 const isNegative = value.startsWith('-');
                 
-                // Remove tudo exceto números e vírgula/ponto
-                const cleanValue = value.replace(/[^\d,.-]/g, '');
+                // Remove tudo exceto números
+                const cleanValue = value.replace(/[^\d]/g, '');
                 
                 // Se tem números, formata
-                if (cleanValue.replace(/[-.,]/g, '').length > 0) {
-                  // Remove o sinal temporariamente para formatar
-                  const valueToFormat = cleanValue.replace('-', '');
-                  const formatted = formatCurrency(valueToFormat);
+                if (cleanValue.length > 0) {
+                  // Formata como moeda
+                  const formatted = formatCurrency(cleanValue);
                   
                   // Adiciona o sinal negativo de volta se estava presente
                   const finalValue = isNegative ? `-${formatted}` : formatted;
                   onFormDataChange({ ...formData, amount_to_pay: finalValue });
                 } else {
-                  // Permite apenas o sinal negativo sozinho
+                  // Permite apenas o sinal negativo sozinho ou vazio
                   onFormDataChange({ ...formData, amount_to_pay: isNegative ? '-' : '' });
                 }
               } else {
@@ -172,6 +171,7 @@ export const PaymentFormFields = memo(function PaymentFormFields({
             }}
             required
             disabled={isReadOnly}
+            placeholder={isTerminationPayment ? "Digite um valor (use - para negativo)" : "R$ 0,00"}
           />
         </div>
       </div>

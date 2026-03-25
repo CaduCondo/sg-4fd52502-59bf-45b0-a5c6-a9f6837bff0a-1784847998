@@ -102,18 +102,18 @@ export const PaymentCard = memo(function PaymentCard({
   
   const isPartial = payment.status === "partial";
   
-  // 🔥 CORREÇÃO: expectedAmount JÁ INCLUI lateFee e interest (calculado em payments.tsx)
-  // Não somar novamente para evitar duplicação
+  // 🔥 CORREÇÃO: Preservar sinal do expectedAmount - NÃO usar Math.abs()
   const totalExpectedAmount = expectedAmount;
   
-  // Calcular o valor restante correto - PRESERVAR SINAL NEGATIVO
+  // 🔥 CORREÇÃO: Preservar sinal do remainingAmount
   const remainingAmount = isPartial ? totalExpectedAmount - payment.paidAmount : totalExpectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
 
-  // Determinar cor baseado no sinal do valor E status do pagamento
+  // 🔥 CORREÇÃO: Determinar cor baseado no sinal E status - valores negativos = vermelho
   const getAmountColor = (): string => {
-    if (isPaid) return "text-green-600";
-    if (displayAmount < 0) return "text-red-600"; // Valor negativo = vermelho
+    if (isPaid && displayAmount < 0) return "text-red-600"; // Valor negativo pago = vermelho (devolução)
+    if (isPaid) return "text-green-600"; // Valor positivo pago = verde
+    if (displayAmount < 0) return "text-red-600"; // Valor negativo a pagar = vermelho
     if (isPartial) return "text-yellow-600";
     return getDueDateColor(payment.dueDate, isPaid).amount;
   };
@@ -125,21 +125,29 @@ export const PaymentCard = memo(function PaymentCard({
 
   const amountColor = getAmountColor();
 
-  const formattedDisplayAmount = useMemo(() => 
-    formatCurrency(displayAmount),
-    [displayAmount]
-  );
+  // 🔥 CORREÇÃO CRÍTICA: NÃO usar Math.abs() - preservar sinal negativo
+  const formattedDisplayAmount = useMemo(() => {
+    const isNegative = displayAmount < 0;
+    const absValue = Math.abs(displayAmount);
+    const formatted = formatCurrency(absValue);
+    return isNegative ? `- ${formatted}` : formatted;
+  }, [displayAmount]);
 
-  const formattedPaidAmount = useMemo(() => 
-    formatCurrency(payment.paidAmount),
-    [payment.paidAmount]
-  );
+  const formattedPaidAmount = useMemo(() => {
+    const isNegative = payment.paidAmount < 0;
+    const absValue = Math.abs(payment.paidAmount);
+    const formatted = formatCurrency(absValue);
+    return isNegative ? `- ${formatted}` : formatted;
+  }, [payment.paidAmount]);
 
-  // Debug: verificar attachments
-  console.log('Payment ID:', payment.id);
-  console.log('Attachments Type:', typeof payment.attachments);
-  console.log('Attachments:', payment.attachments);
-  console.log('Has Attachments:', hasAttachments(payment));
+  console.log('Payment Card Debug:', {
+    paymentId: payment.id,
+    displayAmount,
+    paidAmount: payment.paidAmount,
+    expectedAmount,
+    formattedDisplayAmount,
+    amountColor
+  });
 
   if (viewMode === "grid") {
     return (
@@ -222,19 +230,19 @@ export const PaymentCard = memo(function PaymentCard({
             </div>
           </div>
 
-          {isPartial && payment.paidAmount > 0 && (
+          {isPartial && payment.paidAmount !== 0 && (
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-1">Valor Já Pago</p>
-              <p className="text-lg font-semibold text-green-600">
+              <p className={`text-lg font-semibold ${payment.paidAmount < 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {formattedPaidAmount}
               </p>
             </div>
           )}
 
-          {!isPaid && !isPartial && payment.paidAmount > 0 && (
+          {!isPaid && !isPartial && payment.paidAmount !== 0 && (
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-1">Valor Pago</p>
-              <p className="text-lg font-semibold text-yellow-600">
+              <p className={`text-lg font-semibold ${payment.paidAmount < 0 ? 'text-red-600' : 'text-yellow-600'}`}>
                 {formattedPaidAmount}
               </p>
             </div>
@@ -277,7 +285,7 @@ export const PaymentCard = memo(function PaymentCard({
     );
   }
 
-  // List view
+  // List view - mesmas correções
   return (
     <>
       <Card
@@ -360,13 +368,13 @@ export const PaymentCard = memo(function PaymentCard({
                 <p className={`text-xl sm:text-2xl font-bold ${amountColor}`}>
                   {formattedDisplayAmount}
                 </p>
-                {isPartial && payment.paidAmount > 0 && (
-                  <p className="text-xs text-green-600 font-semibold mt-1">
+                {isPartial && payment.paidAmount !== 0 && (
+                  <p className={`text-xs font-semibold mt-1 ${payment.paidAmount < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     Já pago: {formattedPaidAmount}
                   </p>
                 )}
-                {!isPaid && !isPartial && payment.paidAmount > 0 && (
-                  <p className="text-xs text-yellow-600 font-semibold mt-1">
+                {!isPaid && !isPartial && payment.paidAmount !== 0 && (
+                  <p className={`text-xs font-semibold mt-1 ${payment.paidAmount < 0 ? 'text-red-600' : 'text-yellow-600'}`}>
                     Pago: {formattedPaidAmount}
                   </p>
                 )}
