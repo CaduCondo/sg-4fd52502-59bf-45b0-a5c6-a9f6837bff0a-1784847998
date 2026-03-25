@@ -651,7 +651,7 @@ export default function Financial() {
         <Tabs defaultValue="rentals" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="rentals">Detalhamento de Locações</TabsTrigger>
-            {isAdmin && (
+            {(isAdmin || user?.role === "broker") && (
               <TabsTrigger value="deposits">Detalhamento de Cauções</TabsTrigger>
             )}
           </TabsList>
@@ -1164,7 +1164,7 @@ export default function Financial() {
             </ScrollReveal>
           </TabsContent>
 
-          {isAdmin && (
+          {(isAdmin || user?.role === "broker") && (
             <TabsContent value="deposits" className="space-y-6">
               <div className="overflow-x-auto max-w-full">
                 <DepositInstallmentsTable 
