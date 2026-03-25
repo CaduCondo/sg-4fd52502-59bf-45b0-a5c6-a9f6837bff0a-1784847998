@@ -35,6 +35,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     password: "",
     role: "broker",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -60,9 +61,17 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSave(formData);
-    if (success) {
-      onOpenChange(false);
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const success = await onSave(formData);
+      if (success) {
+        onOpenChange(false);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -74,7 +83,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
           <DialogDescription>
             {user
               ? "Atualize as informações do usuário abaixo."
-              : "Preencha os dados do novo usuário."}
+              : "Preencha os dados do novo usuário. Email e nome de usuário devem ser únicos."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -89,6 +98,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
+                  disabled={isSubmitting}
                   className="h-11"
                 />
               </div>
@@ -102,7 +112,9 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, email: e.target.value })
                   }
                   required
+                  disabled={isSubmitting}
                   className="h-11"
+                  placeholder="usuario@exemplo.com"
                 />
               </div>
             </div>
@@ -116,6 +128,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
+                  disabled={isSubmitting}
                   placeholder="(00) 00000-0000"
                   className="h-11"
                 />
@@ -130,6 +143,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                   }
                   placeholder="usuario.login"
                   required
+                  disabled={isSubmitting}
                   className="h-11"
                 />
               </div>
@@ -143,6 +157,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                   onValueChange={(value) =>
                     setFormData({ ...formData, role: value })
                   }
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger className="h-11">
                     <SelectValue />
@@ -174,16 +189,36 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     user ? "Deixe em branco para não alterar" : "Senha de acesso"
                   }
                   required={!user}
+                  disabled={isSubmitting}
                   className="h-11"
                 />
               </div>
             </div>
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto h-11">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)} 
+              disabled={isSubmitting}
+              className="w-full sm:w-auto h-11"
+            >
               Cancelar
             </Button>
-            <Button type="submit" className="w-full sm:w-auto h-11">Salvar Usuário</Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full sm:w-auto h-11"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Usuário"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

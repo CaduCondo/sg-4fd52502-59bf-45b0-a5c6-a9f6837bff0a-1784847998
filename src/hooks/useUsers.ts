@@ -19,7 +19,6 @@ export function useUsers() {
 
       if (error) throw error;
       
-      // Cast explícito para garantir a tipagem correta do role
       const typedUsers: SystemUser[] = (data || []).map((user) => ({
         ...user,
         active: !!user.active,
@@ -55,22 +54,122 @@ export function useUsers() {
     password: string;
   }) => {
     try {
+      // Verificar se já existe um usuário com este email
+      const { data: existingUser } = await supabase
+        .from("system_users")
+        .select("email")
+        .eq("email", userData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        toast({
+          title: "Email já cadastrado",
+          description: "Já existe um usuário com este email. Por favor, use um email diferente.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Verificar se já existe um usuário com este username
+      const { data: existingUsername } = await supabase
+        .from("system_users")
+        .select("username")
+        .eq("username", userData.username)
+        .maybeSingle();
+
+      if (existingUsername) {
+        toast({
+          title: "Usuário já cadastrado",
+          description: "Já existe um usuário com este nome de usuário. Por favor, escolha outro.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
       await createUser({
         ...userData,
         active: true,
       });
+      
       toast({ title: "Usuário criado com sucesso!" });
       await fetchUsers();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar usuário:", error);
-      toast({ title: "Erro ao criar usuário", variant: "destructive" });
+      
+      // Tratamento específico para erros de constraint
+      if (error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+        if (error.message?.includes("email")) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Já existe um usuário com este email no sistema.",
+            variant: "destructive",
+          });
+        } else if (error.message?.includes("username")) {
+          toast({
+            title: "Usuário já cadastrado",
+            description: "Já existe um usuário com este nome de usuário no sistema.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Dados duplicados",
+            description: "Os dados informados já estão em uso. Verifique email e nome de usuário.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Erro ao criar usuário",
+          description: error.message || "Ocorreu um erro ao criar o usuário.",
+          variant: "destructive",
+        });
+      }
+      
       return false;
     }
   };
 
   const handleUpdateUser = async (id: string, userData: Partial<SystemUser>) => {
     try {
+      // Se estiver atualizando o email, verificar se já existe outro usuário com este email
+      if (userData.email) {
+        const { data: existingUser } = await supabase
+          .from("system_users")
+          .select("id, email")
+          .eq("email", userData.email)
+          .neq("id", id)
+          .maybeSingle();
+
+        if (existingUser) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Já existe outro usuário com este email. Por favor, use um email diferente.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+
+      // Se estiver atualizando o username, verificar se já existe outro usuário com este username
+      if (userData.username) {
+        const { data: existingUsername } = await supabase
+          .from("system_users")
+          .select("id, username")
+          .eq("username", userData.username)
+          .neq("id", id)
+          .maybeSingle();
+
+        if (existingUsername) {
+          toast({
+            title: "Usuário já cadastrado",
+            description: "Já existe outro usuário com este nome de usuário. Por favor, escolha outro.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+
       const updateData: any = {
         name: userData.name,
         email: userData.email,
@@ -79,7 +178,6 @@ export function useUsers() {
         role: userData.role,
       };
 
-      // Se uma nova senha foi fornecida, atualizar password_hash
       if (userData.password_hash && userData.password_hash.trim() !== "") {
         updateData.password_hash = userData.password_hash;
       }
@@ -88,9 +186,37 @@ export function useUsers() {
       toast({ title: "Usuário atualizado com sucesso!" });
       await fetchUsers();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao atualizar usuário:", error);
-      toast({ title: "Erro ao atualizar usuário", variant: "destructive" });
+      
+      if (error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+        if (error.message?.includes("email")) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Já existe outro usuário com este email no sistema.",
+            variant: "destructive",
+          });
+        } else if (error.message?.includes("username")) {
+          toast({
+            title: "Usuário já cadastrado",
+            description: "Já existe outro usuário com este nome de usuário no sistema.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Dados duplicados",
+            description: "Os dados informados já estão em uso por outro usuário.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Erro ao atualizar usuário",
+          description: error.message || "Ocorreu um erro ao atualizar o usuário.",
+          variant: "destructive",
+        });
+      }
+      
       return false;
     }
   };
