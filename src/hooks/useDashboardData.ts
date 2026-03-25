@@ -152,25 +152,69 @@ export function useDashboardData(
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
-        // 2. USAR VIEWS MATERIALIZADAS - Queries ULTRA otimizadas
+        // 2. Queries com filtro de localização para usuários financeiros
         const [
           exemptLocationsResult,
-          dashboardStatsResult,
+          propertiesResult,
+          tenantsResult,
+          rentalsResult,
           monthlyPaymentsResult,
           monthlyExpensesResult,
         ] = await Promise.all([
-          // Locais isentos (query simples)
+          // Locais isentos
           supabase
             .from("admin_fee_exempt_locations")
             .select("location_id"),
 
-          // Estatísticas gerais (VIEW MATERIALIZADA - pré-calculada!)
-          supabase
-            .from("mv_dashboard_stats")
-            .select("*")
-            .single(),
+          // Propriedades (com filtro de localização para financeiro)
+          (async () => {
+            let query = supabase
+              .from("properties")
+              .select("id, status, location_id");
+            
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("location_id", allowedLocations);
+            }
+            
+            return query;
+          })(),
 
-          // Pagamentos do mês (VIEW MATERIALIZADA - pré-calculada!)
+          // Inquilinos (via locações com filtro de localização)
+          (async () => {
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              const { data: allowedRentals } = await supabase
+                .from("rentals")
+                .select("tenant_id, properties!inner(location_id)")
+                .in("properties.location_id", allowedLocations)
+                .eq("status", "active");
+              
+              const tenantIds = [...new Set(allowedRentals?.map(r => r.tenant_id) || [])];
+              
+              return supabase
+                .from("tenants")
+                .select("id")
+                .in("id", tenantIds);
+            } else {
+              return supabase
+                .from("tenants")
+                .select("id");
+            }
+          })(),
+
+          // Locações (com filtro de localização para financeiro)
+          (async () => {
+            let query = supabase
+              .from("rentals")
+              .select("id, status, end_date, properties!inner(location_id)");
+            
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("properties.location_id", allowedLocations);
+            }
+            
+            return query;
+          })(),
+
+          // Pagamentos do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_payments")
@@ -185,7 +229,7 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Despesas do mês (VIEW MATERIALIZADA - pré-calculada!)
+          // Despesas do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_expenses")
@@ -207,22 +251,33 @@ export function useDashboardData(
           return;
         }
 
-        // 3. Processar resultados das VIEWS MATERIALIZADAS
+        // 3. Processar resultados
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
-        // Stats gerais (dados pré-calculados!)
-        const stats = dashboardStatsResult.data || {
-          total_properties: 0,
-          available_properties: 0,
-          unavailable_properties: 0,
-          occupied_properties: 0,
-          total_tenants: 0,
-          active_contracts: 0,
-          expiring_contracts: 0,
-        };
+        // Processar propriedades
+        const properties = propertiesResult.data || [];
+        const totalProperties = properties.length;
+        const availableProperties = properties.filter(p => p.status === "available").length;
+        const unavailableProperties = properties.filter(p => p.status === "unavailable").length;
+        const occupiedProperties = properties.filter(p => p.status === "occupied").length;
 
-        // Pagamentos do mês (dados pré-calculados!)
+        // Processar inquilinos
+        const totalTenants = tenantsResult.data?.length || 0;
+
+        // Processar locações
+        const rentals = rentalsResult.data || [];
+        const activeContracts = rentals.filter(r => r.status === "active").length;
+        
+        const expiringDate = new Date(today);
+        expiringDate.setDate(expiringDate.getDate() + 30);
+        const expiringDateStr = expiringDate.toISOString().split('T')[0];
+        const expiringContracts = rentals.filter(r => 
+          r.status === "active" && 
+          r.end_date <= expiringDateStr
+        ).length;
+
+        // Processar pagamentos
         const paymentsData = monthlyPaymentsResult.data || [];
         
         let overduePayments = 0;
@@ -246,7 +301,7 @@ export function useDashboardData(
           }
         });
 
-        // Despesas do mês (dados pré-calculados!)
+        // Processar despesas
         const expensesData = monthlyExpensesResult.data || [];
         const locationExpenses = expensesData.reduce(
           (sum: number, e: any) => sum + (e.total_expenses || 0), 
@@ -254,13 +309,13 @@ export function useDashboardData(
         );
 
         const newCounts: DashboardCounts = {
-          totalProperties: stats.total_properties,
-          availableProperties: stats.available_properties,
-          unavailableProperties: stats.unavailable_properties,
-          occupiedProperties: stats.occupied_properties,
-          totalTenants: stats.total_tenants,
-          activeContracts: stats.active_contracts,
-          expiringContracts: stats.expiring_contracts,
+          totalProperties,
+          availableProperties,
+          unavailableProperties,
+          occupiedProperties,
+          totalTenants,
+          activeContracts,
+          expiringContracts,
           overduePayments,
           overdueAmount,
           dueTodayPayments,
