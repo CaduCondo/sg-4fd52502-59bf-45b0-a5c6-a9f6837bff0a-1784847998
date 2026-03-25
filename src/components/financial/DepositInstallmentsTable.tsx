@@ -72,7 +72,8 @@ export function DepositInstallmentsTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const { toast } = useToast();
 
-  const isAdmin = userRole === "admin";
+  // 🔥 CORREÇÃO: Permitir acesso para admin E broker
+  const isAdmin = userRole === "admin" || userRole === "broker";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -390,7 +391,7 @@ export function DepositInstallmentsTable({
     return (
       <Card>
         <CardContent className="pt-6 text-center text-muted-foreground">
-          Acesso restrito a administradores.
+          Acesso restrito a administradores e corretores.
         </CardContent>
       </Card>
     );
