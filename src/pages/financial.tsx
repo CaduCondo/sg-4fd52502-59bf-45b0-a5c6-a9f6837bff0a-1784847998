@@ -145,7 +145,7 @@ export default function Financial() {
         userRole: user?.role
       });
 
-      // QUERY OTIMIZADA: 1 única query com JOIN completo
+      // QUERY OTIMIZADA: já filtra por location_id quando necessário
       const paymentsQuery: any = supabase
         .from("payments")
         .select(`
@@ -196,7 +196,7 @@ export default function Financial() {
         .eq("reference_month", String(filterMonth))
         .eq("reference_year", String(filterYear))
         .order("due_date", { ascending: true });
-        
+
       if (abortControllerRef.current) {
         paymentsQuery.abortSignal(abortControllerRef.current.signal);
       }
@@ -299,7 +299,7 @@ export default function Financial() {
         };
       }) as Payment[];
 
-      // Buscar configurações e isenções sequencialmente para evitar erro de tipo profundo
+      // Buscar configurações, isenções e permissões
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
       const configQuery: any = supabase.from("configs").select("*").maybeSingle();
       const expensesQuery: any = supabase
@@ -312,7 +312,7 @@ export default function Financial() {
       const configResult: any = await configQuery;
       const expensesResult: any = await expensesQuery;
 
-      // Buscar permissões separadamente para evitar erro de tipo profundo
+      // 🔥 FILTRO DE LOCALIZAÇÃO: Buscar permissões para usuários financeiros
       let allowedLocations: string[] = [];
       if (user?.role === "financial") {
         const permResult: any = await supabase
@@ -332,17 +332,32 @@ export default function Financial() {
       setAllowedLocationIds(allowedLocations);
       setLocationsMap(locationsMapTemp);
 
+      // 🔥 APLICAR FILTRO DE LOCALIZAÇÃO NOS PAGAMENTOS
+      let filteredPayments = formattedPayments;
+      if (user?.role === "financial" && allowedLocations.length > 0) {
+        filteredPayments = formattedPayments.filter(payment => {
+          const locationId = payment.property?.locationId;
+          return locationId && allowedLocations.includes(locationId);
+        });
+        
+        console.log("🔍 [Financial] Filtro de localização aplicado:", {
+          totalPayments: formattedPayments.length,
+          filteredPayments: filteredPayments.length,
+          allowedLocations: allowedLocations
+        });
+      }
+
       console.log("✅ [Financial] Processamento concluído:", {
-        totalPayments: formattedPayments.length,
+        totalPayments: filteredPayments.length,
         totalLocations: locationsMapTemp.size,
         exemptLocations: exemptIds.length,
         locationExpenses: totalExpenses
       });
 
-      // Atualizar cache
+      // Atualizar cache com dados já filtrados
       financialCache = {
         data: {
-          payments: formattedPayments,
+          payments: filteredPayments,
           locations: locationsMapTemp,
           exemptLocationIds: exemptIds,
           config: configData,
@@ -351,7 +366,7 @@ export default function Financial() {
         timestamp: now,
       };
 
-      setPayments(formattedPayments);
+      setPayments(filteredPayments);
 
     } catch (error: any) {
       // Ignorar erros de abort
