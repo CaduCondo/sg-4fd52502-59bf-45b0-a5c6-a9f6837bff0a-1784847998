@@ -389,7 +389,8 @@ export function generateExpectedPayments(params: {
 
   let installmentNumber = 2; // Começa da parcela 2
 
-  // Loop até o penúltimo mês (o último será tratado separadamente)
+  // ✅ CRÍTICO: Loop até o penúltimo mês (o último será tratado separadamente)
+  // NUNCA incluir o mês final no loop para evitar duplicatas
   while (
     currentYear < eYear || 
     (currentYear === eYear && currentMonth < eMonth)
@@ -439,6 +440,8 @@ export function generateExpectedPayments(params: {
   }
 
   // **ETAPA 4: Criar o último recebimento (proporcional)**
+  // ✅ CORREÇÃO: Só criar se ainda não foi criado pelo loop acima
+  // O último mês SEMPRE deve ser proporcional, nunca integral
   if (currentYear === eYear && currentMonth === eMonth) {
     // Contagem de dias até o final (NÃO-INCLUSIVO)
     const daysToChargeLastPayment = eDay;
