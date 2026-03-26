@@ -25,9 +25,8 @@ interface DashboardData {
   exemptLocationIds: string[];
 }
 
-// Cache em memória com TTL maior (views materializadas são atualizadas por triggers)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL = 5 * 60 * 1000;
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -44,7 +43,6 @@ function setCache(key: string, data: any): void {
   console.log(`💾 [useDashboardData] Cache atualizado para ${key}`);
 }
 
-// Função para invalidar cache (exportada para uso externo)
 export function invalidateDashboardCache(): void {
   cache.clear();
   console.log("🗑️ [useDashboardData] Cache limpo");
@@ -82,7 +80,6 @@ export function useDashboardData(
     [userId, month, year, userRole]
   );
 
-  // Prevenir múltiplas chamadas simultâneas
   const loadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -93,12 +90,10 @@ export function useDashboardData(
         return;
       }
 
-      // Se já está carregando, cancela a requisição anterior
       if (loadingRef.current && abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // Tentar cache primeiro
       const cached = getCached<DashboardCounts>(cacheKey);
       if (cached) {
         setCounts(cached);
@@ -111,7 +106,6 @@ export function useDashboardData(
         setLoading(true);
         abortControllerRef.current = new AbortController();
 
-        // 1. Buscar permissões de localização (se financeiro)
         let allowedLocations: string[] | null = null;
         if (isFinancialUser) {
           const { data: permData } = await supabase
@@ -119,7 +113,6 @@ export function useDashboardData(
             .select("location_id")
             .eq("user_id", userId);
           
-          // Verificar se foi cancelado
           if (abortControllerRef.current?.signal.aborted) {
             loadingRef.current = false;
             return;
@@ -155,19 +148,12 @@ export function useDashboardData(
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
-        // Calcular primeiro e último dia do mês selecionado
-        const firstDayOfMonth = new Date(year, month - 1, 1);
-        const lastDayOfMonth = new Date(year, month, 0);
-        const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
-
         console.log("📅 [useDashboardData] Período:", {
           month,
           year,
-          today: todayStr,
-          lastDayOfMonth: lastDayStr
+          today: todayStr
         });
 
-        // 2. Queries com filtro de localização para usuários financeiros
         const [
           exemptLocationsResult,
           propertiesResult,
@@ -176,12 +162,10 @@ export function useDashboardData(
           monthlyPaymentsResult,
           monthlyExpensesResult,
         ] = await Promise.all([
-          // Locais isentos
           supabase
             .from("admin_fee_exempt_locations")
             .select("location_id"),
 
-          // Propriedades (com filtro de localização para financeiro)
           (async () => {
             let query = supabase
               .from("properties")
@@ -194,7 +178,6 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Inquilinos (via locações com filtro de localização)
           (async () => {
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               const { data: allowedRentals } = await supabase
@@ -216,7 +199,6 @@ export function useDashboardData(
             }
           })(),
 
-          // Locações (com filtro de localização para financeiro)
           (async () => {
             let query = supabase
               .from("rentals")
@@ -229,7 +211,6 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Pagamentos do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_payments")
@@ -244,7 +225,6 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Despesas do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_expenses")
@@ -260,27 +240,22 @@ export function useDashboardData(
           })(),
         ]);
 
-        // Verificar se foi cancelado
         if (abortControllerRef.current?.signal.aborted) {
           loadingRef.current = false;
           return;
         }
 
-        // 3. Processar resultados
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
-        // Processar propriedades
         const properties = propertiesResult.data || [];
         const totalProperties = properties.length;
         const availableProperties = properties.filter(p => p.status === "available").length;
         const unavailableProperties = properties.filter(p => p.status === "unavailable").length;
         const occupiedProperties = properties.filter(p => p.status === "occupied").length;
 
-        // Processar inquilinos
         const totalTenants = tenantsResult.data?.length || 0;
 
-        // Processar locações
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
@@ -292,7 +267,6 @@ export function useDashboardData(
           r.end_date <= expiringDateStr
         ).length;
 
-        // 🔥 CORREÇÃO: Processar pagamentos com lógica corrigida
         const paymentsData = monthlyPaymentsResult.data || [];
         
         let overduePayments = 0;
@@ -312,24 +286,20 @@ export function useDashboardData(
           const dueDate = payment.due_date;
           const status = payment.status;
           
-          // Receita esperada = soma de todos os pagamentos do mês
           expectedAmount += payment.expected_amount || 0;
           
-          // ✅ PAGO: contar como recebido
           if (status === 'paid') {
             completedPayments++;
             grossRevenue += payment.paid_amount || 0;
           } 
-          // ✅ ATRASADO: vencimento < hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overduePayments++;
             overdueAmount += payment.expected_amount || 0;
           } 
-          // ✅ VENCE HOJE: vencimento = hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
             dueTodayPayments++;
           }
-          // ✅ PENDENTE: qualquer pending/partial (para o card "Locações a Vencer")
+          
           if (status === 'pending' || status === 'partial') {
             pendingPayments++;
           }
@@ -344,7 +314,6 @@ export function useDashboardData(
           overdueAmount
         });
 
-        // Processar despesas
         const expensesData = monthlyExpensesResult.data || [];
         const locationExpenses = expensesData.reduce(
           (sum: number, e: any) => sum + (e.total_expenses || 0), 
@@ -369,12 +338,10 @@ export function useDashboardData(
           pendingPayments,
         };
 
-        // Salvar no cache
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
 
       } catch (error: any) {
-        // Ignorar erros de cancelamento
         if (error.name === 'AbortError') {
           console.log("ℹ️ [useDashboardData] Requisição cancelada");
           return;
@@ -389,7 +356,6 @@ export function useDashboardData(
 
     loadData();
 
-    // Cleanup: cancelar requisições pendentes ao desmontar
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
