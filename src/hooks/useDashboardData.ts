@@ -167,14 +167,14 @@ export function useDashboardData(
           threeMonthsFromNow: threeMonthsStr
         });
 
-        // 2. Queries com filtro de localização para usuários financeiros
+        // 2. Buscar dados em paralelo
         const [
           exemptLocationsResult,
           propertiesResult,
           tenantsResult,
           rentalsResult,
-          monthlyPaymentsResult,
-          monthlyExpensesResult,
+          paymentsResult,
+          expensesResult,
           configResult,
         ] = await Promise.all([
           // Locais isentos
@@ -230,16 +230,28 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Pagamentos do mês (com filtro de localização)
+          // Pagamentos do mês com JOIN para pegar location_id
           (async () => {
             let query = supabase
-              .from("mv_monthly_payments")
-              .select("*")
+              .from("payments")
+              .select(`
+                id,
+                status,
+                due_date,
+                expected_amount,
+                paid_amount,
+                rentals!inner(
+                  id,
+                  properties!inner(
+                    location_id
+                  )
+                )
+              `)
               .eq("reference_month", month.toString())
               .eq("reference_year", year.toString());
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("location_id", allowedLocations);
+              query = query.in("rentals.properties.location_id", allowedLocations);
             }
             
             return query;
@@ -248,8 +260,8 @@ export function useDashboardData(
           // Despesas do mês (com filtro de localização)
           (async () => {
             let query = supabase
-              .from("mv_monthly_expenses")
-              .select("total_expenses")
+              .from("location_expenses")
+              .select("amount, location_id")
               .eq("reference_month", month)
               .eq("reference_year", year);
             
@@ -297,12 +309,13 @@ export function useDashboardData(
         // Contratos que vencem nos próximos 3 meses
         const expiringContracts = rentals.filter(r => 
           r.status === "active" && 
+          r.end_date &&
           r.end_date >= todayStr &&
           r.end_date <= threeMonthsStr
         ).length;
 
-        // 🔥 Processar pagamentos do mês com lógica CORRETA
-        const paymentsData = monthlyPaymentsResult.data || [];
+        // 🔥 Processar pagamentos com lógica CORRETA
+        const paymentsData = paymentsResult.data || [];
         
         let overduePayments = 0;
         let overdueAmount = 0;
@@ -324,7 +337,7 @@ export function useDashboardData(
         paymentsData.forEach((payment: any) => {
           const dueDate = payment.due_date;
           const status = payment.status;
-          const locationId = payment.location_id;
+          const locationId = payment.rentals?.properties?.location_id;
           const paidAmount = payment.paid_amount || 0;
           const expectedAmountValue = payment.expected_amount || 0;
           
@@ -337,7 +350,7 @@ export function useDashboardData(
             grossRevenue += paidAmount;
             
             // Calcular taxas apenas de locais não isentos
-            if (!exemptIds.includes(locationId)) {
+            if (locationId && !exemptIds.includes(locationId)) {
               adminFees += paidAmount * (adminFeePercent / 100);
               managementFees += paidAmount * (managementFeePercent / 100);
             }
@@ -371,9 +384,9 @@ export function useDashboardData(
         });
 
         // Processar despesas do mês
-        const expensesData = monthlyExpensesResult.data || [];
+        const expensesData = expensesResult.data || [];
         const locationExpenses = expensesData.reduce(
-          (sum: number, e: any) => sum + (e.total_expenses || 0), 
+          (sum: number, e: any) => sum + (Number(e.amount) || 0), 
           0
         );
 
@@ -406,7 +419,7 @@ export function useDashboardData(
           return;
         }
         
-        console.error("Error loading dashboard data:", error);
+        console.error("❌ [useDashboardData] Error loading dashboard data:", error);
       } finally {
         setLoading(false);
         loadingRef.current = false;
