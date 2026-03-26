@@ -89,6 +89,7 @@ export default function Dashboard() {
       grossRevenue: counts.grossRevenue,
       totalFeesAndExpenses,
       netRevenue,
+      pendingPayments: counts.pendingPayments,
     };
   }, [counts, exemptLocationIds]);
 

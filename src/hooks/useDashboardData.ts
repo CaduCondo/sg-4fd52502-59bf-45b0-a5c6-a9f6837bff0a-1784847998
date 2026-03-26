@@ -16,6 +16,7 @@ interface DashboardCounts {
   expectedAmount: number;
   grossRevenue: number;
   locationExpenses: number;
+  pendingPayments: number;
 }
 
 interface DashboardData {
@@ -71,6 +72,7 @@ export function useDashboardData(
     expectedAmount: 0,
     grossRevenue: 0,
     locationExpenses: 0,
+    pendingPayments: 0,
   });
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
@@ -141,6 +143,7 @@ export function useDashboardData(
               expectedAmount: 0,
               grossRevenue: 0,
               locationExpenses: 0,
+              pendingPayments: 0,
             });
             setLoading(false);
             loadingRef.current = false;
@@ -151,6 +154,18 @@ export function useDashboardData(
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
+
+        // Calcular primeiro e último dia do mês selecionado
+        const firstDayOfMonth = new Date(year, month - 1, 1);
+        const lastDayOfMonth = new Date(year, month, 0);
+        const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
+
+        console.log("📅 [useDashboardData] Período:", {
+          month,
+          year,
+          today: todayStr,
+          lastDayOfMonth: lastDayStr
+        });
 
         // 2. Queries com filtro de localização para usuários financeiros
         const [
@@ -277,28 +292,56 @@ export function useDashboardData(
           r.end_date <= expiringDateStr
         ).length;
 
-        // Processar pagamentos
+        // 🔥 CORREÇÃO: Processar pagamentos com lógica corrigida
         const paymentsData = monthlyPaymentsResult.data || [];
         
         let overduePayments = 0;
         let overdueAmount = 0;
         let dueTodayPayments = 0;
         let completedPayments = 0;
+        let pendingPayments = 0;
         let expectedAmount = 0;
         let grossRevenue = 0;
 
+        console.log("📊 [useDashboardData] Analisando pagamentos:", {
+          total: paymentsData.length,
+          today: todayStr
+        });
+
         paymentsData.forEach((payment: any) => {
+          const dueDate = payment.due_date;
+          const status = payment.status;
+          
+          // Receita esperada = soma de todos os pagamentos do mês
           expectedAmount += payment.expected_amount || 0;
           
-          if (payment.status === 'paid') {
+          // ✅ PAGO: contar como recebido
+          if (status === 'paid') {
             completedPayments++;
             grossRevenue += payment.paid_amount || 0;
-          } else if (payment.due_date < todayStr) {
+          } 
+          // ✅ ATRASADO: vencimento < hoje E status pending/partial
+          else if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overduePayments++;
             overdueAmount += payment.expected_amount || 0;
-          } else if (payment.due_date === todayStr) {
+          } 
+          // ✅ VENCE HOJE: vencimento = hoje E status pending/partial
+          else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
             dueTodayPayments++;
           }
+          // ✅ PENDENTE: qualquer pending/partial (para o card "Locações a Vencer")
+          if (status === 'pending' || status === 'partial') {
+            pendingPayments++;
+          }
+        });
+
+        console.log("📊 [useDashboardData] Resultado da contagem:", {
+          completedPayments,
+          overduePayments,
+          dueTodayPayments,
+          pendingPayments,
+          grossRevenue,
+          overdueAmount
         });
 
         // Processar despesas
@@ -323,6 +366,7 @@ export function useDashboardData(
           expectedAmount,
           grossRevenue,
           locationExpenses,
+          pendingPayments,
         };
 
         // Salvar no cache

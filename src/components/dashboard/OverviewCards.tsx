@@ -35,6 +35,7 @@ interface OverviewCardsProps {
     grossRevenue: number;
     totalFeesAndExpenses: number;
     netRevenue: number;
+    pendingPayments: number;
   };
   selectedMonth: number;
   selectedYear: number;
@@ -97,6 +98,7 @@ export const OverviewCards = memo(function OverviewCards({
     grossRevenue: data?.grossRevenue || 0,
     totalFeesAndExpenses: data?.totalFeesAndExpenses || 0,
     netRevenue: data?.netRevenue || 0,
+    pendingPayments: data?.pendingPayments || 0,
   }), [data]);
 
   return (
@@ -239,11 +241,11 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper hasLinks={hasLinks} href="/rentals?status=expiring">
+          <CardWrapper hasLinks={hasLinks} href="/payments?status=pending">
             <MetricCard
               title="Locações a Vencer"
-              value={safeData.expiringContracts}
-              subtitle="Vencem em até 60 dias"
+              value={safeData.pendingPayments}
+              subtitle="Vencem até o final do mês"
               icon={AlertCircle}
               iconColor="text-purple-600"
               iconBgClass="bg-purple-50 dark:bg-purple-900/20"
