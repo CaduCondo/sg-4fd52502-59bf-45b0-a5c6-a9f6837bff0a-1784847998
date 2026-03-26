@@ -277,8 +277,8 @@ export function useDashboardData(
         setExemptLocationIds(exemptIds);
 
         const config = configResult.data;
-        const adminFeePercent = config?.admin_fee_percent || 0;
-        const managementFeePercent = config?.management_fee_percent || 0;
+        const adminFeePercent = config?.admin_fee_percentage || 0;
+        const managementFeePercent = config?.management_fee_percentage || 0;
 
         // Processar propriedades
         const properties = propertiesResult.data || [];
