@@ -65,12 +65,14 @@ export default function Dashboard() {
     const occupiedProperties = counts.occupiedProperties;
     const occupancyRate = totalProperties > 0 ? (occupiedProperties / totalProperties) * 100 : 0;
 
-    const exemptSet = new Set(exemptLocationIds);
+    // Receita Bruta Recebida = soma dos valores pagos
+    const grossRevenue = counts.grossRevenue;
     
-    // Estimativa simplificada de taxas (5% admin + 3% gestão = 8% do bruto)
-    const estimatedFees = counts.grossRevenue * 0.08;
-    const totalFeesAndExpenses = estimatedFees + counts.locationExpenses;
-    const netRevenue = counts.grossRevenue - totalFeesAndExpenses;
+    // Total Taxas e Contas = Taxa Admin + Taxa Gerenciamento + Contas do Local
+    const totalFeesAndExpenses = counts.adminFees + counts.managementFees + counts.locationExpenses;
+    
+    // Receita Líquida = Receita Bruta - (Taxas + Contas)
+    const netRevenue = grossRevenue - totalFeesAndExpenses;
 
     return {
       totalProperties: counts.totalProperties,
@@ -85,8 +87,8 @@ export default function Dashboard() {
       dueTodayPayments: counts.dueTodayPayments,
       completedPayments: counts.completedPayments,
       expectedAmount: counts.expectedAmount,
-      totalRevenue: counts.grossRevenue,
-      grossRevenue: counts.grossRevenue,
+      totalRevenue: grossRevenue,
+      grossRevenue: grossRevenue,
       totalFeesAndExpenses,
       netRevenue,
       pendingPayments: counts.pendingPayments,

@@ -17,6 +17,8 @@ interface DashboardCounts {
   grossRevenue: number;
   locationExpenses: number;
   pendingPayments: number;
+  adminFees: number;
+  managementFees: number;
 }
 
 interface DashboardData {
@@ -71,6 +73,8 @@ export function useDashboardData(
     grossRevenue: 0,
     locationExpenses: 0,
     pendingPayments: 0,
+    adminFees: 0,
+    managementFees: 0,
   });
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
@@ -106,6 +110,7 @@ export function useDashboardData(
         setLoading(true);
         abortControllerRef.current = new AbortController();
 
+        // 1. Buscar permissões de localização (se financeiro)
         let allowedLocations: string[] | null = null;
         if (isFinancialUser) {
           const { data: permData } = await supabase
@@ -137,6 +142,8 @@ export function useDashboardData(
               grossRevenue: 0,
               locationExpenses: 0,
               pendingPayments: 0,
+              adminFees: 0,
+              managementFees: 0,
             });
             setLoading(false);
             loadingRef.current = false;
@@ -148,12 +155,19 @@ export function useDashboardData(
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
+        // Data para 3 meses à frente (para contratos a vencer)
+        const threeMonthsFromNow = new Date(today);
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        const threeMonthsStr = threeMonthsFromNow.toISOString().split('T')[0];
+
         console.log("📅 [useDashboardData] Período:", {
           month,
           year,
-          today: todayStr
+          today: todayStr,
+          threeMonthsFromNow: threeMonthsStr
         });
 
+        // 2. Queries com filtro de localização para usuários financeiros
         const [
           exemptLocationsResult,
           propertiesResult,
@@ -161,11 +175,14 @@ export function useDashboardData(
           rentalsResult,
           monthlyPaymentsResult,
           monthlyExpensesResult,
+          configResult,
         ] = await Promise.all([
+          // Locais isentos
           supabase
             .from("admin_fee_exempt_locations")
             .select("location_id"),
 
+          // Propriedades (com filtro de localização para financeiro)
           (async () => {
             let query = supabase
               .from("properties")
@@ -178,6 +195,7 @@ export function useDashboardData(
             return query;
           })(),
 
+          // Inquilinos (via locações com filtro de localização)
           (async () => {
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               const { data: allowedRentals } = await supabase
@@ -199,6 +217,7 @@ export function useDashboardData(
             }
           })(),
 
+          // Locações (com filtro de localização para financeiro)
           (async () => {
             let query = supabase
               .from("rentals")
@@ -211,6 +230,7 @@ export function useDashboardData(
             return query;
           })(),
 
+          // Pagamentos do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_payments")
@@ -225,6 +245,7 @@ export function useDashboardData(
             return query;
           })(),
 
+          // Despesas do mês (com filtro de localização)
           (async () => {
             let query = supabase
               .from("mv_monthly_expenses")
@@ -238,6 +259,12 @@ export function useDashboardData(
             
             return query;
           })(),
+
+          // Configurações
+          supabase
+            .from("configs")
+            .select("*")
+            .maybeSingle(),
         ]);
 
         if (abortControllerRef.current?.signal.aborted) {
@@ -245,28 +272,36 @@ export function useDashboardData(
           return;
         }
 
+        // 3. Processar resultados
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
+        const config = configResult.data;
+        const adminFeePercent = config?.admin_fee_percent || 0;
+        const managementFeePercent = config?.management_fee_percent || 0;
+
+        // Processar propriedades
         const properties = propertiesResult.data || [];
         const totalProperties = properties.length;
         const availableProperties = properties.filter(p => p.status === "available").length;
         const unavailableProperties = properties.filter(p => p.status === "unavailable").length;
         const occupiedProperties = properties.filter(p => p.status === "occupied").length;
 
+        // Processar inquilinos
         const totalTenants = tenantsResult.data?.length || 0;
 
+        // Processar locações
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        const expiringDate = new Date(today);
-        expiringDate.setDate(expiringDate.getDate() + 30);
-        const expiringDateStr = expiringDate.toISOString().split('T')[0];
+        // Contratos que vencem nos próximos 3 meses
         const expiringContracts = rentals.filter(r => 
           r.status === "active" && 
-          r.end_date <= expiringDateStr
+          r.end_date >= todayStr &&
+          r.end_date <= threeMonthsStr
         ).length;
 
+        // 🔥 Processar pagamentos do mês com lógica CORRETA
         const paymentsData = monthlyPaymentsResult.data || [];
         
         let overduePayments = 0;
@@ -276,31 +311,50 @@ export function useDashboardData(
         let pendingPayments = 0;
         let expectedAmount = 0;
         let grossRevenue = 0;
+        let adminFees = 0;
+        let managementFees = 0;
 
         console.log("📊 [useDashboardData] Analisando pagamentos:", {
           total: paymentsData.length,
-          today: todayStr
+          today: todayStr,
+          month,
+          year
         });
 
         paymentsData.forEach((payment: any) => {
           const dueDate = payment.due_date;
           const status = payment.status;
+          const locationId = payment.location_id;
+          const paidAmount = payment.paid_amount || 0;
+          const expectedAmountValue = payment.expected_amount || 0;
           
-          expectedAmount += payment.expected_amount || 0;
+          // Receita esperada = soma de todos os expected_amount do mês
+          expectedAmount += expectedAmountValue;
           
+          // ✅ PAGO: contar como recebido
           if (status === 'paid') {
             completedPayments++;
-            grossRevenue += payment.paid_amount || 0;
+            grossRevenue += paidAmount;
+            
+            // Calcular taxas apenas de locais não isentos
+            if (!exemptIds.includes(locationId)) {
+              adminFees += paidAmount * (adminFeePercent / 100);
+              managementFees += paidAmount * (managementFeePercent / 100);
+            }
           } 
+          // ✅ ATRASADO: vencimento < hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overduePayments++;
-            overdueAmount += payment.expected_amount || 0;
+            overdueAmount += expectedAmountValue;
+            pendingPayments++;
           } 
+          // ✅ VENCE HOJE: vencimento = hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
             dueTodayPayments++;
+            pendingPayments++;
           }
-          
-          if (status === 'pending' || status === 'partial') {
+          // ✅ PENDENTE FUTURO: pending/partial com vencimento futuro
+          else if (status === 'pending' || status === 'partial') {
             pendingPayments++;
           }
         });
@@ -311,9 +365,12 @@ export function useDashboardData(
           dueTodayPayments,
           pendingPayments,
           grossRevenue,
-          overdueAmount
+          overdueAmount,
+          adminFees,
+          managementFees
         });
 
+        // Processar despesas do mês
         const expensesData = monthlyExpensesResult.data || [];
         const locationExpenses = expensesData.reduce(
           (sum: number, e: any) => sum + (e.total_expenses || 0), 
@@ -336,6 +393,8 @@ export function useDashboardData(
           grossRevenue,
           locationExpenses,
           pendingPayments,
+          adminFees,
+          managementFees,
         };
 
         setCache(cacheKey, newCounts);
