@@ -155,16 +155,16 @@ export function useDashboardData(
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
-        // Data para 3 meses à frente (para contratos a vencer)
-        const threeMonthsFromNow = new Date(today);
-        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-        const threeMonthsStr = threeMonthsFromNow.toISOString().split('T')[0];
+        // Data para 2 meses à frente (para contratos a vencer)
+        const twoMonthsFromNow = new Date(today);
+        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+        const twoMonthsStr = twoMonthsFromNow.toISOString().split('T')[0];
 
         console.log("📅 [useDashboardData] Período:", {
           month,
           year,
           today: todayStr,
-          threeMonthsFromNow: threeMonthsStr
+          twoMonthsFromNow: twoMonthsStr
         });
 
         // 2. Buscar dados em paralelo
@@ -306,12 +306,12 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // Contratos que vencem nos próximos 3 meses
+        // Contratos que vencem nos próximos 2 meses
         const expiringContracts = rentals.filter(r => 
           r.status === "active" && 
           r.end_date &&
           r.end_date >= todayStr &&
-          r.end_date <= threeMonthsStr
+          r.end_date <= twoMonthsStr
         ).length;
 
         // 🔥 Processar pagamentos com lógica CORRETA

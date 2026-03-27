@@ -245,7 +245,7 @@ export const OverviewCards = memo(function OverviewCards({
             <MetricCard
               title="Locações a Vencer"
               value={safeData.pendingPayments}
-              subtitle="Vencem até o final do mês"
+              subtitle="Vencem em até 2 meses"
               icon={AlertCircle}
               iconColor="text-purple-600"
               iconBgClass="bg-purple-50 dark:bg-purple-900/20"
