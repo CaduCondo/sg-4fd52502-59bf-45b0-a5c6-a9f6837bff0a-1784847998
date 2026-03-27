@@ -349,11 +349,16 @@ export function useDashboardData(
             completedPayments++;
             grossRevenue += paidAmount;
             
-            // Calcular taxas apenas de locais não isentos
-            if (locationId && !exemptIds.includes(locationId)) {
+            // Calcular taxas apenas para pagamentos PAGOS e locais não isentos
+            const isExempt = locationId && exemptIds.includes(locationId);
+            
+            // Taxa de Administração (apenas locais não isentos)
+            if (!isExempt) {
               adminFees += paidAmount * (adminFeePercent / 100);
-              managementFees += paidAmount * (managementFeePercent / 100);
             }
+            
+            // Taxa de Gerenciamento (todos os locais)
+            managementFees += paidAmount * (managementFeePercent / 100);
           } 
           // ✅ ATRASADO: vencimento < hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
