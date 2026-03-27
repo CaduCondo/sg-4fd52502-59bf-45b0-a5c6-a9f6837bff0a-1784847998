@@ -385,7 +385,11 @@ export function useDashboardData(
           grossRevenue,
           overdueAmount,
           adminFees,
-          managementFees
+          managementFees,
+          locationExpenses,
+          adminFeePercent,
+          managementFeePercent,
+          exemptIds: exemptIds.length
         });
 
         // Processar despesas do mês
@@ -394,6 +398,13 @@ export function useDashboardData(
           (sum: number, e: any) => sum + (Number(e.amount) || 0), 
           0
         );
+
+        console.log("💰 [useDashboardData] Valores finais calculados:", {
+          adminFees,
+          managementFees,
+          locationExpenses,
+          total: adminFees + managementFees + locationExpenses
+        });
 
         const newCounts: DashboardCounts = {
           totalProperties,
@@ -414,6 +425,8 @@ export function useDashboardData(
           adminFees,
           managementFees,
         };
+
+        console.log("📦 [useDashboardData] Retornando counts:", newCounts);
 
         setCache(cacheKey, newCounts);
         setCounts(newCounts);

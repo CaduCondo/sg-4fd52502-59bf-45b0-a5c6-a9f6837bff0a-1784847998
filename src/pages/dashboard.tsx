@@ -71,6 +71,13 @@ export default function Dashboard() {
     // Total Taxas e Contas = Taxa Admin + Taxa Gerenciamento + Contas do Local
     const totalFeesAndExpenses = counts.adminFees + counts.managementFees + counts.locationExpenses;
     
+    console.log("💳 [Dashboard] Calculando totalFeesAndExpenses:", {
+      adminFees: counts.adminFees,
+      managementFees: counts.managementFees,
+      locationExpenses: counts.locationExpenses,
+      total: totalFeesAndExpenses
+    });
+    
     // Receita Líquida = Receita Bruta - (Taxas + Contas)
     const netRevenue = grossRevenue - totalFeesAndExpenses;
 
