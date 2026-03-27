@@ -377,6 +377,13 @@ export function useDashboardData(
           }
         });
 
+        // Processar despesas do mês
+        const expensesData = expensesResult.data || [];
+        const locationExpenses = expensesData.reduce(
+          (sum: number, e: any) => sum + (Number(e.amount) || 0), 
+          0
+        );
+
         console.log("📊 [useDashboardData] Resultado da contagem:", {
           completedPayments,
           overduePayments,
@@ -391,13 +398,6 @@ export function useDashboardData(
           managementFeePercent,
           exemptIds: exemptIds.length
         });
-
-        // Processar despesas do mês
-        const expensesData = expensesResult.data || [];
-        const locationExpenses = expensesData.reduce(
-          (sum: number, e: any) => sum + (Number(e.amount) || 0), 
-          0
-        );
 
         console.log("💰 [useDashboardData] Valores finais calculados:", {
           adminFees,
