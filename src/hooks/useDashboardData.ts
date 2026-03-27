@@ -344,24 +344,31 @@ export function useDashboardData(
           // Receita esperada = soma de todos os expected_amount do mês
           expectedAmount += expectedAmountValue;
           
-          // ✅ PAGO: contar como recebido
-          if (status === 'paid') {
-            completedPayments++;
-            grossRevenue += paidAmount;
-            
-            // Calcular taxas apenas para pagamentos PAGOS e locais não isentos
-            const isExempt = locationId && exemptIds.includes(locationId);
-            
-            // Taxa de Administração (apenas locais não isentos)
-            if (!isExempt) {
-              adminFees += paidAmount * (adminFeePercent / 100);
+          // ✅ PAGO OU PARCIAL: contar como recebido e calcular taxas
+          if (status === 'paid' || status === 'partial') {
+            if (status === 'paid') {
+              completedPayments++;
             }
             
-            // Taxa de Gerenciamento (todos os locais)
-            managementFees += paidAmount * (managementFeePercent / 100);
-          } 
+            // Adicionar à receita bruta
+            grossRevenue += paidAmount;
+            
+            // Calcular taxas apenas se houver valor pago
+            if (paidAmount > 0) {
+              const isExempt = locationId && exemptIds.includes(locationId);
+              
+              // Taxa de Administração (apenas locais não isentos)
+              if (!isExempt) {
+                adminFees += paidAmount * (adminFeePercent / 100);
+              }
+              
+              // Taxa de Gerenciamento (todos os locais)
+              managementFees += paidAmount * (managementFeePercent / 100);
+            }
+          }
+          
           // ✅ ATRASADO: vencimento < hoje E status pending/partial
-          else if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
+          if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overduePayments++;
             overdueAmount += expectedAmountValue;
             pendingPayments++;
