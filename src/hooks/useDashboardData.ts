@@ -331,7 +331,9 @@ export function useDashboardData(
           total: paymentsData.length,
           today: todayStr,
           month,
-          year
+          year,
+          adminFeePercent,
+          managementFeePercent
         });
 
         paymentsData.forEach((payment: any) => {
@@ -340,6 +342,15 @@ export function useDashboardData(
           const locationId = payment.rentals?.properties?.location_id;
           const paidAmount = payment.paid_amount || 0;
           const expectedAmountValue = payment.expected_amount || 0;
+          
+          console.log("💳 [useDashboardData] Processando pagamento:", {
+            id: payment.id,
+            status,
+            paidAmount,
+            expectedAmount: expectedAmountValue,
+            locationId,
+            isExempt: locationId && exemptIds.includes(locationId)
+          });
           
           // Receita esperada = soma de todos os expected_amount do mês
           expectedAmount += expectedAmountValue;
@@ -359,11 +370,23 @@ export function useDashboardData(
               
               // Taxa de Administração (apenas locais não isentos)
               if (!isExempt) {
-                adminFees += paidAmount * (adminFeePercent / 100);
+                const adminFee = paidAmount * (adminFeePercent / 100);
+                adminFees += adminFee;
+                console.log("💰 [useDashboardData] Taxa Admin calculada:", {
+                  paidAmount,
+                  percent: adminFeePercent,
+                  fee: adminFee
+                });
               }
               
               // Taxa de Gerenciamento (todos os locais)
-              managementFees += paidAmount * (managementFeePercent / 100);
+              const mgmtFee = paidAmount * (managementFeePercent / 100);
+              managementFees += mgmtFee;
+              console.log("💰 [useDashboardData] Taxa Mgmt calculada:", {
+                paidAmount,
+                percent: managementFeePercent,
+                fee: mgmtFee
+              });
             }
           }
           
