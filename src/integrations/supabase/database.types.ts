@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -1149,6 +1149,10 @@ export type Database = {
           status: string
           value: number
         }[]
+      }
+      get_correct_due_date: {
+        Args: { p_month: number; p_preferred_day: number; p_year: number }
+        Returns: string
       }
       get_expected_revenue: {
         Args: { p_month?: number; p_user_id?: string; p_year?: number }
