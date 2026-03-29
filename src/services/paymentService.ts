@@ -10,6 +10,42 @@ type PaymentResponse = Tables<"payments"> & {
   }) | null;
 };
 
+/**
+ * Calcula a data válida de vencimento considerando o dia escolhido e o mês/ano
+ * 
+ * Regra: Se o mês não possui o dia escolhido (ex: dia 31 em fevereiro),
+ * retrocede 1 dia por vez até encontrar uma data válida
+ * 
+ * Exemplos:
+ * - Dia 31 em fevereiro -> dia 28 (ou 29 em ano bissexto)
+ * - Dia 31 em abril -> dia 30
+ * - Dia 15 em qualquer mês -> dia 15
+ * 
+ * @param chosenDay - Dia escolhido na locação (1-31)
+ * @param year - Ano do vencimento
+ * @param month - Mês do vencimento (1-12)
+ * @returns String no formato YYYY-MM-DD
+ */
+function getValidDueDate(chosenDay: number, year: number, month: number): string {
+  // Descobrir o número máximo de dias no mês
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  
+  // Se o dia escolhido existe no mês, usar ele
+  if (chosenDay <= lastDayOfMonth) {
+    const validDate = new Date(year, month - 1, chosenDay);
+    return format(validDate, "yyyy-MM-dd");
+  }
+  
+  // Se não existe, voltar 1 dia por vez até encontrar válido
+  let validDay = chosenDay;
+  while (validDay > lastDayOfMonth) {
+    validDay--;
+  }
+  
+  const validDate = new Date(year, month - 1, validDay);
+  return format(validDate, "yyyy-MM-dd");
+}
+
 export const getAll = async (): Promise<Payment[]> => {
   const { data, error } = await supabase
     .from("payments")
@@ -251,6 +287,8 @@ export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> 
  * 3. Último recebimento: proporcional aos dias do último mês
  * 
  * 4. Não pular meses, não duplicar meses
+ * 
+ * 5. CRÍTICO: Aplicar regra de ajuste de datas para meses sem o dia escolhido
  */
 export function generateExpectedPayments(params: {
   rentalId: string;
@@ -342,7 +380,8 @@ export function generateExpectedPayments(params: {
   }
 
   // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
-  const firstPaymentDueDate = `${firstPaymentYear}-${String(firstPaymentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+  // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
+  const firstPaymentDueDate = getValidDueDate(paymentDay, firstPaymentYear, firstPaymentMonth);
   
   // ✅ CORREÇÃO CRÍTICA: Garantir que aluguel e garagem usem os MESMOS dias
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
@@ -395,7 +434,8 @@ export function generateExpectedPayments(params: {
     currentYear < eYear || 
     (currentYear === eYear && currentMonth < eMonth)
   ) {
-    const dueDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+    // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
+    const dueDate = getValidDueDate(paymentDay, currentYear, currentMonth);
     
     const breakdown: Array<{ description: string; amount: number; type: string }> = [
       {
@@ -427,7 +467,8 @@ export function generateExpectedPayments(params: {
     console.log(`📝 Recebimento intermediário criado - Parcela ${installmentNumber}:`, {
       month: currentMonth,
       year: currentYear,
-      amount: totalMonthlyValue
+      amount: totalMonthlyValue,
+      dueDate
     });
 
     installmentNumber++;
@@ -451,7 +492,8 @@ export function generateExpectedPayments(params: {
     const lastProportionalGarage = garage > 0 ? (garage / 30) * daysToChargeLastPayment : 0;
     const lastPaymentAmount = lastProportionalRent + lastProportionalGarage;
 
-    const lastDueDate = `${eYear}-${String(eMonth).padStart(2, '0')}-${String(paymentDay).padStart(2, '0')}`;
+    // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
+    const lastDueDate = getValidDueDate(paymentDay, eYear, eMonth);
 
     const lastPaymentBreakdown: Array<{ description: string; amount: number; type: string }> = [
       {
@@ -484,7 +526,8 @@ export function generateExpectedPayments(params: {
       month: eMonth,
       year: eYear,
       days: daysToChargeLastPayment,
-      amount: lastPaymentAmount
+      amount: lastPaymentAmount,
+      dueDate: lastDueDate
     });
   }
 
@@ -501,7 +544,8 @@ export function generateExpectedPayments(params: {
       month: p.reference_month,
       year: p.reference_year,
       installment: p.installment,
-      amount: p.expected_amount
+      amount: p.expected_amount,
+      dueDate: p.due_date
     }))
   });
 
@@ -633,22 +677,12 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
     const refYear = typeof payment.reference_year === 'string' ? parseInt(payment.reference_year) : payment.reference_year;
     const refMonth = typeof payment.reference_month === 'string' ? parseInt(payment.reference_month) : payment.reference_month;
 
-    // Criar data manualmente para evitar problemas com setDate
-    const year = refYear;
-    const month = refMonth - 1; // JavaScript Date usa 0-11 para meses
-    const day = Math.min(newPaymentDay, 28);
-    
-    const dueDate = new Date(year, month, day);
-    
-    // Validar se a data é válida
-    if (isNaN(dueDate.getTime())) {
-      console.error(`Data inválida criada: year=${year}, month=${month}, day=${day}`);
-      throw new Error(`Data inválida para pagamento: ${refMonth}/${refYear}`);
-    }
+    // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
+    const dueDate = getValidDueDate(newPaymentDay, refYear, refMonth);
 
     return {
       id: payment.id,
-      due_date: format(dueDate, "yyyy-MM-dd"),
+      due_date: dueDate,
     };
   });
 
