@@ -1195,7 +1195,7 @@ export type Database = {
       }
       get_system_user_id: { Args: never; Returns: string }
       get_valid_due_date: {
-        Args: { p_day: number; p_month: number; p_year: number }
+        Args: { p_month: number; p_rent_due_day: number; p_year: number }
         Returns: string
       }
       hash_password: { Args: { plain_password: string }; Returns: string }
