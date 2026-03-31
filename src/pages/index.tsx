@@ -4,6 +4,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
 import { PropertyPublicCard } from "@/components/public/PropertyPublicCard";
 import { PropertyListCard } from "@/components/public/PropertyListCard";
+import { PropertyCardSkeleton } from "@/components/public/PropertyCardSkeleton";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import { ViewModeToggle } from "@/components/public/ViewModeToggle";
 import { SortSelector } from "@/components/public/SortSelector";
@@ -12,7 +13,6 @@ import { SortOption } from "@/components/public/SortSelector";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Home, Building2, Phone, Mail, MapPin, ChevronDown } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/services/configService";
 
 const ITEMS_PER_PAGE = 9;
@@ -159,19 +159,14 @@ export default function PublicHomePage() {
         {/* Properties Grid/List */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {loading ?
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
-                {[...Array(6)].map((_, i) =>
-              <div key={i} className="space-y-4">
-                    <Skeleton className="aspect-[4/3] w-full rounded-lg" />
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-              )}
-              </div> :
-            error ?
-            <div className="text-center py-20">
+            {loading ? (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) => (
+                  <PropertyCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
                   <Home className="h-10 w-10 text-red-400" />
                 </div>
@@ -180,13 +175,13 @@ export default function PublicHomePage() {
                 </h3>
                 <p className="text-slate-600 mb-4">{error}</p>
                 <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   Tentar novamente
                 </button>
-              </div> :
-            filteredProperties.length === 0 ?
+              </div>
+            ) : filteredProperties.length === 0 ?
             <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
