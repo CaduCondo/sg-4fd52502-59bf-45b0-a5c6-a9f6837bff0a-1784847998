@@ -13,6 +13,13 @@ interface BreakdownItemProps {
   formatCurrency: (val: number) => string;
 }
 
+// Função para limpar o label removendo "- Parcela X/Y"
+const cleanLabel = (text: string): string => {
+  if (!text) return text;
+  // Remove "- Parcela X/Y" do texto
+  return text.replace(/\s*-\s*Parcela\s+\d+\/\d+/gi, '').trim();
+};
+
 export const BreakdownItem = memo(({ item, isDeduction, igpmCorrection, formatCurrency }: BreakdownItemProps) => {
   const isDepositDeduction = item.description?.includes("Devolução de Caução");
   
@@ -23,13 +30,16 @@ export const BreakdownItem = memo(({ item, isDeduction, igpmCorrection, formatCu
   // 🔥 NOVO: Detectar se é mudança de vencimento (tem extraValue e description adicional)
   const isDueDateChange = item.extraValue && item.extraValue > 0 && item.description && item.description.includes("De dia");
 
+  // Limpar o label/description removendo "- Parcela X/Y"
+  const cleanedLabel = cleanLabel(item.label || item.description);
+
   return (
     <div>
       {isDueDateChange ? (
         // Layout especial para mudança de vencimento
         <div className="space-y-1">
           <div className="text-sm font-medium">
-            {item.label || "Mudança data de vencimento"}
+            {cleanedLabel || "Mudança data de vencimento"}
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground ml-2">
@@ -45,7 +55,7 @@ export const BreakdownItem = memo(({ item, isDeduction, igpmCorrection, formatCu
         <div className="flex justify-between items-start text-sm">
           <div className="flex-1">
             <span className={isDepositDeduction ? "block" : ""}>
-              {item.label || item.description}
+              {cleanedLabel}
             </span>
             {isDepositDeduction && igpmCorrection && (
               <span className="block text-xs text-muted-foreground mt-1">
@@ -368,11 +378,13 @@ export function PaymentBreakdownCard({
               <div className="bg-muted/30 p-4 rounded-lg space-y-2">
                 {displayBreakdown.items.map((item: any, index: number) => {
                   const itemValue = item.value || item.amount || 0;
+                  // Limpar a descrição removendo "- Parcela X/Y"
+                  const cleanedDescription = cleanLabel(item.description);
                   
                   return (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm font-medium">
-                        {item.description}
+                        {cleanedDescription}
                       </span>
                       <span className="text-lg font-semibold">
                         {formatCurrency(Math.abs(itemValue))}
