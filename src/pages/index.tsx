@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
@@ -15,12 +15,13 @@ import { Search, Home, Building2, Phone, Mail, MapPin, ChevronDown } from "lucid
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/services/configService";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 9;
 
 export default function PublicHomePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
@@ -29,16 +30,25 @@ export default function PublicHomePage() {
     sort: sortBy
   });
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Reset display count when filters change
   useEffect(() => {
     setDisplayCount(ITEMS_PER_PAGE);
-  }, [selectedLocation, searchTerm, sortBy]);
+  }, [selectedLocation, debouncedSearchTerm, sortBy]);
 
   // Filter properties by search term (memoized)
   const filteredProperties = useMemo(() => {
-    if (!searchTerm) return properties;
+    if (!debouncedSearchTerm) return properties;
 
-    const search = searchTerm.toLowerCase();
+    const search = debouncedSearchTerm.toLowerCase();
     return properties.filter((prop) => {
       return (
         prop.complement?.toLowerCase().includes(search) ||
@@ -46,13 +56,17 @@ export default function PublicHomePage() {
         prop.city?.toLowerCase().includes(search) ||
         prop.neighborhood?.toLowerCase().includes(search) ||
         prop.location?.toLowerCase().includes(search) ||
-        prop.type?.toLowerCase().includes(search));
-
+        prop.type?.toLowerCase().includes(search)
+      );
     });
-  }, [properties, searchTerm]);
+  }, [properties, debouncedSearchTerm]);
 
   // Properties to display (with pagination)
-  const displayedProperties = filteredProperties.slice(0, displayCount);
+  const displayedProperties = useMemo(() => 
+    filteredProperties.slice(0, displayCount),
+    [filteredProperties, displayCount]
+  );
+  
   const hasMore = displayCount < filteredProperties.length;
 
   // Extract unique locations for filter (memoized)
@@ -73,9 +87,9 @@ export default function PublicHomePage() {
     return Array.from(locationMap.values());
   }, [properties]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     setDisplayCount((prev) => prev + ITEMS_PER_PAGE);
-  };
+  }, []);
 
   return (
     <>
@@ -199,28 +213,28 @@ export default function PublicHomePage() {
                   </div>
                 </div>
 
-                {viewMode === "grid" ?
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {displayedProperties.map((property) => {
-                      const type = property.description?.includes("Comercial") ? "Comercial" : "Residencial"; // Infer type
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {displayedProperties.map((property, index) => {
+                      const type = property.description?.includes("Comercial") ? "Comercial" : "Residencial";
                       
                       return (
                         <PropertyPublicCard
                           key={property.id}
                           property={property}
-                          // @ts-expect-error type property not in interface
-                          type={type}
+                          priority={index < 6}
+                          index={index}
                         />
                       );
                     })}
-                  </div> :
-
-              <div className="space-y-6">
-                    {displayedProperties.map((property) =>
-                <PropertyListCard key={property.id} property={property} />
-                )}
                   </div>
-              }
+                ) : (
+                  <div className="space-y-6">
+                    {displayedProperties.map((property) => (
+                      <PropertyListCard key={property.id} property={property} />
+                    ))}
+                  </div>
+                )}
 
                 {/* Load More Button */}
                 {hasMore &&
