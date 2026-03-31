@@ -103,6 +103,13 @@ export default function PublicHomePage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
         <meta name="twitter:description" content={siteConfig.description} />
+        
+        {/* Preconnect para domínios de imagens - carregamento mais rápido */}
+        <link rel="preconnect" href="https://ygqwacfyxcsycaegbnrp.supabase.co" />
+        <link rel="dns-prefetch" href="https://ygqwacfyxcsycaegbnrp.supabase.co" />
+        
+        {/* Resource hints para melhor performance */}
+        <link rel="prefetch" as="image" />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">

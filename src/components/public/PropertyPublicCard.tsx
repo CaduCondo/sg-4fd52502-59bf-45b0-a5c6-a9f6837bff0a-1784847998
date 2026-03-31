@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   const images = property.images || [];
   const totalMonthly = property.value;
@@ -72,26 +70,17 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
       <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
         <div className="relative aspect-video overflow-hidden bg-slate-100" onClick={handleImageClick}>
           {property.images && property.images.length > 0 ? (
-            <>
-              {!imageLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
-                </div>
-              )}
-              <Image
-                src={property.images[0]}
-                alt={displayTitle}
-                fill
-                className={`object-cover transition-all duration-300 group-hover:scale-110 ${
-                  imageLoaded ? "opacity-100" : "opacity-0"
-                }`}
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                priority={priority && index < 6}
-                loading={priority && index < 6 ? "eager" : "lazy"}
-                quality={75}
-                onLoad={() => setImageLoaded(true)}
-              />
-            </>
+            <img
+              src={property.images[0]}
+              alt={displayTitle}
+              className="absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
+              loading={index < 9 ? "eager" : "lazy"}
+              decoding={index < 9 ? "sync" : "async"}
+              fetchPriority={index < 6 ? "high" : "low"}
+              style={{ 
+                contentVisibility: index < 9 ? 'visible' : 'auto',
+              }}
+            />
           ) : (
             <div className="flex h-full items-center justify-center bg-slate-100">
               <Home className="h-16 w-16 text-slate-300" />
@@ -282,18 +271,18 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
                     Clique em uma foto para visualizar em tela cheia
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {images.map((imageUrl, index) => (
+                    {images.map((imageUrl, idx) => (
                       <button
-                        key={index}
-                        onClick={(e) => handleThumbnailClick(index, e)}
+                        key={idx}
+                        onClick={(e) => handleThumbnailClick(idx, e)}
                         className="relative aspect-square overflow-hidden rounded-lg border-2 border-slate-200 hover:border-blue-500 transition-all hover:scale-105 group"
                       >
-                        <Image
+                        <img
                           src={imageUrl}
-                          alt={`${displayTitle} - Foto ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                          alt={`${displayTitle} - Foto ${idx + 1}`}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
                           <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
