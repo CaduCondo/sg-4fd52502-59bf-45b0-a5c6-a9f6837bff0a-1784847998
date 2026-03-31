@@ -7,6 +7,9 @@ interface UsePublicPropertiesOptions {
   sort?: "newest" | "oldest" | "price_asc" | "price_desc" | "price-asc" | "price-desc" | "area-asc" | "area-desc";
 }
 
+// Limite inicial de imóveis para melhorar performance
+const INITIAL_LIMIT = 50;
+
 export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,7 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
     const startTime = performance.now();
 
     try {
-      // Query otimizada com apenas campos essenciais
+      // Query super otimizada - apenas campos essenciais
       let query = supabase
         .from("properties")
         .select(`
@@ -63,7 +66,8 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             neighborhood
           )
         `)
-        .eq("status", "available");
+        .eq("status", "available")
+        .limit(INITIAL_LIMIT); // Limitar a 50 imóveis inicialmente
 
       // Aplicar filtro de localização se fornecido
       if (options.location && options.location !== "all") {
@@ -99,15 +103,8 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
 
       console.log(`[usePublicProperties] 📦 Recebidos ${data?.length || 0} imóveis`);
 
-      const propertiesWithLocation = (data || []).map((property: any) => ({
-        ...property,
-        address: property.locations?.address || "",
-        features: [],
-        location: property.locations?.name || "Localização não encontrada",
-        locationDetails: property.locations,
-      }));
-
-      const mappedProperties: Property[] = (propertiesWithLocation || []).map((prop: any) => {
+      // Transformação otimizada de dados
+      const mappedProperties: Property[] = (data || []).map((prop: any) => {
         const location = prop.locations;
         return {
           id: prop.id,
@@ -130,14 +127,14 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             : [],
           propertyIdentifier: prop.property_identifier || "",
           createdAt: prop.created_at || new Date().toISOString(),
-          address: location?.address || "", // Added missing property
-          features: [], // Added missing property
+          address: location?.address || "",
+          features: [],
           locationDetails: location ? {
             id: location.id,
             name: location.name,
             city: location.city,
             neighborhood: location.neighborhood,
-            state: "", // Valor padrão para evitar erro de tipo
+            state: "",
           } : undefined,
         };
       });
