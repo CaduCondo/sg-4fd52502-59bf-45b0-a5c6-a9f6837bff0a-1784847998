@@ -31,13 +31,16 @@ import type React from "react";
 
 interface PropertyPublicCardProps {
   property: Property;
+  priority?: boolean;
+  index?: number;
 }
 
-export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
+export function PropertyPublicCard({ property, priority = false, index = 0 }: PropertyPublicCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const images = property.images || [];
   const totalMonthly = property.value;
@@ -67,15 +70,28 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   return (
     <>
       <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
-        <div className="relative aspect-video overflow-hidden" onClick={handleImageClick}>
+        <div className="relative aspect-video overflow-hidden bg-slate-100" onClick={handleImageClick}>
           {property.images && property.images.length > 0 ? (
-            <Image
-              src={property.images[0]}
-              alt={displayTitle}
-              fill
-              className="object-cover transition-transform group-hover:scale-110"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
+            <>
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+                </div>
+              )}
+              <Image
+                src={property.images[0]}
+                alt={displayTitle}
+                fill
+                className={`object-cover transition-all duration-300 group-hover:scale-110 ${
+                  imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                priority={priority && index < 6}
+                loading={priority && index < 6 ? "eager" : "lazy"}
+                quality={75}
+                onLoad={() => setImageLoaded(true)}
+              />
+            </>
           ) : (
             <div className="flex h-full items-center justify-center bg-slate-100">
               <Home className="h-16 w-16 text-slate-300" />
