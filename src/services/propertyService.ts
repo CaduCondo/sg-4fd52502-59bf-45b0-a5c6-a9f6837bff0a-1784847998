@@ -407,7 +407,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       let images: string[] = [];
       if (item.images) {
         if (Array.isArray(item.images)) {
-          images = item.images.filter((img: any) => img && typeof img === 'string');
+          images = item.images.filter((img: any) => img && typeof img === 'string') as string[];
         }
       }
 

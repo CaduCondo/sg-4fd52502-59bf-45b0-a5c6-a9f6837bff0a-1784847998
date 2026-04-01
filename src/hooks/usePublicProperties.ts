@@ -19,21 +19,11 @@ function applySorting(properties: Property[], sort?: SortOption): Property[] {
   }
 
   switch (sort) {
-    case "oldest":
-      return [...properties].sort((a, b) => 
-        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      );
-    
-    case "price_asc":
     case "price-asc":
       return [...properties].sort((a, b) => (a.value || 0) - (b.value || 0));
     
-    case "price_desc":
     case "price-desc":
       return [...properties].sort((a, b) => (b.value || 0) - (a.value || 0));
-    
-    case "area-asc":
-      return [...properties].sort((a, b) => (a.area || 0) - (b.area || 0));
     
     case "area-desc":
       return [...properties].sort((a, b) => (b.area || 0) - (a.area || 0));
