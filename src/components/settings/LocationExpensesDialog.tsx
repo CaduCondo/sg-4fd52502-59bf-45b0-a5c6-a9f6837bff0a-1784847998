@@ -32,20 +32,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
-  // Form
+  // Form - amount agora é string com máscara
   const [expenseType, setExpenseType] = useState<string>("water");
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("R$ 0,00");
   const [referenceMonth, setReferenceMonth] = useState(new Date().getMonth() + 1);
   const [referenceYear, setReferenceYear] = useState(new Date().getFullYear());
-  
-  // New state variables for dedicated form
-  const [newExpenseValue, setNewExpenseValue] = useState<number>(0);
-  const [newExpenseDescription, setNewExpenseDescription] = useState("");
-  const [newExpenseCategory, setNewExpenseCategory] = useState("other");
-  const [newExpenseDueDate, setNewExpenseDueDate] = useState("");
-  const [newExpenseStatus, setNewExpenseStatus] = useState<"pending" | "paid" | "overdue">("pending");
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
   useEffect(() => {
     if (open && location?.id) {
@@ -81,10 +73,13 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   };
 
   const handleSave = async () => {
-    if (!amount || parseCurrencyToNumber(amount) <= 0) {
+    // Converter valor com máscara para número
+    const numericValue = parseCurrencyToNumber(amount);
+    
+    if (!numericValue || numericValue <= 0) {
       toast({
         title: "Erro",
-        description: "Informe um valor válido.",
+        description: "Informe um valor válido maior que zero.",
         variant: "destructive",
       });
       return;
@@ -99,7 +94,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         locationId: location.id,
         expenseType: expenseType as LocationExpense["expenseType"],
         description,
-        amount: parseCurrencyToNumber(amount),
+        amount: numericValue,
         referenceMonth: month,
         referenceYear: year,
         status: "pending" as LocationExpense["status"],
@@ -169,7 +164,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     setEditingExpense(null);
     setExpenseType("water");
     setDescription("");
-    setAmount("");
+    setAmount("R$ 0,00");
     setReferenceMonth(new Date().getMonth() + 1);
     setReferenceYear(new Date().getFullYear());
   };
@@ -398,10 +393,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <Label htmlFor="expense-value">Valor</Label>
                 <Input
                   id="expense-value"
-                  type="number"
-                  value={newExpenseValue}
-                  onChange={(e) => setNewExpenseValue(Number(e.target.value))}
-                  placeholder="0.00"
+                  type="text"
+                  value={amount}
+                  onChange={(e) => setAmount(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing && !!editingExpense}
+                  className="h-9"
                 />
               </div>
             </div>
