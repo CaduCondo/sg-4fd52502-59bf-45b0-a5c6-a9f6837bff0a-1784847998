@@ -129,8 +129,11 @@ export default function Settings() {
     zip_code: "",
     is_active: true,
   });
-  const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
+  
+  // Estados para LocationExpensesDialog
+  const [isExpensesDialogOpen, setIsExpensesDialogOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
   // Use custom hooks for users and permissions
   const { 
@@ -452,9 +455,6 @@ export default function Settings() {
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
     }
   };
-
-  const [isExpensesDialogOpen, setIsExpensesDialogOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -1052,11 +1052,15 @@ export default function Settings() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {selectedLocationForExpenses && (
+        {/* DIALOG DE CONTAS A PAGAR */}
+        {selectedLocation && (
           <LocationExpensesDialog
-            open={!!selectedLocationForExpenses}
-            onOpenChange={(open) => !open && setSelectedLocationForExpenses(null)}
-            location={selectedLocationForExpenses}
+            open={isExpensesDialogOpen}
+            onOpenChange={(open) => {
+              setIsExpensesDialogOpen(open);
+              if (!open) setSelectedLocation(null);
+            }}
+            location={selectedLocation}
           />
         )}
       </div>
