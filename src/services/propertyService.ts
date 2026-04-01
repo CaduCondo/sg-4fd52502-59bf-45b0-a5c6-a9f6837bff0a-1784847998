@@ -367,4 +367,81 @@ export async function getAvailable(): Promise<Property[]> {
     status: property.status,
     images: [], // SEM IMAGES para listagem rápida
   })) as Property[];
-}
+};
+
+/**
+ * Buscar imóveis para página pública - COM IMAGES otimizadas
+ * Apenas imóveis disponíveis, com apenas a primeira imagem para performance
+ */
+export const getPublicProperties = async (): Promise<Property[]> => {
+  try {
+    console.log("🔄 [propertyService.getPublicProperties] Buscando imóveis públicos...");
+
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        has_garage,
+        value,
+        status,
+        images,
+        has_furniture,
+        accepts_pets,
+        created_at,
+        locations!properties_location_id_fkey(id, name, city, neighborhood, state)
+      `)
+      .eq("status", "available")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const properties = (data || []).map((item) => {
+      // Processar imagens: pegar todas mas apenas as que existem
+      let images: string[] = [];
+      if (item.images) {
+        if (Array.isArray(item.images)) {
+          images = item.images.filter((img: any) => img && typeof img === 'string');
+        }
+      }
+
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: item.locations?.name || "",
+        city: item.locations?.city || "",
+        neighborhood: item.locations?.neighborhood || "",
+        state: item.locations?.state || "",
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status as "available" | "occupied" | "unavailable",
+        images: images,
+        createdAt: item.created_at,
+        address: "",
+        features: [],
+      } as Property;
+    });
+
+    console.log(`✅ [propertyService.getPublicProperties] ${properties.length} imóveis públicos retornados`);
+    console.log(`📸 Imagens carregadas:`, properties.map(p => ({ id: p.id, imageCount: p.images.length })));
+
+    return properties;
+  } catch (error) {
+    console.error("❌ Error fetching public properties:", error);
+    throw error;
+  }
+};
