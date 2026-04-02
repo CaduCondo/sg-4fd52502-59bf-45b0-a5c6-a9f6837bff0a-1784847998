@@ -21,7 +21,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     headers: {
       'x-client-info': 'rental-management',
     },
-    fetch: (url, options = {}) => {
+    fetch: (url, options: RequestInit = {}) => {
       return fetch(url, {
         ...options,
         signal: options.signal,
