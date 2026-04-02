@@ -664,10 +664,14 @@ export default function Financial() {
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="rentals">Detalhamento de Locações</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 max-w-full sm:max-w-md gap-2 h-auto p-1">
+            <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
+              Detalhamento de Locações
+            </TabsTrigger>
             {(isAdmin || user?.role === "broker") && (
-              <TabsTrigger value="deposits">Detalhamento de Cauções</TabsTrigger>
+              <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
+                Detalhamento de Cauções
+              </TabsTrigger>
             )}
           </TabsList>
 
@@ -686,7 +690,7 @@ export default function Financial() {
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
-            <div className={`grid gap-4 ${isFinancial ? 'grid-cols-1 md:grid-cols-4' : user?.role === "broker" ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-5'}`}>
+            <div className={`grid gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
               {isFinancial ? (
                 <>
                   <ScrollReveal delay={0.2}>
@@ -857,8 +861,7 @@ export default function Financial() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    </ScrollReveal>
+                    </Card>
                   )}
 
                   <ScrollReveal delay={0.5}>
@@ -918,35 +921,39 @@ export default function Financial() {
             <ScrollReveal delay={0.7}>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <FileText className="h-6 w-6" />
-                        Detalhamento de Locações - {format(
-                          new Date(filterYear, filterMonth - 1),
-                          "MMMM yyyy",
-                          { locale: ptBR }
-                        )}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                    <div className="w-full sm:w-auto">
+                      <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                        <FileText className="h-5 w-5 sm:h-6 sm:w-6" />
+                        <span className="line-clamp-2 sm:line-clamp-1">
+                          Detalhamento de Locações - {format(
+                            new Date(filterYear, filterMonth - 1),
+                            "MMMM yyyy",
+                            { locale: ptBR }
+                          )}
+                        </span>
                       </h2>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handlePrint}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                       >
-                        <FileText className="h-4 w-4" />
-                        Imprimir
+                        <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Imprimir</span>
+                        <span className="sm:hidden">Print</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleExport}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                       >
-                        <Download className="h-4 w-4" />
-                        Exportar Excel
+                        <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Exportar Excel</span>
+                        <span className="sm:hidden">Excel</span>
                       </Button>
                     </div>
                   </div>
@@ -960,218 +967,222 @@ export default function Financial() {
                       Nenhum pagamento encontrado para o período selecionado
                     </div>
                   ) : (
-                    <div className="overflow-x-auto max-w-full">
-                      <Table className="min-w-[1200px]">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
-                              <div className="flex items-center">
-                                Parcela
-                                <SortIcon field="paymentNumber" />
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("local")}>
-                              <div className="flex items-center">
-                                Local
-                                <SortIcon field="local" />
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
-                              <div className="flex items-center">
-                                Complemento
-                                <SortIcon field="complement" />
-                              </div>
-                            </TableHead>
-                            <TableHead>Inquilino</TableHead>
-                            <TableHead>Ano</TableHead>
-                            <TableHead>Mês</TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
-                              <div className="flex items-center">
-                                Status
-                                <SortIcon field="status" />
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
-                              <div className="flex items-center">
-                                Data Vencimento
-                                <SortIcon field="dueDate" />
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("paymentDate")}>
-                              <div className="flex items-center">
-                                Data Recebida
-                                <SortIcon field="paymentDate" />
-                              </div>
-                            </TableHead>
-                            <TableHead>Horário Recebido</TableHead>
-                            <TableHead className="cursor-pointer text-right" onClick={() => handleSort("expectedAmount")}>
-                              <div className="flex items-center justify-end">
-                                Valor Esperado
-                                <SortIcon field="expectedAmount" />
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer text-right" onClick={() => handleSort("paidAmount")}>
-                              <div className="flex items-center justify-end">
-                                Valor Pago
-                                <SortIcon field="paidAmount" />
-                              </div>
-                            </TableHead>
-                            <TableHead>Código PIX</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredPayments.map((payment) => {
-                            const details = getPaymentDetails(payment);
-                            const monthName = format(new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1), "MMMM", { locale: ptBR });
+                    <div className="overflow-x-auto max-w-full -mx-6 px-6 sm:mx-0 sm:px-0">
+                      <div className="inline-block min-w-full align-middle">
+                        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                          <Table className="min-w-[1200px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
+                                  <div className="flex items-center">
+                                    Parcela
+                                    <SortIcon field="paymentNumber" />
+                                  </div>
+                                </TableHead>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("local")}>
+                                  <div className="flex items-center">
+                                    Local
+                                    <SortIcon field="local" />
+                                  </div>
+                                </TableHead>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
+                                  <div className="flex items-center">
+                                    Complemento
+                                    <SortIcon field="complement" />
+                                  </div>
+                                </TableHead>
+                                <TableHead>Inquilino</TableHead>
+                                <TableHead>Ano</TableHead>
+                                <TableHead>Mês</TableHead>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
+                                  <div className="flex items-center">
+                                    Status
+                                    <SortIcon field="status" />
+                                  </div>
+                                </TableHead>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
+                                  <div className="flex items-center">
+                                    Data Vencimento
+                                    <SortIcon field="dueDate" />
+                                  </div>
+                                </TableHead>
+                                <TableHead className="cursor-pointer" onClick={() => handleSort("paymentDate")}>
+                                  <div className="flex items-center">
+                                    Data Recebida
+                                    <SortIcon field="paymentDate" />
+                                  </div>
+                                </TableHead>
+                                <TableHead>Horário Recebido</TableHead>
+                                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("expectedAmount")}>
+                                  <div className="flex items-center justify-end">
+                                    Valor Esperado
+                                    <SortIcon field="expectedAmount" />
+                                  </div>
+                                </TableHead>
+                                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("paidAmount")}>
+                                  <div className="flex items-center justify-end">
+                                    Valor Pago
+                                    <SortIcon field="paidAmount" />
+                                  </div>
+                                </TableHead>
+                                <TableHead>Código PIX</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredPayments.map((payment) => {
+                                const details = getPaymentDetails(payment);
+                                const monthName = format(new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1), "MMMM", { locale: ptBR });
 
-                            return (
-                              <TableRow key={payment.id}>
-                                <TableCell>
-                                  {calculatePaymentNumber(payment, details.rental)}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="max-w-[200px]">
-                                    <div className="font-medium truncate">
-                                      {details.local}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="text-sm text-muted-foreground truncate">
-                                    {details.complemento}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap">
-                                  {details.tenantName}
-                                </TableCell>
-                                <TableCell>{payment.referenceYear}</TableCell>
-                                <TableCell className="capitalize">{monthName}</TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={
-                                      payment.status === "paid"
-                                        ? "default"
-                                        : payment.status === "pending"
-                                        ? "secondary"
-                                        : payment.status === "overdue"
-                                        ? "destructive"
-                                        : "outline"
-                                    }
-                                  >
-                                    {payment.status === "paid"
-                                      ? "Pago"
-                                      : payment.status === "pending"
-                                      ? "Pendente"
-                                      : payment.status === "overdue"
-                                      ? "Atrasado"
-                                      : "Parcial"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                                </TableCell>
-                                <TableCell>
-                                  {payment.paymentDate
-                                    ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                                    : "-"}
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-sm font-mono">
-                                    {details.paymentTime || "-"}
-                                  </span>
+                                return (
+                                  <TableRow key={payment.id}>
+                                    <TableCell>
+                                      {calculatePaymentNumber(payment, details.rental)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="max-w-[200px]">
+                                        <div className="font-medium truncate">
+                                          {details.local}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-sm text-muted-foreground truncate">
+                                        {details.complemento}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="whitespace-nowrap">
+                                      {details.tenantName}
+                                    </TableCell>
+                                    <TableCell>{payment.referenceYear}</TableCell>
+                                    <TableCell className="capitalize">{monthName}</TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={
+                                          payment.status === "paid"
+                                            ? "default"
+                                            : payment.status === "pending"
+                                            ? "secondary"
+                                            : payment.status === "overdue"
+                                            ? "destructive"
+                                            : "outline"
+                                        }
+                                      >
+                                        {payment.status === "paid"
+                                          ? "Pago"
+                                          : payment.status === "pending"
+                                          ? "Pendente"
+                                          : payment.status === "overdue"
+                                          ? "Atrasado"
+                                          : "Parcial"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                                    </TableCell>
+                                    <TableCell>
+                                      {payment.paymentDate
+                                        ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm font-mono">
+                                        {details.paymentTime || "-"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {new Intl.NumberFormat("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL",
+                                      }).format(payment.expectedAmount)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold text-green-600">
+                                      {new Intl.NumberFormat("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL",
+                                      }).format(payment.paidAmount || 0)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {editingPixCode?.id === payment.id ? (
+                                        <div className="flex items-center gap-3">
+                                          <Input
+                                            value={editingPixCode.value}
+                                            onChange={(e) => {
+                                              setEditingPixCode({
+                                                ...editingPixCode,
+                                                value: e.target.value
+                                              });
+                                            }}
+                                            placeholder="Digite o código PIX"
+                                            className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
+                                            autoFocus
+                                          />
+                                          <Button
+                                            size="default"
+                                            variant="ghost"
+                                            onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
+                                            className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                            title="Salvar código PIX"
+                                          >
+                                            <Check className="h-5 w-5 text-green-600" />
+                                          </Button>
+                                          <Button
+                                            size="default"
+                                            variant="ghost"
+                                            onClick={() => setEditingPixCode(null)}
+                                            className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                            title="Cancelar edição"
+                                          >
+                                            <X className="h-5 w-5 text-red-600" />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-slate-600 max-w-xs truncate text-sm font-mono">
+                                            {details.pixCode || "-"}
+                                          </span>
+                                          <Button
+                                            size="default"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setEditingPixCode({
+                                                id: payment.id,
+                                                value: details.pixCode || ""
+                                              });
+                                            }}
+                                            className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                            title="Editar código PIX"
+                                          >
+                                            <Edit2 className="h-5 w-5 text-slate-600" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              {/* Linha de Totais */}
+                              <TableRow className="bg-muted/50 font-bold">
+                                <TableCell colSpan={10} className="text-right">
+                                  Totais:
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {new Intl.NumberFormat("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
-                                  }).format(payment.expectedAmount)}
+                                  }).format(kpiCalculations.totalExpected)}
                                 </TableCell>
-                                <TableCell className="text-right font-semibold text-green-600">
+                                <TableCell className="text-right text-green-600">
                                   {new Intl.NumberFormat("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
-                                  }).format(payment.paidAmount || 0)}
+                                  }).format(kpiCalculations.totalPaid)}
                                 </TableCell>
-                                <TableCell>
-                                  {editingPixCode?.id === payment.id ? (
-                                    <div className="flex items-center gap-3">
-                                      <Input
-                                        value={editingPixCode.value}
-                                        onChange={(e) => {
-                                          setEditingPixCode({
-                                            ...editingPixCode,
-                                            value: e.target.value
-                                          });
-                                        }}
-                                        placeholder="Digite o código PIX"
-                                        className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
-                                        className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
-                                        title="Salvar código PIX"
-                                      >
-                                        <Check className="h-5 w-5 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() => setEditingPixCode(null)}
-                                        className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
-                                        title="Cancelar edição"
-                                      >
-                                        <X className="h-5 w-5 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-slate-600 max-w-xs truncate text-sm font-mono">
-                                        {details.pixCode || "-"}
-                                      </span>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() => {
-                                          setEditingPixCode({
-                                            id: payment.id,
-                                            value: details.pixCode || ""
-                                          });
-                                        }}
-                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                        title="Editar código PIX"
-                                      >
-                                        <Edit2 className="h-5 w-5 text-slate-600" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
+                                <TableCell></TableCell>
                               </TableRow>
-                            );
-                          })}
-                          {/* Linha de Totais */}
-                          <TableRow className="bg-muted/50 font-bold">
-                            <TableCell colSpan={10} className="text-right">
-                              Totais:
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.totalExpected)}
-                            </TableCell>
-                            <TableCell className="text-right text-green-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.totalPaid)}
-                            </TableCell>
-                            <TableCell></TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
