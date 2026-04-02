@@ -77,16 +77,17 @@ export const PropertyCard = memo(function PropertyCard({
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            {statusBadge}
             {hasImages && (
               <div 
-                className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/50" 
-                title={`${property.images?.length || 0} fotos`}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded-md" 
+                title={`${property.images?.length || 0} foto${property.images?.length === 1 ? '' : 's'}`}
               >
-                <Camera className="h-4 w-4 text-muted-foreground" />
+                <Camera className="h-3.5 w-3.5 text-blue-600" />
+                <span className="font-medium text-blue-600">{property.images?.length || 0}</span>
               </div>
             )}
-            {statusBadge}
           </div>
         </div>
       </CardHeader>
