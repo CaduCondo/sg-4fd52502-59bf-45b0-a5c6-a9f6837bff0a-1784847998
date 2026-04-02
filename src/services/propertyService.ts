@@ -110,7 +110,7 @@ export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [propertyService.getAll] Buscando do banco...");
 
-    // Query otimizada - SEM IMAGES para listagem rápida!
+    // Query otimizada - Inclui contagem de fotos MAS NÃO as imagens!
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -127,20 +127,40 @@ export const getAll = async (): Promise<Property[]> => {
         area,
         has_garage,
         created_at,
+        images,
         locations!properties_location_id_fkey(id, name)
       `)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    const properties = (data || []).map((item) =>
-      mapDatabasePropertyLight({
-        ...item,
-        location_name: item.locations?.name,
-      })
-    );
+    const properties = (data || []).map((item) => {
+      // Processar apenas CONTADOR de imagens, não as imagens em si
+      const imageCount = item.images && Array.isArray(item.images) ? item.images.length : 0;
+      
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: item.locations?.name || "",
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status as "available" | "occupied" | "unavailable",
+        images: imageCount > 0 ? new Array(imageCount).fill("placeholder") : [], // Array com placeholders
+        createdAt: item.created_at,
+        address: "",
+        features: [],
+      };
+    });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
