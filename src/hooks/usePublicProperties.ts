@@ -12,6 +12,17 @@ interface UsePublicPropertiesOptions {
  * Função para aplicar ordenação aos imóveis
  */
 function applySorting(properties: Property[], sort?: SortOption): Property[] {
+  // Ordenação aleatória (embaralhar array)
+  if (sort === "random") {
+    const shuffled = [...properties];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+  
+  // Mais recentes (padrão se não especificado)
   if (!sort || sort === "newest") {
     return [...properties].sort((a, b) => 
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()

@@ -64,6 +64,16 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
   }));
 
   const displayTitle = property.location || property.propertyIdentifier || "Localização não informada";
+  
+  // Formatar endereço completo
+  const addressParts = [];
+  if (property.address) addressParts.push(property.address);
+  if (property.complement && property.complement.trim() !== "") addressParts.push(property.complement);
+  if (property.neighborhood) addressParts.push(property.neighborhood);
+  if (property.city) addressParts.push(property.city);
+  if (property.state) addressParts.push(property.state);
+  
+  const fullAddress = addressParts.join(", ");
 
   return (
     <>
@@ -95,9 +105,9 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
                 
-                {property.complement && property.complement.trim() !== "" && (
+                {fullAddress && (
                   <p className="text-sm text-slate-600 mt-1">
-                    {property.complement}
+                    {fullAddress}
                   </p>
                 )}
               </div>
