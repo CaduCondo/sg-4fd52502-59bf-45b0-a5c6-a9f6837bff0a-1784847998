@@ -93,11 +93,11 @@ export const checkSupabaseHealth = async (): Promise<{
   try {
     console.log('🏥 Verificando saúde do Supabase...');
     
-    // Criar AbortController com timeout
+    // Criar AbortController com timeout AUMENTADO
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      controller.abort(new Error('Health check timeout após 30 segundos'));
-    }, 30000);
+      controller.abort(new Error('Health check timeout após 60 segundos'));
+    }, 60000); // Aumentado de 30s para 60s
     
     try {
       const { data, error } = await supabase
