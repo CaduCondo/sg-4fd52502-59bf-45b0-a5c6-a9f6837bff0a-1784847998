@@ -92,7 +92,7 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
                   imageLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 loading={index < 8 ? "eager" : "lazy"}
-                fetchpriority={index < 4 ? "high" : "low"}
+                fetchPriority={index < 4 ? "high" : "low"}
                 decoding="async"
                 onLoad={() => setImageLoaded(true)}
                 style={{ 
