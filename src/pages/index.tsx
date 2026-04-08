@@ -104,8 +104,8 @@ export default function PublicHomePage() {
         <meta name="twitter:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
         <meta name="twitter:description" content={siteConfig.description} />
         
-        {/* Preconnect para domínios de imagens - carregamento mais rápido */}
-        <link rel="preconnect" href="https://ygqwacfyxcsycaegbnrp.supabase.co" />
+        {/* Preconnect CRÍTICO para domínios de imagens - carregamento MUITO mais rápido */}
+        <link rel="preconnect" href="https://ygqwacfyxcsycaegbnrp.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://ygqwacfyxcsycaegbnrp.supabase.co" />
         
         {/* Resource hints para melhor performance */}

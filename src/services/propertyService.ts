@@ -18,18 +18,22 @@ const DETAILS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutos (detalhes mudam men
  */
 const processImages = (images: any): string[] => {
   if (!images) {
-    console.log("⚠️ Sem imagens");
     return [];
   }
   
   // Se já é um array
   if (Array.isArray(images)) {
-    const validImages = images.filter((img: any) => img && typeof img === 'string');
-    console.log(`✅ Processadas ${validImages.length} imagens`);
+    // Filtrar e validar imagens de forma otimizada
+    const validImages: string[] = [];
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      if (img && typeof img === 'string' && img.length > 0) {
+        validImages.push(img);
+      }
+    }
     return validImages;
   }
   
-  console.log("⚠️ Imagens não são array:", typeof images);
   return [];
 };
 
