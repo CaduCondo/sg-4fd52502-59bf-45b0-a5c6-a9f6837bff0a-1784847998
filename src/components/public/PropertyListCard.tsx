@@ -28,6 +28,18 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
   const hasImages = images.length > 0;
   const totalAmount = property.value;
 
+  const displayTitle = property.location || property.propertyIdentifier || "Localização não informada";
+  
+  // Formatar endereço completo
+  const addressParts = [];
+  if (property.address) addressParts.push(property.address);
+  if (property.complement && property.complement.trim() !== "") addressParts.push(property.complement);
+  if (property.neighborhood) addressParts.push(property.neighborhood);
+  if (property.city) addressParts.push(property.city);
+  if (property.state) addressParts.push(property.state);
+  
+  const fullAddress = addressParts.join(", ");
+
   return (
     <>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -38,7 +50,7 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
               {hasImages ? (
                 <Image
                   src={images[0]}
-                  alt={property.propertyIdentifier || "Imóvel"}
+                  alt={displayTitle}
                   fill
                   className="object-cover"
                 />
@@ -47,12 +59,6 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
                   <Building2 className="h-12 w-12 text-slate-400" />
                 </div>
               )}
-              
-              <div className="absolute top-3 left-3">
-                <Badge className="bg-blue-600 text-white shadow-lg">
-                  {property.propertyIdentifier || "Imóvel"}
-                </Badge>
-              </div>
             </div>
 
             {/* Conteúdo */}
@@ -60,15 +66,17 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <h3 className="font-display text-xl font-bold text-slate-900 mb-1">
-                    {property.propertyIdentifier || "Imóvel"}
+                    {displayTitle}
                   </h3>
                   
-                  <div className="flex items-center gap-2 text-slate-600 mb-3">
-                    <MapPin className="h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm">
-                      {property.city} - {property.state}
-                    </span>
-                  </div>
+                  {fullAddress && (
+                    <div className="flex items-center gap-2 text-slate-600 mb-3">
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm">
+                        {fullAddress}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-right ml-4">
@@ -113,18 +121,6 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
               </div>
 
               <div className="pt-4 mt-auto">
-                <div className="flex items-end justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Valor Mensal</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {totalAmount.toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </p>
-                  </div>
-                </div>
-
                 <div className="flex gap-2">
                   <Button
                     onClick={() => setShowInterest(true)}
@@ -134,7 +130,7 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
                     Tenho Interesse
                   </Button>
                   <ShareButtons
-                    propertyName={property.propertyIdentifier || "Imóvel"}
+                    propertyName={displayTitle}
                     propertyUrl={`/?property=${property.id}`}
                   />
                 </div>
@@ -147,7 +143,7 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
       <InterestFormDialog
         open={showInterest}
         onOpenChange={setShowInterest}
-        propertyName={property.propertyIdentifier || "Imóvel"}
+        propertyName={displayTitle}
         propertyId={property.id}
       />
     </>
