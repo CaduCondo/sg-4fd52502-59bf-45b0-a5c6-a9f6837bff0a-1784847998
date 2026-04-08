@@ -16,7 +16,8 @@ export function ConnectionStatusToast() {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Debounce: aguardar 2 segundos antes de mostrar qualquer toast
+    // Debounce: aguardar 5 segundos antes de mostrar qualquer toast
+    // Aumentado de 2s para 5s para evitar falsos positivos
     debounceTimerRef.current = setTimeout(() => {
       const currentStatus = { isOnline, isServerReachable };
       const lastStatus = lastStatusRef.current;
@@ -57,23 +58,20 @@ export function ConnectionStatusToast() {
         reconnectAttemptsRef.current += 1;
 
         // Limitar tentativas de reconexão para evitar loop infinito
-        if (reconnectAttemptsRef.current > 3) {
+        // Aumentado de 3 para 5 tentativas antes de mostrar erro
+        if (reconnectAttemptsRef.current > 5) {
           const { id } = toast({
             title: "Servidor temporariamente indisponível",
-            description: "Recarregue a página em alguns instantes.",
-            variant: "destructive",
+            description: "O sistema continuará funcionando. Recarregue a página em alguns instantes se necessário.",
+            variant: "default", // Mudado de destructive para default (menos alarmante)
             duration: 10000, // 10 segundos
           });
           toastIdRef.current = id;
           return;
         }
 
-        const { id } = toast({
-          title: "Conectando...",
-          description: "Verificando status do servidor",
-          duration: 5000, // 5 segundos
-        });
-        toastIdRef.current = id;
+        // Não mostrar toast nas primeiras tentativas
+        // Deixa o sistema funcionar normalmente
         return;
       }
 
@@ -88,7 +86,7 @@ export function ConnectionStatusToast() {
         });
         toastIdRef.current = id;
       }
-    }, 2000); // Debounce de 2 segundos
+    }, 5000); // Debounce aumentado de 2s para 5s
 
     return () => {
       if (debounceTimerRef.current) {
