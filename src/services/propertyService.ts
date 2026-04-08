@@ -434,7 +434,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_furniture,
         accepts_pets,
         created_at,
-        locations!properties_location_id_fkey(id, name, city, neighborhood, state)
+        locations!properties_location_id_fkey(id, name, street, number, city, neighborhood, state)
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false });
@@ -451,6 +451,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       
       console.log(`🏠 ${item.property_identifier}: ${images.length} imagens`, images.slice(0, 2));
 
+      // Montar endereço completo a partir dos dados de locations
+      const addressParts = [];
+      if (item.locations?.street) addressParts.push(item.locations.street);
+      if (item.locations?.number) addressParts.push(item.locations.number);
+      
+      const address = addressParts.join(", ");
+
       return {
         id: item.id,
         locationId: item.location_id,
@@ -458,6 +465,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         city: item.locations?.city || "",
         neighborhood: item.locations?.neighborhood || "",
         state: item.locations?.state || "",
+        address: address, // Rua + número
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
         description: item.description || "",
@@ -471,7 +479,6 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         status: item.status as "available" | "occupied" | "unavailable",
         images: images,
         createdAt: item.created_at,
-        address: "",
         features: [],
       } as Property;
     });
