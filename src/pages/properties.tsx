@@ -15,6 +15,7 @@ import { PropertyFormDialog } from "@/components/properties/PropertyFormDialog";
 import { PropertyDeleteAlert } from "@/components/properties/PropertyDeleteAlert";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { propertyService } from "@/services";
 
 const INITIAL_FORM_DATA: PropertyFormData = {
   location_id: "",
@@ -171,12 +172,35 @@ export default function PropertiesPage() {
     }
   }, [editingProperty, formData, updateProperty, createProperty, toast, resetForm]);
 
-  const handleCardClick = useCallback((property: Property) => {
-    setEditingProperty(property);
-    setFormData(prepareFormDataFromProperty(property));
-    setIsDialogOpen(true);
-    setIsViewMode(true);
-    setIsEditMode(true);
+  const handleCardClick = useCallback(async (property: Property) => {
+    try {
+      // Buscar dados completos do imóvel com description e images
+      console.log("🔄 Carregando dados completos do imóvel:", property.id);
+      
+      const fullProperty = await propertyService.getById(property.id);
+      
+      if (fullProperty) {
+        setEditingProperty(fullProperty);
+        setFormData(prepareFormDataFromProperty(fullProperty));
+        console.log("✅ Descrição carregada:", fullProperty.description);
+      } else {
+        // Fallback: usar dados da listagem
+        setEditingProperty(property);
+        setFormData(prepareFormDataFromProperty(property));
+      }
+      
+      setIsDialogOpen(true);
+      setIsViewMode(true);
+      setIsEditMode(true);
+    } catch (error) {
+      console.error("❌ Erro ao carregar dados completos:", error);
+      // Fallback: usar dados da listagem
+      setEditingProperty(property);
+      setFormData(prepareFormDataFromProperty(property));
+      setIsDialogOpen(true);
+      setIsViewMode(true);
+      setIsEditMode(true);
+    }
   }, [prepareFormDataFromProperty]);
 
   const handleEnableEdit = useCallback(() => {
