@@ -161,9 +161,9 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
                 {displayTitle}
               </DialogTitle>
               <DialogDescription className="text-sm">
-                {property.complement && property.complement.trim() !== "" && (
-                  <span className="block text-slate-600 italic">
-                    {property.complement}
+                {fullAddress && (
+                  <span className="block text-slate-600">
+                    {fullAddress}
                   </span>
                 )}
               </DialogDescription>
