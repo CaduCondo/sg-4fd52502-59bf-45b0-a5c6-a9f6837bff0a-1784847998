@@ -39,6 +39,7 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const images = property.images || [];
   const totalMonthly = property.value;
@@ -80,17 +81,24 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
       <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
         <div className="relative aspect-video overflow-hidden bg-slate-100" onClick={handleImageClick}>
           {property.images && property.images.length > 0 ? (
-            <img
-              src={property.images[0]}
-              alt={displayTitle}
-              className="absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
-              loading={index < 9 ? "eager" : "lazy"}
-              decoding={index < 9 ? "sync" : "async"}
-              fetchPriority={index < 6 ? "high" : "low"}
-              style={{ 
-                contentVisibility: index < 9 ? 'visible' : 'auto',
-              }}
-            />
+            <>
+              {!imageLoaded && (
+                <div className="absolute inset-0 bg-slate-200 animate-pulse" />
+              )}
+              <img
+                src={property.images[0]}
+                alt={displayTitle}
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-110 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                loading={index < 8 ? "eager" : "lazy"}
+                decoding="async"
+                onLoad={() => setImageLoaded(true)}
+                style={{ 
+                  contentVisibility: 'auto',
+                }}
+              />
+            </>
           ) : (
             <div className="flex h-full items-center justify-center bg-slate-100">
               <Home className="h-16 w-16 text-slate-300" />

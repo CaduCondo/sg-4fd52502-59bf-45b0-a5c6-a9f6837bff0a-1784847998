@@ -448,9 +448,14 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     console.log(`📊 Dados brutos do banco:`, data?.slice(0, 2));
 
     const properties = (data || []).map((item) => {
-      const images = processImages(item.images);
+      // Processar imagens de forma otimizada
+      const allImages = processImages(item.images);
       
-      console.log(`🏠 ${item.property_identifier}: ${images.length} imagens`, images.slice(0, 2));
+      // Para performance inicial, carregar apenas primeira imagem
+      const optimizedImages = allImages.length > 0 ? [allImages[0]] : [];
+      
+      // Armazenar todas as imagens para uso posterior
+      const fullImages = allImages;
 
       // Montar endereço completo a partir dos dados de locations
       const addressParts = [];
@@ -466,7 +471,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         city: item.locations?.city || "",
         neighborhood: item.locations?.neighborhood || "",
         state: item.locations?.state || "",
-        address: address, // Rua + número
+        address: address,
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
         description: item.description || "",
@@ -478,7 +483,8 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: images,
+        images: optimizedImages, // Apenas primeira imagem
+        allImages: fullImages, // Todas as imagens para modal
         createdAt: item.created_at,
         features: [],
       } as Property;

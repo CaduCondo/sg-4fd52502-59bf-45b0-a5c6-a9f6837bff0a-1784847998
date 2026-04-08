@@ -167,8 +167,8 @@ export default function PublicHomePage() {
         <section className="py-12">
           <div className="container mx-auto px-4">
             {loading ? (
-              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
-                {[...Array(6)].map((_, i) => (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" : "space-y-6"}>
+                {[...Array(12)].map((_, i) => (
                   <PropertyCardSkeleton key={i} />
                 ))}
               </div>

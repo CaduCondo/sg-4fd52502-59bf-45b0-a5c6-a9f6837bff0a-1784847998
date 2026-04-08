@@ -44,6 +44,11 @@ function applySorting(properties: Property[], sort?: SortOption): Property[] {
   }
 }
 
+// Cache em memória para evitar requisições repetidas
+let cachedProperties: Property[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export function usePublicProperties({ location, sort }: UsePublicPropertiesOptions) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,14 +60,37 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
         setLoading(true);
         setError(null);
 
+        const now = Date.now();
+        
+        // Usar cache se válido
+        if (cachedProperties && (now - cacheTimestamp) < CACHE_DURATION) {
+          console.log("✅ [usePublicProperties] Usando cache em memória");
+          
+          // Aplicar filtro de localização
+          let filtered = cachedProperties;
+          if (location && location !== "all") {
+            filtered = cachedProperties.filter((prop) => prop.locationId === location);
+          }
+
+          // Aplicar ordenação
+          const sorted = applySorting(filtered, sort);
+          setProperties(sorted);
+          setLoading(false);
+          return;
+        }
+
         console.log("🔄 [usePublicProperties] Carregando imóveis públicos...");
 
-        // Usar a nova função que carrega imagens
+        // Buscar do banco
         const data = await getPublicProperties();
+
+        // Atualizar cache
+        cachedProperties = data;
+        cacheTimestamp = now;
 
         console.log(`✅ [usePublicProperties] ${data.length} imóveis carregados`);
 
-        // Aplicar filtro de localização se necessário
+        // Aplicar filtro de localização
         let filtered = data;
         if (location && location !== "all") {
           filtered = data.filter((prop) => prop.locationId === location);
