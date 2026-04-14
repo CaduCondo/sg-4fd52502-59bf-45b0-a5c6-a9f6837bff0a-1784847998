@@ -936,7 +936,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         description: paidAmount === 0
           ? "Pagamento atualizado com sucesso!"
           : paymentStatus === "partial" 
-            ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - Math.abs(paidAmount)).toFixed(2))}`
+            ? `Pagamento parcial registrado! Total pago: ${formatCurrency(finalPaidAmount.toFixed(2))} de ${formatCurrency(Math.abs(expectedTotal).toFixed(2))}. Restante: ${formatCurrency((Math.abs(expectedTotal) - finalPaidAmount).toFixed(2))}`
             : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
