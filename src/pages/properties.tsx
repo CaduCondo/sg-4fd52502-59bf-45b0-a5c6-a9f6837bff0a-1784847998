@@ -297,44 +297,45 @@ export default function PropertiesPage() {
   return (
     <Layout>
       <SEO title="Imóveis - Gerenciador de Locações" />
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
+      <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="w-full sm:w-auto">
             <h1 className="text-2xl font-bold tracking-tight">Imóveis</h1>
             <p className="text-sm text-muted-foreground">
               Gerenciamento de cadastro dos imóveis para locação.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="flex gap-1 border rounded-lg p-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
-                className="h-8 px-3"
+                className="h-8 px-2 sm:px-3"
               >
-                <Grid3x3 className="h-4 w-4 mr-1.5" />
-                Grade
+                <Grid3x3 className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Grade</span>
               </Button>
               <Button
                 variant={viewMode === "table" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("table")}
-                className="h-8 px-3"
+                className="h-8 px-2 sm:px-3"
               >
-                <List className="h-4 w-4 mr-1.5" />
-                Lista
+                <List className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Lista</span>
               </Button>
             </div>
-            <Button onClick={handleOpenDialog}>
+            <Button onClick={handleOpenDialog} className="flex-1 sm:flex-none">
               <Plus className="mr-2 h-4 w-4" />
-              Novo Imóvel
+              <span className="hidden sm:inline">Novo Imóvel</span>
+              <span className="sm:hidden">Novo</span>
             </Button>
           </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="w-full">
+          <CardContent className="pt-6 px-3 sm:px-6">
             <PropertyFilters
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -353,7 +354,7 @@ export default function PropertiesPage() {
 
         {viewMode === "grid" && (
           <ScrollReveal>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full">
               {filteredProperties.map((property) => (
                 <PropertyCard
                   key={property.id}
@@ -368,23 +369,27 @@ export default function PropertiesPage() {
 
         {viewMode === "table" && (
           <ScrollReveal>
-            <div className="rounded-md border bg-white">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Complemento</TableHead>
-                    <TableHead>Quartos</TableHead>
-                    <TableHead>Banheiros</TableHead>
-                    <TableHead>Aluguel</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tableRows}
-                </TableBody>
-              </Table>
+            <div className="w-full overflow-x-auto -mx-3 sm:mx-0">
+              <div className="inline-block min-w-full align-middle px-3 sm:px-0">
+                <div className="rounded-md border bg-white overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">Local</TableHead>
+                        <TableHead className="whitespace-nowrap">Complemento</TableHead>
+                        <TableHead className="whitespace-nowrap">Quartos</TableHead>
+                        <TableHead className="whitespace-nowrap">Banheiros</TableHead>
+                        <TableHead className="whitespace-nowrap">Aluguel</TableHead>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tableRows}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </div>
           </ScrollReveal>
         )}
