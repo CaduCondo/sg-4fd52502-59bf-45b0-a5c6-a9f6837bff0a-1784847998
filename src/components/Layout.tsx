@@ -207,7 +207,7 @@ export function Layout({ children }: LayoutProps) {
   const navigationItems = menuItems.filter(item => shouldShowMenu(item.path));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 overflow-x-hidden">
       {/* Scroll Progress Bar */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600 origin-left z-50"
@@ -240,7 +240,7 @@ export function Layout({ children }: LayoutProps) {
 
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
                 <Building2 className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm whitespace-nowrap">
+                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm whitespace-nowrap truncate">
                   D&apos;Uvo Enterprise
                 </span>
               </Link>
@@ -440,7 +440,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <motion.main
-        className="pt-16 sm:pt-20 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+        className="pt-16 sm:pt-20 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full overflow-x-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
