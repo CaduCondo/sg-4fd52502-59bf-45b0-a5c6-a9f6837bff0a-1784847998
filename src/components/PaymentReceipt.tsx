@@ -79,6 +79,9 @@ export function PaymentReceipt({
   
   console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount, discount });
   console.log("📊 DISCOUNT DO BANCO:", paymentData.discount_amount, "CONVERTIDO:", discount);
+  console.log("🔍 PAID_AMOUNT DO BANCO:", paymentData.paid_amount, "CONVERTIDO:", paidAmount);
+  console.log("🔍 RENTAL COMPLETO:", rental);
+  console.log("🔍 START_DATE:", rental.start_date, "| STARTDATE:", rental.startDate);
 
   // Usar breakdown do banco
   const paymentBreakdown = paymentData.breakdown;
@@ -310,6 +313,7 @@ export function PaymentReceipt({
   const totalAmount = paidAmount;
 
   console.log("💰 TOTAL USADO NO RECIBO (paid_amount):", totalAmount);
+  console.log("💰 EXTENSO DO VALOR:", extenso(totalAmount));
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
@@ -505,6 +509,9 @@ export function PaymentReceipt({
 
   // Obter data do contrato (usar start_date ou startDate)
   const contractDate = rental.start_date || rental.startDate;
+  
+  console.log("📅 DATA DO CONTRATO:", contractDate);
+  console.log("📅 DATA FORMATADA:", formatDate(contractDate));
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
