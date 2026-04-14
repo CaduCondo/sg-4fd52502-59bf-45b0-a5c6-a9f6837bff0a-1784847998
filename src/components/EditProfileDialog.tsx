@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { SystemUser } from "@/types";
-import { updateUser, resetPassword, unlockUser } from "@/services/systemUserService";
-import { User, Mail, Phone, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
+import { updateUser } from "@/services/systemUserService";
+import { User, Mail, Phone, Shield, Save, Camera } from "lucide-react";
 import { applyCpfMask, applyPhoneMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -22,12 +22,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [isUnlocking, setIsUnlocking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    newPassword: "",
-  });
 
   useEffect(() => {
     if (open && user) {
@@ -42,57 +37,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       setPhotoPreview(user.photo || null);
     }
   }, [open, user]);
-
-  const handleResetPassword = async () => {
-    if (!selectedUser) return;
-
-    setIsResettingPassword(true);
-    try {
-      await resetPassword(selectedUser.id);
-      
-      toast({
-        title: "Senha zerada com sucesso!",
-        description: `A senha do usuário ${selectedUser.name} foi redefinida para "mudar123".`,
-      });
-      
-      onSuccess();
-    } catch (error) {
-      console.error("Erro ao zerar senha:", error);
-      toast({
-        title: "Erro ao zerar senha",
-        description: error instanceof Error ? error.message : "Não foi possível zerar a senha do usuário.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsResettingPassword(false);
-    }
-  };
-
-  const handleUnlockUser = async () => {
-    if (!selectedUser) return;
-
-    setIsUnlocking(true);
-    try {
-      await unlockUser(selectedUser.id, !selectedUser.active);
-      
-      toast({
-        title: selectedUser.active ? "Usuário bloqueado!" : "Usuário desbloqueado!",
-        description: `O usuário ${selectedUser.name} foi ${selectedUser.active ? 'bloqueado' : 'desbloqueado'} com sucesso.`,
-      });
-      
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Erro ao alterar status do usuário:", error);
-      toast({
-        title: "Erro ao alterar status",
-        description: error instanceof Error ? error.message : "Não foi possível alterar o status do usuário.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUnlocking(false);
-    }
-  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -135,10 +79,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         rg: selectedUser.rg,
         photo: selectedUser.photo,
       };
-
-      if (user.role === "admin" && formData.newPassword) {
-        (updates as any).password = formData.newPassword;
-      }
 
       await updateUser(user.id, updates);
       
@@ -320,61 +260,10 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
             </div>
           </div>
 
-          {user?.role === "admin" && (
-            <div className="space-y-4">
-              <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Alterar Senha
-              </h3>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword" className="text-sm">Nova Senha</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={formData.newPassword}
-                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                  placeholder="Digite a nova senha (deixe em branco para não alterar)"
-                  className="h-11"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Deixe em branco se não quiser alterar a senha
-                </p>
-              </div>
-            </div>
-          )}
-
           <div className="flex flex-col gap-3 pt-4 border-t">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleResetPassword}
-                disabled={isResettingPassword || isSubmitting || isUnlocking}
-                className="h-11 w-full"
-              >
-                <KeyRound className="h-4 w-4 mr-2" />
-                <span className="truncate">{isResettingPassword ? "Zerando..." : "Zerar Senha"}</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleUnlockUser}
-                disabled={isUnlocking || isSubmitting || isResettingPassword}
-                className="h-11 w-full"
-              >
-                <Unlock className="h-4 w-4 mr-2" />
-                <span className="truncate">
-                  {isUnlocking 
-                    ? (selectedUser.active ? "Bloqueando..." : "Desbloqueando...") 
-                    : (selectedUser.active ? "Bloquear" : "Desbloquear")
-                  }
-                </span>
-              </Button>
-            </div>
-
             <Button
               type="submit"
-              disabled={isSubmitting || isResettingPassword || isUnlocking}
+              disabled={isSubmitting}
               className="h-11 w-full"
             >
               <Save className="h-4 w-4 mr-2" />
