@@ -50,15 +50,17 @@ export function usePayments() {
       setLoading(true);
       abortControllerRef.current = new AbortController();
 
-      // Verificar cache
+      // Invalidar cache para forçar reload com start_date
       const cacheKey = `${month || "all"}-${year || "all"}`;
       const now = Date.now();
       
+      // Sempre buscar dados frescos se o cache está desatualizado
       if (
         paymentsCache.data &&
         paymentsCache.key === cacheKey &&
         (now - paymentsCache.timestamp) < CACHE_DURATION
       ) {
+        console.log("✅ Usando cache - verificar se tem start_date:", paymentsCache.data.rentals[0]);
         setPayments(paymentsCache.data.payments);
         setRentals(paymentsCache.data.rentals);
         setProperties(paymentsCache.data.properties);
@@ -67,6 +69,8 @@ export function usePayments() {
         loadingRef.current = false;
         return;
       }
+
+      console.log("🔄 Buscando dados FRESCOS do banco com start_date incluído...");
 
       // QUERY ÚNICA COM TODOS OS JOINS (SUPER OTIMIZADO!)
       let query = supabase
