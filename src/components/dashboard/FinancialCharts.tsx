@@ -428,9 +428,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasRevenueData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de receita")}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <LineChart data={chartData.monthlyRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -441,7 +441,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum pagamento recebido nos últimos 6 meses</p>
@@ -457,9 +457,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasExpensesData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de despesas")}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <BarChart data={chartData.monthlyExpensesData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -470,7 +470,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   <Bar dataKey="contas" fill={COLORS.contas} name="Contas" />
                 </BarChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhuma despesa registrada nos últimos 6 meses</p>
@@ -486,9 +486,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de ocupação com dados:", chartData.occupancyPieData)}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <PieChart>
                   <Pie
                     data={chartData.occupancyPieData}
@@ -507,7 +507,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum imóvel cadastrado</p>
@@ -523,9 +523,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasContractsData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de contratos com dados:", chartData.contractsData)}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <PieChart>
                   <Pie
                     data={chartData.contractsData}
@@ -544,7 +544,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum contrato ativo</p>
@@ -560,9 +560,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasPaymentsStatusData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de pagamentos com dados:", chartData.paymentsStatusData)}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <PieChart>
                   <Pie
                     data={chartData.paymentsStatusData}
@@ -581,7 +581,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum pagamento no mês selecionado</p>
@@ -597,9 +597,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyTrendData ? (
-            <>
+            <div style={{ width: '100%', height: 300 }}>
               {console.log("🎨 [RENDER] Renderizando gráfico de evolução da ocupação")}
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer>
                 <LineChart data={chartData.occupancyTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -615,7 +615,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum dado de ocupação disponível</p>
