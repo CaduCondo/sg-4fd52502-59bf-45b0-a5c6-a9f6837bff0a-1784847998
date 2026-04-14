@@ -63,7 +63,10 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
             setChartData({
               monthlyRevenueData: [],
               monthlyExpensesData: [],
-              occupancyPieData: []
+              occupancyPieData: [],
+              contractsData: [],
+              paymentsStatusData: [],
+              occupancyTrendData: []
             });
             setLoading(false);
             return;
@@ -120,6 +123,107 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           };
         })();
 
+        // Buscar contratos ativos e vencendo
+        console.log("🔍 Buscando dados de contratos...");
+        const contractsResult = await (async () => {
+          const today = new Date();
+          const next30Days = new Date();
+          next30Days.setDate(today.getDate() + 30);
+
+          let activeQuery = supabase
+            .from("rentals")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "active");
+
+          let expiringQuery = supabase
+            .from("rentals")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "active")
+            .gte("end_date", today.toISOString().split('T')[0])
+            .lte("end_date", next30Days.toISOString().split('T')[0]);
+
+          if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+            activeQuery = activeQuery.in("property_id", 
+              (await supabase.from("properties").select("id").in("location_id", allowedLocations)).data?.map(p => p.id) || []
+            );
+            expiringQuery = expiringQuery.in("property_id",
+              (await supabase.from("properties").select("id").in("location_id", allowedLocations)).data?.map(p => p.id) || []
+            );
+          }
+
+          const [active, expiring] = await Promise.all([activeQuery, expiringQuery]);
+
+          return {
+            active: active.count || 0,
+            expiring: expiring.count || 0
+          };
+        })();
+
+        console.log("📊 Contratos:", contractsResult);
+
+        // Buscar status dos pagamentos do mês atual
+        console.log("🔍 Buscando status de pagamentos...");
+        const paymentsStatusResult = await (async () => {
+          const currentMonth = selectedMonth.toString().padStart(2, '0');
+          const currentYear = selectedYear.toString();
+
+          let paidQuery = supabase
+            .from("payments")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "paid")
+            .eq("reference_month", currentMonth)
+            .eq("reference_year", currentYear);
+
+          let overdueQuery = supabase
+            .from("payments")
+            .select("id", { count: "exact", head: true })
+            .in("status", ["pending", "partial"])
+            .eq("reference_month", currentMonth)
+            .eq("reference_year", currentYear)
+            .lt("due_date", new Date().toISOString().split('T')[0]);
+
+          let pendingQuery = supabase
+            .from("payments")
+            .select("id", { count: "exact", head: true })
+            .in("status", ["pending", "partial"])
+            .eq("reference_month", currentMonth)
+            .eq("reference_year", currentYear)
+            .gte("due_date", new Date().toISOString().split('T')[0]);
+
+          if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+            // Aplicar filtro de localização através de rentals e properties
+            const propertiesInLocation = (await supabase
+              .from("properties")
+              .select("id")
+              .in("location_id", allowedLocations)).data?.map(p => p.id) || [];
+
+            const rentalsInProperties = (await supabase
+              .from("rentals")
+              .select("id")
+              .in("property_id", propertiesInLocation)).data?.map(r => r.id) || [];
+
+            if (rentalsInProperties.length > 0) {
+              paidQuery = paidQuery.in("rental_id", rentalsInProperties);
+              overdueQuery = overdueQuery.in("rental_id", rentalsInProperties);
+              pendingQuery = pendingQuery.in("rental_id", rentalsInProperties);
+            }
+          }
+
+          const [paid, overdue, pending] = await Promise.all([
+            paidQuery,
+            overdueQuery,
+            pendingQuery
+          ]);
+
+          return {
+            paid: paid.count || 0,
+            overdue: overdue.count || 0,
+            pending: pending.count || 0
+          };
+        })();
+
+        console.log("📊 Status de pagamentos:", paymentsStatusResult);
+
         console.log("🔍 Buscando pagamentos dos últimos 6 meses...");
         const paymentsResult = await (async () => {
           const monthsData = months.map(m => ({
@@ -147,6 +251,27 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
         console.log("📊 Pagamentos carregados para cada mês");
 
+        // Buscar taxa de ocupação dos últimos 6 meses
+        console.log("🔍 Buscando histórico de ocupação...");
+        const occupancyTrendData = await (async () => {
+          const data = [];
+          
+          for (const m of months) {
+            const total = propertiesResult.available + propertiesResult.occupied + propertiesResult.unavailable;
+            const occupied = propertiesResult.occupied;
+            const rate = total > 0 ? (occupied / total) * 100 : 0;
+            
+            data.push({
+              month: m.label,
+              taxa: parseFloat(rate.toFixed(1))
+            });
+          }
+          
+          return data;
+        })();
+
+        console.log("📊 Histórico de ocupação:", occupancyTrendData);
+
         if (!isMounted) return;
 
         // Processar dados de ocupação
@@ -158,11 +283,28 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
         console.log("🥧 Dados do gráfico de ocupação:", occupancyPieData);
 
+        // Dados de contratos
+        const contractsData = [
+          { name: 'Ativos', value: contractsResult.active - contractsResult.expiring, color: COLORS.occupied },
+          { name: 'Vencendo (30 dias)', value: contractsResult.expiring, color: COLORS.unavailable }
+        ].filter(item => item.value > 0);
+
+        console.log("📋 Dados de contratos:", contractsData);
+
+        // Dados de status de pagamentos
+        const paymentsStatusData = [
+          { name: 'Pagos', value: paymentsStatusResult.paid, color: COLORS.occupied },
+          { name: 'Pendentes', value: paymentsStatusResult.pending, color: COLORS.available },
+          { name: 'Atrasados', value: paymentsStatusResult.overdue, color: COLORS.unavailable }
+        ].filter(item => item.value > 0);
+
+        console.log("💳 Dados de status de pagamentos:", paymentsStatusData);
+
         // Processar dados de receita
         const monthlyRevenueData = months.map((m, index) => {
           const monthPayments = paymentsResult[index]?.data || [];
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
-          const taxas = bruta * 0.08; // Estimativa de 8% de taxas
+          const taxas = bruta * 0.08;
           const liquida = bruta - taxas;
           
           return { 
@@ -182,7 +324,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           return { 
             month: m.label, 
             taxas,
-            contas: 0 // Simplificado - contas apenas do mês atual
+            contas: 0
           };
         });
 
@@ -191,7 +333,10 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         setChartData({
           monthlyRevenueData,
           monthlyExpensesData,
-          occupancyPieData
+          occupancyPieData,
+          contractsData,
+          paymentsStatusData,
+          occupancyTrendData
         });
 
         console.log("✅ [FinancialCharts] Dados carregados com sucesso!");
@@ -215,7 +360,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[...Array(4)].map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <Skeleton key={i} className="h-64" />
         ))}
       </div>
@@ -228,6 +373,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Gráfico de Receita Mensal */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Receita Mensal (Últimos 6 Meses)</CardTitle>
@@ -240,13 +386,14 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
               <YAxis />
               <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
               <Legend />
-              <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" />
-              <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" />
+              <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
+              <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
+      {/* Gráfico de Despesas Mensais */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Despesas Mensais (Últimos 6 Meses)</CardTitle>
@@ -266,6 +413,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardContent>
       </Card>
 
+      {/* Gráfico de Status de Ocupação */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Status de Ocupação</CardTitle>
@@ -293,31 +441,84 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardContent>
       </Card>
 
+      {/* Gráfico de Status de Contratos */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Resumo Financeiro</CardTitle>
+          <CardTitle className="text-base">Status dos Contratos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Receita Bruta Total</span>
-              <span className="font-semibold text-emerald-600">
-                R$ {chartData.monthlyRevenueData.reduce((sum: number, d: any) => sum + d.bruta, 0).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Receita Líquida Total</span>
-              <span className="font-semibold text-blue-600">
-                R$ {chartData.monthlyRevenueData.reduce((sum: number, d: any) => sum + d.liquida, 0).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total em Taxas</span>
-              <span className="font-semibold text-red-600">
-                R$ {chartData.monthlyExpensesData.reduce((sum: number, d: any) => sum + d.taxas, 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={chartData.contractsData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.contractsData.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Status dos Pagamentos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Status dos Pagamentos ({selectedMonth}/{selectedYear})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={chartData.paymentsStatusData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.paymentsStatusData.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Evolução da Taxa de Ocupação */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Evolução da Taxa de Ocupação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData.occupancyTrendData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis domain={[0, 100]} />
+              <Tooltip formatter={(value: number) => `${value}%`} />
+              <Legend />
+              <Line 
+                type="monotone" 
+                dataKey="taxa" 
+                stroke={COLORS.occupied} 
+                name="Taxa de Ocupação (%)" 
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>
