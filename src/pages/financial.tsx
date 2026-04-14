@@ -666,11 +666,13 @@ export default function Financial() {
         <Tabs defaultValue="rentals" className="w-full">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 max-w-full sm:max-w-md gap-2 h-auto p-1">
             <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-              Detalhamento de Locações
+              <span className="hidden sm:inline">Detalhamento de Locações</span>
+              <span className="sm:hidden">Locações</span>
             </TabsTrigger>
             {(isAdmin || user?.role === "broker") && (
               <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-                Detalhamento de Cauções
+                <span className="hidden sm:inline">Detalhamento de Cauções</span>
+                <span className="sm:hidden">Cauções</span>
               </TabsTrigger>
             )}
           </TabsList>
