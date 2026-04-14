@@ -1,4 +1,4 @@
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef, ReactNode, useState, useEffect } from "react";
 
 interface ScrollRevealProps {
@@ -17,7 +17,7 @@ export function ScrollReveal({
   className = ""
 }: ScrollRevealProps) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -27,8 +27,8 @@ export function ScrollReveal({
   const variants = {
     hidden: {
       opacity: 0,
-      x: direction === "left" ? -50 : direction === "right" ? 50 : 0,
-      y: direction === "up" ? 50 : direction === "down" ? -50 : 0,
+      x: direction === "left" ? -30 : direction === "right" ? 30 : 0,
+      y: direction === "up" ? 30 : direction === "down" ? -30 : 0,
     },
     visible: {
       opacity: 1,
@@ -42,7 +42,8 @@ export function ScrollReveal({
     },
   };
 
-  // Renderiza placeholder durante SSR para evitar hydration mismatch
+  // Renderiza children diretamente durante SSR e até mounted ser true
+  // Isso garante que o conteúdo apareça mesmo que JS falhe ou demore
   if (!mounted) {
     return <div ref={ref} className={className}>{children}</div>;
   }
@@ -140,13 +141,20 @@ interface ParallaxProps {
 
 export function Parallax({ children, speed = 0.5, className = "" }: ParallaxProps) {
   const ref = useRef(null);
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 1000], [0, 1000 * speed]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div ref={ref} className={className}>{children}</div>;
+  }
 
   return (
-    <motion.div ref={ref} style={{ y }} className={className}>
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -157,7 +165,7 @@ interface ScaleOnScrollProps {
 
 export function ScaleOnScroll({ children, className = "" }: ScaleOnScrollProps) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -172,9 +180,9 @@ export function ScaleOnScroll({ children, className = "" }: ScaleOnScrollProps) 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-      transition={{ duration: 0.6, ease: [0.25, 0.4, 0.25, 1] }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
       className={className}
     >
       {children}
