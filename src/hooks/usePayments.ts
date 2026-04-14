@@ -97,6 +97,8 @@ export function usePayments() {
             has_garage,
             rent_due_day,
             deposit_value,
+            start_date,
+            end_date,
             properties!rentals_property_id_fkey (
               id,
               complement,
