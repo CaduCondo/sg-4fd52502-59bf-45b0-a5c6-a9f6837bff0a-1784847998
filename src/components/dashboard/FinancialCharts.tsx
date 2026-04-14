@@ -411,6 +411,14 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
   const hasPaymentsStatusData = chartData.paymentsStatusData?.length > 0;
   const hasOccupancyTrendData = chartData.occupancyTrendData?.length > 0;
 
+  console.log("🎨 [RENDER] Verificando dados para renderização:");
+  console.log("  - hasRevenueData:", hasRevenueData);
+  console.log("  - hasExpensesData:", hasExpensesData);
+  console.log("  - hasOccupancyData:", hasOccupancyData, "dados:", chartData.occupancyPieData);
+  console.log("  - hasContractsData:", hasContractsData, "dados:", chartData.contractsData);
+  console.log("  - hasPaymentsStatusData:", hasPaymentsStatusData, "dados:", chartData.paymentsStatusData);
+  console.log("  - hasOccupancyTrendData:", hasOccupancyTrendData);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Gráfico de Receita Mensal */}
@@ -420,17 +428,20 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasRevenueData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData.monthlyRevenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
-                <Legend />
-                <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
-                <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de receita")}
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData.monthlyRevenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
+                  <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum pagamento recebido nos últimos 6 meses</p>
@@ -446,17 +457,20 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasExpensesData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData.monthlyExpensesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
-                <Legend />
-                <Bar dataKey="taxas" fill={COLORS.taxas} name="Taxas" />
-                <Bar dataKey="contas" fill={COLORS.contas} name="Contas" />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de despesas")}
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData.monthlyExpensesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                  <Legend />
+                  <Bar dataKey="taxas" fill={COLORS.taxas} name="Taxas" />
+                  <Bar dataKey="contas" fill={COLORS.contas} name="Contas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhuma despesa registrada nos últimos 6 meses</p>
@@ -472,25 +486,28 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.occupancyPieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {chartData.occupancyPieData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de ocupação com dados:", chartData.occupancyPieData)}
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.occupancyPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.occupancyPieData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum imóvel cadastrado</p>
@@ -506,25 +523,28 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasContractsData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.contractsData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {chartData.contractsData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de contratos com dados:", chartData.contractsData)}
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.contractsData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.contractsData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum contrato ativo</p>
@@ -540,25 +560,28 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasPaymentsStatusData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.paymentsStatusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {chartData.paymentsStatusData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de pagamentos com dados:", chartData.paymentsStatusData)}
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.paymentsStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.paymentsStatusData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum pagamento no mês selecionado</p>
@@ -574,22 +597,25 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyTrendData ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData.occupancyTrendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value: number) => `${value}%`} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="taxa" 
-                  stroke={COLORS.occupied} 
-                  name="Taxa de Ocupação (%)" 
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <>
+              {console.log("🎨 [RENDER] Renderizando gráfico de evolução da ocupação")}
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData.occupancyTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip formatter={(value: number) => `${value}%`} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="taxa" 
+                    stroke={COLORS.occupied} 
+                    name="Taxa de Ocupação (%)" 
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum dado de ocupação disponível</p>
