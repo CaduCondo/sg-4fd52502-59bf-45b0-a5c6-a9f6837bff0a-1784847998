@@ -313,7 +313,6 @@ export function PaymentReceipt({
   const totalAmount = paidAmount;
 
   console.log("💰 TOTAL USADO NO RECIBO (paid_amount):", totalAmount);
-  console.log("💰 EXTENSO DO VALOR:", extenso(totalAmount));
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
@@ -336,7 +335,11 @@ export function PaymentReceipt({
     if (!dateString) return "Data não informada";
     
     try {
-      const date = new Date(dateString + "T12:00:00");
+      const dateStr = dateString.includes('T') ? dateString : dateString + "T12:00:00";
+      const date = new Date(dateStr);
+      
+      if (isNaN(date.getTime())) return "Data inválida";
+      
       return date.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
