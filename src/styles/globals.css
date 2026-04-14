@@ -253,3 +253,22 @@
     @apply space-y-3 sm:space-y-4;
   }
 }
+
+@layer base {
+  /* Prevenir overflow horizontal em todos os dispositivos */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Garantir que elementos não ultrapassem a viewport */
+  * {
+    max-width: 100%;
+  }
+
+  /* Exceções para elementos específicos que precisam de largura maior */
+  .allow-overflow {
+    max-width: none;
+  }
+}
