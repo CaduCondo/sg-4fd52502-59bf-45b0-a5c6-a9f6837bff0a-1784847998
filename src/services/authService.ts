@@ -17,6 +17,9 @@ interface UserSession {
     username: string;
     role: SystemUser["role"];
     photo?: string | null;
+    phone?: string | null;
+    cpf?: string | null;
+    rg?: string | null;
   };
   expiresAt: number;
 }
@@ -181,6 +184,9 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         username: user.username,
         role: user.role as "admin" | "financial" | "broker",
         photo: user.photo,
+        phone: user.phone,
+        cpf: user.cpf,
+        rg: user.rg,
       },
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
@@ -205,6 +211,9 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       username: session.user.username,
       role: session.user.role as "admin" | "financial" | "broker",
       photo: session.user.photo,
+      phone: session.user.phone,
+      cpf: session.user.cpf,
+      rg: session.user.rg,
     };
 
     console.log("✅ Login successful!");
