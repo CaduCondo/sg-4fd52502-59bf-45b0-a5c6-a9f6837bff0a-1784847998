@@ -852,18 +852,39 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paymentStatus = payment?.status || "pending";
         console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
-        // 🔥 CORREÇÃO CRÍTICA: Não usar Math.abs() em rescisões - preservar sinal negativo
+        // 🔥 LÓGICA DE PAGAMENTOS PARCIAIS
         if (isTerminationPayment) {
           // Para rescisões, comparar valores considerando sinais
           const difference = Math.abs(Math.abs(paidAmount) - Math.abs(expectedTotal));
           paymentStatus = difference < 0.01 ? "paid" : "partial";
           finalPaidAmount = paidAmount; // Preservar sinal do valor digitado
         } else {
-          // 🔥 CORREÇÃO: Para pagamentos normais, usar APENAS o valor digitado
-          // O valor digitado no campo "Valor a Pagar" é o valor TOTAL que foi pago nesta operação
-          finalPaidAmount = paidAmount;
+          // 🔥 PAGAMENTOS NORMAIS - Somar com valor anterior se for parcial
+          const previousPaid = payment?.paid_amount || 0;
+          
+          // Se já existe um valor pago anterior (status parcial), SOMAR com o novo valor
+          if (previousPaid > 0 && payment?.status === "partial") {
+            finalPaidAmount = previousPaid + paidAmount;
+            console.log("💰 PAGAMENTO PARCIAL - Somando:", {
+              valorAnterior: previousPaid,
+              valorNovo: paidAmount,
+              total: finalPaidAmount
+            });
+          } else {
+            // Primeiro pagamento - usar apenas o valor digitado
+            finalPaidAmount = paidAmount;
+            console.log("💰 PRIMEIRO PAGAMENTO:", finalPaidAmount);
+          }
+          
+          // Verificar se o total pago atingiu ou superou o valor esperado
           const totalExpected = Math.abs(expectedTotal);
-          paymentStatus = finalPaidAmount >= totalExpected ? "paid" : "partial";
+          if (finalPaidAmount >= totalExpected) {
+            paymentStatus = "paid";
+            console.log("✅ Pagamento COMPLETO - Total pago:", finalPaidAmount, ">=", totalExpected);
+          } else {
+            paymentStatus = "partial";
+            console.log("⚠️ Pagamento PARCIAL - Total pago:", finalPaidAmount, "<", totalExpected, "Faltam:", totalExpected - finalPaidAmount);
+          }
         }
       }
 
