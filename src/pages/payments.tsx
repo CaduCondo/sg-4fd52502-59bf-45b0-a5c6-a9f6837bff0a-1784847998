@@ -353,14 +353,16 @@ export default function PaymentsPage() {
         ) : (
           <Tabs defaultValue="pending" className="space-y-6">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
-              <TabsTrigger value="pending" className="gap-2 text-base py-2">
-                Recebimentos Pendentes
+              <TabsTrigger value="pending" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+                <span className="hidden sm:inline">Recebimentos Pendentes</span>
+                <span className="sm:hidden">Pendentes</span>
                 <Badge variant="destructive" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="paid" className="gap-2 text-base py-2">
-                Recebimentos Pagos
+              <TabsTrigger value="paid" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+                <span className="hidden sm:inline">Recebimentos Pagos</span>
+                <span className="sm:hidden">Pagos</span>
                 <Badge variant="default" className="bg-green-500 text-xs">
                   {paidPayments.length}
                 </Badge>
