@@ -306,21 +306,10 @@ export function PaymentReceipt({
   console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
   console.log("🔍 VERIFICAR SE DESCONTO ESTÁ NO BREAKDOWN:", breakdownItems.find(item => item.description.includes("Desconto")));
 
-  // Calcular total baseado no breakdown
-  let totalAmount = 0;
-  
-  if (breakdownItems.length > 0) {
-    totalAmount = breakdownItems.reduce((sum, item) => {
-      return item.type === "addition" 
-        ? sum + item.amount 
-        : sum - item.amount;
-    }, 0);
-  } else {
-    // Se não tem breakdown, usar o valor pago ou esperado
-    totalAmount = paidAmount || expectedAmount;
-  }
+  // CRÍTICO: O Total Pago SEMPRE deve ser o valor digitado em "Valor a Pagar" (paid_amount)
+  const totalAmount = paidAmount;
 
-  console.log("💰 TOTAL CALCULADO:", totalAmount);
+  console.log("💰 TOTAL USADO NO RECIBO (paid_amount):", totalAmount);
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
@@ -340,12 +329,19 @@ export function PaymentReceipt({
   };
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString + "T12:00:00");
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    if (!dateString) return "Data não informada";
+    
+    try {
+      const date = new Date(dateString + "T12:00:00");
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (e) {
+      console.error("❌ Erro ao formatar data:", dateString, e);
+      return "Data inválida";
+    }
   };
 
   const extenso = (num: number): string => {
@@ -507,6 +503,9 @@ export function PaymentReceipt({
 
   const referenceYear = payment.referenceYear || new Date().getFullYear();
 
+  // Obter data do contrato (usar start_date ou startDate)
+  const contractDate = rental.start_date || rental.startDate;
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -539,7 +538,7 @@ export function PaymentReceipt({
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, referente à rescisão do contrato de locação
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, conforme detalhamento abaixo, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, 
-                assinado entre as partes em <strong>{formatDate(rental.startDate)}</strong>.
+                assinado entre as partes em <strong>{formatDate(contractDate)}</strong>.
               </p>
             ) : (
               <p>
@@ -550,7 +549,7 @@ export function PaymentReceipt({
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
                 anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
-                <strong>{formatDate(rental.start_date)}</strong>.
+                <strong>{formatDate(contractDate)}</strong>.
               </p>
             )}
           </div>
