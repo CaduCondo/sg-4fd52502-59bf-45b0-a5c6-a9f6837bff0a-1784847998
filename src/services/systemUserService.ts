@@ -57,17 +57,26 @@ export async function updateUser(id: string, user: Partial<SystemUser>): Promise
     delete dbUser.birthDate;
   }
   
-  console.log("Atualizando usuário com ID:", id);
-  console.log("Dados antes da atualização:", user);
-  console.log("Dados após a conversão para snake_case:", dbUser);
+  console.log("🔍 ===== DEBUG UPDATE USER =====");
+  console.log("🆔 User ID:", id);
+  console.log("📋 Dados recebidos (camelCase):", user);
+  console.log("📋 Dados convertidos (snake_case):", dbUser);
+  console.log("📞 Phone:", dbUser.phone);
+  console.log("🆔 CPF:", dbUser.cpf);
+  console.log("🆔 RG:", dbUser.rg);
+  console.log("🔍 ================================");
   
   try {
-    console.log("📝 Dados após conversão para snake_case:", dbUser);
     console.log("🚀 Chamando updateSingle...");
     
     const updatedUser = await updateSingle<SystemUser>(TABLE, id, dbUser);
+    
+    console.log("✅ Update concluído com sucesso!");
+    console.log("📋 User atualizado:", updatedUser);
+    
     return updatedUser;
   } catch (error) {
+    console.error("❌ Erro ao atualizar usuário:", error);
     throw error;
   }
 }

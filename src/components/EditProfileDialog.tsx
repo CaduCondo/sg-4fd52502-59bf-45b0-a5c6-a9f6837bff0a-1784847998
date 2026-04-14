@@ -31,6 +31,13 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
   useEffect(() => {
     if (open && user) {
+      console.log("🔍 ===== DEBUG EDIT PROFILE DIALOG =====");
+      console.log("📋 User object recebido:", user);
+      console.log("📞 Phone:", user.phone);
+      console.log("🆔 CPF:", user.cpf);
+      console.log("🆔 RG:", user.rg);
+      console.log("🔍 ====================================");
+      
       setSelectedUser(user);
       setPhotoPreview(user.photo || null);
     }
