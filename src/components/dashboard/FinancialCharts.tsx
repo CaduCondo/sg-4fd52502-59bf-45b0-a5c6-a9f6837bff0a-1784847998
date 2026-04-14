@@ -429,7 +429,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasRevenueData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de receita")}
               <ResponsiveContainer>
                 <LineChart data={chartData.monthlyRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -458,7 +457,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasExpensesData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de despesas")}
               <ResponsiveContainer>
                 <BarChart data={chartData.monthlyExpensesData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -487,7 +485,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasOccupancyData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de ocupação com dados:", chartData.occupancyPieData)}
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -524,7 +521,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasContractsData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de contratos com dados:", chartData.contractsData)}
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -561,7 +557,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasPaymentsStatusData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de pagamentos com dados:", chartData.paymentsStatusData)}
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -598,7 +593,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         <CardContent>
           {hasOccupancyTrendData ? (
             <div style={{ width: '100%', height: 300 }}>
-              {console.log("🎨 [RENDER] Renderizando gráfico de evolução da ocupação")}
               <ResponsiveContainer>
                 <LineChart data={chartData.occupancyTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
