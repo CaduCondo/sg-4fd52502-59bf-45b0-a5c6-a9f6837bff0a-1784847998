@@ -859,8 +859,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           paymentStatus = difference < 0.01 ? "paid" : "partial";
           finalPaidAmount = paidAmount; // Preservar sinal do valor digitado
         } else {
-          const previousPaid = payment?.paid_amount || 0;
-          finalPaidAmount = previousPaid + paidAmount;
+          // 🔥 CORREÇÃO: Para pagamentos normais, usar APENAS o valor digitado
+          // O valor digitado no campo "Valor a Pagar" é o valor TOTAL que foi pago nesta operação
+          finalPaidAmount = paidAmount;
           const totalExpected = Math.abs(expectedTotal);
           paymentStatus = finalPaidAmount >= totalExpected ? "paid" : "partial";
         }
