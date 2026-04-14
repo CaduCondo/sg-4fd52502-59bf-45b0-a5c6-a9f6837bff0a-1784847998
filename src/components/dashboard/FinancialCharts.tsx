@@ -421,6 +421,39 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 🧪 GRÁFICO DE TESTE - DEVE APARECER SEMPRE */}
+      <Card className="border-4 border-purple-500">
+        <CardHeader>
+          <CardTitle className="text-base">🧪 TESTE - Gráfico Simples</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div style={{ width: '100%', height: 300, backgroundColor: '#f0f0f0' }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Teste A', value: 400 },
+                    { name: 'Teste B', value: 300 },
+                    { name: 'Teste C', value: 200 }
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label
+                >
+                  <Cell fill="#10b981" />
+                  <Cell fill="#3b82f6" />
+                  <Cell fill="#ef4444" />
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Gráfico de Receita Mensal */}
       <Card>
         <CardHeader>
