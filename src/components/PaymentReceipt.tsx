@@ -566,7 +566,7 @@ export function PaymentReceipt({
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, referente à rescisão do contrato de locação
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, conforme detalhamento abaixo, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, 
-                assinado entre as partes em <strong>{formatDate(contractDate)}</strong>.
+                assinado entre as partes em <strong>{displayContractDate}</strong>.
               </p>
             ) : (
               <p>
@@ -577,7 +577,7 @@ export function PaymentReceipt({
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
                 anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
-                <strong>{formatDate(contractDate)}</strong>.
+                <strong>{displayContractDate}</strong>.
               </p>
             )}
           </div>
