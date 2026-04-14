@@ -40,6 +40,7 @@ interface DepositInstallment {
     garage_value: number;
     security_deposit: number;
     has_partner_broker: boolean;
+    status: string;
     tenant: {
       name: string;
     };
