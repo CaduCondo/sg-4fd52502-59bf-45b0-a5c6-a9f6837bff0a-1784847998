@@ -513,8 +513,14 @@ export function PaymentReceipt({
   // Obter data do contrato (usar start_date ou startDate)
   const contractDate = rental.start_date || rental.startDate;
   
-  console.log("📅 DATA DO CONTRATO:", contractDate);
-  console.log("📅 DATA FORMATADA:", formatDate(contractDate));
+  console.log("\n📅 ===== DEBUG DATA DO CONTRATO =====");
+  console.log("📅 RENTAL OBJECT:", rental);
+  console.log("📅 rental.start_date:", rental.start_date);
+  console.log("📅 rental.startDate:", rental.startDate);
+  console.log("📅 contractDate FINAL:", contractDate);
+  console.log("📅 typeof contractDate:", typeof contractDate);
+  console.log("📅 DATA FORMATADA:", contractDate ? formatDate(contractDate) : "VAZIO");
+  console.log("📅 =====================================\n");
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
