@@ -10,6 +10,9 @@ interface User {
   username: string;
   role: string;
   photo?: string | null;
+  phone?: string | null;
+  cpf?: string | null;
+  rg?: string | null;
 }
 
 interface AuthContextType {

@@ -332,6 +332,9 @@ export interface LoginResult {
     username: string;
     role: "admin" | "financial" | "broker";
     photo?: string | null;
+    phone?: string | null;
+    cpf?: string | null;
+    rg?: string | null;
   };
   error?: string;
 }

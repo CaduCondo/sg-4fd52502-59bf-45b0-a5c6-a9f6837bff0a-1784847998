@@ -135,6 +135,19 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
       await updateUser(user.id, updates);
       
+      // Atualiza a sessão local imediatamente para refletir na UI sem precisar deslogar
+      try {
+        const sessionStr = localStorage.getItem("auth_session");
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          session.user = { ...session.user, ...updates };
+          localStorage.setItem("auth_session", JSON.stringify(session));
+          localStorage.setItem("auth_user", JSON.stringify(session.user));
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar sessão local:", e);
+      }
+      
       toast({
         title: "Sucesso",
         description: "Perfil atualizado com sucesso!",
