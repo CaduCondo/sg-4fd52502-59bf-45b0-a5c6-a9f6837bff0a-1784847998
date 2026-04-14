@@ -102,7 +102,7 @@ export const PropertyFilters = memo(function PropertyFilters({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 w-full max-w-full">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {countText}
@@ -115,7 +115,7 @@ export const PropertyFilters = memo(function PropertyFilters({
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col lg:flex-row gap-3 w-full">
         <div className="flex-1 lg:max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -123,11 +123,69 @@ export const PropertyFilters = memo(function PropertyFilters({
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10"
+              className="pl-9 h-10 w-full"
             />
           </div>
         </div>
 
+        {/* Filtros Mobile - Grid de 3 colunas */}
+        <div className="grid grid-cols-3 gap-2 lg:hidden w-full">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-between h-10 text-xs px-2">
+                <LocationFilterButton 
+                  selectedLocations={selectedLocations}
+                  locations={locations}
+                />
+                <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0" align="start">
+              <LocationList
+                locations={locations}
+                selectedLocations={selectedLocations}
+                handleLocationToggle={handleLocationToggle}
+              />
+              {selectedLocations.length > 0 && (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full h-8"
+                    onClick={() => setSelectedLocations([])}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10 text-xs px-2">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="available">Disponível</SelectItem>
+              <SelectItem value="occupied">Ocupado</SelectItem>
+              <SelectItem value="unavailable">Indisponível</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+            <SelectTrigger className="h-10 text-xs px-2">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alphabetical">A-Z</SelectItem>
+              <SelectItem value="price-asc">Menor</SelectItem>
+              <SelectItem value="price-desc">Maior</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filtros Desktop */}
         <div className="hidden lg:flex gap-3 ml-auto">
           <Popover>
             <PopoverTrigger asChild>
