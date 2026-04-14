@@ -228,7 +228,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
             {/* Mobile Menu Button & Logo */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -247,7 +247,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1.5 flex-1 justify-start pl-4">
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center px-4">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);
@@ -257,13 +257,13 @@ export function Layout({ children }: LayoutProps) {
                     key={item.name}
                     href={item.path}
                     className={cn(
-                      "group flex items-center gap-x-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                      "group flex items-center gap-x-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap",
                       active
                         ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                         : "text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 flex-shrink-0" />
                     <span>{item.name}</span>
                   </Link>
                 );
@@ -271,11 +271,11 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Desktop User Menu */}
-            <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            <div className="hidden md:flex items-center gap-3 flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
-                    <Avatar className="h-12 w-12 border-2 border-blue-600/20">
+                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <Avatar className="h-12 w-12 border-2 border-blue-600/20 cursor-pointer hover:border-blue-600/40 transition-colors">
                       <AvatarImage src={authUser?.photo} alt={authUser?.name} className="object-cover" />
                       <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium text-sm">
                         {authUser?.name?.substring(0, 2).toUpperCase() || "US"}
