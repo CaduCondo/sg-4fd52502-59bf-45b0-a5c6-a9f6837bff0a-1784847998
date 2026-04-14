@@ -275,37 +275,53 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         if (!isMounted) return;
 
         // Processar dados de ocupação
-        const occupancyPieData = [
+        const occupancyPieDataRaw = [
           { name: 'Ocupados', value: propertiesResult.occupied, color: COLORS.occupied },
           { name: 'Disponíveis', value: propertiesResult.available, color: COLORS.available },
           { name: 'Indisponíveis', value: propertiesResult.unavailable, color: COLORS.unavailable }
-        ].filter(item => item.value > 0);
+        ];
+        
+        console.log("🥧 [DEBUG] Dados BRUTOS de ocupação (antes de filtrar):", occupancyPieDataRaw);
+        
+        const occupancyPieData = occupancyPieDataRaw.filter(item => item.value > 0);
 
-        console.log("🥧 Dados do gráfico de ocupação:", occupancyPieData);
+        console.log("🥧 Dados do gráfico de ocupação (após filtrar zeros):", occupancyPieData);
 
         // Dados de contratos
-        const contractsData = [
+        const contractsDataRaw = [
           { name: 'Ativos', value: contractsResult.active - contractsResult.expiring, color: COLORS.occupied },
           { name: 'Vencendo (30 dias)', value: contractsResult.expiring, color: COLORS.unavailable }
-        ].filter(item => item.value > 0);
+        ];
+        
+        console.log("📋 [DEBUG] Dados BRUTOS de contratos (antes de filtrar):", contractsDataRaw);
+        
+        const contractsData = contractsDataRaw.filter(item => item.value > 0);
 
-        console.log("📋 Dados de contratos:", contractsData);
+        console.log("📋 Dados de contratos (após filtrar zeros):", contractsData);
 
         // Dados de status de pagamentos
-        const paymentsStatusData = [
+        const paymentsStatusDataRaw = [
           { name: 'Pagos', value: paymentsStatusResult.paid, color: COLORS.occupied },
           { name: 'Pendentes', value: paymentsStatusResult.pending, color: COLORS.available },
           { name: 'Atrasados', value: paymentsStatusResult.overdue, color: COLORS.unavailable }
-        ].filter(item => item.value > 0);
+        ];
+        
+        console.log("💳 [DEBUG] Dados BRUTOS de status de pagamentos (antes de filtrar):", paymentsStatusDataRaw);
+        
+        const paymentsStatusData = paymentsStatusDataRaw.filter(item => item.value > 0);
 
-        console.log("💳 Dados de status de pagamentos:", paymentsStatusData);
+        console.log("💳 Dados de status de pagamentos (após filtrar zeros):", paymentsStatusData);
 
         // Processar dados de receita
         const monthlyRevenueData = months.map((m, index) => {
           const monthPayments = paymentsResult[index]?.data || [];
+          console.log(`💰 [DEBUG] Pagamentos do mês ${m.label}:`, monthPayments.length, "pagamentos");
+          
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
           const taxas = bruta * 0.08;
           const liquida = bruta - taxas;
+          
+          console.log(`💰 [DEBUG] Receita ${m.label}: bruta=${bruta}, liquida=${liquida}`);
           
           return { 
             month: m.label, 
@@ -320,6 +336,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           const monthPayments = paymentsResult[index]?.data || [];
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
           const taxas = bruta * 0.08;
+          
+          console.log(`💸 [DEBUG] Despesas ${m.label}: taxas=${taxas}, contas=0`);
           
           return { 
             month: m.label, 
@@ -340,6 +358,13 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         });
 
         console.log("✅ [FinancialCharts] Dados carregados com sucesso!");
+        console.log("📊 [DEBUG] RESUMO FINAL:");
+        console.log("  - monthlyRevenueData tem dados?", monthlyRevenueData.some(d => d.bruta > 0 || d.liquida > 0));
+        console.log("  - monthlyExpensesData tem dados?", monthlyExpensesData.some(d => d.taxas > 0 || d.contas > 0));
+        console.log("  - occupancyPieData tem dados?", occupancyPieData.length > 0);
+        console.log("  - contractsData tem dados?", contractsData.length > 0);
+        console.log("  - paymentsStatusData tem dados?", paymentsStatusData.length > 0);
+        console.log("  - occupancyTrendData tem dados?", occupancyTrendData.length > 0);
 
       } catch (error) {
         console.error("❌ [FinancialCharts] Erro ao carregar dados:", error);
