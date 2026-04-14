@@ -56,11 +56,11 @@ export const PropertyCard = memo(function PropertyCard({
 
   return (
     <Card 
-      className="card-hover-effect touch-target-card border shadow-sm hover:shadow-md transition-shadow"
+      className="card-hover-effect touch-target-card border shadow-sm hover:shadow-md transition-shadow w-full"
       onClick={() => onCardClick(property)}
     >
       <CardHeader className="p-3 pb-2">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 w-full">
           <div className="flex-1 min-w-0">
             {locationName && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
@@ -68,11 +68,11 @@ export const PropertyCard = memo(function PropertyCard({
                 <span className="truncate">{locationName}</span>
               </div>
             )}
-            <h3 className="text-xl font-bold text-primary leading-tight line-clamp-1">
+            <h3 className="text-xl font-bold text-primary leading-tight line-clamp-1 break-words">
               {property.location}
             </h3>
             {(property.complement || property.propertyIdentifier) && (
-              <p className="text-base text-muted-foreground line-clamp-1">
+              <p className="text-base text-muted-foreground line-clamp-1 break-words">
                 {property.complement || property.propertyIdentifier}
               </p>
             )}
@@ -92,9 +92,9 @@ export const PropertyCard = memo(function PropertyCard({
         </div>
       </CardHeader>
 
-      <CardContent className="p-3 pt-0 space-y-2">
+      <CardContent className="p-3 pt-0 space-y-2 w-full">
         {property.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed break-words">
             {property.description}
           </p>
         )}
@@ -116,9 +116,9 @@ export const PropertyCard = memo(function PropertyCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xl font-bold text-primary">
+        <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2 w-full">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="text-xl font-bold text-primary truncate">
               {displayPrice}
             </span>
           </div>
