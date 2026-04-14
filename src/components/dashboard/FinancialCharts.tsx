@@ -32,24 +32,34 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
     const loadChartData = async () => {
       if (!userId) {
+        console.log("⚠️ [FinancialCharts] Sem userId, abortando");
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
+        console.log("🔍 [FinancialCharts] Iniciando carregamento de dados dos gráficos");
+        console.log("📋 Parâmetros:", { selectedMonth, selectedYear, userId, userRole, isFinancialUser });
 
         // Buscar permissões se necessário
         let allowedLocations: string[] | null = null;
         if (isFinancialUser) {
-          const { data: permData } = await supabase
+          console.log("🔐 Usuário financial - buscando permissões de localização");
+          const { data: permData, error: permError } = await supabase
             .from("user_location_permissions")
             .select("location_id")
             .eq("user_id", userId);
           
+          if (permError) {
+            console.error("❌ Erro ao buscar permissões:", permError);
+          }
+          
           allowedLocations = permData?.map(p => p.location_id) || [];
+          console.log("📍 Localizações permitidas:", allowedLocations);
           
           if (allowedLocations.length === 0) {
+            console.log("⚠️ Usuário financial sem permissões - retornando dados vazios");
             setChartData({
               monthlyRevenueData: [],
               monthlyExpensesData: [],
@@ -73,62 +83,69 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
             label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
           });
         }
+        console.log("📅 Meses para gráficos:", months);
 
         // Buscar dados agregados
-        const [propertiesResult, paymentsResult] = await Promise.all([
-          // Contagens de propriedades por status
-          (async () => {
-            const buildQuery = (status: string) => {
-              let query = supabase
-                .from("properties")
-                .select("id", { count: "exact", head: true })
-                .eq("status", status);
+        console.log("🔍 Buscando contagens de propriedades...");
+        const propertiesResult = await (async () => {
+          const buildQuery = (status: string) => {
+            let query = supabase
+              .from("properties")
+              .select("id", { count: "exact", head: true })
+              .eq("status", status);
 
-              if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-                query = query.in("location_id", allowedLocations);
-              }
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("location_id", allowedLocations);
+            }
 
-              return query;
-            };
+            return query;
+          };
 
-            const [available, occupied, unavailable] = await Promise.all([
-              buildQuery("available"),
-              buildQuery("occupied"),
-              buildQuery("unavailable")
-            ]);
+          const [available, occupied, unavailable] = await Promise.all([
+            buildQuery("available"),
+            buildQuery("occupied"),
+            buildQuery("unavailable")
+          ]);
 
-            return {
-              available: available.count || 0,
-              occupied: occupied.count || 0,
-              unavailable: unavailable.count || 0
-            };
-          })(),
+          console.log("📊 Contagens de propriedades:", {
+            available: available.count,
+            occupied: occupied.count,
+            unavailable: unavailable.count
+          });
 
-          // Pagamentos dos últimos 6 meses
-          (async () => {
-            const monthsData = months.map(m => ({
-              month: m.month.toString(),
-              year: m.year.toString()
-            }));
+          return {
+            available: available.count || 0,
+            occupied: occupied.count || 0,
+            unavailable: unavailable.count || 0
+          };
+        })();
 
-            const promises = monthsData.map(async ({ month, year }) => {
-              let query = supabase
-                .from("payments")
-                .select("paid_amount, status, rental:rentals!inner(properties!inner(location_id))")
-                .eq("status", "paid")
-                .eq("reference_month", month)
-                .eq("reference_year", year);
+        console.log("🔍 Buscando pagamentos dos últimos 6 meses...");
+        const paymentsResult = await (async () => {
+          const monthsData = months.map(m => ({
+            month: m.month.toString().padStart(2, '0'),
+            year: m.year.toString()
+          }));
 
-              if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-                query = query.in("rental.properties.location_id", allowedLocations);
-              }
+          const promises = monthsData.map(async ({ month, year }) => {
+            let query = supabase
+              .from("payments")
+              .select("paid_amount, status, rental:rentals!inner(properties!inner(location_id))")
+              .eq("status", "paid")
+              .eq("reference_month", month)
+              .eq("reference_year", year);
 
-              return query;
-            });
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("rental.properties.location_id", allowedLocations);
+            }
 
-            return Promise.all(promises);
-          })()
-        ]);
+            return query;
+          });
+
+          return Promise.all(promises);
+        })();
+
+        console.log("📊 Pagamentos carregados para cada mês");
 
         if (!isMounted) return;
 
@@ -138,6 +155,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           { name: 'Disponíveis', value: propertiesResult.available, color: COLORS.available },
           { name: 'Indisponíveis', value: propertiesResult.unavailable, color: COLORS.unavailable }
         ].filter(item => item.value > 0);
+
+        console.log("🥧 Dados do gráfico de ocupação:", occupancyPieData);
 
         // Processar dados de receita
         const monthlyRevenueData = months.map((m, index) => {
@@ -153,6 +172,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           };
         });
 
+        console.log("📈 Dados de receita mensal:", monthlyRevenueData);
+
         const monthlyExpensesData = months.map((m, index) => {
           const monthPayments = paymentsResult[index]?.data || [];
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
@@ -165,14 +186,18 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           };
         });
 
+        console.log("📊 Dados de despesas mensais:", monthlyExpensesData);
+
         setChartData({
           monthlyRevenueData,
           monthlyExpensesData,
           occupancyPieData
         });
 
+        console.log("✅ [FinancialCharts] Dados carregados com sucesso!");
+
       } catch (error) {
-        console.error("Error loading chart data:", error);
+        console.error("❌ [FinancialCharts] Erro ao carregar dados:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
