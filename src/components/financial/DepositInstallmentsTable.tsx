@@ -86,6 +86,7 @@ export function DepositInstallmentsTable({
         setLoading(true);
         console.log("🔍 === INÍCIO BUSCA PARCELAS DE CAUÇÃO ===");
 
+        // 🔥 CRÍTICO: Buscar TODAS as parcelas de caução, sem filtrar por status de rental aqui
         const query = supabase
           .from("deposit_installments")
           .select(`
@@ -101,6 +102,7 @@ export function DepositInstallmentsTable({
             status,
             due_date,
             rental:rentals!rental_id(
+              id,
               rent_value,
               garage_value,
               security_deposit,
@@ -132,16 +134,9 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // Filtrar por status de locação se necessário
-        let filteredData = installmentsData;
-        if (statusFilter === "active") {
-          filteredData = installmentsData.filter(
-            (inst) => inst.rental?.status === "active"
-          );
-        }
-
-        console.log("✅ Dados filtrados:", filteredData.length);
-        setData(filteredData as DepositInstallment[]);
+        // 🔥 APLICAR FILTRO DE STATUS APENAS AO EXIBIR, NÃO AO CARREGAR
+        console.log("✅ Dados carregados, total:", installmentsData.length);
+        setData(installmentsData as DepositInstallment[]);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
@@ -156,7 +151,24 @@ export function DepositInstallmentsTable({
     };
 
     fetchData();
-  }, [isAdmin, statusFilter, toast]);
+  }, [isAdmin, toast]); // Removido statusFilter do array de dependências
+
+  // 🔥 FILTRAR DADOS APÓS CARREGAMENTO, BASEADO NO FILTRO SELECIONADO
+  const filteredData = useMemo(() => {
+    if (statusFilter === "all") {
+      console.log("📊 Mostrando TODAS as locações:", data.length);
+      return data;
+    } else if (statusFilter === "active") {
+      const activeData = data.filter((inst) => inst.rental?.status === "active");
+      console.log("📊 Mostrando locações ATIVAS:", activeData.length);
+      return activeData;
+    } else if (statusFilter === "inactive") {
+      const inactiveData = data.filter((inst) => inst.rental?.status !== "active");
+      console.log("📊 Mostrando locações INATIVAS:", inactiveData.length);
+      return inactiveData;
+    }
+    return data;
+  }, [data, statusFilter]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -262,14 +274,14 @@ export function DepositInstallmentsTable({
 
   // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
   const groupedData = useMemo(() => {
-    return data.reduce((acc, inst) => {
+    return filteredData.reduce((acc, inst) => {
       if (!acc[inst.rental_id]) {
         acc[inst.rental_id] = [];
       }
       acc[inst.rental_id].push(inst);
       return acc;
     }, {} as Record<string, DepositInstallment[]>);
-  }, [data]);
+  }, [filteredData]);
 
   // ✅ Ordena parcelas dentro de cada grupo (MEMOIZADO)
   useMemo(() => {
@@ -493,7 +505,8 @@ export function DepositInstallmentsTable({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="active">Ativas</SelectItem>
+                    <SelectItem value="inactive">Inativas</SelectItem>
                     <SelectItem value="all">Todos</SelectItem>
                   </SelectContent>
                 </Select>
