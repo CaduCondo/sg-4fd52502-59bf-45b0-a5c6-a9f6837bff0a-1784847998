@@ -180,7 +180,7 @@ export function usePayments() {
 
         // Adicionar ao map de rentals
         if (rental && !rentalsMap.has(rental.id)) {
-          rentalsMap.set(rental.id, {
+          const rentalObj = {
             id: rental.id,
             propertyId: rental.property_id,
             tenantId: rental.tenant_id,
@@ -198,7 +198,16 @@ export function usePayments() {
             contractAttachments: [],
             hasPartnerBroker: false,
             pixCode: "",
-          } as Rental);
+          } as Rental;
+          
+          // Log para debug: verificar se start_date veio do banco
+          console.log("📅 [usePayments] Rental processado:", {
+            id: rental.id,
+            start_date: rental.start_date,
+            startDate: rentalObj.startDate
+          });
+          
+          rentalsMap.set(rental.id, rentalObj);
         }
 
         // Adicionar ao map de properties
