@@ -274,10 +274,10 @@ export function Layout({ children }: LayoutProps) {
             <div className="hidden md:flex items-center gap-2 flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border-2 border-blue-600/20">
+                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
+                    <Avatar className="h-12 w-12 border-2 border-blue-600/20">
                       <AvatarImage src={authUser?.photo} alt={authUser?.name} className="object-cover" />
-                      <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium">
+                      <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium text-sm">
                         {authUser?.name?.substring(0, 2).toUpperCase() || "US"}
                       </AvatarFallback>
                     </Avatar>
