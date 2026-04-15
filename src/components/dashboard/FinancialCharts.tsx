@@ -231,7 +231,14 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           }));
 
           const promises = monthsData.map(async ({ month, year }) => {
-            let query = supabase
+            // Buscar TODOS os pagamentos (não só paid) para mostrar receita esperada
+            let queryAll = supabase
+              .from("payments")
+              .select("expected_amount, paid_amount, status, rental:rentals!inner(properties!inner(location_id))")
+              .eq("reference_month", month)
+              .eq("reference_year", year);
+
+            let queryPaid = supabase
               .from("payments")
               .select("paid_amount, status, rental:rentals!inner(properties!inner(location_id))")
               .eq("status", "paid")
@@ -239,10 +246,16 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
               .eq("reference_year", year);
 
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
+              queryAll = queryAll.in("rental.properties.location_id", allowedLocations);
+              queryPaid = queryPaid.in("rental.properties.location_id", allowedLocations);
             }
 
-            return query;
+            const [allPayments, paidPayments] = await Promise.all([queryAll, queryPaid]);
+            
+            return {
+              all: allPayments.data || [],
+              paid: paidPayments.data || []
+            };
           });
 
           return Promise.all(promises);
@@ -286,23 +299,31 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           { name: 'Atrasados', value: paymentsStatusResult.overdue, color: COLORS.unavailable }
         ].filter(item => item.value > 0);
 
+        // Processar dados de receita - ESPERADA vs RECEBIDA
         const monthlyRevenueData = months.map((m, index) => {
-          const monthPayments = paymentsResult[index]?.data || [];
-          const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
-          const taxas = bruta * 0.08;
-          const liquida = bruta - taxas;
+          const allPayments = paymentsResult[index]?.all || [];
+          const paidPayments = paymentsResult[index]?.paid || [];
+          
+          const esperada = allPayments.reduce((sum, p) => sum + (p.expected_amount || 0), 0);
+          const recebida = paidPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+          
+          console.log(`💰 [DEBUG] Receita ${m.label}: esperada=${esperada}, recebida=${recebida}`);
           
           return { 
             month: m.label, 
-            bruta, 
-            liquida 
+            esperada,
+            recebida
           };
         });
 
+        console.log("📈 Dados de receita mensal:", monthlyRevenueData);
+
         const monthlyExpensesData = months.map((m, index) => {
-          const monthPayments = paymentsResult[index]?.data || [];
-          const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+          const paidPayments = paymentsResult[index]?.paid || [];
+          const bruta = paidPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
           const taxas = bruta * 0.08;
+          
+          console.log(`💸 [DEBUG] Despesas ${m.label}: taxas=${taxas}, contas=0`);
           
           return { 
             month: m.label, 
@@ -360,7 +381,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
     );
   }
 
-  const hasRevenueData = chartData.monthlyRevenueData?.some((d: any) => d.bruta > 0 || d.liquida > 0);
+  const hasRevenueData = chartData.monthlyRevenueData?.some((d: any) => d.esperada > 0 || d.recebida > 0);
   const hasExpensesData = chartData.monthlyExpensesData?.some((d: any) => d.taxas > 0 || d.contas > 0);
   const hasOccupancyData = chartData.occupancyPieData?.length > 0;
   const hasContractsData = chartData.contractsData?.length > 0;
@@ -372,24 +393,24 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
       {/* Gráfico de Receita Mensal */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Receita Mensal (Últimos 6 Meses)</CardTitle>
+          <CardTitle className="text-base">Receita Esperada vs Recebida (Últimos 6 Meses)</CardTitle>
         </CardHeader>
         <CardContent>
           {hasRevenueData ? (
-            <div className="flex justify-center">
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
               <LineChart width={500} height={300} data={chartData.monthlyRevenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
                 <Legend />
-                <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
-                <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
+                <Line type="monotone" dataKey="esperada" stroke="#3b82f6" name="Esperada" strokeWidth={2} />
+                <Line type="monotone" dataKey="recebida" stroke="#10b981" name="Recebida" strokeWidth={2} />
               </LineChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Nenhum pagamento recebido nos últimos 6 meses</p>
+              <p className="text-muted-foreground text-sm">Nenhum dado de receita nos últimos 6 meses</p>
             </div>
           )}
         </CardContent>
