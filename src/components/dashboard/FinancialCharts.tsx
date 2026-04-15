@@ -427,8 +427,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           <CardTitle className="text-base">🧪 TESTE - Gráfico Simples</CardTitle>
         </CardHeader>
         <CardContent>
-          <div style={{ width: '100%', height: 300, backgroundColor: '#f0f0f0' }}>
-            <ResponsiveContainer>
+          <div style={{ width: '100%', height: 300, backgroundColor: '#f0f0f0', minHeight: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={[
@@ -461,8 +461,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasRevenueData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData.monthlyRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -489,8 +489,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasExpensesData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.monthlyExpensesData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -517,8 +517,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartData.occupancyPieData}
@@ -553,8 +553,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasContractsData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartData.contractsData}
@@ -589,8 +589,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasPaymentsStatusData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartData.paymentsStatusData}
@@ -625,8 +625,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyTrendData ? (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData.occupancyTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
