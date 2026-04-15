@@ -280,6 +280,111 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           return data;
         })();
 
+        console.log("📊 Histórico de ocupação:", occupancyTrendData);
+
+        // Buscar top 5 imóveis por valor de aluguel
+        console.log("🔍 Buscando top 5 imóveis por valor...");
+        const topPropertiesResult = await (async () => {
+          let query = supabase
+            .from("rentals")
+            .select("rental_amount, property:properties!inner(address, location:locations!inner(name))")
+            .eq("status", "active")
+            .order("rental_amount", { ascending: false })
+            .limit(5);
+
+          if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+            query = query.in("property.location_id", allowedLocations);
+          }
+
+          const { data } = await query;
+          return data || [];
+        })();
+
+        console.log("💰 Top 5 imóveis:", topPropertiesResult);
+
+        // Buscar distribuição de imóveis por localização
+        console.log("🔍 Buscando distribuição por localização...");
+        const locationDistributionResult = await (async () => {
+          let query = supabase
+            .from("properties")
+            .select("location:locations!inner(name)")
+            .neq("status", "unavailable");
+
+          if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+            query = query.in("location_id", allowedLocations);
+          }
+
+          const { data } = await query;
+          
+          // Agrupar por localização
+          const grouped = (data || []).reduce((acc: any, item: any) => {
+            const locationName = item.location?.name || "Sem localização";
+            acc[locationName] = (acc[locationName] || 0) + 1;
+            return acc;
+          }, {});
+
+          return Object.entries(grouped).map(([name, count]) => ({
+            name,
+            value: count
+          }));
+        })();
+
+        console.log("🏢 Distribuição por localização:", locationDistributionResult);
+
+        // Buscar taxa de inadimplência dos últimos 6 meses
+        console.log("🔍 Buscando taxa de inadimplência...");
+        const defaultRateData = await (async () => {
+          const data = [];
+          
+          for (const m of months) {
+            const month = m.month.toString().padStart(2, '0');
+            const year = m.year.toString();
+
+            let totalQuery = supabase
+              .from("payments")
+              .select("id", { count: "exact", head: true })
+              .eq("reference_month", month)
+              .eq("reference_year", year);
+
+            let overdueQuery = supabase
+              .from("payments")
+              .select("id", { count: "exact", head: true })
+              .in("status", ["pending", "partial"])
+              .eq("reference_month", month)
+              .eq("reference_year", year)
+              .lt("due_date", new Date().toISOString().split('T')[0]);
+
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              const propertiesInLocation = (await supabase
+                .from("properties")
+                .select("id")
+                .in("location_id", allowedLocations)).data?.map(p => p.id) || [];
+
+              const rentalsInProperties = (await supabase
+                .from("rentals")
+                .select("id")
+                .in("property_id", propertiesInLocation)).data?.map(r => r.id) || [];
+
+              if (rentalsInProperties.length > 0) {
+                totalQuery = totalQuery.in("rental_id", rentalsInProperties);
+                overdueQuery = overdueQuery.in("rental_id", rentalsInProperties);
+              }
+            }
+
+            const [total, overdue] = await Promise.all([totalQuery, overdueQuery]);
+            const rate = total.count && total.count > 0 ? (overdue.count || 0) / total.count * 100 : 0;
+            
+            data.push({
+              month: m.label,
+              taxa: parseFloat(rate.toFixed(1))
+            });
+          }
+          
+          return data;
+        })();
+
+        console.log("📉 Taxa de inadimplência:", defaultRateData);
+
         if (!isMounted) return;
 
         const occupancyPieData = [
@@ -338,7 +443,13 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           occupancyPieData,
           contractsData,
           paymentsStatusData,
-          occupancyTrendData
+          occupancyTrendData,
+          topPropertiesData: topPropertiesResult.map((r: any) => ({
+            name: `${r.property?.location?.name || ''} - ${r.property?.address?.substring(0, 20) || ''}...`,
+            value: r.rental_amount || 0
+          })),
+          locationDistributionData: locationDistributionResult,
+          defaultRateData
         });
 
         console.log("✅ [FinancialCharts] Dados carregados com sucesso!");
@@ -387,6 +498,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
   const hasContractsData = chartData.contractsData?.length > 0;
   const hasPaymentsStatusData = chartData.paymentsStatusData?.length > 0;
   const hasOccupancyTrendData = chartData.occupancyTrendData?.length > 0;
+  const hasTopPropertiesData = chartData.topPropertiesData?.length > 0;
+  const hasLocationDistributionData = chartData.locationDistributionData?.length > 0;
+  const hasDefaultRateData = chartData.defaultRateData?.some((d: any) => d.taxa > 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -551,7 +665,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyTrendData ? (
-            <div className="flex justify-center">
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
               <LineChart width={500} height={300} data={chartData.occupancyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
@@ -570,6 +684,95 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           ) : (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Nenhum dado de ocupação disponível</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Top 5 Imóveis por Valor */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top 5 Imóveis por Valor de Aluguel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasTopPropertiesData ? (
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <BarChart width={500} height={300} data={chartData.topPropertiesData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="name" width={150} />
+                <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                <Bar dataKey="value" fill={COLORS.occupied} name="Valor do Aluguel" />
+              </BarChart>
+            </div>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Nenhum contrato ativo</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Distribuição por Localização */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Distribuição de Imóveis por Localização</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasLocationDistributionData ? (
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <PieChart width={500} height={300}>
+                <Pie
+                  data={chartData.locationDistributionData}
+                  cx={250}
+                  cy={150}
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.locationDistributionData.map((_entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </div>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Nenhum imóvel cadastrado</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Taxa de Inadimplência */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Taxa de Inadimplência (Últimos 6 Meses)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasDefaultRateData ? (
+            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+              <LineChart width={500} height={300} data={chartData.defaultRateData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis domain={[0, 100]} />
+                <Tooltip formatter={(value: number) => `${value}%`} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="taxa" 
+                  stroke={COLORS.unavailable} 
+                  name="Taxa de Inadimplência (%)" 
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </div>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Nenhum dado de inadimplência disponível</p>
             </div>
           )}
         </CardContent>
