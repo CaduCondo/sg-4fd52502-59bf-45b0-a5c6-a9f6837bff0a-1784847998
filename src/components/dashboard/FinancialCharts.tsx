@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -191,7 +191,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
             .gte("due_date", new Date().toISOString().split('T')[0]);
 
           if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-            // Aplicar filtro de localização através de rentals e properties
             const propertiesInLocation = (await supabase
               .from("properties")
               .select("id")
@@ -251,8 +250,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
         console.log("📊 Pagamentos carregados para cada mês");
 
-        // Buscar taxa de ocupação dos últimos 6 meses
-        console.log("🔍 Buscando histórico de ocupação...");
         const occupancyTrendData = await (async () => {
           const data = [];
           
@@ -270,58 +267,30 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           return data;
         })();
 
-        console.log("📊 Histórico de ocupação:", occupancyTrendData);
-
         if (!isMounted) return;
 
-        // Processar dados de ocupação
-        const occupancyPieDataRaw = [
+        const occupancyPieData = [
           { name: 'Ocupados', value: propertiesResult.occupied, color: COLORS.occupied },
           { name: 'Disponíveis', value: propertiesResult.available, color: COLORS.available },
           { name: 'Indisponíveis', value: propertiesResult.unavailable, color: COLORS.unavailable }
-        ];
-        
-        console.log("🥧 [DEBUG] Dados BRUTOS de ocupação (antes de filtrar):", occupancyPieDataRaw);
-        
-        const occupancyPieData = occupancyPieDataRaw.filter(item => item.value > 0);
+        ].filter(item => item.value > 0);
 
-        console.log("🥧 Dados do gráfico de ocupação (após filtrar zeros):", occupancyPieData);
-
-        // Dados de contratos
-        const contractsDataRaw = [
+        const contractsData = [
           { name: 'Ativos', value: contractsResult.active - contractsResult.expiring, color: COLORS.occupied },
           { name: 'Vencendo (30 dias)', value: contractsResult.expiring, color: COLORS.unavailable }
-        ];
-        
-        console.log("📋 [DEBUG] Dados BRUTOS de contratos (antes de filtrar):", contractsDataRaw);
-        
-        const contractsData = contractsDataRaw.filter(item => item.value > 0);
+        ].filter(item => item.value > 0);
 
-        console.log("📋 Dados de contratos (após filtrar zeros):", contractsData);
-
-        // Dados de status de pagamentos
-        const paymentsStatusDataRaw = [
+        const paymentsStatusData = [
           { name: 'Pagos', value: paymentsStatusResult.paid, color: COLORS.occupied },
           { name: 'Pendentes', value: paymentsStatusResult.pending, color: COLORS.available },
           { name: 'Atrasados', value: paymentsStatusResult.overdue, color: COLORS.unavailable }
-        ];
-        
-        console.log("💳 [DEBUG] Dados BRUTOS de status de pagamentos (antes de filtrar):", paymentsStatusDataRaw);
-        
-        const paymentsStatusData = paymentsStatusDataRaw.filter(item => item.value > 0);
+        ].filter(item => item.value > 0);
 
-        console.log("💳 Dados de status de pagamentos (após filtrar zeros):", paymentsStatusData);
-
-        // Processar dados de receita
         const monthlyRevenueData = months.map((m, index) => {
           const monthPayments = paymentsResult[index]?.data || [];
-          console.log(`💰 [DEBUG] Pagamentos do mês ${m.label}:`, monthPayments.length, "pagamentos");
-          
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
           const taxas = bruta * 0.08;
           const liquida = bruta - taxas;
-          
-          console.log(`💰 [DEBUG] Receita ${m.label}: bruta=${bruta}, liquida=${liquida}`);
           
           return { 
             month: m.label, 
@@ -330,14 +299,10 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           };
         });
 
-        console.log("📈 Dados de receita mensal:", monthlyRevenueData);
-
         const monthlyExpensesData = months.map((m, index) => {
           const monthPayments = paymentsResult[index]?.data || [];
           const bruta = monthPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
           const taxas = bruta * 0.08;
-          
-          console.log(`💸 [DEBUG] Despesas ${m.label}: taxas=${taxas}, contas=0`);
           
           return { 
             month: m.label, 
@@ -345,8 +310,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
             contas: 0
           };
         });
-
-        console.log("📊 Dados de despesas mensais:", monthlyExpensesData);
 
         setChartData({
           monthlyRevenueData,
@@ -358,13 +321,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         });
 
         console.log("✅ [FinancialCharts] Dados carregados com sucesso!");
-        console.log("📊 [DEBUG] RESUMO FINAL:");
-        console.log("  - monthlyRevenueData tem dados?", monthlyRevenueData.some(d => d.bruta > 0 || d.liquida > 0));
-        console.log("  - monthlyExpensesData tem dados?", monthlyExpensesData.some(d => d.taxas > 0 || d.contas > 0));
-        console.log("  - occupancyPieData tem dados?", occupancyPieData.length > 0);
-        console.log("  - contractsData tem dados?", contractsData.length > 0);
-        console.log("  - paymentsStatusData tem dados?", paymentsStatusData.length > 0);
-        console.log("  - occupancyTrendData tem dados?", occupancyTrendData.length > 0);
 
       } catch (error) {
         console.error("❌ [FinancialCharts] Erro ao carregar dados:", error);
@@ -411,49 +367,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
   const hasPaymentsStatusData = chartData.paymentsStatusData?.length > 0;
   const hasOccupancyTrendData = chartData.occupancyTrendData?.length > 0;
 
-  console.log("🎨 [RENDER] Verificando dados para renderização:");
-  console.log("  - hasRevenueData:", hasRevenueData);
-  console.log("  - hasExpensesData:", hasExpensesData);
-  console.log("  - hasOccupancyData:", hasOccupancyData, "dados:", chartData.occupancyPieData);
-  console.log("  - hasContractsData:", hasContractsData, "dados:", chartData.contractsData);
-  console.log("  - hasPaymentsStatusData:", hasPaymentsStatusData, "dados:", chartData.paymentsStatusData);
-  console.log("  - hasOccupancyTrendData:", hasOccupancyTrendData);
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* 🧪 GRÁFICO DE TESTE - DEVE APARECER SEMPRE */}
-      <Card className="border-4 border-purple-500">
-        <CardHeader>
-          <CardTitle className="text-base">🧪 TESTE - Gráfico Simples</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div style={{ width: '100%', height: 300, backgroundColor: '#f0f0f0', minHeight: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Teste A', value: 400 },
-                    { name: 'Teste B', value: 300 },
-                    { name: 'Teste C', value: 200 }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label
-                >
-                  <Cell fill="#10b981" />
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#ef4444" />
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Gráfico de Receita Mensal */}
       <Card>
         <CardHeader>
@@ -461,18 +376,16 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasRevenueData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.monthlyRevenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
-                  <Legend />
-                  <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
-                  <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <LineChart width={500} height={300} data={chartData.monthlyRevenueData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                <Legend />
+                <Line type="monotone" dataKey="bruta" stroke={COLORS.bruta} name="Bruta" strokeWidth={2} />
+                <Line type="monotone" dataKey="liquida" stroke={COLORS.liquida} name="Líquida" strokeWidth={2} />
+              </LineChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
@@ -489,18 +402,16 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasExpensesData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.monthlyExpensesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
-                  <Legend />
-                  <Bar dataKey="taxas" fill={COLORS.taxas} name="Taxas" />
-                  <Bar dataKey="contas" fill={COLORS.contas} name="Contas" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <BarChart width={500} height={300} data={chartData.monthlyExpensesData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                <Legend />
+                <Bar dataKey="taxas" fill={COLORS.taxas} name="Taxas" />
+                <Bar dataKey="contas" fill={COLORS.contas} name="Contas" />
+              </BarChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
@@ -517,26 +428,24 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.occupancyPieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.occupancyPieData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <PieChart width={500} height={300}>
+                <Pie
+                  data={chartData.occupancyPieData}
+                  cx={250}
+                  cy={150}
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.occupancyPieData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
@@ -553,26 +462,24 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasContractsData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.contractsData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.contractsData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <PieChart width={500} height={300}>
+                <Pie
+                  data={chartData.contractsData}
+                  cx={250}
+                  cy={150}
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.contractsData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
@@ -589,26 +496,24 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasPaymentsStatusData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.paymentsStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.paymentsStatusData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <PieChart width={500} height={300}>
+                <Pie
+                  data={chartData.paymentsStatusData}
+                  cx={250}
+                  cy={150}
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.paymentsStatusData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
@@ -625,23 +530,21 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         </CardHeader>
         <CardContent>
           {hasOccupancyTrendData ? (
-            <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.occupancyTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip formatter={(value: number) => `${value}%`} />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="taxa" 
-                    stroke={COLORS.occupied} 
-                    name="Taxa de Ocupação (%)" 
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <LineChart width={500} height={300} data={chartData.occupancyTrendData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis domain={[0, 100]} />
+                <Tooltip formatter={(value: number) => `${value}%`} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="taxa" 
+                  stroke={COLORS.occupied} 
+                  name="Taxa de Ocupação (%)" 
+                  strokeWidth={2}
+                />
+              </LineChart>
             </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center">
