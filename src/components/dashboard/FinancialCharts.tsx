@@ -161,7 +161,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
         console.log("📊 Contratos:", contractsResult);
 
-        // Buscar status dos pagamentos do mês atual
         console.log("🔍 Buscando pagamentos dos últimos 6 meses...");
         const paymentsResult = await (async () => {
           const monthsData = months.map(m => ({
@@ -253,26 +252,6 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         })();
 
         console.log("📊 Histórico de ocupação:", occupancyTrendData);
-
-        // Buscar top 5 imóveis por valor de aluguel
-        console.log("🔍 Buscando top 5 imóveis por valor...");
-        const topPropertiesResult = await (async () => {
-          let query = supabase
-            .from("rentals")
-            .select("rental_amount, property:properties!inner(address, location:locations!inner(name))")
-            .eq("status", "active")
-            .order("rental_amount", { ascending: false })
-            .limit(5);
-
-          if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-            query = query.in("property.location_id", allowedLocations);
-          }
-
-          const { data } = await query;
-          return data || [];
-        })();
-
-        console.log("💰 Top 5 imóveis:", topPropertiesResult);
 
         // Buscar distribuição de imóveis por localização
         console.log("🔍 Buscando distribuição por localização...");
