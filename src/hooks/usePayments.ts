@@ -129,11 +129,12 @@ export function usePayments() {
 
       // Aplicar filtros de mês/ano
       if (month && month !== "all") {
-        query = query.eq("reference_month", month);
-        console.log("📅 Filtro de mês aplicado:", month);
+        const paddedMonth = month.toString().padStart(2, '0');
+        query = query.eq("reference_month", paddedMonth);
+        console.log("📅 Filtro de mês aplicado:", paddedMonth);
       }
       if (year && year !== "all") {
-        query = query.eq("reference_year", year);
+        query = query.eq("reference_year", year.toString());
         console.log("📅 Filtro de ano aplicado:", year);
       }
 
