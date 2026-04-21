@@ -65,8 +65,8 @@ export default function Payments() {
   }, [uiState.searchQuery]);
 
   // Remover filtros padrão - mostrar TODOS os pagamentos
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string | number>("all");
+  const [selectedYear, setSelectedYear] = useState<string | number>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
