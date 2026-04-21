@@ -32,7 +32,7 @@ const MONTH_NAMES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
-export default function PaymentsPage() {
+export default function Payments() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -64,10 +64,11 @@ export default function PaymentsPage() {
     return () => clearTimeout(timer);
   }, [uiState.searchQuery]);
 
-  const [filters, setFilters] = useState({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-  });
+  // Remover filtros padrão - mostrar TODOS os pagamentos
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { 
     payments, 
@@ -151,11 +152,11 @@ export default function PaymentsPage() {
   const loadPaymentsEffect = useCallback(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
-      loadPayments(filters.month.toString(), filters.year.toString());
+      loadPayments("all", "all");
       return;
     }
-    loadPayments(filters.month.toString(), filters.year.toString());
-  }, [filters.month, filters.year, loadPayments]);
+    loadPayments("all", "all");
+  }, [loadPayments]);
 
   // Effect simplificado
   useEffect(() => {
@@ -164,11 +165,13 @@ export default function PaymentsPage() {
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {
-    setFilters(prev => ({ ...prev, month: Number(value) }));
+    setUiState(prev => ({ ...prev, paymentToCancel: null }));
+    setSelectedMonth(String(value));
   }, []);
 
   const handleYearChange = useCallback((value: string | number) => {
-    setFilters(prev => ({ ...prev, year: Number(value) }));
+    setUiState(prev => ({ ...prev, paymentToCancel: null }));
+    setSelectedYear(String(value));
   }, []);
 
   const handlePaymentClick = useCallback((payment: Payment) => {
@@ -195,7 +198,7 @@ export default function PaymentsPage() {
       
       setUiState(prev => ({ ...prev, paymentToCancel: null }));
       
-      await loadPayments(filters.month.toString(), filters.year.toString());
+      await loadPayments("all", "all");
       
       toast({
         title: "Recebimento cancelado",
@@ -204,7 +207,7 @@ export default function PaymentsPage() {
     } catch (error) {
       setUiState(prev => ({ ...prev, paymentToCancel: null }));
     }
-  }, [uiState.paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year, toast]);
+  }, [uiState.paymentToCancel, cancelPayment, loadPayments, toast]);
 
   const handleCancelPayment = useCallback((paymentId: string, e?: React.MouseEvent) => {
     if (e) {
@@ -237,7 +240,7 @@ export default function PaymentsPage() {
     
     setUiState(prev => ({ ...prev, selectedPaymentId: null }));
     
-    await loadPayments(filters.month.toString(), filters.year.toString());
+    await loadPayments("all", "all");
     
     setTimeout(() => {
       const updatedPayment = payments.find(p => p.id === paymentId);
@@ -260,7 +263,7 @@ export default function PaymentsPage() {
         });
       }
     }, 500);
-  }, [uiState.selectedPaymentId, loadPayments, filters.month, filters.year, payments, toast]);
+  }, [uiState.selectedPaymentId, loadPayments, payments, toast]);
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
@@ -328,8 +331,8 @@ export default function PaymentsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 w-full">
             <PeriodSelector
-              selectedMonth={filters.month}
-              selectedYear={filters.year}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
               onMonthChange={handleMonthChange}
               onYearChange={handleYearChange}
             />
