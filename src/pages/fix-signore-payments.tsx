@@ -40,10 +40,10 @@ export default function FixSignorePayments() {
       }
 
       addLog(`✅ Locação encontrada: ${rental.id}`);
-      addLog(`📅 Data de início: ${rental.start_date}`);
-      addLog(`📅 Data de término: ${rental.end_date}`);
-      addLog(`💰 Valor mensal: R$ ${rental.rental_amount}`);
-      addLog(`📆 Dia de vencimento: ${rental.payment_day}`);
+      addLog(`📅 Data de início: ${rental.startDate}`);
+      addLog(`📅 Data de término: ${rental.endDate}`);
+      addLog(`💰 Valor mensal: R$ ${rental.monthlyRent}`);
+      addLog(`📆 Dia de vencimento: ${rental.paymentDay}`);
 
       // Buscar pagamentos existentes
       const { data: existingPayments } = await supabase
@@ -61,11 +61,11 @@ export default function FixSignorePayments() {
       }
 
       // Calcular todos os meses que deveriam ter pagamento
-      const startDate = new Date(rental.start_date + "T00:00:00");
-      const endDate = new Date(rental.end_date + "T00:00:00");
-      const paymentDay = rental.payment_day;
-      const monthlyRent = rental.rental_amount || 0;
-      const garageAmount = rental.has_garage ? (rental.garage_value || 0) : 0;
+      const startDate = new Date(rental.startDate + "T00:00:00");
+      const endDate = new Date(rental.endDate + "T00:00:00");
+      const paymentDay = rental.paymentDay;
+      const monthlyRent = rental.monthlyRent || 0;
+      const garageAmount = rental.hasGarage ? (rental.garageValue || 0) : 0;
       const totalMonthlyRent = monthlyRent + garageAmount;
 
       addLog(`💰 Valor total mensal (aluguel + garagem): R$ ${totalMonthlyRent}`);
