@@ -600,9 +600,9 @@ export const rentalUpdateService = {
       
       const oldPaymentDay = oldRental.paymentDay;
       const newPaymentDay = newChanges.paymentDay;
-      const daysDifference = Math.abs(newPaymentDay - oldPaymentDay);
+      const daysDifference = newPaymentDay - oldPaymentDay;
       
-      console.log(`📊 Mudança de vencimento: Dia ${oldPaymentDay} → Dia ${newPaymentDay} (${daysDifference} dias de diferença)`);
+      console.log(`📊 Mudança de vencimento: Dia ${oldPaymentDay} → Dia ${newPaymentDay} (${daysDifference > 0 ? '+' : ''}${daysDifference} dias)`);
       
       const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
       const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
@@ -610,15 +610,38 @@ export const rentalUpdateService = {
         : 0;
       const totalMonthlyRent = monthlyRent + garageAmount;
       
-      // Calcular o valor proporcional dos dias extras
-      const extraDaysValue = calculateProportionalAmount(totalMonthlyRent, daysDifference);
-      
-      console.log(`💰 Valor dos ${daysDifference} dias extras: R$ ${extraDaysValue.toFixed(2)}`);
-      
-      // Atualizar o primeiro recebimento pendente com a cobrança dos dias extras
+      // Encontrar o primeiro pagamento pendente (em aberto)
       const firstPendingPayment = pendingPayments[0];
       
       if (firstPendingPayment) {
+        // Calcular o valor diário baseado em 30 dias (padrão)
+        const dailyRate = totalMonthlyRent / 30;
+        
+        // Calcular o valor dos dias extras/faltantes
+        const adjustmentAmount = dailyRate * Math.abs(daysDifference);
+        
+        console.log(`💰 Cálculo do ajuste:`, {
+          totalMonthlyRent,
+          dailyRate: dailyRate.toFixed(2),
+          daysDifference,
+          adjustmentAmount: adjustmentAmount.toFixed(2)
+        });
+        
+        // Novo valor esperado
+        let newExpectedAmount: number;
+        let adjustmentDescription: string;
+        
+        if (daysDifference > 0) {
+          // Vencimento adiado (mais dias) - ADICIONAR ao valor
+          newExpectedAmount = totalMonthlyRent + adjustmentAmount;
+          adjustmentDescription = `Ajuste mudança vencimento (${oldPaymentDay} → ${newPaymentDay}) - ${Math.abs(daysDifference)} dias extras`;
+        } else {
+          // Vencimento antecipado (menos dias) - SUBTRAIR do valor
+          newExpectedAmount = totalMonthlyRent - adjustmentAmount;
+          adjustmentDescription = `Ajuste mudança vencimento (${oldPaymentDay} → ${newPaymentDay}) - ${Math.abs(daysDifference)} dias a menos`;
+        }
+        
+        // Calcular a nova data de vencimento
         const newDueDate = calculateDueDate(
           Number(firstPendingPayment.reference_month), 
           Number(firstPendingPayment.reference_year), 
@@ -633,32 +656,43 @@ export const rentalUpdateService = {
         
         const breakdown = [
           {
-            label: `Aluguel ${capitalizedMonth}/${referenceYear}`,
-            value: totalMonthlyRent
-          },
-          {
-            label: "Mudança data de vencimento",
-            value: 0,
-            description: `De dia ${oldPaymentDay} para dia ${newPaymentDay} (${daysDifference} dias extras)`,
-            extraValue: extraDaysValue
+            type: "addition",
+            amount: parseFloat(monthlyRent.toFixed(2)),
+            description: "Aluguel"
           }
         ];
-        
-        const newExpectedAmount = totalMonthlyRent + extraDaysValue;
+
+        if (garageAmount > 0) {
+          breakdown.push({
+            type: "addition",
+            amount: parseFloat(garageAmount.toFixed(2)),
+            description: "Garagem"
+          });
+        }
+
+        // Adicionar o ajuste
+        if (daysDifference !== 0) {
+          breakdown.push({
+            type: "addition",
+            amount: parseFloat(adjustmentAmount.toFixed(2)),
+            description: adjustmentDescription
+          });
+        }
         
         updates.push({
           id: firstPendingPayment.id,
           changes: {
             due_date: newDueDate,
-            expected_amount: newExpectedAmount,
+            expected_amount: parseFloat(newExpectedAmount.toFixed(2)),
             breakdown: breakdown,
           }
         });
         
         console.log(`✅ Primeiro recebimento pendente atualizado:`);
+        console.log(`   - Período: ${capitalizedMonth}/${referenceYear}`);
         console.log(`   - Nova data: ${newDueDate}`);
         console.log(`   - Novo valor: R$ ${newExpectedAmount.toFixed(2)}`);
-        console.log(`   - Breakdown com ${daysDifference} dias extras`);
+        console.log(`   - Breakdown:`, breakdown);
       }
       
       // Atualizar due_date dos demais recebimentos pendentes (sem cobrar dias extras)
