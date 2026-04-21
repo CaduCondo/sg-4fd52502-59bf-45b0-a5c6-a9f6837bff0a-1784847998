@@ -120,15 +120,33 @@ export function usePayments() {
         `)
         .order("due_date", { ascending: true });
 
+      console.log("🔍 Query construída:", {
+        hasMonthFilter: !!month && month !== "all",
+        monthValue: month,
+        hasYearFilter: !!year && year !== "all",
+        yearValue: year
+      });
+
       // Aplicar filtros de mês/ano
       if (month && month !== "all") {
         query = query.eq("reference_month", month);
+        console.log("📅 Filtro de mês aplicado:", month);
       }
       if (year && year !== "all") {
         query = query.eq("reference_year", year);
+        console.log("📅 Filtro de ano aplicado:", year);
       }
 
+      console.log("🚀 Executando query...");
       const { data: paymentsData, error: paymentsError } = await query;
+
+      console.log("📊 Resultado da query:", {
+        hasData: !!paymentsData,
+        dataLength: paymentsData?.length || 0,
+        hasError: !!paymentsError,
+        errorMessage: paymentsError?.message,
+        errorDetails: paymentsError
+      });
 
       // Verificar se foi cancelado
       if (abortControllerRef.current?.signal.aborted) {
