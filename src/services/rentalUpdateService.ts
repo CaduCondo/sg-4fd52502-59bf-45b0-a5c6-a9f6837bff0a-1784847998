@@ -300,23 +300,52 @@ export const rentalUpdateService = {
             .order("reference_year", { ascending: false })
             .order("reference_month", { ascending: false });
 
+          console.log(`📊 Total de pagamentos existentes: ${allExistingPayments?.length || 0}`);
+          console.log("📋 Pagamentos existentes:", allExistingPayments);
+
           const existingRefs = new Set(
             (allExistingPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
           );
 
+          console.log("🔍 Meses que já existem:", Array.from(existingRefs));
+
           // Gerar novos pagamentos
           const newPayments = [];
-          const currentDate = new Date(startDate);
           
-          // Encontrar o primeiro mês que ainda não tem pagamento
+          // Encontrar o primeiro mês após o último pagamento existente
+          const lastExisting = allExistingPayments?.[0];
+          let currentDate: Date;
+          
+          if (lastExisting) {
+            // Começar do mês SEGUINTE ao último pagamento existente
+            currentDate = new Date(
+              parseInt(lastExisting.reference_year),
+              parseInt(lastExisting.reference_month), // já avança 1 mês porque o construtor Date usa índice 0-11
+              1
+            );
+            console.log(`📅 Último pagamento existente: ${lastExisting.reference_month}/${lastExisting.reference_year}`);
+            console.log(`📅 Começando a criar pagamentos a partir de: ${currentDate.toISOString().split('T')[0]}`);
+          } else {
+            currentDate = new Date(startDate);
+            console.log(`📅 Nenhum pagamento existente, começando da data de início: ${currentDate.toISOString().split('T')[0]}`);
+          }
+          
+          console.log(`📅 Criar pagamentos até: ${newEndDate.toISOString().split('T')[0]}`);
+          
+          let monthsToCreate = 0;
+          
+          // Encontrar os meses que ainda não têm pagamento
           while (currentDate <= newEndDate) {
             const month = currentDate.getMonth() + 1;
             const year = currentDate.getFullYear();
             const refKey = `${year}-${month}`;
             
             if (!existingRefs.has(refKey)) {
+              monthsToCreate++;
               const dueDate = new Date(year, month - 1, paymentDay);
               const isLastMonth = (year === newEndDate.getFullYear() && month === newEndDate.getMonth() + 1);
+              
+              console.log(`📅 Criando pagamento para ${month}/${year} (último? ${isLastMonth})`);
               
               if (isLastMonth) {
                 // Último mês - pode ser proporcional
@@ -354,6 +383,8 @@ export const rentalUpdateService = {
                     status: "pending",
                     breakdown: breakdown,
                   });
+                  
+                  console.log(`   ✅ Último mês proporcional: R$ ${proportionalTotal.toFixed(2)} (${endDay} dias)`);
                 } else {
                   // Último mês integral
                   const breakdown = [
@@ -381,6 +412,8 @@ export const rentalUpdateService = {
                     status: "pending",
                     breakdown: breakdown,
                   });
+                  
+                  console.log(`   ✅ Último mês integral: R$ ${totalMonthlyRent.toFixed(2)}`);
                 }
               } else {
                 // Mês intermediário - sempre integral
@@ -409,22 +442,38 @@ export const rentalUpdateService = {
                   status: "pending",
                   breakdown: breakdown,
                 });
+                
+                console.log(`   ✅ Mês intermediário integral: R$ ${totalMonthlyRent.toFixed(2)}`);
               }
+            } else {
+              console.log(`   ⏭️ Mês ${month}/${year} já tem pagamento, pulando...`);
             }
             
             currentDate.setMonth(currentDate.getMonth() + 1);
           }
 
+          console.log(`📊 Total de novos pagamentos a criar: ${newPayments.length}`);
+          console.log(`📊 Meses que deveriam ser criados: ${monthsToCreate}`);
+
           if (newPayments.length > 0) {
-            const { error: insertError } = await supabase
+            console.log("💾 Inserindo novos pagamentos no banco...");
+            console.log("📋 Pagamentos a inserir:", newPayments);
+            
+            const { data: insertedData, error: insertError } = await supabase
               .from("payments")
-              .insert(newPayments);
+              .insert(newPayments)
+              .select();
 
             if (insertError) {
               console.error("❌ Erro ao inserir novos pagamentos:", insertError);
+              console.error("❌ Detalhes do erro:", JSON.stringify(insertError, null, 2));
             } else {
               console.log(`✅ ${newPayments.length} novos pagamentos criados para o período estendido`);
+              console.log("✅ Pagamentos criados:", insertedData);
             }
+          } else {
+            console.log("⚠️ Nenhum novo pagamento foi gerado!");
+            console.log("⚠️ Isso pode indicar que todos os meses já têm pagamentos ou há um problema na lógica");
           }
 
           // Atualizar total_installments de todos os pagamentos
