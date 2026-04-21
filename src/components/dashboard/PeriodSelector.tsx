@@ -103,3 +103,71 @@ export const PeriodSelector = memo(function PeriodSelector({
     </div>
   );
 });
+
+export function PeriodSelector({
+  selectedMonth,
+  selectedYear,
+  onMonthChange,
+  onYearChange,
+}: PeriodSelectorProps) {
+  const months = [
+    { value: "all", label: "Todos os meses" },
+    { value: 1, label: "Janeiro" },
+    { value: 2, label: "Fevereiro" },
+    { value: 3, label: "Março" },
+    { value: 4, label: "Abril" },
+    { value: 5, label: "Maio" },
+    { value: 6, label: "Junho" },
+    { value: 7, label: "Julho" },
+    { value: 8, label: "Agosto" },
+    { value: 9, label: "Setembro" },
+    { value: 10, label: "Outubro" },
+    { value: 11, label: "Novembro" },
+    { value: 12, label: "Dezembro" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = [
+    { value: "all", label: "Todos os anos" },
+    ...Array.from({ length: 10 }, (_, i) => ({
+      value: currentYear - 5 + i,
+      label: (currentYear - 5 + i).toString(),
+    })),
+  ];
+
+  return (
+    <div className="flex gap-2">
+      <Select
+        value={selectedMonth?.toString() || "all"}
+        onValueChange={(value) => onMonthChange(value === "all" ? "all" : parseInt(value))}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Selecione o mês" />
+        </SelectTrigger>
+        <SelectContent>
+          {months.map((month) => (
+            <SelectItem key={month.value} value={month.value.toString()}>
+              {month.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={selectedYear?.toString() || "all"}
+        onValueChange={(value) => onYearChange(value === "all" ? "all" : parseInt(value))}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Selecione o ano" />
+        </SelectTrigger>
+        <SelectContent>
+          {years.map((year) => (
+            <SelectItem key={year.value} value={year.value.toString()}>
+              {year.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
