@@ -14,26 +14,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
-    storageKey: 'rental-auth-token',
+    detectSessionInUrl: true,
+  },
+  db: {
+    schema: "public",
   },
   global: {
     headers: {
-      'x-client-info': 'rental-management',
-    },
-    fetch: (url, options: RequestInit = {}) => {
-      return fetch(url, {
-        ...options,
-        signal: options.signal,
-      });
-    },
-  },
-  db: {
-    schema: 'public',
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
+      "X-Client-Info": "supabase-js-web",
     },
   },
 });
@@ -84,87 +72,5 @@ export const getSupabaseSession = async () => {
   }
 };
 
-// Health check aprimorado para detectar projeto pausado
-export const checkSupabaseHealth = async (): Promise<{
-  healthy: boolean;
-  status: 'healthy' | 'paused' | 'unhealthy' | 'network_error';
-  message: string;
-}> => {
-  try {
-    console.log('🏥 Verificando saúde do Supabase...');
-    
-    // Criar AbortController com timeout AUMENTADO
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort(new Error('Health check timeout após 60 segundos'));
-    }, 60000); // Aumentado de 30s para 60s
-    
-    try {
-      const { data, error } = await supabase
-        .from('system_users')
-        .select('id')
-        .limit(1)
-        .abortSignal(controller.signal);
-      
-      clearTimeout(timeoutId);
-      
-      if (error) {
-        console.error('❌ Erro no health check:', error);
-        
-        // Detectar projeto pausado
-        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-          return {
-            healthy: false,
-            status: 'paused',
-            message: '🛑 Projeto Supabase pausado ou offline. Acesse o dashboard do Supabase para reativá-lo.'
-          };
-        }
-        
-        return {
-          healthy: false,
-          status: 'unhealthy',
-          message: `⚠️ Serviço do Supabase com problemas: ${error.message}`
-        };
-      }
-      
-      console.log('✅ Supabase funcionando normalmente');
-      return {
-        healthy: true,
-        status: 'healthy',
-        message: '✅ Conexão estabelecida com sucesso'
-      };
-    } catch (queryError: any) {
-      clearTimeout(timeoutId);
-      
-      // Tratar erro de abort
-      if (queryError.name === 'AbortError') {
-        console.warn('⏱️ Health check abortado por timeout');
-        return {
-          healthy: false,
-          status: 'network_error',
-          message: '⏱️ Timeout ao conectar ao Supabase. Verifique sua conexão.'
-        };
-      }
-      
-      throw queryError;
-    }
-    
-  } catch (err: any) {
-    console.error('❌ Erro crítico no health check:', err);
-    
-    // Detectar erro de rede/projeto pausado
-    if (err.name === 'AbortError' || err.message?.includes('fetch') || err.message?.includes('timeout')) {
-      return {
-        healthy: false,
-        status: 'paused',
-        message: '🛑 Não foi possível conectar ao Supabase. O projeto pode estar pausado ou offline.'
-      };
-    }
-    
-    return {
-      healthy: false,
-      status: 'network_error',
-      message: '❌ Erro de rede ou conexão. Verifique sua internet e o status do Supabase.'
-    };
-  }
-};
+// Conexão estabelecida - sem health check
+console.log("✅ Cliente Supabase inicializado");
