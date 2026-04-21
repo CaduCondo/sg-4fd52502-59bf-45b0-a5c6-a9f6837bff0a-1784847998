@@ -160,29 +160,19 @@ export default function Payments() {
   }, []);
 
   // Carregar pagamentos quando os filtros mudarem
-  const loadPaymentsEffect = useCallback(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      loadPayments("all", "all");
-      return;
-    }
-    loadPayments("all", "all");
-  }, [loadPayments]);
-
-  // Effect simplificado
   useEffect(() => {
-    loadPaymentsEffect();
-  }, [loadPaymentsEffect]);
+    loadPayments(selectedMonth, selectedYear);
+  }, [loadPayments, selectedMonth, selectedYear]);
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {
     setUiState(prev => ({ ...prev, paymentToCancel: null }));
-    setSelectedMonth(String(value));
+    setSelectedMonth(value);
   }, []);
 
   const handleYearChange = useCallback((value: string | number) => {
     setUiState(prev => ({ ...prev, paymentToCancel: null }));
-    setSelectedYear(String(value));
+    setSelectedYear(value);
   }, []);
 
   const handlePaymentClick = useCallback((payment: Payment) => {
