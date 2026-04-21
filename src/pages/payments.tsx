@@ -70,17 +70,6 @@ export default function Payments() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Handlers para os filtros
-  const handleMonthChange = (month: string | number) => {
-    console.log("📅 Mês selecionado:", month);
-    setSelectedMonth(month);
-  };
-
-  const handleYearChange = (year: string | number) => {
-    console.log("📅 Ano selecionado:", year);
-    setSelectedYear(year);
-  };
-
   const { 
     payments, 
     rentals, 
