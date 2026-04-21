@@ -211,7 +211,8 @@ export const rentalUpdateService = {
       console.log("📅 Detectada mudança na data de término");
       
       const startDate = new Date((newChanges.startDate ?? oldRental.startDate) + "T00:00:00");
-      const endDate = newChanges.endDate ? new Date(newChanges.endDate + "T00:00:00") : null;
+      const oldEndDate = oldRental.endDate ? new Date(oldRental.endDate + "T00:00:00") : null;
+      const newEndDate = newChanges.endDate ? new Date(newChanges.endDate + "T00:00:00") : null;
       const paymentDay = newChanges.paymentDay ?? oldRental.paymentDay;
       const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
       const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
@@ -219,12 +220,229 @@ export const rentalUpdateService = {
         : 0;
       const totalMonthlyRent = monthlyRent + garageAmount;
 
-      if (endDate) {
+      if (newEndDate && oldEndDate) {
+        // CENÁRIO: Extensão do contrato (nova data final é POSTERIOR à antiga)
+        if (newEndDate > oldEndDate) {
+          console.log("📈 EXTENSÃO DE CONTRATO DETECTADA!");
+          console.log(`   - Data final antiga: ${oldEndDate.toISOString().split('T')[0]}`);
+          console.log(`   - Data final nova: ${newEndDate.toISOString().split('T')[0]}`);
+          
+          // Buscar o último pagamento do período antigo
+          const { data: lastOldPayment } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("rental_id", rentalId)
+            .order("reference_year", { ascending: false })
+            .order("reference_month", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (lastOldPayment) {
+            const lastMonth = Number(lastOldPayment.reference_month);
+            const lastYear = Number(lastOldPayment.reference_year);
+            const lastDayOfMonth = new Date(lastYear, lastMonth, 0).getDate();
+            const oldEndDay = oldEndDate.getDate();
+            
+            // Verificar se o último pagamento era proporcional (não cobrava mês completo)
+            const wasProportional = oldEndDay < lastDayOfMonth;
+            
+            if (wasProportional) {
+              console.log("🔄 Último pagamento anterior era PROPORCIONAL - atualizando para INTEGRAL");
+              
+              // Atualizar para valor integral
+              const integralBreakdown = [
+                {
+                  description: "Aluguel",
+                  amount: parseFloat(monthlyRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (garageAmount > 0) {
+                integralBreakdown.push({
+                  description: "Garagem",
+                  amount: parseFloat(garageAmount.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              await supabase
+                .from("payments")
+                .update({
+                  expected_amount: totalMonthlyRent,
+                  breakdown: integralBreakdown,
+                })
+                .eq("id", lastOldPayment.id);
+
+              console.log(`✅ Pagamento ${lastMonth}/${lastYear} atualizado de proporcional para integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+            }
+          }
+
+          // Gerar novos pagamentos para o período estendido
+          console.log("📝 Gerando novos pagamentos para o período estendido...");
+          
+          // Calcular primeiro mês do período novo (mês seguinte ao último pagamento existente)
+          const { data: allExistingPayments } = await supabase
+            .from("payments")
+            .select("reference_month, reference_year")
+            .eq("rental_id", rentalId)
+            .order("reference_year", { ascending: false })
+            .order("reference_month", { ascending: false });
+
+          const existingRefs = new Set(
+            (allExistingPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
+          );
+
+          // Gerar novos pagamentos
+          const newPayments = [];
+          const currentDate = new Date(startDate);
+          
+          // Encontrar o primeiro mês que ainda não tem pagamento
+          while (currentDate <= newEndDate) {
+            const month = currentDate.getMonth() + 1;
+            const year = currentDate.getFullYear();
+            const refKey = `${year}-${month}`;
+            
+            if (!existingRefs.has(refKey)) {
+              const dueDate = new Date(year, month - 1, paymentDay);
+              const isLastMonth = (year === newEndDate.getFullYear() && month === newEndDate.getMonth() + 1);
+              
+              if (isLastMonth) {
+                // Último mês - pode ser proporcional
+                const endDay = newEndDate.getDate();
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const isProportional = endDay < daysInMonth;
+                
+                if (isProportional) {
+                  const proportionalRent = (monthlyRent / 30) * endDay;
+                  const proportionalGarage = garageAmount > 0 ? (garageAmount / 30) * endDay : 0;
+                  const proportionalTotal = proportionalRent + proportionalGarage;
+                  
+                  const breakdown = [
+                    {
+                      description: `Aluguel - Última Parcela (${endDay} dias)`,
+                      amount: parseFloat(proportionalRent.toFixed(2)),
+                      type: "addition",
+                    }
+                  ];
+
+                  if (garageAmount > 0) {
+                    breakdown.push({
+                      description: `Garagem (${endDay} dias)`,
+                      amount: parseFloat(proportionalGarage.toFixed(2)),
+                      type: "addition",
+                    });
+                  }
+
+                  newPayments.push({
+                    rental_id: rentalId,
+                    reference_month: month.toString(),
+                    reference_year: year.toString(),
+                    due_date: dueDate.toISOString().split('T')[0],
+                    expected_amount: parseFloat(proportionalTotal.toFixed(2)),
+                    status: "pending",
+                    breakdown: breakdown,
+                  });
+                } else {
+                  // Último mês integral
+                  const breakdown = [
+                    {
+                      description: "Aluguel",
+                      amount: parseFloat(monthlyRent.toFixed(2)),
+                      type: "addition",
+                    }
+                  ];
+
+                  if (garageAmount > 0) {
+                    breakdown.push({
+                      description: "Garagem",
+                      amount: parseFloat(garageAmount.toFixed(2)),
+                      type: "addition",
+                    });
+                  }
+
+                  newPayments.push({
+                    rental_id: rentalId,
+                    reference_month: month.toString(),
+                    reference_year: year.toString(),
+                    due_date: dueDate.toISOString().split('T')[0],
+                    expected_amount: totalMonthlyRent,
+                    status: "pending",
+                    breakdown: breakdown,
+                  });
+                }
+              } else {
+                // Mês intermediário - sempre integral
+                const breakdown = [
+                  {
+                    description: "Aluguel",
+                    amount: parseFloat(monthlyRent.toFixed(2)),
+                    type: "addition",
+                  }
+                ];
+
+                if (garageAmount > 0) {
+                  breakdown.push({
+                    description: "Garagem",
+                    amount: parseFloat(garageAmount.toFixed(2)),
+                    type: "addition",
+                  });
+                }
+
+                newPayments.push({
+                  rental_id: rentalId,
+                  reference_month: month.toString(),
+                  reference_year: year.toString(),
+                  due_date: dueDate.toISOString().split('T')[0],
+                  expected_amount: totalMonthlyRent,
+                  status: "pending",
+                  breakdown: breakdown,
+                });
+              }
+            }
+            
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+
+          if (newPayments.length > 0) {
+            const { error: insertError } = await supabase
+              .from("payments")
+              .insert(newPayments);
+
+            if (insertError) {
+              console.error("❌ Erro ao inserir novos pagamentos:", insertError);
+            } else {
+              console.log(`✅ ${newPayments.length} novos pagamentos criados para o período estendido`);
+            }
+          }
+
+          // Atualizar total_installments de todos os pagamentos
+          const { data: allPayments } = await supabase
+            .from("payments")
+            .select("id")
+            .eq("rental_id", rentalId);
+
+          const totalInstallments = (allPayments || []).length;
+
+          await supabase
+            .from("payments")
+            .update({ total_installments: totalInstallments })
+            .eq("rental_id", rentalId);
+
+          console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
+        } else {
+          // CENÁRIO: Redução do contrato (nova data final é ANTERIOR à antiga)
+          console.log("📉 REDUÇÃO DE CONTRATO DETECTADA");
+          // Lógica existente...
+        }
+      }
+
+      if (newEndDate) {
         // Calcular novo total de parcelas
-        const newTotalInstallments = getMonthsBetween(startDate, endDate);
+        const newTotalInstallments = getMonthsBetween(startDate, newEndDate);
         
         // Verificar se última parcela é proporcional
-        const isLastProportional = !isEndOfMonth(endDate, paymentDay);
+        const isLastProportional = !isEndOfMonth(newEndDate, paymentDay);
         
         if (isLastProportional) {
           // Buscar última parcela
@@ -235,15 +453,15 @@ export const rentalUpdateService = {
           
           if (lastPayment && (lastPayment.status === "pending" || lastPayment.status === "overdue")) {
             // Calcular data de vencimento da última parcela
-            const lastDueDate = new Date(endDate);
+            const lastDueDate = new Date(newEndDate);
             lastDueDate.setDate(paymentDay);
-            if (lastDueDate < endDate) {
+            if (lastDueDate < newEndDate) {
               lastDueDate.setMonth(lastDueDate.getMonth() + 1);
             }
             
             // Calcular início do último período
-            const lastPeriodStart = new Date(endDate.getFullYear(), endDate.getMonth(), paymentDay);
-            const days = getDaysBetween(lastPeriodStart, endDate);
+            const lastPeriodStart = new Date(newEndDate.getFullYear(), newEndDate.getMonth(), paymentDay);
+            const days = getDaysBetween(lastPeriodStart, newEndDate);
             const proportionalAmount = calculateProportionalAmount(totalMonthlyRent, days);
             
             updates.push({
