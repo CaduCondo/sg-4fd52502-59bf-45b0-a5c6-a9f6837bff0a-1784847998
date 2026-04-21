@@ -16,10 +16,10 @@ let paymentsCache: {
 } = {
   data: null,
   key: "",
-  timestamp: 0,
+  timestamp: 0, // Forçar cache expirado
 };
 
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
+const CACHE_DURATION = 0; // Desabilitar cache temporariamente
 
 // Invalidar cache
 export const invalidatePaymentsCache = () => {
@@ -54,23 +54,8 @@ export function usePayments() {
       const cacheKey = `${month || "all"}-${year || "all"}`;
       const now = Date.now();
       
-      // Sempre buscar dados frescos se o cache está desatualizado
-      if (
-        paymentsCache.data &&
-        paymentsCache.key === cacheKey &&
-        (now - paymentsCache.timestamp) < CACHE_DURATION
-      ) {
-        console.log("✅ Usando cache - verificar se tem start_date:", paymentsCache.data.rentals[0]);
-        setPayments(paymentsCache.data.payments);
-        setRentals(paymentsCache.data.rentals);
-        setProperties(paymentsCache.data.properties);
-        setTenants(paymentsCache.data.tenants);
-        setLoading(false);
-        loadingRef.current = false;
-        return;
-      }
-
-      console.log("🔄 Buscando dados FRESCOS do banco com start_date incluído...");
+      // SEMPRE buscar dados frescos - cache desabilitado temporariamente
+      console.log("🔄 Buscando dados FRESCOS do banco (cache desabilitado)...");
 
       // QUERY ÚNICA COM TODOS OS JOINS (SUPER OTIMIZADO!)
       let query = supabase
