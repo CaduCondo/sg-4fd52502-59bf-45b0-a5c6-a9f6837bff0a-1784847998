@@ -305,8 +305,8 @@ export default function Financial() {
       const expensesQuery: any = supabase
         .from("location_expenses")
         .select("amount")
-        .eq("reference_month", String(filterMonth).padStart(2, '0'))
-        .eq("reference_year", String(filterYear));
+        .eq("reference_month", filterMonth)
+        .eq("reference_year", filterYear);
 
       const exemptionsResult: any = await exemptionsQuery;
       const configResult: any = await configQuery;
