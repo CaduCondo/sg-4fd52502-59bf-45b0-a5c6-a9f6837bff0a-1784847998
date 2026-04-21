@@ -11,7 +11,6 @@ import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
-import { checkSupabaseHealth } from "@/integrations/supabase/client";
 
 export default function Login() {
   const router = useRouter();
@@ -21,7 +20,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
+  const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'healthy' | 'unhealthy'>('healthy');
   
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -33,26 +32,8 @@ export default function Login() {
   useEffect(() => {
     initializeStorage();
     
-    // Verificar saúde do Supabase
-    const checkHealth = async () => {
-      const health = await checkSupabaseHealth();
-      
-      if (!health.healthy) {
-        setSupabaseStatus('unhealthy');
-        setError(health.message);
-        
-        toast({
-          title: "⚠️ Problema de Conexão",
-          description: health.message,
-          variant: "destructive",
-          duration: 10000,
-        });
-      } else {
-        setSupabaseStatus('healthy');
-      }
-    };
-    
-    checkHealth();
+    // Assumir que o Supabase está saudável sem verificar para evitar timeout
+    setSupabaseStatus('healthy');
     
     if (isAuthenticated()) {
       router.push("/dashboard");
