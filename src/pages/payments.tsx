@@ -99,7 +99,7 @@ export default function Payments() {
     // Formato sempre: "X/Y" mesmo para parcelas proporcionais
     if (!payment.installment || !payment.totalInstallments) {
       console.warn("Payment sem installment ou totalInstallments:", payment);
-      return "?/?";
+      return "N/A";
     }
     
     return `${payment.installment}/${payment.totalInstallments}`;
