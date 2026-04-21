@@ -16,10 +16,13 @@ interface TenantFiltersProps {
   totalCount: number;
 }
 
-const STATUS_OPTIONS = [
+const statusOptions = [
+  { value: "all", label: "Todos os Status" },
   { value: "active", label: "Ativo" },
   { value: "rented", label: "Locatário" },
   { value: "inactive", label: "Inativo" },
+  { value: "late", label: "Inadimplente" },
+  { value: "debt", label: "Em Débito" },
 ];
 
 export const TenantFilters = memo(function TenantFilters({
@@ -38,8 +41,8 @@ export const TenantFilters = memo(function TenantFilters({
 
   const statusText = useMemo(() => {
     if (statusFilter.length === 0) return "Nenhum";
-    if (statusFilter.length === STATUS_OPTIONS.length) return "Todos";
-    return STATUS_OPTIONS
+    if (statusFilter.length === statusOptions.length) return "Todos";
+    return statusOptions
       .filter(opt => statusFilter.includes(opt.value))
       .map(opt => opt.label)
       .join(", ");
@@ -89,7 +92,7 @@ export const TenantFilters = memo(function TenantFilters({
             </PopoverTrigger>
             <PopoverContent className="w-[180px] p-3" align="start">
               <div className="space-y-2">
-                {STATUS_OPTIONS.map((option) => (
+                {statusOptions.map((option) => (
                   <label
                     key={option.value}
                     className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"

@@ -16,12 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
-const STATUS_CONFIG = {
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   active: { label: "Ativo", variant: "default" as const },
   inactive: { label: "Inativo", variant: "secondary" as const },
-  rented: { label: "Locado", variant: "default" as const },
-  locatario: { label: "Locatário", variant: "default" as const },
-} as const;
+  rented: { label: "Locatário", variant: "outline" as const },
+  late: { label: "Inadimplente", variant: "destructive" as const },
+  debt: { label: "Em Débito", variant: "destructive" as const },
+};
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -193,7 +194,7 @@ export default function TenantsPage() {
   }, []);
 
   const getStatusBadge = useCallback((status: string) => {
-    const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.active;
+    const config = statusConfig[status] || statusConfig.active;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   }, []);
 

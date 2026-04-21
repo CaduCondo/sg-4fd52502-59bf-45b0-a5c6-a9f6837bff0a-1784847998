@@ -181,10 +181,8 @@ const PersonalDataSection = memo(function PersonalDataSection({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="rented">Locatário</SelectItem>
                 <SelectItem value="inactive">Inativo</SelectItem>
-                <SelectItem value="rented">Alugado</SelectItem>
-                <SelectItem value="late">Inadimplente</SelectItem>
-                <SelectItem value="debt">Em Débito</SelectItem>
               </SelectContent>
             </Select>
           </div>

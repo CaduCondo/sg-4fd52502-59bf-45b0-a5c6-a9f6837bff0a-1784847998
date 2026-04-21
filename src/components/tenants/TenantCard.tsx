@@ -19,11 +19,13 @@ const STATUS_STYLES = {
   default: "bg-gray-500 hover:bg-gray-600",
 } as const;
 
-const STATUS_LABELS = {
+const statusLabels: Record<string, string> = {
   active: "Ativo",
   rented: "Locatário",
   inactive: "Inativo",
-} as const;
+  late: "Inadimplente",
+  debt: "Em Débito",
+};
 
 export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
   const statusColor = useMemo(() => 
@@ -32,7 +34,7 @@ export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, 
   );
 
   const statusLabel = useMemo(() => 
-    STATUS_LABELS[tenant.status as keyof typeof STATUS_LABELS] || tenant.status,
+    statusLabels[tenant.status as keyof typeof statusLabels] || tenant.status,
     [tenant.status]
   );
 
