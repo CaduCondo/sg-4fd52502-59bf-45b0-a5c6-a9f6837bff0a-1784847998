@@ -39,19 +39,17 @@ export default function FixSignorePayments() {
         return;
       }
 
-      const rentalData = rental as any;
-
-      addLog(`✅ Locação encontrada: ${rentalData.id}`);
-      addLog(`📅 Data de início: ${rentalData.start_date}`);
-      addLog(`📅 Data de término: ${rentalData.end_date}`);
-      addLog(`💰 Valor mensal: R$ ${rentalData.monthly_rent}`);
-      addLog(`📆 Dia de vencimento: ${rentalData.payment_day}`);
+      addLog(`✅ Locação encontrada: ${rental.id}`);
+      addLog(`📅 Data de início: ${rental.start_date}`);
+      addLog(`📅 Data de término: ${rental.end_date}`);
+      addLog(`💰 Valor mensal: R$ ${rental.rental_amount}`);
+      addLog(`📆 Dia de vencimento: ${rental.payment_day}`);
 
       // Buscar pagamentos existentes
       const { data: existingPayments } = await supabase
         .from("payments")
         .select("reference_month, reference_year, expected_amount")
-        .eq("rental_id", rentalData.id)
+        .eq("rental_id", rental.id)
         .order("reference_year", { ascending: true })
         .order("reference_month", { ascending: true });
 
@@ -63,11 +61,11 @@ export default function FixSignorePayments() {
       }
 
       // Calcular todos os meses que deveriam ter pagamento
-      const startDate = new Date(rentalData.start_date + "T00:00:00");
-      const endDate = new Date(rentalData.end_date + "T00:00:00");
-      const paymentDay = rentalData.payment_day;
-      const monthlyRent = rentalData.monthly_rent || 0;
-      const garageAmount = rentalData.has_garage ? (rentalData.garage_value || 0) : 0;
+      const startDate = new Date(rental.start_date + "T00:00:00");
+      const endDate = new Date(rental.end_date + "T00:00:00");
+      const paymentDay = rental.payment_day;
+      const monthlyRent = rental.rental_amount || 0;
+      const garageAmount = rental.has_garage ? (rental.garage_value || 0) : 0;
       const totalMonthlyRent = monthlyRent + garageAmount;
 
       addLog(`💰 Valor total mensal (aluguel + garagem): R$ ${totalMonthlyRent}`);
@@ -120,7 +118,7 @@ export default function FixSignorePayments() {
               }
 
               newPayments.push({
-                rental_id: rentalData.id,
+                rental_id: rental.id,
                 reference_month: month.toString(),
                 reference_year: year.toString(),
                 due_date: dueDate.toISOString().split('T')[0],
@@ -148,7 +146,7 @@ export default function FixSignorePayments() {
               }
 
               newPayments.push({
-                rental_id: rentalData.id,
+                rental_id: rental.id,
                 reference_month: month.toString(),
                 reference_year: year.toString(),
                 due_date: dueDate.toISOString().split('T')[0],
@@ -177,7 +175,7 @@ export default function FixSignorePayments() {
             }
 
             newPayments.push({
-              rental_id: rentalData.id,
+              rental_id: rental.id,
               reference_month: month.toString(),
               reference_year: year.toString(),
               due_date: dueDate.toISOString().split('T')[0],
@@ -221,7 +219,7 @@ export default function FixSignorePayments() {
         const { error: updateError } = await supabase
           .from("payments")
           .update({ total_installments: totalMonths })
-          .eq("rental_id", rentalData.id);
+          .eq("rental_id", rental.id);
 
         if (updateError) {
           addLog("⚠️ Erro ao atualizar total_installments: " + updateError.message);
