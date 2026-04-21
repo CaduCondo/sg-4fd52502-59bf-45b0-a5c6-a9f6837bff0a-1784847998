@@ -254,6 +254,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
       if (rental) {
         console.log("🔄 Editando locação existente...");
+        console.log("📅 Data final ANTIGA:", rental.endDate);
+        console.log("📅 Data final NOVA:", endDate);
         
         // Detectar mudanças que afetam recebimentos
         const changes: any = {};
@@ -264,6 +266,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         if (endDate !== rental.endDate) {
           changes.endDate = endDate;
           console.log("📅 Mudança detectada: Data de término");
+          console.log("   ANTES:", rental.endDate);
+          console.log("   DEPOIS:", endDate);
         }
         if (baseRent !== rental.monthlyRent) {
           changes.monthlyRent = baseRent;
@@ -282,17 +286,28 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           console.log("💰 Mudança detectada: Valor da garagem");
         }
 
+        console.log("🔍 Total de mudanças detectadas:", Object.keys(changes).length);
+        console.log("📋 Mudanças:", changes);
+
         // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
         // Se houve mudanças que afetam recebimentos, atualizar
         if (Object.keys(changes).length > 0) {
           console.log("🔄 Atualizando recebimentos afetados pelas mudanças...");
+          console.log("🔑 ID da locação:", rental.id);
+          console.log("📦 Dados antigos da locação:", rental);
+          console.log("🆕 Mudanças a aplicar:", changes);
+          
           await rentalUpdateService.updatePaymentsOnRentalEdit(
             rental.id,
             rental,
             changes
           );
+          
+          console.log("✅ Atualização de recebimentos concluída!");
+        } else {
+          console.log("ℹ️ Nenhuma mudança que afete recebimentos");
         }
 
         const mergedRental: Rental = {

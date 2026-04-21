@@ -93,6 +93,9 @@ export const rentalUpdateService = {
   ): Promise<void> {
     console.log("🔄 [rentalUpdateService] Iniciando análise de mudanças...");
     console.log("📋 Mudanças recebidas:", newChanges);
+    console.log("🔑 ID da locação:", rentalId);
+    console.log("📅 Data final antiga:", oldRental.endDate);
+    console.log("📅 Data final nova:", newChanges.endDate);
 
     // Buscar todos os recebimentos da locação
     const { data: payments, error } = await supabase
@@ -113,6 +116,8 @@ export const rentalUpdateService = {
     }
 
     console.log(`📊 Total de recebimentos encontrados: ${payments.length}`);
+    console.log("📋 Primeiros 3 recebimentos:", payments.slice(0, 3));
+    console.log("📋 Últimos 3 recebimentos:", payments.slice(-3));
 
     // Filtrar apenas recebimentos pendentes (não pagos e sem pagamento parcial)
     const pendingPayments = payments.filter(p => 
@@ -221,8 +226,14 @@ export const rentalUpdateService = {
       const totalMonthlyRent = monthlyRent + garageAmount;
 
       if (newEndDate && oldEndDate) {
+        console.log("🔍 Comparando datas:");
+        console.log("   oldEndDate:", oldEndDate);
+        console.log("   newEndDate:", newEndDate);
+        console.log("   newEndDate > oldEndDate?", newEndDate > oldEndDate);
+        
         // CENÁRIO: Extensão do contrato (nova data final é POSTERIOR à antiga)
         if (newEndDate > oldEndDate) {
+          console.log("🎯 CONDIÇÃO DE EXTENSÃO ATINGIDA!");
           console.log("📈 EXTENSÃO DE CONTRATO DETECTADA!");
           console.log(`   - Data final antiga: ${oldEndDate.toISOString().split('T')[0]}`);
           console.log(`   - Data final nova: ${newEndDate.toISOString().split('T')[0]}`);
