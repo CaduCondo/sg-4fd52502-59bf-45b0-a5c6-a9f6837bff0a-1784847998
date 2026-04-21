@@ -94,10 +94,18 @@ export default function Financial() {
   } | null>(null);
 
   useEffect(() => {
+    console.log("🔄 [Financial] Componente montando...");
     setMounted(true);
+    console.log("✅ [Financial] Componente montado (mounted = true)");
   }, []);
 
   useEffect(() => {
+    console.log("🔄 [Financial] useEffect loadData disparado", {
+      user: !!user,
+      filterMonth,
+      filterYear,
+      mounted
+    });
     if (user) {
       loadData();
     }
@@ -118,6 +126,13 @@ export default function Financial() {
     // Verificar cache
     const cacheKey = `${filterMonth}-${filterYear}-${user?.id}`;
     const now = Date.now();
+    
+    console.log("🔍 [Financial] Verificando cache:", {
+      cacheKey,
+      hasCachedData: !!financialCache.data,
+      cacheAge: financialCache.timestamp ? (now - financialCache.timestamp) : 'N/A',
+      cacheDuration: CACHE_DURATION
+    });
     
     if (
       financialCache.data &&
