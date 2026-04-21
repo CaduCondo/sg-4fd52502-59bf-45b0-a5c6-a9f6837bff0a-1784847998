@@ -247,7 +247,7 @@ export function useDashboardData(
                   )
                 )
               `)
-              .eq("reference_month", month.toString())
+              .eq("reference_month", month.toString().padStart(2, '0'))
               .eq("reference_year", year.toString());
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
@@ -416,15 +416,14 @@ export function useDashboardData(
           }
         });
 
-        console.log("📊 [useDashboardData] TOTAIS CALCULADOS:", {
+        console.log("📊 [useDashboardData] TOTAIS CALCULADOS ANTES DAS DESPESAS:", {
           totalPagamentos: paymentsData.length,
           completedPayments,
           pendingPayments,
           grossRevenue,
           expectedAmount,
           adminFees,
-          managementFees,
-          locationExpenses
+          managementFees
         });
 
         // Processar despesas do mês
