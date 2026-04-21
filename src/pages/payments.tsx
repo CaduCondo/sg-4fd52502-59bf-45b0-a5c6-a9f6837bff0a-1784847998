@@ -161,7 +161,7 @@ export default function Payments() {
 
   // Carregar pagamentos quando os filtros mudarem
   useEffect(() => {
-    loadPayments(selectedMonth, selectedYear);
+    loadPayments(selectedMonth.toString(), selectedYear.toString());
   }, [loadPayments, selectedMonth, selectedYear]);
 
   // Handlers otimizados

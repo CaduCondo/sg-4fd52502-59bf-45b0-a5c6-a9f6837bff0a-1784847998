@@ -679,16 +679,17 @@ export default function Financial() {
 
           <TabsContent value="rentals" className="space-y-8 mt-8">
             <ScrollReveal delay={0.1}>
-              <PeriodSelector
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                filterMonth={filterMonth}
-                filterYear={filterYear}
-                onMonthChange={setSelectedMonth}
-                onYearChange={setSelectedYear}
-                onFilterMonthChange={setFilterMonth}
-                onFilterYearChange={setFilterYear}
-              />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+                <PeriodSelector 
+                  selectedMonth={selectedMonth} 
+                  selectedYear={selectedYear}
+                  onMonthChange={(m) => setSelectedMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
+                  onYearChange={(y) => setSelectedYear(y === 'all' ? new Date().getFullYear() : Number(y))}
+                  onFilterMonthChange={(m) => setFilterMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
+                  onFilterYearChange={(y) => setFilterYear(y === 'all' ? new Date().getFullYear() : Number(y))}
+                  showAllOption={false}
+                />
+              </div>
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
