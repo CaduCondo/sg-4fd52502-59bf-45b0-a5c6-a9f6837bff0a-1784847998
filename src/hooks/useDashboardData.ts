@@ -346,6 +346,7 @@ export function useDashboardData(
           console.log("💳 [useDashboardData] Processando pagamento:", {
             id: payment.id,
             status,
+            dueDate,
             paidAmount,
             expectedAmount: expectedAmountValue,
             locationId,
@@ -364,6 +365,12 @@ export function useDashboardData(
             // Adicionar à receita bruta
             grossRevenue += paidAmount;
             
+            console.log("💰 [useDashboardData] Pagamento PAGO/PARCIAL detectado:", {
+              paidAmount,
+              grossRevenue,
+              completedPayments
+            });
+            
             // Calcular taxas apenas se houver valor pago
             if (paidAmount > 0) {
               const isExempt = locationId && exemptIds.includes(locationId);
@@ -375,7 +382,8 @@ export function useDashboardData(
                 console.log("💰 [useDashboardData] Taxa Admin calculada:", {
                   paidAmount,
                   percent: adminFeePercent,
-                  fee: adminFee
+                  fee: adminFee,
+                  totalAdminFees: adminFees
                 });
               }
               
@@ -385,7 +393,8 @@ export function useDashboardData(
               console.log("💰 [useDashboardData] Taxa Mgmt calculada:", {
                 paidAmount,
                 percent: managementFeePercent,
-                fee: mgmtFee
+                fee: mgmtFee,
+                totalMgmtFees: managementFees
               });
             }
           }
@@ -405,6 +414,17 @@ export function useDashboardData(
           else if (status === 'pending' || status === 'partial') {
             pendingPayments++;
           }
+        });
+
+        console.log("📊 [useDashboardData] TOTAIS CALCULADOS:", {
+          totalPagamentos: paymentsData.length,
+          completedPayments,
+          pendingPayments,
+          grossRevenue,
+          expectedAmount,
+          adminFees,
+          managementFees,
+          locationExpenses
         });
 
         // Processar despesas do mês
