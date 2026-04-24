@@ -129,6 +129,9 @@ export interface Property {
   city?: string;
   state?: string;
   zipCode?: string;
+  
+  // Image optimization
+  allImages?: string[]; // Todas as imagens do imóvel (usado na página pública)
 }
 
 export interface Tenant {

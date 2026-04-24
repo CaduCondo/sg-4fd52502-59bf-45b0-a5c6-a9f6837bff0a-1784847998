@@ -41,7 +41,8 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const images = property.images || [];
+  // Usar todas as imagens quando disponível (allImages), senão usar images
+  const images = property.allImages || property.images || [];
   const totalMonthly = property.value;
 
   const handleImageClick = () => {
