@@ -886,5 +886,250 @@ export const rentalUpdateService = {
     } else {
       console.log("ℹ️ Nenhuma atualização necessária nos recebimentos");
     }
+
+    // VERIFICAÇÃO FINAL: Garantir que todos os recebimentos existem até a data fim
+    console.log("🔍 VERIFICAÇÃO FINAL: Checando se há recebimentos faltantes...");
+    
+    const finalEndDate = (newChanges.endDate ?? oldRental.endDate);
+    
+    if (finalEndDate) {
+      console.log("📅 Data fim do contrato:", finalEndDate);
+      
+      // Buscar o rental ATUALIZADO do banco
+      const { data: currentRental, error: rentalError } = await supabase
+        .from("rentals")
+        .select("rent_value, has_garage, garage_value, payment_day")
+        .eq("id", rentalId)
+        .single();
+
+      if (rentalError) {
+        console.error("❌ Erro ao buscar rental:", rentalError);
+        throw rentalError;
+      }
+
+      const currentMonthlyRent = currentRental.rent_value || 0;
+      const currentHasGarage = currentRental.has_garage;
+      const currentGarageValue = currentRental.garage_value || 0;
+      const currentGarageAmount = currentHasGarage ? currentGarageValue : 0;
+      const currentTotalRent = currentMonthlyRent + currentGarageAmount;
+      const paymentDay = currentRental.payment_day;
+
+      console.log("💰 Valores atuais do contrato:");
+      console.log("   - Aluguel: R$", currentMonthlyRent.toFixed(2));
+      console.log("   - Garagem:", currentHasGarage ? `R$ ${currentGarageValue.toFixed(2)}` : "Não");
+      console.log("   - Total: R$", currentTotalRent.toFixed(2));
+      console.log("   - Dia pagamento:", paymentDay);
+      
+      // Buscar TODOS os pagamentos existentes
+      const { data: allPayments, error: paymentsError } = await supabase
+        .from("payments")
+        .select("reference_month, reference_year")
+        .eq("rental_id", rentalId)
+        .order("reference_year", { ascending: false })
+        .order("reference_month", { ascending: false });
+
+      if (paymentsError) {
+        console.error("❌ Erro ao buscar pagamentos:", paymentsError);
+        throw paymentsError;
+      }
+
+      console.log(`📊 Total de pagamentos existentes: ${allPayments?.length || 0}`);
+
+      // Criar Set de meses que já existem
+      const existingRefs = new Set(
+        (allPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
+      );
+
+      console.log("🔍 Meses existentes:", Array.from(existingRefs).sort());
+
+      // Determinar de onde começar
+      const endDate = new Date(finalEndDate + "T00:00:00");
+      let startFrom: Date;
+
+      if (allPayments && allPayments.length > 0) {
+        const lastPayment = allPayments[0];
+        startFrom = new Date(
+          parseInt(lastPayment.reference_year),
+          parseInt(lastPayment.reference_month), // avança 1 mês automaticamente
+          1
+        );
+        console.log(`📅 Último pagamento: ${lastPayment.reference_month}/${lastPayment.reference_year}`);
+        console.log(`📅 Começando verificação de: ${startFrom.getMonth() + 1}/${startFrom.getFullYear()}`);
+      } else {
+        const startDate = new Date((newChanges.startDate ?? oldRental.startDate) + "T00:00:00");
+        startFrom = startDate;
+        console.log(`📅 Nenhum pagamento, começando da data início`);
+      }
+
+      // Verificar quais meses estão faltando
+      const missingPayments = [];
+      const currentDate = new Date(startFrom);
+      let checkCount = 0;
+
+      while (currentDate <= endDate) {
+        const month = currentDate.getMonth() + 1;
+        const year = currentDate.getFullYear();
+        const refKey = `${year}-${month}`;
+        
+        checkCount++;
+        
+        if (!existingRefs.has(refKey)) {
+          console.log(`❌ Faltando recebimento: ${month}/${year}`);
+          
+          const dueDate = new Date(year, month - 1, paymentDay);
+          const isLastMonth = (year === endDate.getFullYear() && month === endDate.getMonth() + 1);
+          
+          if (isLastMonth) {
+            // Último mês - verificar se é proporcional
+            const endDay = endDate.getDate();
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const isProportional = endDay < daysInMonth;
+            
+            if (isProportional) {
+              // Proporcional
+              const proportionalRent = (currentMonthlyRent / 30) * endDay;
+              const proportionalGarage = currentGarageAmount > 0 ? (currentGarageAmount / 30) * endDay : 0;
+              const proportionalTotal = proportionalRent + proportionalGarage;
+              
+              const breakdown = [
+                {
+                  description: `Aluguel - Última Parcela (${endDay} dias)`,
+                  amount: parseFloat(proportionalRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (currentGarageAmount > 0) {
+                breakdown.push({
+                  description: `Garagem (${endDay} dias)`,
+                  amount: parseFloat(proportionalGarage.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              missingPayments.push({
+                rental_id: rentalId,
+                reference_month: month.toString(),
+                reference_year: year.toString(),
+                due_date: dueDate.toISOString().split('T')[0],
+                expected_amount: parseFloat(proportionalTotal.toFixed(2)),
+                status: "pending",
+                breakdown: breakdown,
+              });
+              
+              console.log(`   ➕ Último mês PROPORCIONAL: R$ ${proportionalTotal.toFixed(2)} (${endDay} dias)`);
+            } else {
+              // Último mês integral
+              const breakdown = [
+                {
+                  description: "Aluguel",
+                  amount: parseFloat(currentMonthlyRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (currentGarageAmount > 0) {
+                breakdown.push({
+                  description: "Garagem",
+                  amount: parseFloat(currentGarageAmount.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              missingPayments.push({
+                rental_id: rentalId,
+                reference_month: month.toString(),
+                reference_year: year.toString(),
+                due_date: dueDate.toISOString().split('T')[0],
+                expected_amount: currentTotalRent,
+                status: "pending",
+                breakdown: breakdown,
+              });
+              
+              console.log(`   ➕ Último mês INTEGRAL: R$ ${currentTotalRent.toFixed(2)}`);
+            }
+          } else {
+            // Mês intermediário - sempre integral
+            const breakdown = [
+              {
+                description: "Aluguel",
+                amount: parseFloat(currentMonthlyRent.toFixed(2)),
+                type: "addition",
+              }
+            ];
+
+            if (currentGarageAmount > 0) {
+              breakdown.push({
+                description: "Garagem",
+                amount: parseFloat(currentGarageAmount.toFixed(2)),
+                type: "addition",
+              });
+            }
+
+            missingPayments.push({
+              rental_id: rentalId,
+              reference_month: month.toString(),
+              reference_year: year.toString(),
+              due_date: dueDate.toISOString().split('T')[0],
+              expected_amount: currentTotalRent,
+              status: "pending",
+              breakdown: breakdown,
+            });
+            
+            console.log(`   ➕ Mês intermediário INTEGRAL: R$ ${currentTotalRent.toFixed(2)}`);
+          }
+        } else {
+          console.log(`   ✅ Mês ${month}/${year} já existe`);
+        }
+        
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+
+      console.log(`📊 Total de meses verificados: ${checkCount}`);
+      console.log(`📊 Total de pagamentos faltantes: ${missingPayments.length}`);
+
+      // Inserir pagamentos faltantes
+      if (missingPayments.length > 0) {
+        console.log("💾 Criando recebimentos faltantes...");
+        console.log("📋 Pagamentos a criar:", JSON.stringify(missingPayments, null, 2));
+        
+        const { data: insertedData, error: insertError } = await supabase
+          .from("payments")
+          .insert(missingPayments)
+          .select();
+
+        if (insertError) {
+          console.error("❌ Erro ao criar recebimentos faltantes:", insertError);
+          console.error("❌ Detalhes:", JSON.stringify(insertError, null, 2));
+          throw insertError;
+        } else {
+          console.log(`✅ ${missingPayments.length} recebimentos faltantes criados!`);
+          console.log("✅ Dados inseridos:", insertedData);
+          
+          // Atualizar total_installments
+          const { data: allPaymentsAfter } = await supabase
+            .from("payments")
+            .select("id")
+            .eq("rental_id", rentalId);
+
+          const totalInstallments = (allPaymentsAfter || []).length;
+
+          const { error: updateTotalError } = await supabase
+            .from("payments")
+            .update({ total_installments: totalInstallments })
+            .eq("rental_id", rentalId);
+
+          if (updateTotalError) {
+            console.error("❌ Erro ao atualizar total_installments:", updateTotalError);
+          } else {
+            console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
+          }
+        }
+      } else {
+        console.log("✅ Todos os recebimentos já existem até a data fim do contrato");
+      }
+    } else {
+      console.log("⚠️ Contrato sem data fim definida - pulando verificação");
+    }
   }
 };
