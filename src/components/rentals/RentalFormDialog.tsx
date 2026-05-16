@@ -262,6 +262,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         if (startDate !== rental.startDate) {
           changes.startDate = startDate;
           console.log("📅 Mudança detectada: Data de início");
+          console.log("   ANTES:", rental.startDate);
+          console.log("   DEPOIS:", startDate);
         }
         if (endDate !== rental.endDate) {
           changes.endDate = endDate;
@@ -272,22 +274,31 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         if (baseRent !== rental.monthlyRent) {
           changes.monthlyRent = baseRent;
           console.log("💰 Mudança detectada: Valor do aluguel");
+          console.log("   ANTES: R$", rental.monthlyRent?.toFixed(2) || "0.00");
+          console.log("   DEPOIS: R$", baseRent.toFixed(2));
+          console.log("   DIFERENÇA: R$", (baseRent - (rental.monthlyRent || 0)).toFixed(2));
         }
         if (parseInt(paymentDay) !== rental.paymentDay) {
           changes.paymentDay = parseInt(paymentDay);
           console.log("📆 Mudança detectada: Dia de pagamento");
+          console.log("   ANTES:", rental.paymentDay);
+          console.log("   DEPOIS:", paymentDay);
         }
         if (hasGarage !== rental.hasGarage) {
           changes.hasGarage = hasGarage;
           console.log("🚗 Mudança detectada: Garagem");
+          console.log("   ANTES:", rental.hasGarage ? "Sim" : "Não");
+          console.log("   DEPOIS:", hasGarage ? "Sim" : "Não");
         }
         if (hasGarage && garageAmount !== (rental.garageValue || 0)) {
           changes.garageValue = garageAmount;
           console.log("💰 Mudança detectada: Valor da garagem");
+          console.log("   ANTES: R$", (rental.garageValue || 0).toFixed(2));
+          console.log("   DEPOIS: R$", garageAmount.toFixed(2));
         }
 
         console.log("🔍 Total de mudanças detectadas:", Object.keys(changes).length);
-        console.log("📋 Mudanças:", changes);
+        console.log("📋 Resumo das mudanças:", changes);
 
         // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);

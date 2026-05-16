@@ -561,6 +561,10 @@ export const rentalUpdateService = {
       (newChanges.garageValue !== undefined && newChanges.garageValue !== oldRental.garageValue)
     ) {
       console.log("💰 Detectada mudança no valor do aluguel ou garagem");
+      console.log("   Valor antigo aluguel:", oldRental.monthlyRent);
+      console.log("   Valor novo aluguel:", newChanges.monthlyRent);
+      console.log("   Garagem antiga:", oldRental.hasGarage, oldRental.garageValue);
+      console.log("   Garagem nova:", newChanges.hasGarage, newChanges.garageValue);
       
       const newMonthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
       const newGarageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
@@ -568,30 +572,55 @@ export const rentalUpdateService = {
         : 0;
       const newTotalRent = newMonthlyRent + newGarageAmount;
       
-      // Atualizar todos os recebimentos pendentes (exceto proporcionais que já foram tratados)
+      console.log("💰 Novo valor total a aplicar: R$", newTotalRent.toFixed(2));
+      console.log("   - Aluguel: R$", newMonthlyRent.toFixed(2));
+      console.log("   - Garagem: R$", newGarageAmount.toFixed(2));
+      
+      // Atualizar TODOS os recebimentos pendentes com novo valor E breakdown
       for (const payment of pendingPayments) {
-        const isProporcional = payment.installment === null || 
-          (payment.total_installments && payment.installment === payment.total_installments + 1) ||
-          payment.installment === 1;
+        console.log(`📝 Processando recebimento ${payment.installment} (${payment.reference_month}/${payment.reference_year})`);
         
-        // Não atualizar proporcionais se já foram atualizados acima
+        // Verificar se já foi atualizado nas seções anteriores
         const alreadyUpdated = updates.find(u => u.id === payment.id);
-        if (alreadyUpdated) {
-          continue;
+        
+        // Criar breakdown detalhado
+        const breakdown = [
+          {
+            description: "Aluguel",
+            amount: parseFloat(newMonthlyRent.toFixed(2)),
+            type: "addition",
+          }
+        ];
+
+        if (newGarageAmount > 0) {
+          breakdown.push({
+            description: "Garagem",
+            amount: parseFloat(newGarageAmount.toFixed(2)),
+            type: "addition",
+          });
         }
         
-        // Para parcelas normais (não proporcionais), atualizar valor
-        if (!isProporcional) {
+        if (alreadyUpdated) {
+          // Se já existe update, adicionar/atualizar expected_amount e breakdown
+          console.log(`   ℹ️ Recebimento já tem update pendente, adicionando valores`);
+          alreadyUpdated.changes.expected_amount = parseFloat(newTotalRent.toFixed(2));
+          alreadyUpdated.changes.breakdown = breakdown;
+          console.log(`   ✅ Update combinado: R$ ${newTotalRent.toFixed(2)}`);
+        } else {
+          // Criar novo update com expected_amount e breakdown
+          console.log(`   ➕ Criando novo update para este recebimento`);
           updates.push({
             id: payment.id,
             changes: {
-              expected_amount: newTotalRent,
+              expected_amount: parseFloat(newTotalRent.toFixed(2)),
+              breakdown: breakdown,
             }
           });
-          
-          console.log(`✅ Parcela ${payment.installment}: Novo valor R$ ${newTotalRent.toFixed(2)}`);
+          console.log(`   ✅ Novo valor: R$ ${newTotalRent.toFixed(2)}`);
         }
       }
+      
+      console.log(`✅ Total de ${pendingPayments.length} recebimentos pendentes processados para atualização de valor`);
     }
 
     // 4. MUDANÇA NO DIA DE PAGAMENTO
