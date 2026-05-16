@@ -241,7 +241,7 @@ export const rentalUpdateService = {
           // Buscar o rental ATUALIZADO do banco para garantir valores corretos
           const { data: updatedRental, error: rentalError } = await supabase
             .from("rentals")
-            .select("monthly_rent, has_garage, garage_value")
+            .select("rent_value, has_garage, garage_value")
             .eq("id", rentalId)
             .single();
 
@@ -251,7 +251,7 @@ export const rentalUpdateService = {
           }
 
           // Usar valores ATUALIZADOS do banco
-          const currentMonthlyRent = updatedRental.monthly_rent;
+          const currentMonthlyRent = updatedRental.rent_value || 0;
           const currentHasGarage = updatedRental.has_garage;
           const currentGarageValue = updatedRental.garage_value || 0;
           const currentGarageAmount = currentHasGarage ? currentGarageValue : 0;
