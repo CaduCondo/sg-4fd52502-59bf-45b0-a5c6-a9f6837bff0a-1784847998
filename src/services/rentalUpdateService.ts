@@ -238,29 +238,42 @@ export const rentalUpdateService = {
           console.log(`   - Data final antiga: ${oldEndDate.toISOString().split('T')[0]}`);
           console.log(`   - Data final nova: ${newEndDate.toISOString().split('T')[0]}`);
           
-          // Buscar o último pagamento do período antigo
-          const { data: lastOldPayment } = await supabase
+          // Buscar TODOS os pagamentos existentes (não apenas o último)
+          const { data: allExistingPayments, error: existingError } = await supabase
             .from("payments")
-            .select("*")
+            .select("id, reference_month, reference_year, status, expected_amount")
             .eq("rental_id", rentalId)
             .order("reference_year", { ascending: false })
-            .order("reference_month", { ascending: false })
-            .limit(1)
-            .single();
+            .order("reference_month", { ascending: false });
 
-          if (lastOldPayment) {
-            const lastMonth = Number(lastOldPayment.reference_month);
-            const lastYear = Number(lastOldPayment.reference_year);
+          if (existingError) {
+            console.error("❌ Erro ao buscar pagamentos existentes:", existingError);
+            throw existingError;
+          }
+
+          console.log(`📊 Total de pagamentos existentes: ${allExistingPayments?.length || 0}`);
+
+          // Criar Set de meses que já existem
+          const existingRefs = new Set(
+            (allExistingPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
+          );
+
+          console.log("🔍 Meses que já existem:", Array.from(existingRefs).sort());
+
+          // Verificar se o último pagamento existente era proporcional
+          const lastExistingPayment = allExistingPayments?.[0];
+          if (lastExistingPayment) {
+            const lastMonth = Number(lastExistingPayment.reference_month);
+            const lastYear = Number(lastExistingPayment.reference_year);
             const lastDayOfMonth = new Date(lastYear, lastMonth, 0).getDate();
             const oldEndDay = oldEndDate.getDate();
             
-            // Verificar se o último pagamento era proporcional (não cobrava mês completo)
+            // Se era proporcional (não cobrava mês completo) E ainda está pendente
             const wasProportional = oldEndDay < lastDayOfMonth;
             
-            if (wasProportional) {
+            if (wasProportional && lastExistingPayment.status === 'pending') {
               console.log("🔄 Último pagamento anterior era PROPORCIONAL - atualizando para INTEGRAL");
               
-              // Atualizar para valor integral
               const integralBreakdown = [
                 {
                   description: "Aluguel",
@@ -277,83 +290,67 @@ export const rentalUpdateService = {
                 });
               }
 
-              await supabase
+              const { error: updateError } = await supabase
                 .from("payments")
                 .update({
                   expected_amount: totalMonthlyRent,
                   breakdown: integralBreakdown,
                 })
-                .eq("id", lastOldPayment.id);
+                .eq("id", lastExistingPayment.id);
 
-              console.log(`✅ Pagamento ${lastMonth}/${lastYear} atualizado de proporcional para integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+              if (updateError) {
+                console.error("❌ Erro ao atualizar último pagamento:", updateError);
+              } else {
+                console.log(`✅ Pagamento ${lastMonth}/${lastYear} atualizado de proporcional para integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+              }
             }
           }
 
-          // Gerar novos pagamentos para o período estendido
+          // Gerar TODOS os meses do período estendido
           console.log("📝 Gerando novos pagamentos para o período estendido...");
           
-          // Calcular primeiro mês do período novo (mês seguinte ao último pagamento existente)
-          const { data: allExistingPayments } = await supabase
-            .from("payments")
-            .select("reference_month, reference_year")
-            .eq("rental_id", rentalId)
-            .order("reference_year", { ascending: false })
-            .order("reference_month", { ascending: false });
-
-          console.log(`📊 Total de pagamentos existentes: ${allExistingPayments?.length || 0}`);
-          console.log("📋 Pagamentos existentes:", allExistingPayments);
-
-          const existingRefs = new Set(
-            (allExistingPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
-          );
-
-          console.log("🔍 Meses que já existem:", Array.from(existingRefs));
-
-          // Gerar novos pagamentos
-          const newPayments = [];
-          
-          // Encontrar o primeiro mês após o último pagamento existente
-          const lastExisting = allExistingPayments?.[0];
+          // Começar do mês SEGUINTE ao último existente
           let currentDate: Date;
           
-          if (lastExisting) {
-            // Começar do mês SEGUINTE ao último pagamento existente
+          if (lastExistingPayment) {
             currentDate = new Date(
-              parseInt(lastExisting.reference_year),
-              parseInt(lastExisting.reference_month), // já avança 1 mês porque o construtor Date usa índice 0-11
+              parseInt(lastExistingPayment.reference_year),
+              parseInt(lastExistingPayment.reference_month), // avança 1 mês automaticamente (índice 0-11)
               1
             );
-            console.log(`📅 Último pagamento existente: ${lastExisting.reference_month}/${lastExisting.reference_year}`);
-            console.log(`📅 Começando a criar pagamentos a partir de: ${currentDate.toISOString().split('T')[0]}`);
+            console.log(`📅 Último pagamento existente: ${lastExistingPayment.reference_month}/${lastExistingPayment.reference_year}`);
+            console.log(`📅 Começando novos pagamentos de: ${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`);
           } else {
             currentDate = new Date(startDate);
-            console.log(`📅 Nenhum pagamento existente, começando da data de início: ${currentDate.toISOString().split('T')[0]}`);
+            console.log(`📅 Nenhum pagamento existente, começando da data de início`);
           }
-          
-          console.log(`📅 Criar pagamentos até: ${newEndDate.toISOString().split('T')[0]}`);
-          
-          let monthsToCreate = 0;
-          
-          // Encontrar os meses que ainda não têm pagamento
+
+          const newPayments = [];
+          let monthCount = 0;
+
+          // Loop até a nova data final (INCLUINDO o mês final)
           while (currentDate <= newEndDate) {
             const month = currentDate.getMonth() + 1;
             const year = currentDate.getFullYear();
             const refKey = `${year}-${month}`;
             
+            monthCount++;
+            
+            // Só criar se não existir
             if (!existingRefs.has(refKey)) {
-              monthsToCreate++;
               const dueDate = new Date(year, month - 1, paymentDay);
               const isLastMonth = (year === newEndDate.getFullYear() && month === newEndDate.getMonth() + 1);
               
-              console.log(`📅 Criando pagamento para ${month}/${year} (último? ${isLastMonth})`);
+              console.log(`➕ Criando pagamento ${monthCount}: ${month}/${year} (último? ${isLastMonth})`);
               
               if (isLastMonth) {
-                // Último mês - pode ser proporcional
+                // Último mês - verificar se é proporcional
                 const endDay = newEndDate.getDate();
                 const daysInMonth = new Date(year, month, 0).getDate();
                 const isProportional = endDay < daysInMonth;
                 
                 if (isProportional) {
+                  // Proporcional
                   const proportionalRent = (monthlyRent / 30) * endDay;
                   const proportionalGarage = garageAmount > 0 ? (garageAmount / 30) * endDay : 0;
                   const proportionalTotal = proportionalRent + proportionalGarage;
@@ -384,7 +381,7 @@ export const rentalUpdateService = {
                     breakdown: breakdown,
                   });
                   
-                  console.log(`   ✅ Último mês proporcional: R$ ${proportionalTotal.toFixed(2)} (${endDay} dias)`);
+                  console.log(`   ✅ Último mês PROPORCIONAL: R$ ${proportionalTotal.toFixed(2)} (${endDay} dias)`);
                 } else {
                   // Último mês integral
                   const breakdown = [
@@ -413,7 +410,7 @@ export const rentalUpdateService = {
                     breakdown: breakdown,
                   });
                   
-                  console.log(`   ✅ Último mês integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+                  console.log(`   ✅ Último mês INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
                 }
               } else {
                 // Mês intermediário - sempre integral
@@ -443,21 +440,23 @@ export const rentalUpdateService = {
                   breakdown: breakdown,
                 });
                 
-                console.log(`   ✅ Mês intermediário integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+                console.log(`   ✅ Mês intermediário INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
               }
             } else {
-              console.log(`   ⏭️ Mês ${month}/${year} já tem pagamento, pulando...`);
+              console.log(`   ⏭️ Mês ${month}/${year} já existe, pulando...`);
             }
             
+            // Avançar para o próximo mês
             currentDate.setMonth(currentDate.getMonth() + 1);
           }
 
-          console.log(`📊 Total de novos pagamentos a criar: ${newPayments.length}`);
-          console.log(`📊 Meses que deveriam ser criados: ${monthsToCreate}`);
+          console.log(`📊 Total de novos pagamentos gerados: ${newPayments.length}`);
+          console.log(`📊 Total de meses processados: ${monthCount}`);
 
+          // Inserir novos pagamentos
           if (newPayments.length > 0) {
             console.log("💾 Inserindo novos pagamentos no banco...");
-            console.log("📋 Pagamentos a inserir:", newPayments);
+            console.log("📋 Pagamentos a inserir:", JSON.stringify(newPayments, null, 2));
             
             const { data: insertedData, error: insertError } = await supabase
               .from("payments")
@@ -466,34 +465,42 @@ export const rentalUpdateService = {
 
             if (insertError) {
               console.error("❌ Erro ao inserir novos pagamentos:", insertError);
-              console.error("❌ Detalhes do erro:", JSON.stringify(insertError, null, 2));
+              console.error("❌ Detalhes completos:", JSON.stringify(insertError, null, 2));
+              throw insertError;
             } else {
-              console.log(`✅ ${newPayments.length} novos pagamentos criados para o período estendido`);
-              console.log("✅ Pagamentos criados:", insertedData);
+              console.log(`✅ ${newPayments.length} novos pagamentos criados com sucesso!`);
+              console.log("✅ Pagamentos inseridos:", insertedData);
             }
           } else {
-            console.log("⚠️ Nenhum novo pagamento foi gerado!");
-            console.log("⚠️ Isso pode indicar que todos os meses já têm pagamentos ou há um problema na lógica");
+            console.log("⚠️ AVISO: Nenhum novo pagamento foi gerado!");
+            console.log("⚠️ Verifique:");
+            console.log("   - Todos os meses entre o último existente e a nova data fim já têm pagamentos?");
+            console.log("   - A nova data fim é realmente posterior à antiga?");
+            console.log("   - Meses existentes:", Array.from(existingRefs).sort());
           }
 
-          // Atualizar total_installments de todos os pagamentos
-          const { data: allPayments } = await supabase
+          // Atualizar total_installments de TODOS os pagamentos da locação
+          const { data: allPaymentsAfterInsert } = await supabase
             .from("payments")
             .select("id")
             .eq("rental_id", rentalId);
 
-          const totalInstallments = (allPayments || []).length;
+          const totalInstallments = (allPaymentsAfterInsert || []).length;
 
-          await supabase
+          const { error: updateTotalError } = await supabase
             .from("payments")
             .update({ total_installments: totalInstallments })
             .eq("rental_id", rentalId);
 
-          console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
+          if (updateTotalError) {
+            console.error("❌ Erro ao atualizar total_installments:", updateTotalError);
+          } else {
+            console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
+          }
         } else {
           // CENÁRIO: Redução do contrato (nova data final é ANTERIOR à antiga)
           console.log("📉 REDUÇÃO DE CONTRATO DETECTADA");
-          // Lógica existente...
+          // Lógica existente para redução...
         }
       }
 
