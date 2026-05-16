@@ -214,10 +214,20 @@ export const rentalUpdateService = {
     // 2. MUDANÇA NA DATA DE TÉRMINO
     if (newChanges.endDate !== undefined && newChanges.endDate !== oldRental.endDate) {
       console.log("📅 Detectada mudança na data de término");
+      console.log("🔍 DEBUG - Valores recebidos:");
+      console.log("   - newChanges.endDate:", newChanges.endDate);
+      console.log("   - oldRental.endDate:", oldRental.endDate);
+      console.log("   - newChanges.endDate !== oldRental.endDate?", newChanges.endDate !== oldRental.endDate);
       
       const startDate = new Date((newChanges.startDate ?? oldRental.startDate) + "T00:00:00");
       const oldEndDate = oldRental.endDate ? new Date(oldRental.endDate + "T00:00:00") : null;
       const newEndDate = newChanges.endDate ? new Date(newChanges.endDate + "T00:00:00") : null;
+      
+      console.log("📅 Datas convertidas:");
+      console.log("   - startDate:", startDate);
+      console.log("   - oldEndDate:", oldEndDate);
+      console.log("   - newEndDate:", newEndDate);
+      
       const paymentDay = newChanges.paymentDay ?? oldRental.paymentDay;
       const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
       const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
@@ -227,13 +237,16 @@ export const rentalUpdateService = {
 
       if (newEndDate && oldEndDate) {
         console.log("🔍 Comparando datas:");
-        console.log("   oldEndDate:", oldEndDate);
-        console.log("   newEndDate:", newEndDate);
+        console.log("   oldEndDate:", oldEndDate.toISOString());
+        console.log("   newEndDate:", newEndDate.toISOString());
+        console.log("   newEndDate.getTime():", newEndDate.getTime());
+        console.log("   oldEndDate.getTime():", oldEndDate.getTime());
         console.log("   newEndDate > oldEndDate?", newEndDate > oldEndDate);
+        console.log("   newEndDate.getTime() > oldEndDate.getTime()?", newEndDate.getTime() > oldEndDate.getTime());
         
         // CENÁRIO: Extensão do contrato (nova data final é POSTERIOR à antiga)
         if (newEndDate > oldEndDate) {
-          console.log("🎯 CONDIÇÃO DE EXTENSÃO ATINGIDA!");
+          console.log("🎯 ✅ CONDIÇÃO DE EXTENSÃO ATINGIDA!");
           console.log("📈 EXTENSÃO DE CONTRATO DETECTADA!");
           console.log(`   - Data final antiga: ${oldEndDate.toISOString().split('T')[0]}`);
           console.log(`   - Data final nova: ${newEndDate.toISOString().split('T')[0]}`);
@@ -526,10 +539,15 @@ export const rentalUpdateService = {
             console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
           }
         } else {
-          // CENÁRIO: Redução do contrato (nova data final é ANTERIOR à antiga)
-          console.log("📉 REDUÇÃO DE CONTRATO DETECTADA");
-          // Lógica existente para redução...
+          console.log("❌ CONDIÇÃO DE EXTENSÃO NÃO ATINGIDA - newEndDate NÃO é maior que oldEndDate");
+          console.log("   Possíveis cenários:");
+          console.log("   - Redução de contrato (newEndDate < oldEndDate)");
+          console.log("   - Mesma data (newEndDate === oldEndDate)");
         }
+      } else {
+        console.log("⚠️ AVISO: Uma das datas é null");
+        console.log("   - newEndDate:", newEndDate);
+        console.log("   - oldEndDate:", oldEndDate);
       }
 
       if (newEndDate) {
@@ -841,17 +859,26 @@ export const rentalUpdateService = {
     // Executar todas as atualizações
     if (updates.length > 0) {
       console.log(`🔄 Aplicando ${updates.length} atualizações...`);
+      console.log("📋 Resumo das atualizações:", updates.map(u => ({
+        id: u.id,
+        changes: u.changes
+      })));
       
       for (const update of updates) {
-        const { error: updateError } = await supabase
+        console.log(`🔄 Atualizando recebimento ${update.id}...`);
+        console.log(`   Mudanças:`, update.changes);
+        
+        const { data: updatedData, error: updateError } = await supabase
           .from("payments")
           .update(update.changes)
-          .eq("id", update.id);
+          .eq("id", update.id)
+          .select();
         
         if (updateError) {
           console.error(`❌ Erro ao atualizar recebimento ${update.id}:`, updateError);
         } else {
           console.log(`✅ Recebimento ${update.id} atualizado com sucesso`);
+          console.log(`   Dados atualizados no banco:`, updatedData);
         }
       }
       
