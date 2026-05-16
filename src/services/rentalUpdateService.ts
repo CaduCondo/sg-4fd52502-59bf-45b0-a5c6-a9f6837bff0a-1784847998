@@ -583,51 +583,105 @@ export const rentalUpdateService = {
       console.log("   - Aluguel: R$", newMonthlyRent.toFixed(2));
       console.log("   - Garagem: R$", newGarageAmount.toFixed(2));
       
+      // Buscar TODOS os recebimentos pendentes novamente (pode ter sido criados novos na seção 2)
+      const { data: allPendingPayments, error: pendingError } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("rental_id", rentalId)
+        .in("status", ["pending", "overdue"])
+        .order("reference_year", { ascending: true })
+        .order("reference_month", { ascending: true });
+
+      if (pendingError) {
+        console.error("❌ Erro ao buscar recebimentos pendentes:", pendingError);
+        throw pendingError;
+      }
+
+      const currentPendingPayments = (allPendingPayments || []) as PaymentToUpdate[];
+      console.log(`📊 Total de recebimentos pendentes (incluindo novos): ${currentPendingPayments.length}`);
+      
       // Atualizar TODOS os recebimentos pendentes com novo valor E breakdown
-      for (const payment of pendingPayments) {
+      for (const payment of currentPendingPayments) {
         console.log(`📝 Processando recebimento ${payment.installment} (${payment.reference_month}/${payment.reference_year})`);
+        
+        // Verificar se este recebimento é proporcional (primeiro ou último)
+        const isProporcional = payment.installment === 1 || 
+                              (payment.total_installments && payment.installment === payment.total_installments + 1);
+        
+        let finalExpectedAmount: number;
+        let breakdown: any[];
+        
+        if (isProporcional && payment.expected_amount !== newTotalRent) {
+          // Proporcional - manter o expected_amount mas atualizar as proporções no breakdown
+          finalExpectedAmount = payment.expected_amount;
+          
+          // Calcular proporção
+          const proportion = finalExpectedAmount / newTotalRent;
+          const proportionalRent = newMonthlyRent * proportion;
+          const proportionalGarage = newGarageAmount * proportion;
+          
+          breakdown = [
+            {
+              description: "Aluguel",
+              amount: parseFloat(proportionalRent.toFixed(2)),
+              type: "addition",
+            }
+          ];
+
+          if (newGarageAmount > 0) {
+            breakdown.push({
+              description: "Garagem",
+              amount: parseFloat(proportionalGarage.toFixed(2)),
+              type: "addition",
+            });
+          }
+          
+          console.log(`   ✅ Recebimento PROPORCIONAL - Expected: R$ ${finalExpectedAmount.toFixed(2)}, Breakdown: Aluguel R$ ${proportionalRent.toFixed(2)} + Garagem R$ ${proportionalGarage.toFixed(2)}`);
+        } else {
+          // Integral - atualizar expected_amount E breakdown
+          finalExpectedAmount = newTotalRent;
+          
+          breakdown = [
+            {
+              description: "Aluguel",
+              amount: parseFloat(newMonthlyRent.toFixed(2)),
+              type: "addition",
+            }
+          ];
+
+          if (newGarageAmount > 0) {
+            breakdown.push({
+              description: "Garagem",
+              amount: parseFloat(newGarageAmount.toFixed(2)),
+              type: "addition",
+            });
+          }
+          
+          console.log(`   ✅ Recebimento INTEGRAL - Expected: R$ ${finalExpectedAmount.toFixed(2)}, Breakdown: Aluguel R$ ${newMonthlyRent.toFixed(2)} + Garagem R$ ${newGarageAmount.toFixed(2)}`);
+        }
         
         // Verificar se já foi atualizado nas seções anteriores
         const alreadyUpdated = updates.find(u => u.id === payment.id);
         
-        // Criar breakdown detalhado
-        const breakdown = [
-          {
-            description: "Aluguel",
-            amount: parseFloat(newMonthlyRent.toFixed(2)),
-            type: "addition",
-          }
-        ];
-
-        if (newGarageAmount > 0) {
-          breakdown.push({
-            description: "Garagem",
-            amount: parseFloat(newGarageAmount.toFixed(2)),
-            type: "addition",
-          });
-        }
-        
         if (alreadyUpdated) {
-          // Se já existe update, adicionar/atualizar expected_amount e breakdown
-          console.log(`   ℹ️ Recebimento já tem update pendente, adicionando valores`);
-          alreadyUpdated.changes.expected_amount = parseFloat(newTotalRent.toFixed(2));
+          // Se já existe update, atualizar expected_amount e breakdown
+          console.log(`   ℹ️ Recebimento já tem update pendente, sobrescrevendo valores`);
+          alreadyUpdated.changes.expected_amount = parseFloat(finalExpectedAmount.toFixed(2));
           alreadyUpdated.changes.breakdown = breakdown;
-          console.log(`   ✅ Update combinado: R$ ${newTotalRent.toFixed(2)}`);
         } else {
           // Criar novo update com expected_amount e breakdown
           console.log(`   ➕ Criando novo update para este recebimento`);
           updates.push({
             id: payment.id,
             changes: {
-              expected_amount: parseFloat(newTotalRent.toFixed(2)),
+              expected_amount: parseFloat(finalExpectedAmount.toFixed(2)),
               breakdown: breakdown,
             }
           });
-          console.log(`   ✅ Novo valor: R$ ${newTotalRent.toFixed(2)}`);
         }
       }
       
-      console.log(`✅ Total de ${pendingPayments.length} recebimentos pendentes processados para atualização de valor`);
+      console.log(`✅ Total de ${currentPendingPayments.length} recebimentos pendentes processados para atualização de valor`);
     }
 
     // 4. MUDANÇA NO DIA DE PAGAMENTO
