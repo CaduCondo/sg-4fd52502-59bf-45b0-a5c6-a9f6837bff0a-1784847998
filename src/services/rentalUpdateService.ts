@@ -238,6 +238,30 @@ export const rentalUpdateService = {
           console.log(`   - Data final antiga: ${oldEndDate.toISOString().split('T')[0]}`);
           console.log(`   - Data final nova: ${newEndDate.toISOString().split('T')[0]}`);
           
+          // Buscar o rental ATUALIZADO do banco para garantir valores corretos
+          const { data: updatedRental, error: rentalError } = await supabase
+            .from("rentals")
+            .select("monthly_rent, has_garage, garage_value")
+            .eq("id", rentalId)
+            .single();
+
+          if (rentalError) {
+            console.error("❌ Erro ao buscar rental atualizado:", rentalError);
+            throw rentalError;
+          }
+
+          // Usar valores ATUALIZADOS do banco
+          const currentMonthlyRent = updatedRental.monthly_rent;
+          const currentHasGarage = updatedRental.has_garage;
+          const currentGarageValue = updatedRental.garage_value || 0;
+          const currentGarageAmount = currentHasGarage ? currentGarageValue : 0;
+          const currentTotalRent = currentMonthlyRent + currentGarageAmount;
+
+          console.log("💰 Valores ATUAIS do rental (do banco):");
+          console.log("   - Aluguel: R$", currentMonthlyRent.toFixed(2));
+          console.log("   - Garagem:", currentHasGarage ? `R$ ${currentGarageValue.toFixed(2)}` : "Não");
+          console.log("   - Total: R$", currentTotalRent.toFixed(2));
+          
           // Buscar TODOS os pagamentos existentes (não apenas o último)
           const { data: allExistingPayments, error: existingError } = await supabase
             .from("payments")
@@ -272,20 +296,20 @@ export const rentalUpdateService = {
             const wasProportional = oldEndDay < lastDayOfMonth;
             
             if (wasProportional && lastExistingPayment.status === 'pending') {
-              console.log("🔄 Último pagamento anterior era PROPORCIONAL - atualizando para INTEGRAL");
+              console.log("🔄 Último pagamento anterior era PROPORCIONAL - atualizando para INTEGRAL com valores ATUAIS");
               
               const integralBreakdown = [
                 {
                   description: "Aluguel",
-                  amount: parseFloat(monthlyRent.toFixed(2)),
+                  amount: parseFloat(currentMonthlyRent.toFixed(2)),
                   type: "addition",
                 }
               ];
 
-              if (garageAmount > 0) {
+              if (currentGarageAmount > 0) {
                 integralBreakdown.push({
                   description: "Garagem",
-                  amount: parseFloat(garageAmount.toFixed(2)),
+                  amount: parseFloat(currentGarageAmount.toFixed(2)),
                   type: "addition",
                 });
               }
@@ -293,7 +317,7 @@ export const rentalUpdateService = {
               const { error: updateError } = await supabase
                 .from("payments")
                 .update({
-                  expected_amount: totalMonthlyRent,
+                  expected_amount: currentTotalRent,
                   breakdown: integralBreakdown,
                 })
                 .eq("id", lastExistingPayment.id);
@@ -301,7 +325,8 @@ export const rentalUpdateService = {
               if (updateError) {
                 console.error("❌ Erro ao atualizar último pagamento:", updateError);
               } else {
-                console.log(`✅ Pagamento ${lastMonth}/${lastYear} atualizado de proporcional para integral: R$ ${totalMonthlyRent.toFixed(2)}`);
+                console.log(`✅ Pagamento ${lastMonth}/${lastYear} atualizado de proporcional para integral: R$ ${currentTotalRent.toFixed(2)}`);
+                console.log(`✅ Breakdown atualizado:`, integralBreakdown);
               }
             }
           }
@@ -350,9 +375,9 @@ export const rentalUpdateService = {
                 const isProportional = endDay < daysInMonth;
                 
                 if (isProportional) {
-                  // Proporcional
-                  const proportionalRent = (monthlyRent / 30) * endDay;
-                  const proportionalGarage = garageAmount > 0 ? (garageAmount / 30) * endDay : 0;
+                  // Proporcional - usar valores ATUAIS
+                  const proportionalRent = (currentMonthlyRent / 30) * endDay;
+                  const proportionalGarage = currentGarageAmount > 0 ? (currentGarageAmount / 30) * endDay : 0;
                   const proportionalTotal = proportionalRent + proportionalGarage;
                   
                   const breakdown = [
@@ -363,7 +388,7 @@ export const rentalUpdateService = {
                     }
                   ];
 
-                  if (garageAmount > 0) {
+                  if (currentGarageAmount > 0) {
                     breakdown.push({
                       description: `Garagem (${endDay} dias)`,
                       amount: parseFloat(proportionalGarage.toFixed(2)),
@@ -382,20 +407,21 @@ export const rentalUpdateService = {
                   });
                   
                   console.log(`   ✅ Último mês PROPORCIONAL: R$ ${proportionalTotal.toFixed(2)} (${endDay} dias)`);
+                  console.log(`   📋 Breakdown:`, breakdown);
                 } else {
-                  // Último mês integral
+                  // Último mês integral - usar valores ATUAIS
                   const breakdown = [
                     {
                       description: "Aluguel",
-                      amount: parseFloat(monthlyRent.toFixed(2)),
+                      amount: parseFloat(currentMonthlyRent.toFixed(2)),
                       type: "addition",
                     }
                   ];
 
-                  if (garageAmount > 0) {
+                  if (currentGarageAmount > 0) {
                     breakdown.push({
                       description: "Garagem",
-                      amount: parseFloat(garageAmount.toFixed(2)),
+                      amount: parseFloat(currentGarageAmount.toFixed(2)),
                       type: "addition",
                     });
                   }
@@ -405,27 +431,28 @@ export const rentalUpdateService = {
                     reference_month: month.toString(),
                     reference_year: year.toString(),
                     due_date: dueDate.toISOString().split('T')[0],
-                    expected_amount: totalMonthlyRent,
+                    expected_amount: currentTotalRent,
                     status: "pending",
                     breakdown: breakdown,
                   });
                   
-                  console.log(`   ✅ Último mês INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
+                  console.log(`   ✅ Último mês INTEGRAL: R$ ${currentTotalRent.toFixed(2)}`);
+                  console.log(`   📋 Breakdown:`, breakdown);
                 }
               } else {
-                // Mês intermediário - sempre integral
+                // Mês intermediário - sempre integral com valores ATUAIS
                 const breakdown = [
                   {
                     description: "Aluguel",
-                    amount: parseFloat(monthlyRent.toFixed(2)),
+                    amount: parseFloat(currentMonthlyRent.toFixed(2)),
                     type: "addition",
                   }
                 ];
 
-                if (garageAmount > 0) {
+                if (currentGarageAmount > 0) {
                   breakdown.push({
                     description: "Garagem",
-                    amount: parseFloat(garageAmount.toFixed(2)),
+                    amount: parseFloat(currentGarageAmount.toFixed(2)),
                     type: "addition",
                   });
                 }
@@ -435,12 +462,13 @@ export const rentalUpdateService = {
                   reference_month: month.toString(),
                   reference_year: year.toString(),
                   due_date: dueDate.toISOString().split('T')[0],
-                  expected_amount: totalMonthlyRent,
+                  expected_amount: currentTotalRent,
                   status: "pending",
                   breakdown: breakdown,
                 });
                 
-                console.log(`   ✅ Mês intermediário INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
+                console.log(`   ✅ Mês intermediário INTEGRAL: R$ ${currentTotalRent.toFixed(2)}`);
+                console.log(`   📋 Breakdown:`, breakdown);
               }
             } else {
               console.log(`   ⏭️ Mês ${month}/${year} já existe, pulando...`);
