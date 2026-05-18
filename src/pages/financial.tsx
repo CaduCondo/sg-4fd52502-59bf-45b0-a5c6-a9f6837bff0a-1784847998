@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -30,7 +37,8 @@ import {
   Check,
   X,
   Edit2,
-  Wallet
+  Wallet,
+  MapPin
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,6 +87,9 @@ export default function Financial() {
   const [filterMonth, setFilterMonth] = useState<number>(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
+
+  // Location filter state
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -403,6 +414,14 @@ export default function Financial() {
     }
   };
 
+  // Filtrar pagamentos por localização selecionada
+  const locationFilteredPayments = useMemo(() => {
+    if (selectedLocationId === "all") {
+      return payments;
+    }
+    return payments.filter(payment => payment.property?.locationId === selectedLocationId);
+  }, [payments, selectedLocationId]);
+
   // Memoizar função de obter detalhes do pagamento
   const getPaymentDetails = useCallback((payment: Payment) => {
     const property = payment.property;
@@ -467,11 +486,13 @@ export default function Financial() {
     }
   }, [sortField, sortDirection]);
 
-  // Memoizar pagamentos ordenados
+  // Memoizar pagamentos ordenados COM FILTRO DE LOCALIZAÇÃO
   const getSortedPayments = useMemo(() => {
-    if (!sortField || !sortDirection) return payments;
+    const paymentsToSort = locationFilteredPayments;
+    
+    if (!sortField || !sortDirection) return paymentsToSort;
 
-    return [...payments].sort((a, b) => {
+    return [...paymentsToSort].sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
@@ -516,7 +537,7 @@ export default function Financial() {
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
-  }, [payments, sortField, sortDirection, calculatePaymentNumber, getPaymentDetails]);
+  }, [locationFilteredPayments, sortField, sortDirection, calculatePaymentNumber, getPaymentDetails]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
@@ -616,18 +637,20 @@ export default function Financial() {
     });
   }, [getSortedPayments, filterMonth, filterYear, getPaymentDetails, calculatePaymentNumber, toast]);
 
-  // KPI Calculations (MEMOIZADOS!)
+  // KPI Calculations (MEMOIZADOS COM FILTRO DE LOCALIZAÇÃO!)
   const kpiCalculations = useMemo(() => {
-    const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
+    const paymentsToCalculate = locationFilteredPayments;
     
-    const totalReceived = payments
+    const totalExpected = paymentsToCalculate.reduce((sum, p) => sum + p.expectedAmount, 0);
+    
+    const totalReceived = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
       .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
     
     const feePercentage = config?.admin_fee_percentage ?? 5;
     const feeRate = feePercentage / 100;
     
-    const adminFee = payments
+    const adminFee = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
       .reduce((sum, p) => {
         const property = p.property;
@@ -639,7 +662,7 @@ export default function Financial() {
     const mgmtPercentage = config?.management_fee_percentage ?? 3;
     const mgmtRate = mgmtPercentage / 100;
     
-    const managementFee = payments
+    const managementFee = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
       .reduce((sum, p) => {
         const fee = (p.paidAmount || 0) * mgmtRate;
@@ -648,7 +671,7 @@ export default function Financial() {
 
     const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
     
-    const totalPaid = payments
+    const totalPaid = paymentsToCalculate
       .filter(p => p.status === "paid" || p.status === "partial")
       .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
@@ -660,9 +683,18 @@ export default function Financial() {
       netRevenue,
       totalPaid,
     };
-  }, [payments, config, exemptLocationIds, locationExpenses]);
+  }, [locationFilteredPayments, config, exemptLocationIds, locationExpenses]);
 
   const filteredPayments = getSortedPayments;
+
+  // Preparar lista de locais para o Select
+  const locationOptions = useMemo(() => {
+    const options = Array.from(locationsMap.entries()).map(([id, name]) => ({
+      id,
+      name
+    }));
+    return options.sort((a, b) => a.name.localeCompare(b.name));
+  }, [locationsMap]);
 
   if (!mounted) return null;
 
@@ -930,7 +962,23 @@ export default function Financial() {
                       </span>
                     </h2>
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                    {/* Select de Locais */}
+                    <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                      <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9 text-xs sm:text-sm">
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                        <SelectValue placeholder="Todos os Locais" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Locais</SelectItem>
+                        {locationOptions.map(location => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
                     <Button
                       variant="outline"
                       size="sm"
