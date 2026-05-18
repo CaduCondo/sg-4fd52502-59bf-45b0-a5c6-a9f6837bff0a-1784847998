@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SystemUser } from "@/types";
+import { forceDialogCleanup } from "@/lib/forceCleanup";
 
 interface UsersTabProps {
   users: SystemUser[];
@@ -75,45 +76,18 @@ export function UsersTab({
       setIsUserDialogOpen(false);
       setSelectedUser(undefined);
       
-      // Aggressive cleanup to prevent mouse lock
+      // Use centralized cleanup with multiple attempts
       setTimeout(() => {
-        // Blur any active element
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
-        
-        // Remove any lingering overlays or modal artifacts
-        const overlays = document.querySelectorAll('[data-radix-dialog-overlay], [data-radix-focus-guard]');
-        overlays.forEach(overlay => {
-          if (overlay instanceof HTMLElement) {
-            overlay.style.pointerEvents = 'none';
-            overlay.style.opacity = '0';
-            overlay.remove();
-          }
-        });
-        
-        // Force reset body styles
-        document.body.style.pointerEvents = '';
-        document.body.style.overflow = '';
-        document.body.removeAttribute('data-scroll-locked');
-        
-        // Force remove any radix portals that might be stuck
-        const portals = document.querySelectorAll('[data-radix-portal]');
-        portals.forEach(portal => {
-          const hasOpenDialog = portal.querySelector('[data-state="open"]');
-          if (!hasOpenDialog && portal instanceof HTMLElement) {
-            portal.style.pointerEvents = 'none';
-          }
-        });
-        
-        // Final force: ensure everything is clickable
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach(el => {
-          if (el instanceof HTMLElement && el.style.pointerEvents === 'none' && !el.hasAttribute('disabled')) {
-            el.style.pointerEvents = '';
-          }
-        });
-      }, 200);
+        forceDialogCleanup();
+      }, 100);
+      
+      setTimeout(() => {
+        forceDialogCleanup();
+      }, 300);
+      
+      setTimeout(() => {
+        forceDialogCleanup();
+      }, 500);
     } else {
       setIsUserDialogOpen(true);
     }

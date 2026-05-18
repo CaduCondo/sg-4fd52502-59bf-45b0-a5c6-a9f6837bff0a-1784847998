@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { forceDialogCleanup } from "@/lib/forceCleanup";
 
 interface UserDialogProps {
   open: boolean;
@@ -59,39 +60,14 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     }
   }, [user, open]);
 
-  // Aggressive cleanup when dialog closes
+  // Force cleanup when dialog closes
   useEffect(() => {
     if (!open) {
       setIsSubmitting(false);
-      
-      // Force remove focus and clean up any residual elements
+      // Use the centralized cleanup function with delay
       setTimeout(() => {
-        // Blur any active element
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
-        
-        // Remove any lingering dialog overlays
-        const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
-        overlays.forEach(overlay => {
-          if (overlay instanceof HTMLElement) {
-            overlay.style.pointerEvents = 'none';
-            overlay.style.opacity = '0';
-          }
-        });
-        
-        // Force re-enable body pointer events
-        document.body.style.pointerEvents = '';
-        document.body.style.overflow = '';
-        
-        // Remove any focus traps
-        const focusTraps = document.querySelectorAll('[data-radix-focus-guard]');
-        focusTraps.forEach(trap => {
-          if (trap instanceof HTMLElement) {
-            trap.style.pointerEvents = 'none';
-          }
-        });
-      }, 150);
+        forceDialogCleanup();
+      }, 100);
     }
   }, [open]);
 
@@ -122,14 +98,21 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
       <DialogContent 
         className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto"
         onCloseAutoFocus={(e) => {
-          // Prevent focus trap on close
           e.preventDefault();
-          
-          // Force cleanup of any modal artifacts
-          setTimeout(() => {
-            document.body.style.pointerEvents = '';
-            document.body.style.overflow = '';
-          }, 0);
+          // Additional cleanup on close
+          forceDialogCleanup();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (!isSubmitting) {
+            handleOpenChange(false);
+          } else {
+            e.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (isSubmitting) {
+            e.preventDefault();
+          }
         }}
       >
         <DialogHeader>
