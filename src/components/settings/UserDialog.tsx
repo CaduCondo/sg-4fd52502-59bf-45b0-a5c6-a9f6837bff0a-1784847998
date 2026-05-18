@@ -59,14 +59,39 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     }
   }, [user, open]);
 
-  // Cleanup when dialog closes
+  // Aggressive cleanup when dialog closes
   useEffect(() => {
     if (!open) {
       setIsSubmitting(false);
-      // Remove focus from any active element when dialog closes
+      
+      // Force remove focus and clean up any residual elements
       setTimeout(() => {
-        (document.activeElement as HTMLElement)?.blur();
-      }, 100);
+        // Blur any active element
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        
+        // Remove any lingering dialog overlays
+        const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+        overlays.forEach(overlay => {
+          if (overlay instanceof HTMLElement) {
+            overlay.style.pointerEvents = 'none';
+            overlay.style.opacity = '0';
+          }
+        });
+        
+        // Force re-enable body pointer events
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+        
+        // Remove any focus traps
+        const focusTraps = document.querySelectorAll('[data-radix-focus-guard]');
+        focusTraps.forEach(trap => {
+          if (trap instanceof HTMLElement) {
+            trap.style.pointerEvents = 'none';
+          }
+        });
+      }, 150);
     }
   }, [open]);
 
@@ -86,9 +111,27 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && !isSubmitting) {
+      onOpenChange(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent 
+        className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto"
+        onCloseAutoFocus={(e) => {
+          // Prevent focus trap on close
+          e.preventDefault();
+          
+          // Force cleanup of any modal artifacts
+          setTimeout(() => {
+            document.body.style.pointerEvents = '';
+            document.body.style.overflow = '';
+          }, 0);
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{user ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
           <DialogDescription>
@@ -210,7 +253,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => onOpenChange(false)} 
+              onClick={() => handleOpenChange(false)} 
               disabled={isSubmitting}
               className="w-full sm:w-auto h-11"
             >
