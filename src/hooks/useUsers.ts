@@ -274,6 +274,36 @@ export function useUsers() {
     }
   };
 
+  const handleUnblockUser = async (userId: string) => {
+    try {
+      // Resetar bloqueio temporário (blocked_until e login_attempts)
+      const { error } = await supabase
+        .from("system_users")
+        .update({
+          blocked_until: null,
+          login_attempts: 0
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário desbloqueado com sucesso!",
+        description: "O usuário pode acessar o sistema novamente.",
+      });
+      await fetchUsers();
+      return true;
+    } catch (error) {
+      console.error("Erro ao desbloquear usuário:", error);
+      toast({
+        title: "Erro ao desbloquear usuário",
+        description: "Não foi possível remover o bloqueio temporário.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   return {
     users,
     isLoading,
@@ -284,5 +314,6 @@ export function useUsers() {
     handleUpdateUser,
     handleDeleteUser,
     handleToggleUserStatus,
+    handleUnblockUser,
   };
 }

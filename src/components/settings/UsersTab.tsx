@@ -40,6 +40,7 @@ interface UsersTabProps {
   onDeleteUser: (id: string) => Promise<boolean>;
   onResetPassword: (id: string) => Promise<boolean>;
   onToggleStatus: (id: string) => Promise<boolean>;
+  onUnblockUser: (id: string) => Promise<boolean>;
 }
 
 const roleLabels: Record<string, string> = {
@@ -100,6 +101,7 @@ export function UsersTab({
   onDeleteUser,
   onResetPassword,
   onToggleStatus,
+  onUnblockUser,
 }: UsersTabProps) {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | undefined>();
@@ -154,6 +156,10 @@ export function UsersTab({
 
   const handleResetPassword = async (userId: string) => {
     await onResetPassword(userId);
+  };
+
+  const handleUnblock = async (userId: string) => {
+    await onUnblockUser(userId);
   };
 
   return (
@@ -230,19 +236,32 @@ export function UsersTab({
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleActive(user.id)}>
-                                {user.active ? (
-                                  <>
-                                    <Ban className="mr-2 h-4 w-4" />
-                                    Desativar
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Ativar
-                                  </>
-                                )}
-                              </DropdownMenuItem>
+                              
+                              {/* Mostrar Desbloquear quando bloqueado temporariamente */}
+                              {status.type === "blocked_temp" && (
+                                <DropdownMenuItem onClick={() => handleUnblock(user.id)}>
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Desbloquear
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {/* Mostrar Ativar/Desativar apenas quando NÃO bloqueado temporariamente */}
+                              {status.type !== "blocked_temp" && (
+                                <DropdownMenuItem onClick={() => handleToggleActive(user.id)}>
+                                  {user.active ? (
+                                    <>
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      Desativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      Ativar
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              )}
+                              
                               <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
                                 <Key className="mr-2 h-4 w-4" />
                                 Resetar Senha
