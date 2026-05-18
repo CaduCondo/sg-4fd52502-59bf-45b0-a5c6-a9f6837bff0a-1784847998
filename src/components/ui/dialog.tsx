@@ -21,7 +21,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -37,6 +37,36 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, preventClose = false, onPointerDownOutside, onEscapeKeyDown, onInteractOutside, ...props }, ref) => {
+  // Force cleanup when component unmounts
+  React.useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      setTimeout(() => {
+        // Remove any lingering Radix overlays
+        const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+        overlays.forEach(overlay => overlay.remove());
+        
+        // Remove focus guards
+        const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
+        focusGuards.forEach(guard => guard.remove());
+        
+        // Clean portals without open dialogs
+        const portals = document.querySelectorAll('[data-radix-portal]');
+        portals.forEach(portal => {
+          const hasOpenDialog = portal.querySelector('[data-state="open"]');
+          if (!hasOpenDialog) {
+            portal.remove();
+          }
+        });
+        
+        // Reset body
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+        document.body.removeAttribute('data-scroll-locked');
+      }, 0);
+    };
+  }, []);
+
   const handlePreventClose = (e: Event) => {
     if (preventClose) {
       e.preventDefault();
@@ -63,6 +93,10 @@ const DialogContent = React.forwardRef<
         onInteractOutside={(e) => {
           handlePreventClose(e);
           onInteractOutside?.(e);
+        }}
+        onOpenAutoFocus={(e) => {
+          // Prevent auto focus on open
+          e.preventDefault();
         }}
         {...props}
       >
