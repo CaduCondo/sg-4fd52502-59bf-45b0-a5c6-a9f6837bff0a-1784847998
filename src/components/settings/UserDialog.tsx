@@ -59,6 +59,17 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     }
   }, [user, open]);
 
+  // Cleanup when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsSubmitting(false);
+      // Remove focus from any active element when dialog closes
+      setTimeout(() => {
+        (document.activeElement as HTMLElement)?.blur();
+      }, 100);
+    }
+  }, [open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     

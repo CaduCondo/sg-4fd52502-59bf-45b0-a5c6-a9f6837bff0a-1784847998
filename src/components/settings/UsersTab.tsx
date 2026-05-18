@@ -70,6 +70,19 @@ export function UsersTab({
     setIsUserDialogOpen(true);
   };
 
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      // Remove focus from any active element
+      setTimeout(() => {
+        (document.activeElement as HTMLElement)?.blur();
+      }, 100);
+      setIsUserDialogOpen(false);
+      setSelectedUser(undefined);
+    } else {
+      setIsUserDialogOpen(true);
+    }
+  };
+
   const handleDeleteClick = (user: SystemUser) => {
     setUserToDelete(user);
   };
@@ -190,7 +203,7 @@ export function UsersTab({
 
       <UserDialog
         open={isUserDialogOpen}
-        onOpenChange={setIsUserDialogOpen}
+        onOpenChange={handleDialogClose}
         user={selectedUser}
         onSave={selectedUser ? (data) => onUpdateUser(selectedUser.id, data) : onCreateUser}
       />
