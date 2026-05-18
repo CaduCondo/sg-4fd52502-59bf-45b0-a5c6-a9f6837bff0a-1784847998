@@ -130,7 +130,7 @@ export function useUsers() {
     }
   };
 
-  const handleUpdateUser = async (id: string, userData: Partial<SystemUser>) => {
+  const handleUpdateUser = async (id: string, userData: Partial<SystemUser> & { password?: string }) => {
     try {
       // Se estiver atualizando o email, verificar se já existe outro usuário com este email
       if (userData.email) {
@@ -178,9 +178,13 @@ export function useUsers() {
         role: userData.role,
       };
 
-      if (userData.password_hash && userData.password_hash.trim() !== "") {
-        updateData.password_hash = userData.password_hash;
+      // Aceitar tanto 'password' quanto 'password_hash'
+      const passwordField = (userData as any).password || userData.password_hash;
+      if (passwordField && passwordField.trim() !== "") {
+        updateData.password_hash = passwordField;
       }
+
+      console.log("📝 Dados que serão enviados para updateUser:", updateData);
 
       await updateUser(id, updateData);
       toast({ title: "Usuário atualizado com sucesso!" });
