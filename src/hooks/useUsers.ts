@@ -132,6 +132,12 @@ export function useUsers() {
 
   const handleUpdateUser = async (id: string, userData: Partial<SystemUser> & { password?: string }) => {
     try {
+      console.log("🔐 ========== UPDATE USER DEBUG ==========");
+      console.log("🆔 User ID:", id);
+      console.log("📋 userData recebido:", userData);
+      console.log("🔑 password field:", (userData as any).password);
+      console.log("🔑 password_hash field:", userData.password_hash);
+      
       // Se estiver atualizando o email, verificar se já existe outro usuário com este email
       if (userData.email) {
         const { data: existingUser } = await supabase
@@ -178,20 +184,32 @@ export function useUsers() {
         role: userData.role,
       };
 
-      // Aceitar tanto 'password' quanto 'password_hash'
-      const passwordField = (userData as any).password || userData.password_hash;
+      // CRÍTICO: Aceitar o campo 'password' do formulário
+      const passwordField = (userData as any).password;
+      console.log("🔑 Password field value:", passwordField);
+      console.log("🔑 Password field type:", typeof passwordField);
+      console.log("🔑 Password is empty?:", !passwordField || passwordField.trim() === "");
+      
       if (passwordField && passwordField.trim() !== "") {
-        updateData.password_hash = passwordField;
+        updateData.password_hash = passwordField.trim();
+        console.log("✅ Senha será atualizada para:", passwordField.trim());
+      } else {
+        console.log("⚠️ Campo senha vazio - não será atualizado");
       }
 
-      console.log("📝 Dados que serão enviados para updateUser:", updateData);
+      console.log("📝 Dados finais que serão enviados:", updateData);
+      console.log("🔐 ========== CALLING updateUser ==========");
 
       await updateUser(id, updateData);
+      
+      console.log("✅ updateUser concluído com sucesso");
       toast({ title: "Usuário atualizado com sucesso!" });
       await fetchUsers();
       return true;
     } catch (error: any) {
-      console.error("Erro ao atualizar usuário:", error);
+      console.error("❌ ========== UPDATE USER ERROR ==========");
+      console.error("❌ Error:", error);
+      console.error("❌ Error message:", error.message);
       
       if (error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
         if (error.message?.includes("email")) {
