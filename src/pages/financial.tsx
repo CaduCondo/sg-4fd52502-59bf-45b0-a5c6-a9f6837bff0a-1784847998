@@ -668,33 +668,31 @@ export default function Financial() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8 space-y-8">
+      <div className="container mx-auto py-4 sm:py-8 space-y-6 sm:space-y-8 px-4 sm:px-6">
         <ScrollReveal>
-          <div className="flex flex-col gap-4">
-            <h1 className="text-3xl font-bold">Financeiro</h1>
-            <p className="text-muted-foreground">
+          <div className="flex flex-col gap-2 sm:gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Acompanhe suas receitas, despesas e fluxo de caixa
             </p>
           </div>
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 max-w-full sm:max-w-md gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-2 max-w-full sm:max-w-md gap-1 sm:gap-2 h-auto p-1">
             <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-              <span className="hidden sm:inline">Detalhamento de Locações</span>
-              <span className="sm:hidden">Locações</span>
+              Locações
             </TabsTrigger>
             {(isAdmin || user?.role === "broker") && (
               <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-                <span className="hidden sm:inline">Detalhamento de Cauções</span>
-                <span className="sm:hidden">Cauções</span>
+                Cauções
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="rentals" className="space-y-8 mt-8">
+          <TabsContent value="rentals" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
             <ScrollReveal delay={0.1}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+              <div className="w-full">
                 <PeriodSelector 
                   selectedMonth={selectedMonth} 
                   selectedYear={selectedYear}
@@ -708,19 +706,19 @@ export default function Financial() {
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
-            <div className={`grid gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
+            <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
               {isFinancial ? (
                 <>
                   <ScrollReveal delay={0.2}>
                     <Card className="border-l-4 border-l-blue-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Wallet className="h-4 w-4 text-blue-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                               Receita Bruta Esperada
                             </p>
-                            <p className="text-2xl font-bold text-blue-600">
+                            <p className="text-xl sm:text-2xl font-bold text-blue-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -737,14 +735,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.3}>
                     <Card className="border-l-4 border-l-green-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-green-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                               Receita Bruta
                             </p>
-                            <p className="text-2xl font-bold text-green-600">
+                            <p className="text-xl sm:text-2xl font-bold text-green-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -761,14 +759,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.4}>
                     <Card className="border-l-4 border-l-orange-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Receipt className="h-4 w-4 text-orange-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Receipt className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
                               Taxas e Contas
                             </p>
-                            <p className="text-2xl font-bold text-orange-600">
+                            <p className="text-xl sm:text-2xl font-bold text-orange-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -785,14 +783,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.5}>
                     <Card className="border-l-4 border-l-purple-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-purple-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
                               Receita Líquida
                             </p>
-                            <p className="text-2xl font-bold text-purple-600">
+                            <p className="text-xl sm:text-2xl font-bold text-purple-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -811,14 +809,14 @@ export default function Financial() {
                 <>
                   <ScrollReveal delay={0.2}>
                     <Card className="border-l-4 border-l-green-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-green-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                               Receita Bruta
                             </p>
-                            <p className="text-2xl font-bold text-green-600">
+                            <p className="text-xl sm:text-2xl font-bold text-green-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -835,14 +833,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.3}>
                     <Card className="border-l-4 border-l-red-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Percent className="h-4 w-4 text-red-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Percent className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
                               Taxa de Administração
                             </p>
-                            <p className="text-2xl font-bold text-red-600">
+                            <p className="text-xl sm:text-2xl font-bold text-red-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -860,14 +858,14 @@ export default function Financial() {
                   {user?.role !== "broker" && (
                     <ScrollReveal delay={0.4}>
                       <Card className="border-l-4 border-l-blue-500">
-                        <CardContent className="pt-6">
+                        <CardContent className="pt-4 sm:pt-6">
                           <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <Settings className="h-4 w-4 text-blue-600" />
+                              <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                                 Taxa de Gerenciamento
                               </p>
-                              <p className="text-2xl font-bold text-blue-600">
+                              <p className="text-xl sm:text-2xl font-bold text-blue-600">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
@@ -885,14 +883,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.5}>
                     <Card className="border-l-4 border-l-orange-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Receipt className="h-4 w-4 text-orange-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Receipt className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
                               Contas do Mês
                             </p>
-                            <p className="text-2xl font-bold text-orange-600">
+                            <p className="text-xl sm:text-2xl font-bold text-orange-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -911,14 +909,14 @@ export default function Financial() {
 
                   <ScrollReveal delay={0.6}>
                     <Card className="border-l-4 border-l-purple-500">
-                      <CardContent className="pt-6">
+                      <CardContent className="pt-4 sm:pt-6">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-purple-600" />
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
                               Receita Líquida
                             </p>
-                            <p className="text-2xl font-bold text-purple-600">
+                            <p className="text-xl sm:text-2xl font-bold text-purple-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
@@ -939,11 +937,11 @@ export default function Financial() {
             {/* Tabela de Locações */}
             <ScrollReveal delay={0.7}>
               <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <CardContent className="pt-4 sm:pt-6 px-2 sm:px-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4 px-2 sm:px-0">
                     <div className="w-full sm:w-auto">
-                      <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                        <FileText className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <h2 className="text-lg sm:text-xl lg:text-2xl font-bold flex items-center gap-2">
+                        <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                         <span className="line-clamp-2 sm:line-clamp-1">
                           Detalhamento de Locações - {format(
                             new Date(filterYear, filterMonth - 1),
@@ -958,7 +956,7 @@ export default function Financial() {
                         variant="outline"
                         size="sm"
                         onClick={handlePrint}
-                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm h-8 sm:h-9"
                       >
                         <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span className="hidden sm:inline">Imprimir</span>
@@ -968,7 +966,7 @@ export default function Financial() {
                         variant="outline"
                         size="sm"
                         onClick={handleExport}
-                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                        className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm h-8 sm:h-9"
                       >
                         <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span className="hidden sm:inline">Exportar Excel</span>
@@ -982,69 +980,69 @@ export default function Financial() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                     </div>
                   ) : filteredPayments.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-8 text-sm sm:text-base text-muted-foreground">
                       Nenhum pagamento encontrado para o período selecionado
                     </div>
                   ) : (
-                    <div className="overflow-x-auto max-w-full -mx-6 px-6 sm:mx-0 sm:px-0">
+                    <div className="overflow-x-auto -mx-2 sm:mx-0">
                       <div className="inline-block min-w-full align-middle">
                         <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
                           <Table className="min-w-[1200px]">
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("paymentNumber")}>
                                   <div className="flex items-center">
                                     Parcela
                                     <SortIcon field="paymentNumber" />
                                   </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("local")}>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("local")}>
                                   <div className="flex items-center">
                                     Local
                                     <SortIcon field="local" />
                                   </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("complement")}>
                                   <div className="flex items-center">
                                     Complemento
                                     <SortIcon field="complement" />
                                   </div>
                                 </TableHead>
-                                <TableHead>Inquilino</TableHead>
-                                <TableHead>Ano</TableHead>
-                                <TableHead>Mês</TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
+                                <TableHead className="text-xs sm:text-sm">Inquilino</TableHead>
+                                <TableHead className="text-xs sm:text-sm">Ano</TableHead>
+                                <TableHead className="text-xs sm:text-sm">Mês</TableHead>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("status")}>
                                   <div className="flex items-center">
                                     Status
                                     <SortIcon field="status" />
                                   </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("dueDate")}>
                                   <div className="flex items-center">
                                     Data Vencimento
                                     <SortIcon field="dueDate" />
                                   </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("paymentDate")}>
+                                <TableHead className="cursor-pointer text-xs sm:text-sm" onClick={() => handleSort("paymentDate")}>
                                   <div className="flex items-center">
                                     Data Recebida
                                     <SortIcon field="paymentDate" />
                                   </div>
                                 </TableHead>
-                                <TableHead>Horário Recebido</TableHead>
-                                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("expectedAmount")}>
+                                <TableHead className="text-xs sm:text-sm">Horário Recebido</TableHead>
+                                <TableHead className="cursor-pointer text-right text-xs sm:text-sm" onClick={() => handleSort("expectedAmount")}>
                                   <div className="flex items-center justify-end">
                                     Valor Esperado
                                     <SortIcon field="expectedAmount" />
                                   </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("paidAmount")}>
+                                <TableHead className="cursor-pointer text-right text-xs sm:text-sm" onClick={() => handleSort("paidAmount")}>
                                   <div className="flex items-center justify-end">
                                     Valor Pago
                                     <SortIcon field="paidAmount" />
                                   </div>
                                 </TableHead>
-                                <TableHead>Código PIX</TableHead>
+                                <TableHead className="text-xs sm:text-sm">Código PIX</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1054,26 +1052,26 @@ export default function Financial() {
 
                                 return (
                                   <TableRow key={payment.id}>
-                                    <TableCell>
+                                    <TableCell className="text-xs sm:text-sm">
                                       {calculatePaymentNumber(payment, details.rental)}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-xs sm:text-sm">
                                       <div className="max-w-[200px]">
                                         <div className="font-medium truncate">
                                           {details.local}
                                         </div>
                                       </div>
                                     </TableCell>
-                                    <TableCell>
-                                      <div className="text-sm text-muted-foreground truncate">
+                                    <TableCell className="text-xs sm:text-sm">
+                                      <div className="text-muted-foreground truncate">
                                         {details.complemento}
                                       </div>
                                     </TableCell>
-                                    <TableCell className="whitespace-nowrap">
+                                    <TableCell className="whitespace-nowrap text-xs sm:text-sm">
                                       {details.tenantName}
                                     </TableCell>
-                                    <TableCell>{payment.referenceYear}</TableCell>
-                                    <TableCell className="capitalize">{monthName}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm">{payment.referenceYear}</TableCell>
+                                    <TableCell className="capitalize text-xs sm:text-sm">{monthName}</TableCell>
                                     <TableCell>
                                       <Badge
                                         variant={
@@ -1085,6 +1083,7 @@ export default function Financial() {
                                             ? "destructive"
                                             : "outline"
                                         }
+                                        className="text-xs"
                                       >
                                         {payment.status === "paid"
                                           ? "Pago"
@@ -1095,26 +1094,26 @@ export default function Financial() {
                                           : "Parcial"}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-xs sm:text-sm">
                                       {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-xs sm:text-sm">
                                       {payment.paymentDate
                                         ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                                         : "-"}
                                     </TableCell>
-                                    <TableCell>
-                                      <span className="text-sm font-mono">
+                                    <TableCell className="text-xs sm:text-sm">
+                                      <span className="font-mono">
                                         {details.paymentTime || "-"}
                                       </span>
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right text-xs sm:text-sm">
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
                                       }).format(payment.expectedAmount)}
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-green-600">
+                                    <TableCell className="text-right font-semibold text-green-600 text-xs sm:text-sm">
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
@@ -1122,7 +1121,7 @@ export default function Financial() {
                                     </TableCell>
                                     <TableCell>
                                       {editingPixCode?.id === payment.id ? (
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2 sm:gap-3">
                                           <Input
                                             value={editingPixCode.value}
                                             onChange={(e) => {
@@ -1132,35 +1131,35 @@ export default function Financial() {
                                               });
                                             }}
                                             placeholder="Digite o código PIX"
-                                            className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
+                                            className="h-8 sm:h-9 text-xs sm:text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[180px] sm:min-w-[250px] bg-white"
                                             autoFocus
                                           />
                                           <Button
-                                            size="default"
+                                            size="sm"
                                             variant="ghost"
                                             onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
-                                            className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-green-100 transition-colors"
                                             title="Salvar código PIX"
                                           >
-                                            <Check className="h-5 w-5 text-green-600" />
+                                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                                           </Button>
                                           <Button
-                                            size="default"
+                                            size="sm"
                                             variant="ghost"
                                             onClick={() => setEditingPixCode(null)}
-                                            className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-red-100 transition-colors"
                                             title="Cancelar edição"
                                           >
-                                            <X className="h-5 w-5 text-red-600" />
+                                            <X className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center gap-3">
-                                          <span className="text-slate-600 max-w-xs truncate text-sm font-mono">
+                                        <div className="flex items-center gap-2 sm:gap-3">
+                                          <span className="text-slate-600 max-w-xs truncate text-xs sm:text-sm font-mono">
                                             {details.pixCode || "-"}
                                           </span>
                                           <Button
-                                            size="default"
+                                            size="sm"
                                             variant="ghost"
                                             onClick={() => {
                                               setEditingPixCode({
@@ -1168,10 +1167,10 @@ export default function Financial() {
                                                 value: details.pixCode || ""
                                               });
                                             }}
-                                            className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-slate-100 transition-colors"
                                             title="Editar código PIX"
                                           >
-                                            <Edit2 className="h-5 w-5 text-slate-600" />
+                                            <Edit2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
                                           </Button>
                                         </div>
                                       )}
@@ -1181,16 +1180,16 @@ export default function Financial() {
                               })}
                               {/* Linha de Totais */}
                               <TableRow className="bg-muted/50 font-bold">
-                                <TableCell colSpan={10} className="text-right">
+                                <TableCell colSpan={10} className="text-right text-xs sm:text-sm">
                                   Totais:
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right text-xs sm:text-sm">
                                   {new Intl.NumberFormat("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
                                   }).format(kpiCalculations.totalExpected)}
                                 </TableCell>
-                                <TableCell className="text-right text-green-600">
+                                <TableCell className="text-right text-green-600 text-xs sm:text-sm">
                                   {new Intl.NumberFormat("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
@@ -1210,8 +1209,8 @@ export default function Financial() {
           </TabsContent>
 
           {(isAdmin || user?.role === "broker") && (
-            <TabsContent value="deposits" className="space-y-6">
-              <div className="overflow-x-auto max-w-full">
+            <TabsContent value="deposits" className="space-y-6 mt-6">
+              <div className="overflow-x-auto w-full">
                 <DepositInstallmentsTable 
                   userRole={user?.role || "user"}
                   allowedLocationIds={allowedLocationIds}
