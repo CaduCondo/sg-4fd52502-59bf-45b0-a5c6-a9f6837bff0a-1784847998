@@ -154,7 +154,8 @@ export default function Settings() {
     handleCreateUser,
     handleUpdateUser,
     handleDeleteUser,
-    handleToggleUserStatus
+    handleToggleUserStatus,
+    handleUnblockUser
   } = useUsers();
 
   useEffect(() => {
@@ -779,6 +780,7 @@ export default function Settings() {
               onDeleteUser={async (id) => { await handleDeleteUser(id); return true; }}
               onToggleStatus={async (id) => { const user = users.find(u => u.id === id); if (user) return await handleToggleUserStatus(user); return false; }}
               onResetPassword={async (id) => { await handleResetPassword(id); return true; }}
+              onUnblockUser={async (id) => { return await handleUnblockUser(id); }}
             />
           </TabsContent>
 
