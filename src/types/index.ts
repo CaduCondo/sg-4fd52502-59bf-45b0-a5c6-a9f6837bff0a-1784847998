@@ -47,6 +47,8 @@ export interface SystemUser {
   usuario?: string;
   password_hash?: string; // Senha hasheada (bcrypt) - usado para autenticação
   password?: string; // Optional for updates
+  blocked_until?: string | null; // Bloqueio temporário por falhas de login
+  login_attempts?: number; // Contador de tentativas de login
 }
 
 export interface CompanyConfig {
