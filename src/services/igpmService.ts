@@ -71,7 +71,8 @@ export function calculatePoupanca(startDate: string, endDate: string): {
   const start = new Date(startDate + "T12:00:00");
   const end = new Date(endDate + "T12:00:00");
   
-  const months = differenceInMonths(end, start);
+  // Calcular meses incluindo tanto o mês inicial quanto o final
+  const months = differenceInMonths(end, start) + 1;
   
   // Se for menos de 1 mês, não aplica correção
   if (months < 1) {
@@ -92,9 +93,8 @@ export function calculatePoupanca(startDate: string, endDate: string): {
   // Calcular rendimento da poupança para cada mês do período
   const currentDate = new Date(start);
   
-  // IMPORTANTE: Começar do mês SEGUINTE ao início (não do mês de início)
-  // Exemplo: Se depositou em 15/01/2024, a correção começa em 01/02/2024
-  currentDate.setMonth(currentDate.getMonth() + 1);
+  // CORREÇÃO: Começar do mês do depósito (não pular o mês inicial)
+  // Exemplo: Se depositou em 15/01/2024 e rescindiu em 15/06/2024, corrigir de jan até jun (6 meses)
   currentDate.setDate(1); // Sempre dia 1 para cálculo
   
   for (let i = 0; i < months; i++) {
