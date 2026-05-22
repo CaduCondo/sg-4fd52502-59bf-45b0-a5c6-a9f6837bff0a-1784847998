@@ -347,16 +347,14 @@ export function RentalTerminationDialog({
       // Cálculo de multas
       if (applyFullContractPenalty && remaining > 0) {
         const threeTimesRent = 3 * monthlyRent;
-        const perMonthPenalty = threeTimesRent / totalMonths;
-        const penalty = perMonthPenalty * remaining;
+        const penalty = ((threeTimesRent / totalMonths) * remaining);
         setPenaltyAmount(Math.round(penalty * 100) / 100);
       } 
       else if (apply12MonthsPenalty) {
         if (currentMonthFromDate < 12) {
           const monthsTo12th = Math.max(0, 12 - currentMonthFromDate);
           const threeTimesRent = 3 * monthlyRent;
-          const perMonthPenalty = threeTimesRent / 12;
-          const penalty = perMonthPenalty * monthsTo12th;
+          const penalty = ((threeTimesRent / 12) * monthsTo12th);
           setPenaltyAmount(Math.round(penalty * 100) / 100);
         } else {
           setPenaltyAmount(0);
