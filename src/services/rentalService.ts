@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Rental, Attachment } from "@/types";
 import { depositInstallmentService } from "./depositInstallmentService";
-import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
+import { updatePendingPaymentsOnRentalEdit, createPaymentsForRental } from "./paymentService";
 
 // ✅ CACHE: Cache simples em memória
 let rentalsCache: { data: Rental[] | null; timestamp: number } = {
@@ -323,6 +323,28 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
+
+    // ✅ CRÍTICO: Gerar recebimentos automáticos da locação
+    if (rental.startDate && rental.endDate && rental.paymentDay) {
+      console.log("🔄 [rentalService.create] Gerando recebimentos automáticos...");
+      
+      try {
+        await createPaymentsForRental({
+          rental: { ...data, id: data.id } as Rental,
+          startDate: new Date(rental.startDate),
+          endDate: new Date(rental.endDate),
+          monthlyRent: rental.monthlyRent || rental.value || 0,
+          paymentDay: rental.paymentDay,
+          hasGarage: rental.hasGarage,
+          garageValue: rental.garageValue,
+        });
+        console.log("✅ [rentalService.create] Recebimentos gerados com sucesso!");
+      } catch (paymentError) {
+        console.error("❌ [rentalService.create] Erro ao gerar recebimentos:", paymentError);
+        // Não falhar a criação da locação, apenas logar o erro
+        // O usuário pode gerar os recebimentos manualmente depois
+      }
+    }
 
     // Sincronizar parcelas do caução se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {
