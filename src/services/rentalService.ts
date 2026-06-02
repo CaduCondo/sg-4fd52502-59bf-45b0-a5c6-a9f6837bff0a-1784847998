@@ -330,7 +330,7 @@ export const rentalService = {
       
       try {
         await createPaymentsForRental({
-          rental: { ...data, id: data.id } as Rental,
+          rental: { id: data.id } as Rental,
           startDate: new Date(rental.startDate),
           endDate: new Date(rental.endDate),
           monthlyRent: rental.monthlyRent || rental.value || 0,
