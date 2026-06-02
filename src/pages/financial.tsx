@@ -79,6 +79,9 @@ export default function Financial() {
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [locationsMap, setLocationsMap] = useState<Map<string, string>>(new Map());
+  
+  // Novo estado para armazenar as despesas com location_id
+  const [locationExpensesData, setLocationExpensesData] = useState<Array<{amount: number, location_id: string}>>([]);
 
   // Date State
   const now = new Date();
@@ -328,9 +331,11 @@ export default function Financial() {
       // Buscar configurações, isenções e permissões
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
       const configQuery: any = supabase.from("configs").select("*").maybeSingle();
+      
+      // ✅ CORREÇÃO: Incluir location_id na query de despesas
       const expensesQuery: any = supabase
         .from("location_expenses")
-        .select("amount")
+        .select("amount, location_id")
         .eq("reference_month", filterMonth)
         .eq("reference_year", filterYear);
 
@@ -350,11 +355,13 @@ export default function Financial() {
 
       const exemptIds: string[] = exemptionsResult.data?.map((e: any) => e.location_id) || [];
       const configData: any = configResult.data;
-      const totalExpenses: number = expensesResult.data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0;
+      
+      // ✅ CORREÇÃO: Armazenar array completo de despesas com location_id
+      const expensesData = expensesResult.data || [];
 
       setExemptLocationIds(exemptIds);
       setConfig(configData);
-      setLocationExpenses(totalExpenses);
+      setLocationExpensesData(expensesData);
       setAllowedLocationIds(allowedLocations);
       setLocationsMap(locationsMapTemp);
 
@@ -377,7 +384,7 @@ export default function Financial() {
         totalPayments: filteredPayments.length,
         totalLocations: locationsMapTemp.size,
         exemptLocations: exemptIds.length,
-        locationExpenses: totalExpenses
+        locationExpenses: expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
       });
 
       // Atualizar cache com dados já filtrados
@@ -641,6 +648,13 @@ export default function Financial() {
   const kpiCalculations = useMemo(() => {
     const paymentsToCalculate = locationFilteredPayments;
     
+    // ✅ CORREÇÃO: Filtrar despesas de localização pelo filtro selecionado
+    const filteredExpenses = selectedLocationId === "all" 
+      ? locationExpensesData 
+      : locationExpensesData.filter(expense => expense.location_id === selectedLocationId);
+    
+    const totalLocationExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    
     const totalExpected = paymentsToCalculate.reduce((sum, p) => sum + p.expectedAmount, 0);
     
     const totalReceived = paymentsToCalculate
@@ -669,7 +683,7 @@ export default function Financial() {
         return sum + fee;
       }, 0);
 
-    const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
+    const netRevenue = totalReceived - adminFee - managementFee - totalLocationExpenses;
     
     const totalPaid = paymentsToCalculate
       .filter(p => p.status === "paid" || p.status === "partial")
@@ -682,8 +696,9 @@ export default function Financial() {
       managementFee,
       netRevenue,
       totalPaid,
+      locationExpenses: totalLocationExpenses, // ✅ Retornar as despesas filtradas
     };
-  }, [locationFilteredPayments, config, exemptLocationIds, locationExpenses]);
+  }, [locationFilteredPayments, config, exemptLocationIds, locationExpensesData, selectedLocationId]);
 
   const filteredPayments = getSortedPayments;
 
@@ -795,7 +810,7 @@ export default function Financial() {
                             {new Intl.NumberFormat("pt-BR", {
                               style: "currency",
                               currency: "BRL",
-                            }).format(kpiCalculations.adminFee + kpiCalculations.managementFee + locationExpenses)}
+                            }).format(kpiCalculations.adminFee + kpiCalculations.managementFee + kpiCalculations.locationExpenses)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Taxas e contas a pagar do mês
@@ -909,7 +924,7 @@ export default function Financial() {
                             {new Intl.NumberFormat("pt-BR", {
                               style: "currency",
                               currency: "BRL",
-                            }).format(user?.role === "broker" ? locationExpenses + kpiCalculations.managementFee : locationExpenses)}
+                            }).format(user?.role === "broker" ? kpiCalculations.locationExpenses + kpiCalculations.managementFee : kpiCalculations.locationExpenses)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {user?.role === "broker" 
