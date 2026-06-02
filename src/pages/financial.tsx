@@ -1317,41 +1317,6 @@ export default function Financial() {
             </DialogHeader>
             
             <div className="space-y-4">
-              {/* Resumo */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">Despesas de Locais</p>
-                  <p className="text-xl font-bold text-orange-600">
-                    {new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(kpiCalculations.locationExpenses)}
-                  </p>
-                </div>
-                
-                {user?.role === "broker" && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Taxa de Gerenciamento</p>
-                    <p className="text-xl font-bold text-blue-600">
-                      {new Intl.NumberFormat("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      }).format(kpiCalculations.managementFee)}
-                    </p>
-                  </div>
-                )}
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-xl font-bold text-purple-600">
-                    {new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(user?.role === "broker" ? kpiCalculations.locationExpenses + kpiCalculations.managementFee : kpiCalculations.locationExpenses)}
-                  </p>
-                </div>
-              </div>
-
               {/* Tabela de Despesas */}
               {filteredExpensesDetails.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
