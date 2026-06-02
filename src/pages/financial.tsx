@@ -99,6 +99,7 @@ export default function Financial() {
     description: string;
     reference_month: number;
     reference_year: number;
+    location_id: string;
   }>>([]);
 
   // Date State
