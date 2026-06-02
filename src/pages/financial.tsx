@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -82,6 +89,17 @@ export default function Financial() {
   
   // Novo estado para armazenar as despesas com location_id
   const [locationExpensesData, setLocationExpensesData] = useState<Array<{amount: number, location_id: string}>>([]);
+  
+  // Estado para controlar o dialog de detalhamento de contas
+  const [showExpensesDialog, setShowExpensesDialog] = useState(false);
+  const [expensesDetails, setExpensesDetails] = useState<Array<{
+    id: string;
+    location_name: string;
+    amount: number;
+    description: string;
+    reference_month: number;
+    reference_year: number;
+  }>>([]);
 
   // Date State
   const now = new Date();
@@ -335,7 +353,7 @@ export default function Financial() {
       // ✅ CORREÇÃO: Incluir location_id na query de despesas
       const expensesQuery: any = supabase
         .from("location_expenses")
-        .select("amount, location_id")
+        .select("id, amount, location_id, description, reference_month, reference_year")
         .eq("reference_month", filterMonth)
         .eq("reference_year", filterYear);
 
@@ -358,10 +376,22 @@ export default function Financial() {
       
       // ✅ CORREÇÃO: Armazenar array completo de despesas com location_id
       const expensesData = expensesResult.data || [];
+      
+      // Processar despesas com nome da localização
+      const expensesWithLocationName = expensesData.map((expense: any) => ({
+        id: expense.id,
+        location_name: locationsMapTemp.get(expense.location_id) || "N/A",
+        amount: expense.amount || 0,
+        description: expense.description || "Sem descrição",
+        reference_month: expense.reference_month,
+        reference_year: expense.reference_year,
+        location_id: expense.location_id
+      }));
 
       setExemptLocationIds(exemptIds);
       setConfig(configData);
       setLocationExpensesData(expensesData);
+      setExpensesDetails(expensesWithLocationName);
       setAllowedLocationIds(allowedLocations);
       setLocationsMap(locationsMapTemp);
 
@@ -710,6 +740,16 @@ export default function Financial() {
     }));
     return options.sort((a, b) => a.name.localeCompare(b.name));
   }, [locationsMap]);
+  
+  // Filtrar despesas detalhadas por localização
+  const filteredExpensesDetails = useMemo(() => {
+    if (selectedLocationId === "all") {
+      return expensesDetails;
+    }
+    return expensesDetails.filter(expense => 
+      locationsMap.get(expense.location_id) === locationsMap.get(selectedLocationId)
+    );
+  }, [expensesDetails, selectedLocationId, locationsMap]);
 
   if (!mounted) return null;
 
@@ -912,7 +952,7 @@ export default function Financial() {
                     </Card>
                   )}
 
-                  <Card className="border-l-4 border-l-orange-500">
+                  <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
                     <CardContent className="pt-4 sm:pt-6">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -1260,6 +1300,137 @@ export default function Financial() {
             </TabsContent>
           )}
         </Tabs>
+        
+        {/* Dialog de Detalhamento de Contas do Mês */}
+        <Dialog open={showExpensesDialog} onOpenChange={setShowExpensesDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-orange-600" />
+                Detalhamento das Contas do Mês
+              </DialogTitle>
+              <DialogDescription>
+                {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
+                {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Resumo */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">Despesas de Locais</p>
+                  <p className="text-xl font-bold text-orange-600">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(kpiCalculations.locationExpenses)}
+                  </p>
+                </div>
+                
+                {user?.role === "broker" && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Taxa de Gerenciamento</p>
+                    <p className="text-xl font-bold text-blue-600">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(kpiCalculations.managementFee)}
+                    </p>
+                  </div>
+                )}
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-xl font-bold text-purple-600">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(user?.role === "broker" ? kpiCalculations.locationExpenses + kpiCalculations.managementFee : kpiCalculations.locationExpenses)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabela de Despesas */}
+              {filteredExpensesDetails.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma despesa cadastrada para este período
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Local</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExpensesDetails.map((expense) => (
+                        <TableRow key={expense.id}>
+                          <TableCell className="font-medium">
+                            {expense.location_name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {expense.description}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-orange-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(expense.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Linha de Total */}
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={2} className="text-right">
+                          Total de Despesas:
+                        </TableCell>
+                        <TableCell className="text-right text-orange-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(kpiCalculations.locationExpenses)}
+                        </TableCell>
+                      </TableRow>
+                      
+                      {user?.role === "broker" && (
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell colSpan={2} className="text-right">
+                            Taxa de Gerenciamento ({config?.management_fee_percentage || 3}%):
+                          </TableCell>
+                          <TableCell className="text-right text-blue-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(kpiCalculations.managementFee)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      
+                      {user?.role === "broker" && (
+                        <TableRow className="bg-muted font-bold">
+                          <TableCell colSpan={2} className="text-right">
+                            Total Geral:
+                          </TableCell>
+                          <TableCell className="text-right text-purple-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(kpiCalculations.locationExpenses + kpiCalculations.managementFee)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
