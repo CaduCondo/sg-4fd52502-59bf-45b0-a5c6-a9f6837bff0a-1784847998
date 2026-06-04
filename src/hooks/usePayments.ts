@@ -161,7 +161,17 @@ export function usePayments() {
       if (paymentsData && paymentsData.length > 0) {
         console.log("📋 TODOS os recebimentos retornados do banco:");
         paymentsData.forEach((p: any, index: number) => {
-          console.log(`  ${index + 1}. ID: ${p.id} | Mês/Ano: ${p.reference_month}/${p.reference_year} (tipos: ${typeof p.reference_month}/${typeof p.reference_year}) | Status: ${p.status}`);
+          console.log(`  ${index + 1}. ID: ${p.id} | Mês/Ano: ${p.reference_month}/${p.reference_year} (tipos: ${typeof p.reference_month}/${typeof p.reference_year}) | Status: ${p.status} | Rental: ${p.rental_id}`);
+        });
+        
+        // 🔍 Mostrar rental_ids únicos e contagem
+        const rentalCounts = new Map<string, number>();
+        paymentsData.forEach((p: any) => {
+          rentalCounts.set(p.rental_id, (rentalCounts.get(p.rental_id) || 0) + 1);
+        });
+        console.log(`📊 Recebimentos por locação (${rentalCounts.size} locações únicas):`);
+        rentalCounts.forEach((count, rentalId) => {
+          console.log(`  - Locação ${rentalId}: ${count} recebimento(s)`);
         });
         
         // Comparar com filtros aplicados
@@ -343,6 +353,13 @@ export function usePayments() {
       setRentals(rentalsArray);
       setProperties(propertiesArray);
       setTenants(tenantsArray);
+      
+      console.log(`✅ [usePayments] Estados atualizados:`, {
+        payments: processedPayments.length,
+        rentals: rentalsArray.length,
+        properties: propertiesArray.length,
+        tenants: tenantsArray.length
+      });
 
     } catch (error: any) {
       // Ignorar erros de cancelamento

@@ -258,6 +258,8 @@ export default function Payments() {
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
+    console.log(`🔍 [payments.tsx] Separando recebimentos - Total disponível: ${payments.length}`);
+    
     const filterBySearch = (p: Payment) => {
       if (!debouncedSearchQuery) return true;
       
@@ -280,6 +282,12 @@ export default function Payments() {
 
     const paid = payments.filter((p) => {
       return p.status === "paid" && filterBySearch(p);
+    });
+    
+    console.log(`📊 [payments.tsx] Resultado da separação:`, {
+      pending: pending.length,
+      paid: paid.length,
+      searchQuery: debouncedSearchQuery || "(vazio)"
     });
 
     return { pendingPayments: pending, paidPayments: paid };
