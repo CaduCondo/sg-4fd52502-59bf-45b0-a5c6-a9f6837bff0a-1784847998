@@ -563,6 +563,17 @@ export async function createPaymentsForRental(params: {
 }): Promise<void> {
   const { rental, startDate, endDate, monthlyRent, paymentDay, hasGarage, garageValue } = params;
 
+  console.log("🔄 [createPaymentsForRental] Iniciando criação de recebimentos...");
+  console.log("📋 [createPaymentsForRental] Parâmetros recebidos:", {
+    rentalId: rental.id,
+    startDate: startDate.toISOString().split("T")[0],
+    endDate: endDate.toISOString().split("T")[0],
+    monthlyRent,
+    paymentDay,
+    hasGarage,
+    garageValue
+  });
+
   const expectedPayments = generateExpectedPayments({
     rentalId: rental.id,
     startDate: startDate.toISOString().split("T")[0],
@@ -573,10 +584,19 @@ export async function createPaymentsForRental(params: {
     garageValue
   });
 
-  const { data: existingPayments } = await supabase
+  console.log(`📊 [createPaymentsForRental] ${expectedPayments.length} recebimentos esperados`);
+
+  const { data: existingPayments, error: selectError } = await supabase
     .from("payments")
     .select("id, reference_month, reference_year")
     .eq("rental_id", rental.id);
+
+  if (selectError) {
+    console.error("❌ [createPaymentsForRental] Erro ao verificar recebimentos existentes:", selectError);
+    throw selectError;
+  }
+
+  console.log(`📊 [createPaymentsForRental] ${existingPayments?.length || 0} recebimentos já existem`);
 
   const existingRefs = new Set(
     (existingPayments || []).map((p) => `${p.reference_year}-${p.reference_month}`)
@@ -586,9 +606,21 @@ export async function createPaymentsForRental(params: {
     p => !existingRefs.has(`${p.reference_year}-${p.reference_month}`)
   );
 
+  console.log(`➕ [createPaymentsForRental] ${paymentsToCreate.length} recebimentos serão criados`);
+
   if (paymentsToCreate.length > 0) {
+    console.log("💾 [createPaymentsForRental] Inserindo recebimentos no banco...");
     const { error } = await supabase.from("payments").insert(paymentsToCreate);
-    if (error) throw error;
+    
+    if (error) {
+      console.error("❌ [createPaymentsForRental] Erro ao inserir recebimentos:", error);
+      console.error("❌ Dados que tentaram ser inseridos:", JSON.stringify(paymentsToCreate, null, 2));
+      throw error;
+    }
+    
+    console.log("✅ [createPaymentsForRental] Recebimentos inseridos com sucesso!");
+  } else {
+    console.log("ℹ️ [createPaymentsForRental] Nenhum recebimento novo para criar (todos já existem)");
   }
 }
 

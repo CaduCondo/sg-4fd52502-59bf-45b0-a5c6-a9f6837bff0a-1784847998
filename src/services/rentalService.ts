@@ -327,6 +327,15 @@ export const rentalService = {
     // ✅ CRÍTICO: Gerar recebimentos automáticos da locação
     if (rental.startDate && rental.endDate && rental.paymentDay) {
       console.log("🔄 [rentalService.create] Gerando recebimentos automáticos...");
+      console.log("📋 [rentalService.create] Parâmetros:", {
+        rentalId: data.id,
+        startDate: rental.startDate,
+        endDate: rental.endDate,
+        monthlyRent: rental.monthlyRent || rental.value || 0,
+        paymentDay: rental.paymentDay,
+        hasGarage: rental.hasGarage,
+        garageValue: rental.garageValue
+      });
       
       try {
         await createPaymentsForRental({
@@ -340,10 +349,17 @@ export const rentalService = {
         });
         console.log("✅ [rentalService.create] Recebimentos gerados com sucesso!");
       } catch (paymentError) {
-        console.error("❌ [rentalService.create] Erro ao gerar recebimentos:", paymentError);
-        // Não falhar a criação da locação, apenas logar o erro
-        // O usuário pode gerar os recebimentos manualmente depois
+        console.error("❌ [rentalService.create] ERRO CRÍTICO ao gerar recebimentos:", paymentError);
+        console.error("❌ Stack trace:", (paymentError as any).stack);
+        // Re-throw para que o erro seja visível
+        throw new Error(`Falha ao criar recebimentos: ${(paymentError as any).message}`);
       }
+    } else {
+      console.warn("⚠️ [rentalService.create] Recebimentos NÃO foram gerados. Parâmetros faltando:", {
+        startDate: rental.startDate,
+        endDate: rental.endDate,
+        paymentDay: rental.paymentDay
+      });
     }
 
     // Sincronizar parcelas do caução se houver
