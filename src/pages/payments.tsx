@@ -80,6 +80,17 @@ export default function Payments() {
     handleCancelPayment: cancelPayment,
     loadPayments
   } = usePayments();
+  
+  // 🔍 LOG: Verificar quantos payments chegam do hook em CADA RENDER
+  console.log(`🎨 [payments.tsx RENDER] Payments recebidos do hook:`, {
+    paymentsLength: payments.length,
+    rentalsLength: rentals.length,
+    propertiesLength: properties.length,
+    tenantsLength: tenants.length,
+    loading,
+    selectedMonth,
+    selectedYear
+  });
 
   // Helpers memoizados
   const getPropertyForPayment = useCallback((payment: Payment) => {
@@ -151,6 +162,12 @@ export default function Payments() {
 
   // Carregar pagamentos quando os filtros mudarem
   useEffect(() => {
+    console.log(`🔄 [payments.tsx useEffect] Chamando loadPayments:`, {
+      selectedMonth: selectedMonth.toString(),
+      selectedYear: selectedYear.toString(),
+      timestamp: new Date().toISOString()
+    });
+    
     loadPayments(selectedMonth.toString(), selectedYear.toString());
   }, [loadPayments, selectedMonth, selectedYear]);
 
