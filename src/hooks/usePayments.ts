@@ -48,7 +48,8 @@ export function usePayments() {
     });
   }, [payments]);
 
-  const loadPayments = useCallback(async (month?: string, year?: string) => {
+  // 🔥 REMOVIDO useCallback - função normal para evitar closure stale
+  const loadPayments = async (month?: string, year?: string) => {
     const queryKey = `${month || "all"}-${year || "all"}`;
     
     // 🔥 PROTEÇÃO: Se a mesma query já está em execução, ignorar
@@ -432,7 +433,7 @@ export function usePayments() {
     properties,
     tenants,
     loading,
-    loadPayments,
+    loadPayments, // Função estável sem useCallback
     handleCancelPayment,
     getPropertyInfo,
     getTenantInfo,

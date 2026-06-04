@@ -81,6 +81,14 @@ export default function Payments() {
     loadPayments
   } = usePayments();
   
+  // 🔥 FORÇA RELOAD INICIAL: Executar ANTES de tudo
+  useEffect(() => {
+    console.log("🚀 [payments.tsx] Montagem inicial - forçando primeiro reload");
+    const initialMonth = currentDate.getMonth() + 1;
+    const initialYear = currentDate.getFullYear();
+    loadPayments(initialMonth.toString(), initialYear.toString());
+  }, []); // Array vazio = executar apenas na montagem
+  
   // 🔍 LOG: Verificar quantos payments chegam do hook em CADA RENDER
   console.log(`🎨 [payments.tsx RENDER] Payments recebidos do hook:`, {
     paymentsLength: payments.length,
@@ -170,20 +178,19 @@ export default function Payments() {
 
   // Carregar pagamentos quando os filtros mudarem
   useEffect(() => {
-    console.log(`🔄 [payments.tsx useEffect] Chamando loadPayments:`, {
-      selectedMonth: selectedMonth.toString(),
-      selectedYear: selectedYear.toString(),
-      timestamp: new Date().toISOString()
-    });
-    
-    // 🔥 DEBOUNCE: Evitar múltiplas chamadas simultâneas
-    const timer = setTimeout(() => {
+    // Ignorar a primeira execução (já carregado no useEffect inicial)
+    if (mountedRef.current) {
+      console.log(`🔄 [payments.tsx useEffect] Filtros mudaram - recarregando:`, {
+        selectedMonth: selectedMonth.toString(),
+        selectedYear: selectedYear.toString(),
+        timestamp: new Date().toISOString()
+      });
       loadPayments(selectedMonth.toString(), selectedYear.toString());
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [selectedMonth, selectedYear]); // REMOVIDO loadPayments das dependências para evitar loops
-  
+    } else {
+      mountedRef.current = true;
+    }
+  }, [selectedMonth, selectedYear]);
+
   // 🔥 FORÇA RELOAD: Quando a página monta, garantir que os dados sejam carregados
   useEffect(() => {
     if (!mountedRef.current) {
