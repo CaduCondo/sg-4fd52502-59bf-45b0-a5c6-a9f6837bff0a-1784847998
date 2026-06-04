@@ -176,8 +176,13 @@ export default function Payments() {
       timestamp: new Date().toISOString()
     });
     
-    loadPayments(selectedMonth.toString(), selectedYear.toString());
-  }, [loadPayments, selectedMonth, selectedYear]);
+    // 🔥 DEBOUNCE: Evitar múltiplas chamadas simultâneas
+    const timer = setTimeout(() => {
+      loadPayments(selectedMonth.toString(), selectedYear.toString());
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [selectedMonth, selectedYear]); // REMOVIDO loadPayments das dependências para evitar loops
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {

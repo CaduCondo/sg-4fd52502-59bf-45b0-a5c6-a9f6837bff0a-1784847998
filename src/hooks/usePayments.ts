@@ -310,18 +310,37 @@ export function usePayments() {
         timestamp: now,
       };
 
+      // Verificar se ainda está montado antes de atualizar estados
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log("⚠️ [usePayments] Componente desmontado, abortando atualização de estado");
+        loadingRef.current = false;
+        return;
+      }
+
       // Atualizar estados
-      setPayments(processedPayments);
-      setRentals(rentalsArray);
-      setProperties(propertiesArray);
-      setTenants(tenantsArray);
-      
-      console.log(`✅ [usePayments] Estados atualizados:`, {
+      console.log(`🔄 [usePayments] SETANDO estados com:`, {
         payments: processedPayments.length,
         rentals: rentalsArray.length,
         properties: propertiesArray.length,
         tenants: tenantsArray.length
       });
+      
+      setPayments(processedPayments);
+      setRentals(rentalsArray);
+      setProperties(propertiesArray);
+      setTenants(tenantsArray);
+      
+      console.log(`✅ [usePayments] Estados SETADOS (setState chamado):`, {
+        payments: processedPayments.length,
+        rentals: rentalsArray.length,
+        properties: propertiesArray.length,
+        tenants: tenantsArray.length
+      });
+      
+      // 🔥 FORÇA UPDATE: Garantir que o estado seja propagado
+      setTimeout(() => {
+        console.log(`🔍 [usePayments] Verificação pós-setState - Estado atual no hook deveria ser ${processedPayments.length} payments`);
+      }, 100);
 
     } catch (error: any) {
       // Ignorar erros de cancelamento
