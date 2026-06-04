@@ -156,6 +156,35 @@ export function usePayments() {
         errorMessage: paymentsError?.message,
         errorDetails: paymentsError
       });
+      
+      // 🔍 LOG DETALHADO: Mostrar TODOS os recebimentos retornados
+      if (paymentsData && paymentsData.length > 0) {
+        console.log("📋 TODOS os recebimentos retornados do banco:");
+        paymentsData.forEach((p: any, index: number) => {
+          console.log(`  ${index + 1}. ID: ${p.id} | Mês/Ano: ${p.reference_month}/${p.reference_year} (tipos: ${typeof p.reference_month}/${typeof p.reference_year}) | Status: ${p.status}`);
+        });
+        
+        // Comparar com filtros aplicados
+        if (month && month !== "all") {
+          const paddedMonth = month.toString().padStart(2, '0');
+          console.log(`🔍 Filtro aplicado - Mês: "${paddedMonth}" (tipo: ${typeof paddedMonth})`);
+          console.log(`📊 Recebimentos que DEVERIAM passar pelo filtro de mês ${paddedMonth}:`);
+          paymentsData.forEach((p: any) => {
+            const matches = p.reference_month === paddedMonth;
+            console.log(`  - ${p.id}: reference_month="${p.reference_month}" (${typeof p.reference_month}) ${matches ? '✅ MATCH' : '❌ NO MATCH'}`);
+          });
+        }
+        
+        if (year && year !== "all") {
+          const yearString = year.toString();
+          console.log(`🔍 Filtro aplicado - Ano: "${yearString}" (tipo: ${typeof yearString})`);
+          console.log(`📊 Recebimentos que DEVERIAM passar pelo filtro de ano ${yearString}:`);
+          paymentsData.forEach((p: any) => {
+            const matches = p.reference_year === yearString;
+            console.log(`  - ${p.id}: reference_year="${p.reference_year}" (${typeof p.reference_year}) ${matches ? '✅ MATCH' : '❌ NO MATCH'}`);
+          });
+        }
+      }
 
       // Verificar se foi cancelado
       if (abortControllerRef.current?.signal.aborted) {
