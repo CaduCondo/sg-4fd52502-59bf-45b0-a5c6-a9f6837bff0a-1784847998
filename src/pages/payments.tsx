@@ -64,10 +64,10 @@ export default function Payments() {
     return () => clearTimeout(timer);
   }, [uiState.searchQuery]);
 
-  // Filtros padrão: mês e ano atuais
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string | number>(currentDate.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<string | number>(currentDate.getFullYear());
+  // ✅ CORREÇÃO CRÍTICA: Filtros padrão "all" para mostrar TODOS os recebimentos
+  // Antes filtrava por mês/ano atual, ocultando recebimentos de locações passadas/futuras
+  const [selectedMonth, setSelectedMonth] = useState<string | number>("all");
+  const [selectedYear, setSelectedYear] = useState<string | number>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
