@@ -131,11 +131,19 @@ export function usePayments() {
       if (month && month !== "all") {
         const paddedMonth = month.toString().padStart(2, '0');
         query = query.eq("reference_month", paddedMonth);
-        console.log("📅 Filtro de mês aplicado:", paddedMonth);
+        console.log("📅 Filtro de mês aplicado:", {
+          original: month,
+          padded: paddedMonth,
+          tipo: typeof paddedMonth
+        });
       }
       if (year && year !== "all") {
         query = query.eq("reference_year", year.toString());
-        console.log("📅 Filtro de ano aplicado:", year);
+        console.log("📅 Filtro de ano aplicado:", {
+          original: year,
+          string: year.toString(),
+          tipo: typeof year.toString()
+        });
       }
 
       console.log("🚀 Executando query...");

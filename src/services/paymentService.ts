@@ -610,6 +610,16 @@ export async function createPaymentsForRental(params: {
 
   if (paymentsToCreate.length > 0) {
     console.log("💾 [createPaymentsForRental] Inserindo recebimentos no banco...");
+    console.log("📋 [createPaymentsForRental] Dados a serem inseridos (primeiro item):", {
+      rental_id: paymentsToCreate[0].rental_id,
+      reference_month: paymentsToCreate[0].reference_month,
+      reference_month_type: typeof paymentsToCreate[0].reference_month,
+      reference_year: paymentsToCreate[0].reference_year,
+      reference_year_type: typeof paymentsToCreate[0].reference_year,
+      due_date: paymentsToCreate[0].due_date,
+      expected_amount: paymentsToCreate[0].expected_amount,
+    });
+    
     const { error } = await supabase.from("payments").insert(paymentsToCreate);
     
     if (error) {
