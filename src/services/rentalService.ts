@@ -323,6 +323,17 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
+    
+    // 🔍 LOG: Confirmar que a locação foi criada com todos os dados
+    console.log("✅ [rentalService.create] Locação criada no banco:", {
+      id: data.id,
+      property_id: data.property_id,
+      tenant_id: data.tenant_id,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      rent_value: data.rent_value,
+      rent_due_day: data.rent_due_day,
+    });
 
     // ✅ CRÍTICO: Gerar recebimentos automáticos da locação
     if (rental.startDate && rental.endDate && rental.paymentDay) {

@@ -620,7 +620,7 @@ export async function createPaymentsForRental(params: {
       expected_amount: paymentsToCreate[0].expected_amount,
     });
     
-    const { error } = await supabase.from("payments").insert(paymentsToCreate);
+    const { data: insertedData, error } = await supabase.from("payments").insert(paymentsToCreate).select('id, rental_id, reference_month, reference_year');
     
     if (error) {
       console.error("❌ [createPaymentsForRental] Erro ao inserir recebimentos:", error);
@@ -629,6 +629,16 @@ export async function createPaymentsForRental(params: {
     }
     
     console.log("✅ [createPaymentsForRental] Recebimentos inseridos com sucesso!");
+    console.log(`📊 [createPaymentsForRental] ${insertedData?.length || 0} recebimentos inseridos no banco`);
+    if (insertedData && insertedData.length > 0) {
+      console.log("📋 [createPaymentsForRental] Primeiros 3 recebimentos inseridos:", 
+        insertedData.slice(0, 3).map((p: any) => ({
+          id: p.id,
+          rental_id: p.rental_id,
+          reference: `${p.reference_month}/${p.reference_year}`
+        }))
+      );
+    }
   } else {
     console.log("ℹ️ [createPaymentsForRental] Nenhum recebimento novo para criar (todos já existem)");
   }
