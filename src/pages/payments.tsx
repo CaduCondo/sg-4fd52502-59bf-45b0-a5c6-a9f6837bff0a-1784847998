@@ -91,6 +91,14 @@ export default function Payments() {
     selectedMonth,
     selectedYear
   });
+  
+  // 🔍 LOG: Rastrear MUDANÇAS no estado payments
+  useEffect(() => {
+    console.log(`🔔 [payments.tsx] Estado 'payments' MUDOU:`, {
+      length: payments.length,
+      timestamp: new Date().toISOString()
+    });
+  }, [payments]);
 
   // Helpers memoizados
   const getPropertyForPayment = useCallback((payment: Payment) => {

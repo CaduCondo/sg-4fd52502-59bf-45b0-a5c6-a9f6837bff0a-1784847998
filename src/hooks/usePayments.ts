@@ -38,20 +38,30 @@ export function usePayments() {
   // Prevenir múltiplas chamadas simultâneas
   const loadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastQueryRef = useRef<string>("");
 
   const loadPayments = useCallback(async (month?: string, year?: string) => {
-    // Se já está carregando, cancela a requisição anterior
+    const queryKey = `${month || "all"}-${year || "all"}`;
+    
+    // 🔥 PROTEÇÃO: Se a mesma query já está em execução, ignorar
+    if (loadingRef.current && lastQueryRef.current === queryKey) {
+      console.log("⚠️ [usePayments] Query já em execução, ignorando chamada duplicada:", queryKey);
+      return;
+    }
+
+    // Se há uma query diferente em execução, cancelar
     if (loadingRef.current && abortControllerRef.current) {
+      console.log("🛑 [usePayments] Cancelando query anterior:", lastQueryRef.current);
       abortControllerRef.current.abort();
     }
 
     try {
       loadingRef.current = true;
+      lastQueryRef.current = queryKey;
       setLoading(true);
       abortControllerRef.current = new AbortController();
 
-      // Invalidar cache para forçar reload com start_date
-      const cacheKey = `${month || "all"}-${year || "all"}`;
+      const cacheKey = queryKey;
       const now = Date.now();
       
       // SEMPRE buscar dados frescos - cache desabilitado temporariamente
