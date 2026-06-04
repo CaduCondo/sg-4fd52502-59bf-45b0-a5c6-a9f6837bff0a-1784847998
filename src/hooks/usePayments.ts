@@ -57,67 +57,10 @@ export function usePayments() {
       // SEMPRE buscar dados frescos - cache desabilitado temporariamente
       console.log("🔄 Buscando dados FRESCOS do banco (cache desabilitado)...");
 
-      // QUERY ÚNICA COM TODOS OS JOINS (SUPER OTIMIZADO!)
-      let query = supabase
+      // ✅ ESTRATÉGIA NOVA: Buscar payments primeiro (sem JOINs), depois buscar relacionamentos
+      let paymentsQuery = supabase
         .from("payments")
-        .select(`
-          id,
-          rental_id,
-          due_date,
-          expected_amount,
-          paid_amount,
-          payment_date,
-          status,
-          payment_method,
-          reference_month,
-          reference_year,
-          late_fee,
-          interest,
-          installment,
-          total_installments,
-          breakdown,
-          attachments,
-          rentals!payments_rental_id_fkey (
-            id,
-            property_id,
-            tenant_id,
-            rent_value,
-            garage_value,
-            has_garage,
-            rent_due_day,
-            deposit_value,
-            start_date,
-            end_date,
-            properties!rentals_property_id_fkey (
-              id,
-              complement,
-              rooms,
-              bathrooms,
-              area,
-              status,
-              value,
-              locations!properties_location_id_fkey (
-                id,
-                name,
-                street,
-                number,
-                neighborhood,
-                city,
-                state,
-                zip_code
-              )
-            ),
-            tenants!rentals_tenant_id_fkey (
-              id,
-              name,
-              email,
-              phone,
-              document_type,
-              document,
-              cpf
-            )
-          )
-        `)
+        .select("*")
         .order("due_date", { ascending: true });
 
       console.log("🔍 Query construída:", {
@@ -130,126 +73,22 @@ export function usePayments() {
       // Aplicar filtros de mês/ano
       if (month && month !== "all") {
         const paddedMonth = month.toString().padStart(2, '0');
-        query = query.eq("reference_month", paddedMonth);
-        console.log("📅 Filtro de mês aplicado:", {
-          original: month,
-          padded: paddedMonth,
-          tipo: typeof paddedMonth
-        });
+        paymentsQuery = paymentsQuery.eq("reference_month", paddedMonth);
+        console.log("📅 Filtro de mês aplicado:", paddedMonth);
       }
       if (year && year !== "all") {
-        query = query.eq("reference_year", year.toString());
-        console.log("📅 Filtro de ano aplicado:", {
-          original: year,
-          string: year.toString(),
-          tipo: typeof year.toString()
-        });
+        paymentsQuery = paymentsQuery.eq("reference_year", year.toString());
+        console.log("📅 Filtro de ano aplicado:", year.toString());
       }
 
-      console.log("🚀 Executando query...");
-      const { data: paymentsData, error: paymentsError } = await query;
+      console.log("🚀 Executando query de payments...");
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
 
-      console.log("📊 Resultado da query:", {
+      console.log("📊 Resultado da query de payments:", {
         hasData: !!paymentsData,
         dataLength: paymentsData?.length || 0,
-        hasError: !!paymentsError,
-        errorMessage: paymentsError?.message,
-        errorDetails: paymentsError
+        hasError: !!paymentsError
       });
-      
-      // 🔍 VERIFICAÇÃO DIRETA: Contar recebimentos no banco SEM JOINs
-      const { count: directCount, error: countError } = await supabase
-        .from("payments")
-        .select("*", { count: "exact", head: true })
-        .eq("reference_month", month && month !== "all" ? month.toString().padStart(2, '0') : undefined)
-        .eq("reference_year", year && year !== "all" ? year.toString() : undefined);
-      
-      if (!countError && directCount !== null) {
-        console.log(`🔍 VERIFICAÇÃO DIRETA NO BANCO: ${directCount} recebimentos existem para ${month}/${year} (sem JOINs)`);
-        console.log(`📊 DIFERENÇA: Query com JOINs retornou ${paymentsData?.length || 0}, mas existem ${directCount} no banco`);
-        
-        if (directCount > (paymentsData?.length || 0)) {
-          console.warn(`⚠️ ATENÇÃO: ${directCount - (paymentsData?.length || 0)} recebimentos foram EXCLUÍDOS pelos JOINs!`);
-          console.warn(`⚠️ Isso significa que há locações sem property ou tenant associados corretamente`);
-          
-          // Buscar quais rental_ids estão sendo excluídos
-          const { data: allPaymentsInMonth } = await supabase
-            .from("payments")
-            .select("rental_id, reference_month, reference_year")
-            .eq("reference_month", month && month !== "all" ? month.toString().padStart(2, '0') : undefined)
-            .eq("reference_year", year && year !== "all" ? year.toString() : undefined);
-          
-          const allRentalIds = new Set((allPaymentsInMonth || []).map((p: any) => p.rental_id));
-          const returnedRentalIds = new Set((paymentsData || []).map((p: any) => p.rental_id));
-          
-          const missingRentalIds = Array.from(allRentalIds).filter(id => !returnedRentalIds.has(id));
-          
-          if (missingRentalIds.length > 0) {
-            console.error(`❌ RENTAL_IDs EXCLUÍDOS PELOS JOINs:`, missingRentalIds);
-            
-            // Para cada rental_id excluído, verificar se a locação existe
-            for (const missingId of missingRentalIds) {
-              const { data: rental, error: rentalError } = await supabase
-                .from("rentals")
-                .select("id, property_id, tenant_id")
-                .eq("id", missingId)
-                .maybeSingle();
-              
-              if (rentalError) {
-                console.error(`❌ Erro ao verificar rental ${missingId}:`, rentalError);
-              } else if (!rental) {
-                console.error(`❌ Rental ${missingId} NÃO EXISTE no banco!`);
-              } else {
-                console.log(`📋 Rental ${missingId} existe:`, {
-                  has_property: !!rental.property_id,
-                  has_tenant: !!rental.tenant_id,
-                  property_id: rental.property_id,
-                  tenant_id: rental.tenant_id
-                });
-              }
-            }
-          }
-        }
-      }
-      
-      // 🔍 LOG DETALHADO: Mostrar TODOS os recebimentos retornados
-      if (paymentsData && paymentsData.length > 0) {
-        console.log("📋 TODOS os recebimentos retornados do banco:");
-        paymentsData.forEach((p: any, index: number) => {
-          console.log(`  ${index + 1}. ID: ${p.id} | Mês/Ano: ${p.reference_month}/${p.reference_year} (tipos: ${typeof p.reference_month}/${typeof p.reference_year}) | Status: ${p.status} | Rental: ${p.rental_id}`);
-        });
-        
-        // 🔍 Mostrar rental_ids únicos e contagem
-        const rentalCounts = new Map<string, number>();
-        paymentsData.forEach((p: any) => {
-          rentalCounts.set(p.rental_id, (rentalCounts.get(p.rental_id) || 0) + 1);
-        });
-        console.log(`📊 Recebimentos por locação (${rentalCounts.size} locações únicas):`);
-        rentalCounts.forEach((count, rentalId) => {
-          console.log(`  - Locação ${rentalId}: ${count} recebimento(s)`);
-        });
-        
-        // Comparar com filtros aplicados
-        if (month && month !== "all") {
-          const paddedMonth = month.toString().padStart(2, '0');
-          console.log(`🔍 Filtro aplicado - Mês: "${paddedMonth}" (tipo: ${typeof paddedMonth})`);
-          console.log(`📊 Recebimentos que DEVERIAM passar pelo filtro de mês ${paddedMonth}:`);
-          paymentsData.forEach((p: any) => {
-            const matches = p.reference_month === paddedMonth;
-            console.log(`  - ${p.id}: reference_month="${p.reference_month}" (${typeof p.reference_month}) ${matches ? '✅ MATCH' : '❌ NO MATCH'}`);
-          });
-        }
-        
-        if (year && year !== "all") {
-          const yearString = year.toString();
-          console.log(`🔍 Filtro aplicado - Ano: "${yearString}" (tipo: ${typeof yearString})`);
-          console.log(`📊 Recebimentos que DEVERIAM passar pelo filtro de ano ${yearString}:`);
-          paymentsData.forEach((p: any) => {
-            const matches = p.reference_year === yearString;
-            console.log(`  - ${p.id}: reference_year="${p.reference_year}" (${typeof p.reference_year}) ${matches ? '✅ MATCH' : '❌ NO MATCH'}`);
-          });
-        }
-      }
 
       // Verificar se foi cancelado
       if (abortControllerRef.current?.signal.aborted) {
@@ -273,85 +112,143 @@ export function usePayments() {
         return;
       }
 
+      // ✅ Buscar rental_ids únicos dos recebimentos
+      const rentalIds = [...new Set(paymentsData.map((p: any) => p.rental_id))];
+      console.log(`📋 Buscando ${rentalIds.length} locações relacionadas...`);
+
+      // Buscar rentals com properties e tenants em uma query
+      const { data: rentalsData, error: rentalsError } = await supabase
+        .from("rentals")
+        .select(`
+          id,
+          property_id,
+          tenant_id,
+          rent_value,
+          garage_value,
+          has_garage,
+          rent_due_day,
+          deposit_value,
+          start_date,
+          end_date,
+          properties!rentals_property_id_fkey (
+            id,
+            complement,
+            rooms,
+            bathrooms,
+            area,
+            status,
+            value,
+            locations!properties_location_id_fkey (
+              id,
+              name,
+              street,
+              number,
+              neighborhood,
+              city,
+              state,
+              zip_code
+            )
+          ),
+          tenants!rentals_tenant_id_fkey (
+            id,
+            name,
+            email,
+            phone,
+            document_type,
+            document,
+            cpf
+          )
+        `)
+        .in("id", rentalIds);
+
+      console.log("📊 Rentals carregados:", {
+        hasData: !!rentalsData,
+        dataLength: rentalsData?.length || 0,
+        hasError: !!rentalsError
+      });
+
+      if (rentalsError) {
+        console.error("❌ Erro ao buscar rentals:", rentalsError);
+      }
+
       // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
       const rentalsMap = new Map<string, Rental>();
       const propertiesMap = new Map<string, Property>();
       const tenantsMap = new Map<string, Tenant>();
 
+      // Processar rentals, properties e tenants
+      if (rentalsData) {
+        rentalsData.forEach((rental: any) => {
+          const property = rental.properties;
+          const location = property?.locations;
+          const tenant = rental.tenants;
+
+          // Adicionar ao map de rentals
+          if (!rentalsMap.has(rental.id)) {
+            const rentalObj = {
+              id: rental.id,
+              propertyId: rental.property_id,
+              tenantId: rental.tenant_id,
+              value: rental.rent_value,
+              monthlyRent: rental.rent_value,
+              garageValue: rental.garage_value || 0,
+              hasGarage: rental.has_garage || false,
+              paymentDay: rental.rent_due_day,
+              depositAmount: rental.deposit_value || 0,
+              startDate: rental.start_date || "",
+              endDate: rental.end_date || "",
+              status: "active",
+              isActive: true,
+              attachments: [],
+              contractAttachments: [],
+              hasPartnerBroker: false,
+              pixCode: "",
+            } as Rental;
+            
+            rentalsMap.set(rental.id, rentalObj);
+          }
+
+          // Adicionar ao map de properties
+          if (property && !propertiesMap.has(property.id)) {
+            propertiesMap.set(property.id, {
+              id: property.id,
+              locationId: location?.id || "",
+              location: location?.name || "",
+              address: location?.street || "",
+              number: location?.number || "",
+              complement: property.complement || "",
+              neighborhood: location?.neighborhood || "",
+              city: location?.city || "",
+              state: location?.state || "",
+              zipCode: location?.zip_code || "",
+              rooms: property.rooms || 0,
+              bathrooms: property.bathrooms || 0,
+              area: property.area || 0,
+              status: property.status || "available",
+              value: property.value || 0,
+            } as Property);
+          }
+
+          // Adicionar ao map de tenants
+          if (tenant && !tenantsMap.has(tenant.id)) {
+            tenantsMap.set(tenant.id, {
+              id: tenant.id,
+              name: tenant.name || "",
+              email: tenant.email || "",
+              phone: tenant.phone || "",
+              documentType: tenant.document_type || "cpf",
+              document: tenant.document || "",
+              cpf: tenant.cpf || "",
+              rg: "",
+              status: "active",
+            } as Tenant);
+          }
+        });
+      }
+
+      console.log(`✅ Processados: ${rentalsMap.size} rentals, ${propertiesMap.size} properties, ${tenantsMap.size} tenants`);
+
       const processedPayments: Payment[] = paymentsData.map((p: any) => {
-        const rental = p.rentals;
-        const property = rental?.properties;
-        const location = property?.locations;
-        const tenant = rental?.tenants;
-
-        // Adicionar ao map de rentals
-        if (rental && !rentalsMap.has(rental.id)) {
-          const rentalObj = {
-            id: rental.id,
-            propertyId: rental.property_id,
-            tenantId: rental.tenant_id,
-            value: rental.rent_value,
-            monthlyRent: rental.rent_value,
-            garageValue: rental.garage_value || 0,
-            hasGarage: rental.has_garage || false,
-            paymentDay: rental.rent_due_day,
-            depositAmount: rental.deposit_value || 0,
-            startDate: rental.start_date || "",
-            endDate: rental.end_date || "",
-            status: "active",
-            isActive: true,
-            attachments: [],
-            contractAttachments: [],
-            hasPartnerBroker: false,
-            pixCode: "",
-          } as Rental;
-          
-          // Log para debug: verificar se start_date veio do banco
-          console.log("📅 [usePayments] Rental processado:", {
-            id: rental.id,
-            start_date: rental.start_date,
-            startDate: rentalObj.startDate
-          });
-          
-          rentalsMap.set(rental.id, rentalObj);
-        }
-
-        // Adicionar ao map de properties
-        if (property && !propertiesMap.has(property.id)) {
-          propertiesMap.set(property.id, {
-            id: property.id,
-            locationId: location?.id || "",
-            location: location?.name || "",
-            address: location?.street || "",
-            number: location?.number || "",
-            complement: property.complement || "",
-            neighborhood: location?.neighborhood || "",
-            city: location?.city || "",
-            state: location?.state || "",
-            zipCode: location?.zip_code || "",
-            rooms: property.rooms || 0,
-            bathrooms: property.bathrooms || 0,
-            area: property.area || 0,
-            status: property.status || "available",
-            value: property.value || 0,
-          } as Property);
-        }
-
-        // Adicionar ao map de tenants
-        if (tenant && !tenantsMap.has(tenant.id)) {
-          tenantsMap.set(tenant.id, {
-            id: tenant.id,
-            name: tenant.name || "",
-            email: tenant.email || "",
-            phone: tenant.phone || "",
-            documentType: tenant.document_type || "cpf",
-            document: tenant.document || "",
-            cpf: tenant.cpf || "",
-            rg: "",
-            status: "active",
-          } as Tenant);
-        }
-
         // Processar attachments da tabela relacionada
         const attachmentsFromTable = p.payment_attachments || [];
         const processedAttachments = attachmentsFromTable.map((att: any) => ({
@@ -363,8 +260,8 @@ export function usePayments() {
         return {
           id: p.id,
           rentalId: p.rental_id,
-          propertyId: rental?.property_id || "",
-          tenantId: rental?.tenant_id || "",
+          propertyId: "",
+          tenantId: "",
           dueDate: p.due_date,
           expectedAmount: p.expected_amount,
           paidAmount: p.paid_amount || 0,
