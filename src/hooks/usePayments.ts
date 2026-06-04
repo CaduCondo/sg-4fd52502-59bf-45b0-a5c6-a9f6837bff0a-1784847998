@@ -157,6 +157,61 @@ export function usePayments() {
         errorDetails: paymentsError
       });
       
+      // 🔍 VERIFICAÇÃO DIRETA: Contar recebimentos no banco SEM JOINs
+      const { count: directCount, error: countError } = await supabase
+        .from("payments")
+        .select("*", { count: "exact", head: true })
+        .eq("reference_month", month && month !== "all" ? month.toString().padStart(2, '0') : undefined)
+        .eq("reference_year", year && year !== "all" ? year.toString() : undefined);
+      
+      if (!countError && directCount !== null) {
+        console.log(`🔍 VERIFICAÇÃO DIRETA NO BANCO: ${directCount} recebimentos existem para ${month}/${year} (sem JOINs)`);
+        console.log(`📊 DIFERENÇA: Query com JOINs retornou ${paymentsData?.length || 0}, mas existem ${directCount} no banco`);
+        
+        if (directCount > (paymentsData?.length || 0)) {
+          console.warn(`⚠️ ATENÇÃO: ${directCount - (paymentsData?.length || 0)} recebimentos foram EXCLUÍDOS pelos JOINs!`);
+          console.warn(`⚠️ Isso significa que há locações sem property ou tenant associados corretamente`);
+          
+          // Buscar quais rental_ids estão sendo excluídos
+          const { data: allPaymentsInMonth } = await supabase
+            .from("payments")
+            .select("rental_id, reference_month, reference_year")
+            .eq("reference_month", month && month !== "all" ? month.toString().padStart(2, '0') : undefined)
+            .eq("reference_year", year && year !== "all" ? year.toString() : undefined);
+          
+          const allRentalIds = new Set((allPaymentsInMonth || []).map((p: any) => p.rental_id));
+          const returnedRentalIds = new Set((paymentsData || []).map((p: any) => p.rental_id));
+          
+          const missingRentalIds = Array.from(allRentalIds).filter(id => !returnedRentalIds.has(id));
+          
+          if (missingRentalIds.length > 0) {
+            console.error(`❌ RENTAL_IDs EXCLUÍDOS PELOS JOINs:`, missingRentalIds);
+            
+            // Para cada rental_id excluído, verificar se a locação existe
+            for (const missingId of missingRentalIds) {
+              const { data: rental, error: rentalError } = await supabase
+                .from("rentals")
+                .select("id, property_id, tenant_id")
+                .eq("id", missingId)
+                .maybeSingle();
+              
+              if (rentalError) {
+                console.error(`❌ Erro ao verificar rental ${missingId}:`, rentalError);
+              } else if (!rental) {
+                console.error(`❌ Rental ${missingId} NÃO EXISTE no banco!`);
+              } else {
+                console.log(`📋 Rental ${missingId} existe:`, {
+                  has_property: !!rental.property_id,
+                  has_tenant: !!rental.tenant_id,
+                  property_id: rental.property_id,
+                  tenant_id: rental.tenant_id
+                });
+              }
+            }
+          }
+        }
+      }
+      
       // 🔍 LOG DETALHADO: Mostrar TODOS os recebimentos retornados
       if (paymentsData && paymentsData.length > 0) {
         console.log("📋 TODOS os recebimentos retornados do banco:");
