@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Rental, Attachment } from "@/types";
 import { depositInstallmentService } from "./depositInstallmentService";
 import { updatePendingPaymentsOnRentalEdit, createPaymentsForRental } from "./paymentService";
+import { invalidatePaymentsCache } from "@/hooks/usePayments";
 
 // ✅ CACHE: Cache simples em memória
 let rentalsCache: { data: Rental[] | null; timestamp: number } = {
@@ -365,6 +366,10 @@ export const rentalService = {
         // Re-throw para que o erro seja visível
         throw new Error(`Falha ao criar recebimentos: ${(paymentError as any).message}`);
       }
+      
+      // 🔥 CRÍTICO: Invalidar cache de payments para forçar reload
+      invalidatePaymentsCache();
+      console.log("🗑️ [rentalService.create] Cache de payments invalidado");
     } else {
       console.warn("⚠️ [rentalService.create] Recebimentos NÃO foram gerados. Parâmetros faltando:", {
         startDate: rental.startDate,
@@ -406,6 +411,7 @@ export const rentalService = {
 
     // ✅ OTIMIZAÇÃO: Invalidar cache
     rentalService.invalidateCache();
+    invalidatePaymentsCache();
 
     // Buscar dados completos para retornar
     return rentalService.getById(data.id);

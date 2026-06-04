@@ -183,6 +183,15 @@ export default function Payments() {
     
     return () => clearTimeout(timer);
   }, [selectedMonth, selectedYear]); // REMOVIDO loadPayments das dependências para evitar loops
+  
+  // 🔥 FORÇA RELOAD: Quando a página monta, garantir que os dados sejam carregados
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      console.log("🚀 [payments.tsx] Página montada - forçando reload inicial");
+      loadPayments(selectedMonth.toString(), selectedYear.toString());
+    }
+  }, []); // Executar apenas uma vez ao montar
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {

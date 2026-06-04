@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
@@ -39,6 +39,14 @@ export function usePayments() {
   const loadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastQueryRef = useRef<string>("");
+  
+  // 🔍 LOG: Monitorar mudanças no estado payments
+  useEffect(() => {
+    console.log(`🔔 [usePayments Hook] Estado 'payments' MUDOU internamente:`, {
+      length: payments.length,
+      timestamp: new Date().toISOString()
+    });
+  }, [payments]);
 
   const loadPayments = useCallback(async (month?: string, year?: string) => {
     const queryKey = `${month || "all"}-${year || "all"}`;
