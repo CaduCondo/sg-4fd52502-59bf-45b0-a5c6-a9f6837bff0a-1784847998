@@ -368,9 +368,9 @@ export function usePayments() {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [toast]);
+  };
 
-  const handleCancelPayment = useCallback(async (paymentId: string) => {
+  const handleCancelPayment = async (paymentId: string) => {
     try {
       const { error } = await supabase
         .from("payments")
@@ -403,7 +403,7 @@ export function usePayments() {
       });
       throw error;
     }
-  }, [toast]);
+  };
 
   // Helpers memoizados
   const getPropertyInfo = useCallback((rentalId: string) => {
