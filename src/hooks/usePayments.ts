@@ -146,7 +146,6 @@ export function usePayments() {
               description: "",
               hasGarage: false,
               hasFurniture: false,
-              locationAddress: location?.street || "",
               hasElevator: false,
               floor: "",
               parkingSpaces: 0,
