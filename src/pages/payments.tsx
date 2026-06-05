@@ -81,14 +81,6 @@ export default function Payments() {
     loadPayments
   } = usePayments();
   
-  // 🔥 FORÇA RELOAD INICIAL: Executar ANTES de tudo
-  useEffect(() => {
-    console.log("🚀 [payments.tsx] Montagem inicial - forçando primeiro reload");
-    const initialMonth = currentDate.getMonth() + 1;
-    const initialYear = currentDate.getFullYear();
-    loadPayments(initialMonth.toString(), initialYear.toString());
-  }, []); // Array vazio = executar apenas na montagem
-  
   // 🔍 LOG: Verificar quantos payments chegam do hook em CADA RENDER
   console.log(`🎨 [payments.tsx RENDER] Payments recebidos do hook:`, {
     paymentsLength: payments.length,
@@ -176,29 +168,16 @@ export default function Payments() {
     return MONTH_NAMES[month - 1] || "";
   }, []);
 
-  // Carregar pagamentos quando os filtros mudarem
+  // Carregar pagamentos quando os filtros mudarem (incluindo montagem inicial)
   useEffect(() => {
-    // Ignorar a primeira execução (já carregado no useEffect inicial)
-    if (mountedRef.current) {
-      console.log(`🔄 [payments.tsx useEffect] Filtros mudaram - recarregando:`, {
-        selectedMonth: selectedMonth.toString(),
-        selectedYear: selectedYear.toString(),
-        timestamp: new Date().toISOString()
-      });
-      loadPayments(selectedMonth.toString(), selectedYear.toString());
-    } else {
-      mountedRef.current = true;
-    }
-  }, [selectedMonth, selectedYear]);
-
-  // 🔥 FORÇA RELOAD: Quando a página monta, garantir que os dados sejam carregados
-  useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      console.log("🚀 [payments.tsx] Página montada - forçando reload inicial");
-      loadPayments(selectedMonth.toString(), selectedYear.toString());
-    }
-  }, []); // Executar apenas uma vez ao montar
+    console.log(`🔄 [payments.tsx useEffect] Chamando loadPayments:`, {
+      selectedMonth: selectedMonth.toString(),
+      selectedYear: selectedYear.toString(),
+      timestamp: new Date().toISOString()
+    });
+    
+    loadPayments(selectedMonth.toString(), selectedYear.toString());
+  }, [selectedMonth, selectedYear]); // Executar quando filtros mudarem OU na montagem
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {
