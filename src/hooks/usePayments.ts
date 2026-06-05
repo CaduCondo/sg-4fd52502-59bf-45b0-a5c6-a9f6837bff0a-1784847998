@@ -1,31 +1,7 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
-
-// Cache em memória global
-let paymentsCache: {
-  data: {
-    payments: Payment[];
-    rentals: Rental[];
-    properties: Property[];
-    tenants: Tenant[];
-  } | null;
-  key: string;
-  timestamp: number;
-} = {
-  data: null,
-  key: "",
-  timestamp: 0, // Forçar cache expirado
-};
-
-const CACHE_DURATION = 0; // Desabilitar cache temporariamente
-
-// Invalidar cache
-export const invalidatePaymentsCache = () => {
-  paymentsCache = { data: null, key: "", timestamp: 0 };
-  console.log("🗑️ [usePayments] Cache invalidado");
-};
 
 export function usePayments() {
   const { toast } = useToast();
@@ -33,177 +9,99 @@ export function usePayments() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Prevenir múltiplas chamadas simultâneas
-  const loadingRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const lastQueryRef = useRef<string>("");
-  
-  // 🔍 LOG: Monitorar mudanças no estado payments
-  useEffect(() => {
-    console.log(`🔔 [usePayments Hook] Estado 'payments' MUDOU internamente:`, {
-      length: payments.length,
-      timestamp: new Date().toISOString()
-    });
-  }, [payments]);
+  const [loading, setLoading] = useState(false);
 
   const loadPayments = useCallback(async (month?: string, year?: string) => {
-    const queryKey = `${month || "all"}-${year || "all"}`;
-    
-    // 🔥 PROTEÇÃO: Se a mesma query já está em execução, ignorar
-    if (loadingRef.current && lastQueryRef.current === queryKey) {
-      console.log("⚠️ [usePayments] Query já em execução, ignorando chamada duplicada:", queryKey);
-      return;
-    }
-
-    // Se há uma query diferente em execução, cancelar
-    if (loadingRef.current && abortControllerRef.current) {
-      console.log("🛑 [usePayments] Cancelando query anterior:", lastQueryRef.current);
-      abortControllerRef.current.abort();
-    }
-
     try {
-      loadingRef.current = true;
-      lastQueryRef.current = queryKey;
       setLoading(true);
-      abortControllerRef.current = new AbortController();
+      console.log(`🔄 [usePayments] Carregando recebimentos - mês: ${month}, ano: ${year}`);
 
-      const cacheKey = queryKey;
-      const now = Date.now();
-      
-      // SEMPRE buscar dados frescos - cache desabilitado temporariamente
-      console.log("🔄 Buscando dados FRESCOS do banco (cache desabilitado)...");
-
-      // ✅ ESTRATÉGIA NOVA: Buscar payments primeiro (sem JOINs), depois buscar relacionamentos
-      let paymentsQuery = supabase
+      // Query DIRETA e SIMPLES - buscar payments com JOINs
+      let query = supabase
         .from("payments")
-        .select("*")
+        .select(`
+          *,
+          rentals!payments_rental_id_fkey (
+            id,
+            property_id,
+            tenant_id,
+            rent_value,
+            garage_value,
+            has_garage,
+            rent_due_day,
+            deposit_value,
+            start_date,
+            end_date,
+            properties!rentals_property_id_fkey (
+              id,
+              complement,
+              rooms,
+              bathrooms,
+              area,
+              status,
+              value,
+              locations!properties_location_id_fkey (
+                id,
+                name,
+                street,
+                number,
+                neighborhood,
+                city,
+                state,
+                zip_code
+              )
+            ),
+            tenants!rentals_tenant_id_fkey (
+              id,
+              name,
+              email,
+              phone,
+              document_type,
+              document,
+              cpf
+            )
+          )
+        `)
         .order("due_date", { ascending: true });
 
-      console.log("🔍 Query construída:", {
-        hasMonthFilter: !!month && month !== "all",
-        monthValue: month,
-        hasYearFilter: !!year && year !== "all",
-        yearValue: year
-      });
-
-      // Aplicar filtros de mês/ano
+      // Aplicar filtros de mês/ano SE fornecidos
       if (month && month !== "all") {
         const paddedMonth = month.toString().padStart(2, '0');
-        paymentsQuery = paymentsQuery.eq("reference_month", paddedMonth);
-        console.log("📅 Filtro de mês aplicado:", paddedMonth);
+        query = query.eq("reference_month", paddedMonth);
       }
       if (year && year !== "all") {
-        paymentsQuery = paymentsQuery.eq("reference_year", year.toString());
-        console.log("📅 Filtro de ano aplicado:", year.toString());
+        query = query.eq("reference_year", year.toString());
       }
 
-      console.log("🚀 Executando query de payments...");
-      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+      const { data, error } = await query;
 
-      console.log("📊 Resultado da query de payments:", {
-        hasData: !!paymentsData,
-        dataLength: paymentsData?.length || 0,
-        hasError: !!paymentsError
-      });
-
-      // Verificar se foi cancelado
-      if (abortControllerRef.current?.signal.aborted) {
-        loadingRef.current = false;
-        return;
+      if (error) {
+        console.error("❌ [usePayments] Erro ao carregar:", error);
+        throw error;
       }
 
-      if (paymentsError) {
-        console.error("❌ [usePayments] Erro ao buscar:", paymentsError);
-        throw paymentsError;
-      }
+      console.log(`✅ [usePayments] Carregou ${data?.length || 0} recebimentos`);
 
-      if (!paymentsData || paymentsData.length === 0) {
-        console.log("ℹ️ [usePayments] Nenhum pagamento encontrado");
+      if (!data || data.length === 0) {
         setPayments([]);
         setRentals([]);
         setProperties([]);
         setTenants([]);
-        setLoading(false);
-        loadingRef.current = false;
         return;
       }
 
-      // ✅ Buscar rental_ids únicos dos recebimentos
-      const rentalIds = [...new Set(paymentsData.map((p: any) => p.rental_id))];
-      console.log(`📋 Buscando ${rentalIds.length} locações relacionadas...`);
-
-      // Buscar rentals com properties e tenants em uma query
-      const { data: rentalsData, error: rentalsError } = await supabase
-        .from("rentals")
-        .select(`
-          id,
-          property_id,
-          tenant_id,
-          rent_value,
-          garage_value,
-          has_garage,
-          rent_due_day,
-          deposit_value,
-          start_date,
-          end_date,
-          properties!rentals_property_id_fkey (
-            id,
-            complement,
-            rooms,
-            bathrooms,
-            area,
-            status,
-            value,
-            locations!properties_location_id_fkey (
-              id,
-              name,
-              street,
-              number,
-              neighborhood,
-              city,
-              state,
-              zip_code
-            )
-          ),
-          tenants!rentals_tenant_id_fkey (
-            id,
-            name,
-            email,
-            phone,
-            document_type,
-            document,
-            cpf
-          )
-        `)
-        .in("id", rentalIds);
-
-      console.log("📊 Rentals carregados:", {
-        hasData: !!rentalsData,
-        dataLength: rentalsData?.length || 0,
-        hasError: !!rentalsError
-      });
-
-      if (rentalsError) {
-        console.error("❌ Erro ao buscar rentals:", rentalsError);
-      }
-
-      // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
+      // Processar dados
       const rentalsMap = new Map<string, Rental>();
       const propertiesMap = new Map<string, Property>();
       const tenantsMap = new Map<string, Tenant>();
 
-      // Processar rentals, properties e tenants
-      if (rentalsData) {
-        rentalsData.forEach((rental: any) => {
-          const property = rental.properties;
-          const location = property?.locations;
-          const tenant = rental.tenants;
-
-          // Adicionar ao map de rentals
+      const processedPayments: Payment[] = data.map((p: any) => {
+        const rental = p.rentals;
+        
+        if (rental) {
+          // Processar rental
           if (!rentalsMap.has(rental.id)) {
-            const rentalObj = {
+            rentalsMap.set(rental.id, {
               id: rental.id,
               propertyId: rental.property_id,
               tenantId: rental.tenant_id,
@@ -221,13 +119,13 @@ export function usePayments() {
               contractAttachments: [],
               hasPartnerBroker: false,
               pixCode: "",
-            } as Rental;
-            
-            rentalsMap.set(rental.id, rentalObj);
+            });
           }
 
-          // Adicionar ao map de properties
+          // Processar property
+          const property = rental.properties;
           if (property && !propertiesMap.has(property.id)) {
+            const location = property.locations;
             propertiesMap.set(property.id, {
               id: property.id,
               locationId: location?.id || "",
@@ -244,10 +142,11 @@ export function usePayments() {
               area: property.area || 0,
               status: property.status || "available",
               value: property.value || 0,
-            } as Property);
+            });
           }
 
-          // Adicionar ao map de tenants
+          // Processar tenant
+          const tenant = rental.tenants;
           if (tenant && !tenantsMap.has(tenant.id)) {
             tenantsMap.set(tenant.id, {
               id: tenant.id,
@@ -259,21 +158,9 @@ export function usePayments() {
               cpf: tenant.cpf || "",
               rg: "",
               status: "active",
-            } as Tenant);
+            });
           }
-        });
-      }
-
-      console.log(`✅ Processados: ${rentalsMap.size} rentals, ${propertiesMap.size} properties, ${tenantsMap.size} tenants`);
-
-      const processedPayments: Payment[] = paymentsData.map((p: any) => {
-        // Processar attachments da tabela relacionada
-        const attachmentsFromTable = p.payment_attachments || [];
-        const processedAttachments = attachmentsFromTable.map((att: any) => ({
-          url: att.file_url,
-          name: att.file_name,
-          description: att.description || "",
-        }));
+        }
 
         return {
           id: p.id,
@@ -289,7 +176,7 @@ export function usePayments() {
           notes: "",
           referenceMonth: parseInt(p.reference_month),
           referenceYear: parseInt(p.reference_year),
-          attachments: processedAttachments.length > 0 ? processedAttachments : (p.attachments || []),
+          attachments: p.attachments || [],
           lateFee: p.late_fee || 0,
           interest: p.interest || 0,
           installment: p.installment || undefined,
@@ -302,72 +189,35 @@ export function usePayments() {
         };
       });
 
-      const rentalsArray = Array.from(rentalsMap.values());
-      const propertiesArray = Array.from(propertiesMap.values());
-      const tenantsArray = Array.from(tenantsMap.values());
-
-      // Atualizar cache
-      paymentsCache = {
-        data: {
-          payments: processedPayments,
-          rentals: rentalsArray,
-          properties: propertiesArray,
-          tenants: tenantsArray,
-        },
-        key: cacheKey,
-        timestamp: now,
-      };
-
-      // Verificar se ainda está montado antes de atualizar estados
-      if (abortControllerRef.current?.signal.aborted) {
-        console.log("⚠️ [usePayments] Componente desmontado, abortando atualização de estado");
-        loadingRef.current = false;
-        return;
-      }
-
-      // Atualizar estados
-      console.log(`🔄 [usePayments] SETANDO estados com:`, {
-        payments: processedPayments.length,
-        rentals: rentalsArray.length,
-        properties: propertiesArray.length,
-        tenants: tenantsArray.length
-      });
-      
+      // Atualizar estados DIRETAMENTE
       setPayments(processedPayments);
-      setRentals(rentalsArray);
-      setProperties(propertiesArray);
-      setTenants(tenantsArray);
-      
-      console.log(`✅ [usePayments] Estados SETADOS (setState chamado):`, {
-        payments: processedPayments.length,
-        rentals: rentalsArray.length,
-        properties: propertiesArray.length,
-        tenants: tenantsArray.length
-      });
-      
-      // 🔥 FORÇA UPDATE: Garantir que o estado seja propagado
-      setTimeout(() => {
-        console.log(`🔍 [usePayments] Verificação pós-setState - Estado atual no hook deveria ser ${processedPayments.length} payments`);
-      }, 100);
+      setRentals(Array.from(rentalsMap.values()));
+      setProperties(Array.from(propertiesMap.values()));
+      setTenants(Array.from(tenantsMap.values()));
 
+      console.log(`✅ [usePayments] Estados atualizados:`, {
+        payments: processedPayments.length,
+        rentals: rentalsMap.size,
+        properties: propertiesMap.size,
+        tenants: tenantsMap.size,
+      });
     } catch (error: any) {
-      // Ignorar erros de cancelamento
-      if (error.name === 'AbortError') {
-        console.log("ℹ️ [usePayments] Requisição cancelada");
-        return;
-      }
-      
-      console.error("❌ [usePayments] Erro ao carregar pagamentos:", error);
+      console.error("❌ [usePayments] Erro:", error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar pagamentos. Tente novamente.",
+        description: "Erro ao carregar recebimentos. Tente novamente.",
         variant: "destructive",
       });
+      
+      // Limpar estados em caso de erro
+      setPayments([]);
+      setRentals([]);
+      setProperties([]);
+      setTenants([]);
     } finally {
       setLoading(false);
-      loadingRef.current = false;
     }
-  }, [toast]); // ✅ APENAS toast nas dependências - setters são estáveis
+  }, [toast]);
 
   const handleCancelPayment = useCallback(async (paymentId: string) => {
     try {
@@ -378,33 +228,30 @@ export function usePayments() {
           payment_date: null,
           paid_amount: 0,
           payment_method: null,
-          attachments: null,
-          late_fee: 0,
-          interest: 0,
+          attachments: [],
         })
         .eq("id", paymentId);
 
       if (error) throw error;
 
-      // Invalidar cache
-      invalidatePaymentsCache();
-
       toast({
         title: "Sucesso",
-        description: "Pagamento cancelado com sucesso",
+        description: "Recebimento cancelado com sucesso",
       });
 
-    } catch (error) {
+      // Recarregar lista
+      await loadPayments();
+    } catch (error: any) {
+      console.error("❌ Erro ao cancelar recebimento:", error);
       toast({
         title: "Erro",
-        description: "Erro ao cancelar pagamento",
+        description: "Erro ao cancelar recebimento. Tente novamente.",
         variant: "destructive",
       });
       throw error;
     }
-  }, [toast]);
+  }, [toast, loadPayments]);
 
-  // Helpers memoizados
   const getPropertyInfo = useCallback((rentalId: string) => {
     const rental = rentals.find(r => r.id === rentalId);
     if (!rental) return null;
@@ -418,11 +265,45 @@ export function usePayments() {
   }, [rentals, tenants]);
 
   const getExpectedAmount = useCallback((payment: Payment) => {
-    return payment.expectedAmount;
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+        
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          const breakdownTotal = breakdownData.reduce((sum: number, item: any) => {
+            return sum + (item.value || item.amount || 0);
+          }, 0);
+          
+          return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
+        }
+        
+        if (typeof breakdownData === 'object' && !Array.isArray(breakdownData)) {
+          let breakdownTotal = 0;
+          Object.values(breakdownData).forEach((value: any) => {
+            if (value && typeof value === 'object') {
+              breakdownTotal += (value.value || value.amount || 0);
+            }
+          });
+          
+          if (breakdownTotal > 0 || breakdownTotal < 0) {
+            return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
+      }
+    }
+    
+    return payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
   }, []);
 
   const getPaymentInstallment = useCallback((payment: Payment) => {
-    if (!payment.installment || !payment.totalInstallments) return null;
+    if (!payment.installment || !payment.totalInstallments) {
+      return "N/A";
+    }
+    
     return `${payment.installment}/${payment.totalInstallments}`;
   }, []);
 
@@ -432,12 +313,17 @@ export function usePayments() {
     properties,
     tenants,
     loading,
-    loadPayments, // Função estável sem useCallback
+    loadPayments,
     handleCancelPayment,
     getPropertyInfo,
     getTenantInfo,
     getExpectedAmount,
     getPaymentInstallment,
-    fetchPayments: loadPayments, // Alias para compatibilidade
+    fetchPayments: loadPayments,
   };
+}
+
+// Função auxiliar para invalidar cache (não faz nada agora, mas mantém compatibilidade)
+export function invalidatePaymentsCache() {
+  console.log("ℹ️ Cache de payments invalidado (sem efeito no novo código simplificado)");
 }
