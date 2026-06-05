@@ -68,8 +68,7 @@ export default function Payments() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string | number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<string | number>(currentDate.getFullYear());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const firstLoadRef = useRef(true);
 
   const { 
     payments, 
@@ -173,11 +172,21 @@ export default function Payments() {
     console.log(`🔄 [payments.tsx useEffect] Chamando loadPayments:`, {
       selectedMonth: selectedMonth.toString(),
       selectedYear: selectedYear.toString(),
+      isFirstLoad: firstLoadRef.current,
       timestamp: new Date().toISOString()
     });
     
     loadPayments(selectedMonth.toString(), selectedYear.toString());
+    
+    if (firstLoadRef.current) {
+      firstLoadRef.current = false;
+    }
   }, [selectedMonth, selectedYear]); // Executar quando filtros mudarem OU na montagem
+  
+  // 🔥 FORÇA RE-RENDER: Garantir que mudanças no estado payments causem re-render
+  useEffect(() => {
+    console.log(`🔔 [payments.tsx] FORÇANDO RE-RENDER - payments mudou para ${payments.length} itens`);
+  }, [payments]);
 
   // Handlers otimizados
   const handleMonthChange = useCallback((value: string | number) => {
@@ -329,25 +338,38 @@ export default function Payments() {
               Gerencie os recebimentos de aluguel
             </p>
           </div>
-          <div className="flex gap-1 border rounded-lg p-1">
+          <div className="flex gap-2">
             <Button
-              variant={uiState.viewMode === "grid" ? "default" : "ghost"}
+              variant="outline"
               size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
-              className="h-8 px-3"
+              onClick={() => {
+                console.log("🔄 [payments.tsx] Recarga manual solicitada");
+                loadPayments(selectedMonth.toString(), selectedYear.toString());
+              }}
+              className="h-9"
             >
-              <Grid3x3 className="h-4 w-4 mr-1.5" />
-              Grade
+              🔄 Recarregar
             </Button>
-            <Button
-              variant={uiState.viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
-              className="h-8 px-3"
-            >
-              <List className="h-4 w-4 mr-1.5" />
-              Lista
-            </Button>
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                variant={uiState.viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
+                className="h-8 px-3"
+              >
+                <Grid3x3 className="h-4 w-4 mr-1.5" />
+                Grade
+              </Button>
+              <Button
+                variant={uiState.viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
+                className="h-8 px-3"
+              >
+                <List className="h-4 w-4 mr-1.5" />
+                Lista
+              </Button>
+            </div>
           </div>
         </div>
 
