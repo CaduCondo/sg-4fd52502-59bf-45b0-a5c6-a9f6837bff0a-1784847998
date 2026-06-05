@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Grid3x3, List, Search } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
-import { Payment } from "@/types";
+import { Payment, Rental, Property, Tenant } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
