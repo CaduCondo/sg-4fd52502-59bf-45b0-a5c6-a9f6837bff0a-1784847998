@@ -27,11 +27,11 @@ export async function forceCreatePaymentsForSpecificRental(
   try {
     console.log(`🔍 [forceCreatePayments] Buscando locação para propriedade "${propertyName}" e inquilino "${tenantName}"...`);
 
-    // 1. Buscar a propriedade pelo nome/endereço
+    // 1. Buscar a propriedade pelo complemento
     const { data: properties, error: propertyError } = await supabase
       .from("properties")
-      .select("id, locations!properties_location_id_fkey(name, street)")
-      .or(`complement.ilike.%${propertyName}%,locations.name.ilike.%${propertyName}%`);
+      .select("id, complement, locations!properties_location_id_fkey(name, street)")
+      .ilike("complement", `%${propertyName}%`);
 
     if (propertyError) {
       throw new Error(`Erro ao buscar propriedade: ${propertyError.message}`);
