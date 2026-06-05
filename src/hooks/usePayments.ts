@@ -146,9 +146,10 @@ export function usePayments() {
               description: "",
               hasGarage: false,
               hasFurniture: false,
-              hasElevator: false,
-              floor: "",
-              parkingSpaces: 0,
+              acceptsPets: false,
+              images: [],
+              features: [],
+              createdAt: new Date().toISOString(),
             });
           }
 
