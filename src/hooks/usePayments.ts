@@ -48,8 +48,7 @@ export function usePayments() {
     });
   }, [payments]);
 
-  // 🔥 REMOVIDO useCallback - função normal para evitar closure stale
-  const loadPayments = async (month?: string, year?: string) => {
+  const loadPayments = useCallback(async (month?: string, year?: string) => {
     const queryKey = `${month || "all"}-${year || "all"}`;
     
     // 🔥 PROTEÇÃO: Se a mesma query já está em execução, ignorar
@@ -368,9 +367,9 @@ export function usePayments() {
       setLoading(false);
       loadingRef.current = false;
     }
-  };
+  }, [toast]); // ✅ APENAS toast nas dependências - setters são estáveis
 
-  const handleCancelPayment = async (paymentId: string) => {
+  const handleCancelPayment = useCallback(async (paymentId: string) => {
     try {
       const { error } = await supabase
         .from("payments")
@@ -403,7 +402,7 @@ export function usePayments() {
       });
       throw error;
     }
-  };
+  }, [toast]);
 
   // Helpers memoizados
   const getPropertyInfo = useCallback((rentalId: string) => {

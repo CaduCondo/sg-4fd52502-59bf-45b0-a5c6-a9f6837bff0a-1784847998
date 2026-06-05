@@ -181,7 +181,7 @@ export default function Payments() {
     if (firstLoadRef.current) {
       firstLoadRef.current = false;
     }
-  }, [selectedMonth, selectedYear]); // Executar quando filtros mudarem OU na montagem
+  }, [loadPayments, selectedMonth, selectedYear]); // ✅ loadPayments agora é estável
   
   // 🔥 FORÇA RE-RENDER: Garantir que mudanças no estado payments causem re-render
   useEffect(() => {
