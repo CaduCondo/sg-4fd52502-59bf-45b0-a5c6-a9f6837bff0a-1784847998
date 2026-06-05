@@ -406,7 +406,7 @@ export function generateExpectedPayments(params: {
 
   paymentsToCreate.push({
     rental_id: rentalId,
-    reference_month: String(firstPaymentMonth),
+    reference_month: String(firstPaymentMonth).padStart(2, '0'), // ✅ SEMPRE com padding
     reference_year: String(firstPaymentYear),
     due_date: firstPaymentDueDate,
     expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
@@ -455,8 +455,8 @@ export function generateExpectedPayments(params: {
 
     paymentsToCreate.push({
       rental_id: rentalId,
-      reference_month: currentMonth,
-      reference_year: currentYear,
+      reference_month: String(currentMonth).padStart(2, '0'), // ✅ SEMPRE com padding
+      reference_year: String(currentYear),
       due_date: dueDate,
       expected_amount: parseFloat(totalMonthlyValue.toFixed(2)),
       status: "pending",
@@ -513,8 +513,8 @@ export function generateExpectedPayments(params: {
 
     paymentsToCreate.push({
       rental_id: rentalId,
-      reference_month: eMonth,
-      reference_year: eYear,
+      reference_month: String(eMonth).padStart(2, '0'), // ✅ SEMPRE com padding
+      reference_year: String(eYear),
       due_date: lastDueDate,
       expected_amount: parseFloat(lastPaymentAmount.toFixed(2)),
       status: "pending",
