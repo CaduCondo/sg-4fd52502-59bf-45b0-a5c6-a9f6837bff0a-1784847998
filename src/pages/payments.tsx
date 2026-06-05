@@ -26,7 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { verifyAndFixAllRentalsPayments, forceCreatePaymentsForSpecificRental } from "@/services/paymentsFixService";
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -70,8 +69,6 @@ export default function Payments() {
   const [selectedMonth, setSelectedMonth] = useState<string | number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<string | number>(currentDate.getFullYear());
   const firstLoadRef = useRef(true);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isForcingSpecific, setIsForcingSpecific] = useState(false);
 
   const { 
     payments, 
@@ -293,84 +290,6 @@ export default function Payments() {
     }, 500);
   }, [uiState.selectedPaymentId, loadPayments, payments, toast]);
 
-  const handleVerifyAndFixPayments = useCallback(async () => {
-    setIsVerifying(true);
-    
-    toast({
-      title: "Verificando contratos...",
-      description: "Aguarde enquanto verificamos todos os contratos vigentes.",
-    });
-
-    try {
-      const result = await verifyAndFixAllRentalsPayments();
-      
-      if (result.success) {
-        toast({
-          title: "Verificação concluída!",
-          description: `${result.details.paymentsCreated} recebimentos criados. ${result.details.rentalsChecked} contratos verificados.`,
-        });
-        
-        // Recarregar a página após 1 segundo
-        setTimeout(() => {
-          loadPayments(selectedMonth.toString(), selectedYear.toString());
-        }, 1000);
-      } else {
-        toast({
-          title: "Erro na verificação",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: `Erro ao verificar contratos: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [loadPayments, selectedMonth, selectedYear, toast]);
-
-  const handleForceCreateSpecificRental = useCallback(async () => {
-    setIsForcingSpecific(true);
-    
-    toast({
-      title: "Forçando criação de recebimentos...",
-      description: "Buscando locação APTO14Colombo - Juan Bravo Barbosa...",
-    });
-
-    try {
-      const result = await forceCreatePaymentsForSpecificRental("APTO14Colombo", "Juan Bravo Barbosa");
-      
-      if (result.success) {
-        toast({
-          title: "Recebimentos criados com sucesso!",
-          description: `${result.details.paymentsCreated} recebimentos criados. ${result.details.paymentsDeleted} deletados.`,
-        });
-        
-        // Recarregar a página após 1 segundo
-        setTimeout(() => {
-          loadPayments(selectedMonth.toString(), selectedYear.toString());
-        }, 1000);
-      } else {
-        toast({
-          title: "Erro ao criar recebimentos",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: `Erro ao criar recebimentos: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsForcingSpecific(false);
-    }
-  }, [loadPayments, selectedMonth, selectedYear, toast]);
-
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
     console.log(`🔍 [payments.tsx] Separando recebimentos - Total disponível: ${payments.length}`);
@@ -419,56 +338,25 @@ export default function Payments() {
               Gerencie os recebimentos de aluguel
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1 border rounded-lg p-1">
             <Button
-              variant="destructive"
+              variant={uiState.viewMode === "grid" ? "default" : "ghost"}
               size="sm"
-              onClick={handleForceCreateSpecificRental}
-              disabled={isForcingSpecific || loading}
-              className="h-9"
+              onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
+              className="h-8 px-3"
             >
-              {isForcingSpecific ? "⏳ Criando..." : "🚨 Forçar APTO14Colombo"}
+              <Grid3x3 className="h-4 w-4 mr-1.5" />
+              Grade
             </Button>
             <Button
-              variant="outline"
+              variant={uiState.viewMode === "list" ? "default" : "ghost"}
               size="sm"
-              onClick={handleVerifyAndFixPayments}
-              disabled={isVerifying || loading}
-              className="h-9"
+              onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
+              className="h-8 px-3"
             >
-              {isVerifying ? "⏳ Verificando..." : "🔧 Verificar e Corrigir"}
+              <List className="h-4 w-4 mr-1.5" />
+              Lista
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log("🔄 [payments.tsx] Recarga manual solicitada");
-                loadPayments(selectedMonth.toString(), selectedYear.toString());
-              }}
-              className="h-9"
-            >
-              🔄 Recarregar
-            </Button>
-            <div className="flex gap-1 border rounded-lg p-1">
-              <Button
-                variant={uiState.viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
-                className="h-8 px-3"
-              >
-                <Grid3x3 className="h-4 w-4 mr-1.5" />
-                Grade
-              </Button>
-              <Button
-                variant={uiState.viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
-                className="h-8 px-3"
-              >
-                <List className="h-4 w-4 mr-1.5" />
-                Lista
-              </Button>
-            </div>
           </div>
         </div>
 

@@ -66,8 +66,11 @@ export function usePayments() {
 
       // Aplicar filtros de mês/ano SE fornecidos
       if (month && month !== "all") {
-        const paddedMonth = month.toString().padStart(2, '0');
-        query = query.eq("reference_month", paddedMonth);
+        const monthStr = month.toString();
+        const paddedMonth = monthStr.padStart(2, '0');
+        
+        // 🔥 CORREÇÃO CRÍTICA: Banco pode ter "2" ou "02" - buscar AMBOS
+        query = query.or(`reference_month.eq.${monthStr},reference_month.eq.${paddedMonth}`);
       }
       if (year && year !== "all") {
         query = query.eq("reference_year", year.toString());
