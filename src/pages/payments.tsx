@@ -71,39 +71,18 @@ export default function Payments() {
   const firstLoadRef = useRef(true);
 
   const { 
-    payments: hookPayments, 
-    rentals: hookRentals, 
-    properties: hookProperties, 
-    tenants: hookTenants, 
+    payments, 
+    rentals, 
+    properties, 
+    tenants, 
     loading, 
     handleCancelPayment: cancelPayment,
     loadPayments
   } = usePayments();
   
-  // 🔥 SOLUÇÃO CRÍTICA: Estado local que sincroniza com o hook
-  // Garante que o componente sempre renderize com dados atualizados
-  const [payments, setLocalPayments] = useState<Payment[]>([]);
-  const [rentals, setLocalRentals] = useState<Rental[]>([]);
-  const [properties, setLocalProperties] = useState<Property[]>([]);
-  const [tenants, setLocalTenants] = useState<Tenant[]>([]);
-  
-  // Sincronizar estado local com estado do hook
-  useEffect(() => {
-    console.log(`🔄 [payments.tsx] Sincronizando estado local com hook:`, {
-      hookPayments: hookPayments.length,
-      localPayments: payments.length
-    });
-    
-    setLocalPayments(hookPayments);
-    setLocalRentals(hookRentals);
-    setLocalProperties(hookProperties);
-    setLocalTenants(hookTenants);
-  }, [hookPayments, hookRentals, hookProperties, hookTenants]);
-  
   // 🔍 LOG: Verificar quantos payments chegam do hook em CADA RENDER
   console.log(`🎨 [payments.tsx RENDER] Payments recebidos do hook:`, {
-    hookPaymentsLength: hookPayments.length,
-    localPaymentsLength: payments.length,
+    paymentsLength: payments.length,
     rentalsLength: rentals.length,
     propertiesLength: properties.length,
     tenantsLength: tenants.length,
