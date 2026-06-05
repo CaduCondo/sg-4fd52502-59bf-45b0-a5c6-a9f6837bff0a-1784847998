@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { verifyAndFixAllRentalsPayments } from "@/services/paymentsFixService";
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -69,6 +70,7 @@ export default function Payments() {
   const [selectedMonth, setSelectedMonth] = useState<string | number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<string | number>(currentDate.getFullYear());
   const firstLoadRef = useRef(true);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { 
     payments, 
@@ -290,6 +292,45 @@ export default function Payments() {
     }, 500);
   }, [uiState.selectedPaymentId, loadPayments, payments, toast]);
 
+  const handleVerifyAndFixPayments = useCallback(async () => {
+    setIsVerifying(true);
+    
+    toast({
+      title: "Verificando contratos...",
+      description: "Aguarde enquanto verificamos todos os contratos vigentes.",
+    });
+
+    try {
+      const result = await verifyAndFixAllRentalsPayments();
+      
+      if (result.success) {
+        toast({
+          title: "Verificação concluída!",
+          description: `${result.details.paymentsCreated} recebimentos criados. ${result.details.rentalsChecked} contratos verificados.`,
+        });
+        
+        // Recarregar a página após 1 segundo
+        setTimeout(() => {
+          loadPayments(selectedMonth.toString(), selectedYear.toString());
+        }, 1000);
+      } else {
+        toast({
+          title: "Erro na verificação",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: `Erro ao verificar contratos: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [loadPayments, selectedMonth, selectedYear, toast]);
+
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
     console.log(`🔍 [payments.tsx] Separando recebimentos - Total disponível: ${payments.length}`);
@@ -339,6 +380,15 @@ export default function Payments() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleVerifyAndFixPayments}
+              disabled={isVerifying || loading}
+              className="h-9"
+            >
+              {isVerifying ? "⏳ Verificando..." : "🔧 Verificar e Corrigir"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
