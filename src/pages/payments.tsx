@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { verifyAndFixAllRentalsPayments } from "@/services/paymentsFixService";
+import { verifyAndFixAllRentalsPayments, forceCreatePaymentsForSpecificRental } from "@/services/paymentsFixService";
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -71,6 +71,7 @@ export default function Payments() {
   const [selectedYear, setSelectedYear] = useState<string | number>(currentDate.getFullYear());
   const firstLoadRef = useRef(true);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isForcingSpecific, setIsForcingSpecific] = useState(false);
 
   const { 
     payments, 
@@ -331,6 +332,45 @@ export default function Payments() {
     }
   }, [loadPayments, selectedMonth, selectedYear, toast]);
 
+  const handleForceCreateSpecificRental = useCallback(async () => {
+    setIsForcingSpecific(true);
+    
+    toast({
+      title: "Forçando criação de recebimentos...",
+      description: "Buscando locação APTO14Colombo - Juan Bravo Barbosa...",
+    });
+
+    try {
+      const result = await forceCreatePaymentsForSpecificRental("APTO14Colombo", "Juan Bravo Barbosa");
+      
+      if (result.success) {
+        toast({
+          title: "Recebimentos criados com sucesso!",
+          description: `${result.details.paymentsCreated} recebimentos criados. ${result.details.paymentsDeleted} deletados.`,
+        });
+        
+        // Recarregar a página após 1 segundo
+        setTimeout(() => {
+          loadPayments(selectedMonth.toString(), selectedYear.toString());
+        }, 1000);
+      } else {
+        toast({
+          title: "Erro ao criar recebimentos",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: `Erro ao criar recebimentos: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsForcingSpecific(false);
+    }
+  }, [loadPayments, selectedMonth, selectedYear, toast]);
+
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
     console.log(`🔍 [payments.tsx] Separando recebimentos - Total disponível: ${payments.length}`);
@@ -380,6 +420,15 @@ export default function Payments() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleForceCreateSpecificRental}
+              disabled={isForcingSpecific || loading}
+              className="h-9"
+            >
+              {isForcingSpecific ? "⏳ Criando..." : "🚨 Forçar APTO14Colombo"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
