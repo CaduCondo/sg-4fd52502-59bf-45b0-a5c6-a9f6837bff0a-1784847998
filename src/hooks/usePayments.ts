@@ -142,6 +142,14 @@ export function usePayments() {
               area: property.area || 0,
               status: property.status || "available",
               value: property.value || 0,
+              propertyIdentifier: "",
+              description: "",
+              hasGarage: false,
+              hasFurniture: false,
+              locationAddress: location?.street || "",
+              hasElevator: false,
+              floor: "",
+              parkingSpaces: 0,
             });
           }
 
