@@ -278,7 +278,7 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Tenho Interesse!
                 </Button>
-                <ShareButtons propertyName={displayTitle} propertyUrl={`/locations/${property.id}`} />
+                <ShareButtons propertyName={displayTitle} propertyUrl={`/imovel/${property.id}`} />
               </div>
 
               {images.length > 0 && (
