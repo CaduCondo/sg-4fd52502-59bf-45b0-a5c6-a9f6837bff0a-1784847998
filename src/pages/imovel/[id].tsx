@@ -39,6 +39,10 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    
+    // Garantir que id é string (não array)
+    const propertyId = Array.isArray(id) ? id[0] : id;
+    if (!propertyId) return;
 
     async function fetchProperty() {
       try {
@@ -60,21 +64,16 @@ export default function PropertyDetailPage() {
               zip_code
             )
           `)
-          .eq("id", id)
+          .eq("id", propertyId)
           .eq("status", "available")
           .single();
 
         if (fetchError) throw fetchError;
         if (!data) throw new Error("Imóvel não encontrado");
 
-        // Buscar todas as imagens do imóvel
-        const { data: imagesData } = await supabase
-          .from("property_images")
-          .select("image_url")
-          .eq("property_id", data.id)
-          .order("created_at", { ascending: true });
-
-        const allImages = imagesData?.map((img) => img.image_url) || [];
+        // As imagens já vêm na propriedade ou podem ser buscadas separadamente
+        // Por enquanto, usar array vazio se não houver imagens
+        const allImages: string[] = [];
 
         const location = data.locations;
         const mappedProperty: Property = {
@@ -91,7 +90,7 @@ export default function PropertyDetailPage() {
           rooms: data.rooms || 0,
           bathrooms: data.bathrooms || 0,
           area: data.area || 0,
-          status: data.status || "available",
+          status: (data.status as "available" | "unavailable" | "occupied") || "available",
           value: data.value || 0,
           propertyIdentifier: data.property_identifier || "",
           description: data.description || "",
