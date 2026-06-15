@@ -490,81 +490,18 @@ export function PaymentReceipt({
 
   const propertyAddress = getPropertyAddress();
 
-  const handleShareWhatsApp = async () => {
-    try {
-      // 1. Gerar o PDF primeiro
-      const element = document.getElementById("receipt-content");
-      if (!element) {
-        console.error("Elemento do recibo não encontrado");
-        return;
-      }
+  const handleShareWhatsApp = () => {
+    const referenceMonthName = payment.referenceMonth 
+      ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+      : "N/A";
+    const referenceYear = payment.referenceYear || new Date().getFullYear();
 
-      // Mostrar loading
-      setIsGeneratingPDF(true);
-
-      const html2pdf = (await import("html2pdf.js")).default;
-      
-      const opt = {
-        margin: 1,
-        filename: `recibo-${payment.id}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
-      };
-
-      // Gerar o PDF como blob
-      const pdfBlob = await html2pdf()
-        .set(opt)
-        .from(element)
-        .outputPdf('blob');
-
-      // 2. Fazer upload para Supabase Storage
-      const fileName = `recibo-${payment.id}-${Date.now()}.pdf`;
-      const filePath = `receipts/${fileName}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(filePath, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true
-        });
-
-      if (uploadError) {
-        console.error("Erro ao fazer upload do PDF:", uploadError);
-        throw uploadError;
-      }
-
-      // 3. Obter URL pública do arquivo
-      const { data: urlData } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(filePath);
-
-      if (!urlData?.publicUrl) {
-        console.error("Erro ao obter URL pública");
-        return;
-      }
-
-      const pdfUrl = urlData.publicUrl;
-
-      // 4. Preparar mensagem do WhatsApp
-      const referenceMonthName = payment.referenceMonth 
-        ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
-        : "N/A";
-      const referenceYear = payment.referenceYear || new Date().getFullYear();
-
-      const message = isTermination
-        ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.\n\n📎 Acesse o recibo em PDF: ${pdfUrl}`
-        : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.\n\n📎 Acesse o recibo em PDF: ${pdfUrl}`;
-      
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, "_blank");
-
-    } catch (error) {
-      console.error("Erro ao compartilhar via WhatsApp:", error);
-      alert("Erro ao gerar e compartilhar o recibo. Tente novamente.");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
+    const message = isTermination
+      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.`
+      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   const referenceMonthName = payment.referenceMonth 
@@ -732,11 +669,10 @@ export function PaymentReceipt({
             <Button
               variant="outline"
               onClick={handleShareWhatsApp}
-              disabled={isGeneratingPDF}
               className="flex items-center gap-2"
             >
               <Share2 className="h-4 w-4" />
-              {isGeneratingPDF ? "Gerando..." : "WhatsApp"}
+              WhatsApp
             </Button>
             
             <Button
