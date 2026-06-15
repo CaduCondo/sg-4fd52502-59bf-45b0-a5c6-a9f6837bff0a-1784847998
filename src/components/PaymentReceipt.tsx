@@ -549,17 +549,17 @@ export function PaymentReceipt({
           </DialogTitle>
         </DialogHeader>
 
-        <div id="receipt-content" className="space-y-6 p-8 bg-white text-black">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">
+        <div id="receipt-content" className="space-y-2 p-4 bg-white text-black">
+          <div className="text-center space-y-1">
+            <h1 className="text-lg font-bold">
               {isTermination ? "RECIBO DE RESCISÃO DE CONTRATO" : "RECIBO DE ALUGUEL"}
             </h1>
             {!isTermination && (
-              <p className="text-sm text-gray-600">({currentInstallment}/{totalInstallments})</p>
+              <p className="text-xs text-gray-600">({currentInstallment}/{totalInstallments})</p>
             )}
           </div>
 
-          <div className="space-y-4 text-justify leading-relaxed">
+          <div className="space-y-2 text-justify leading-tight text-sm">
             {isTermination ? (
               <p>
                 Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
@@ -582,11 +582,11 @@ export function PaymentReceipt({
             )}
           </div>
 
-          <div className="border-t border-gray-300 pt-4">
-            <h3 className="font-semibold mb-3">Valores:</h3>
+          <div className="border-t border-gray-300 pt-2">
+            <h3 className="font-semibold mb-2 text-sm">Valores:</h3>
             
             {breakdownItems.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1 text-sm">
                 {breakdownItems.map((item, index) => (
                   <div key={index} className="flex justify-between">
                     <span>{item.description}:</span>
@@ -598,7 +598,7 @@ export function PaymentReceipt({
                 ))}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span>Valor:</span>
                   <span className="font-medium">{formatCurrency(totalAmount)}</span>
@@ -606,7 +606,7 @@ export function PaymentReceipt({
               </div>
             )}
 
-            <div className="border-t border-gray-400 mt-3 pt-3 flex justify-between font-bold text-lg">
+            <div className="border-t border-gray-400 mt-2 pt-2 flex justify-between font-bold text-base">
               <span>{isTermination ? "Valor Total:" : "Total Pago:"}</span>
               <span className={totalAmount < 0 ? "text-red-600" : ""}>
                 {formatCurrency(totalAmount)}
@@ -614,7 +614,7 @@ export function PaymentReceipt({
             </div>
           </div>
 
-          <div className="text-center text-sm text-gray-600 pt-6 border-t border-gray-300">
+          <div className="text-center text-xs text-gray-600 pt-3 border-t border-gray-300">
             <p className="uppercase">
               SÃO PAULO, {new Date().toLocaleDateString("pt-BR", { 
                 day: "2-digit", 
@@ -626,23 +626,23 @@ export function PaymentReceipt({
               })}
             </p>
             
-            <div className="pt-8"></div>
+            <div className="pt-4"></div>
             
             <img 
               src="/signature.png" 
               alt="Assinatura Carlos Aparecido D'Uvo" 
-              className="w-32 h-auto mx-auto mb-2"
+              className="w-24 h-auto mx-auto mb-1"
             />
             
-            <div className="w-64 border-t border-gray-400 mx-auto mb-2"></div>
+            <div className="w-48 border-t border-gray-400 mx-auto mb-1"></div>
             
-            <p className="text-[10pt] text-gray-600 font-medium">
+            <p className="text-[9pt] text-gray-600 font-medium">
               Carlos Aparecido D'Uvo
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-xs">
           <div>
             <span className="font-semibold">Vencimento:</span>{" "}
             {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
