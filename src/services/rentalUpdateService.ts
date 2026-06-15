@@ -746,10 +746,25 @@ export const rentalUpdateService = {
         : 0;
       const totalMonthlyRent = monthlyRent + garageAmount;
       
-      // Encontrar o primeiro pagamento pendente (em aberto)
-      const firstPendingPayment = pendingPayments[0];
+      // CORREÇÃO: Filtrar apenas recebimentos pendentes >= data atual
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const futurePendingPayments = pendingPayments.filter(p => {
+        const dueDate = new Date(p.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today;
+      });
+      
+      console.log(`📊 Total de recebimentos pendentes: ${pendingPayments.length}`);
+      console.log(`📊 Recebimentos pendentes FUTUROS (>= hoje): ${futurePendingPayments.length}`);
+      
+      // Encontrar o PRÓXIMO pagamento pendente (>= data atual)
+      const firstPendingPayment = futurePendingPayments[0];
       
       if (firstPendingPayment) {
+        console.log(`📅 Próximo recebimento pendente: ${firstPendingPayment.reference_month}/${firstPendingPayment.reference_year} (vencimento: ${firstPendingPayment.due_date})`);
+        
         // Calcular o valor diário baseado em 30 dias (padrão)
         const dailyRate = totalMonthlyRent / 30;
         
@@ -824,16 +839,18 @@ export const rentalUpdateService = {
           }
         });
         
-        console.log(`✅ Primeiro recebimento pendente atualizado:`);
+        console.log(`✅ Próximo recebimento pendente atualizado:`);
         console.log(`   - Período: ${capitalizedMonth}/${referenceYear}`);
         console.log(`   - Nova data: ${newDueDate}`);
         console.log(`   - Novo valor: R$ ${newExpectedAmount.toFixed(2)}`);
         console.log(`   - Breakdown:`, breakdown);
+      } else {
+        console.log("⚠️ Nenhum recebimento pendente futuro encontrado para aplicar ajuste");
       }
       
-      // Atualizar due_date dos demais recebimentos pendentes (sem cobrar dias extras)
-      for (let i = 1; i < pendingPayments.length; i++) {
-        const payment = pendingPayments[i];
+      // Atualizar due_date dos demais recebimentos pendentes FUTUROS (sem cobrar dias extras)
+      for (let i = 1; i < futurePendingPayments.length; i++) {
+        const payment = futurePendingPayments[i];
         const newDueDate = calculateDueDate(
           Number(payment.reference_month), 
           Number(payment.reference_year), 
