@@ -338,7 +338,7 @@ export async function detectTerminationPaymentConflicts(
       const isLastInstallment = p.installment === p.total_installments;
       const hasTerminationNote = p.notes?.toLowerCase().includes("rescisão") || 
                                  p.notes?.toLowerCase().includes("rescis");
-      const hasTerminationBreakdown = p.breakdown?.some((b: any) => 
+      const hasTerminationBreakdown = Array.isArray(p.breakdown) && p.breakdown.some((b: any) => 
         b.description?.toLowerCase().includes("rescisão") ||
         b.description?.toLowerCase().includes("multa rescisória") ||
         b.description?.toLowerCase().includes("multa rescis")
