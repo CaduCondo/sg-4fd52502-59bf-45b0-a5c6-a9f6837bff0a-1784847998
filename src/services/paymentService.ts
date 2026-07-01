@@ -729,8 +729,9 @@ export async function createPaymentsForRental(params: {
         status: p.status,
         notes: p.notes,
         is_termination: p.notes?.toLowerCase().includes("rescisão") || 
-                        p.breakdown?.some((b: any) => b.description?.toLowerCase().includes("rescisão") || 
-                                                       b.description?.toLowerCase().includes("multa"))
+                        (Array.isArray(p.breakdown) && p.breakdown.some((b: any) => 
+                          b.description?.toLowerCase().includes("rescisão") || 
+                          b.description?.toLowerCase().includes("multa")))
       })));
       console.warn("⚠️ [createPaymentsForRental] NUNCA deletar estes recebimentos! Eles pertencem a outra locação.");
     }
