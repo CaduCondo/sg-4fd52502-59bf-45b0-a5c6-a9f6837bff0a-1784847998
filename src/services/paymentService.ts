@@ -269,6 +269,105 @@ export const remove = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+/**
+ * ✅ PROTEÇÃO CRÍTICA: Detecta recebimentos de rescisão que podem estar em risco
+ * 
+ * Esta função verifica se existem recebimentos de outras locações que podem ser
+ * confundidos ou apagados acidentalmente ao criar uma nova locação para o mesmo imóvel.
+ * 
+ * Casos protegidos:
+ * 1. Rescisão do inquilino anterior + Primeira parcela do novo inquilino no mesmo mês
+ * 2. Múltiplas locações do mesmo imóvel com períodos sobrepostos
+ * 
+ * @param propertyId - ID do imóvel
+ * @param month - Mês de referência (01-12)
+ * @param year - Ano de referência
+ * @returns Lista de recebimentos que podem estar em conflito
+ */
+export async function detectTerminationPaymentConflicts(
+  propertyId: string,
+  month: string,
+  year: string
+): Promise<{
+  hasConflict: boolean;
+  terminationPayments: Array<{
+    id: string;
+    rentalId: string;
+    status: string;
+    amount: number;
+    notes?: string;
+  }>;
+  message?: string;
+}> {
+  try {
+    // Buscar todos os recebimentos deste imóvel neste mês
+    const { data: payments, error } = await supabase
+      .from("payments")
+      .select(`
+        id,
+        rental_id,
+        status,
+        expected_amount,
+        notes,
+        breakdown,
+        installment,
+        total_installments,
+        rental:rentals!inner(
+          property_id,
+          properties!inner(
+            id
+          )
+        )
+      `)
+      .eq("reference_month", month)
+      .eq("reference_year", year);
+
+    if (error) throw error;
+
+    // Filtrar apenas pagamentos deste imóvel
+    const propertyPayments = (payments || []).filter(
+      (p: any) => p.rental?.properties?.id === propertyId
+    );
+
+    if (propertyPayments.length <= 1) {
+      return { hasConflict: false, terminationPayments: [] };
+    }
+
+    // Detectar recebimentos de rescisão
+    const terminationPayments = propertyPayments.filter((p: any) => {
+      const isLastInstallment = p.installment === p.total_installments;
+      const hasTerminationNote = p.notes?.toLowerCase().includes("rescisão") || 
+                                 p.notes?.toLowerCase().includes("rescis");
+      const hasTerminationBreakdown = p.breakdown?.some((b: any) => 
+        b.description?.toLowerCase().includes("rescisão") ||
+        b.description?.toLowerCase().includes("multa rescisória") ||
+        b.description?.toLowerCase().includes("multa rescis")
+      );
+
+      return isLastInstallment || hasTerminationNote || hasTerminationBreakdown;
+    });
+
+    if (terminationPayments.length > 0) {
+      return {
+        hasConflict: true,
+        terminationPayments: terminationPayments.map((p: any) => ({
+          id: p.id,
+          rentalId: p.rental_id,
+          status: p.status,
+          amount: p.expected_amount,
+          notes: p.notes
+        })),
+        message: `⚠️ ATENÇÃO: Existem ${terminationPayments.length} recebimento(s) de rescisão neste mês. NUNCA delete estes recebimentos!`
+      };
+    }
+
+    return { hasConflict: false, terminationPayments: [] };
+  } catch (error) {
+    console.error("❌ Erro ao detectar conflitos de rescisão:", error);
+    return { hasConflict: false, terminationPayments: [] };
+  }
+}
+
 export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
   const { error } = await supabase.from("payments").delete().eq("rental_id", rentalId);
   if (error) throw error;
@@ -586,6 +685,8 @@ export async function createPaymentsForRental(params: {
 
   console.log(`📊 [createPaymentsForRental] ${expectedPayments.length} recebimentos esperados`);
 
+  // ✅ CRÍTICO: Verificar recebimentos existentes APENAS para este rental_id
+  // NUNCA deletar ou modificar recebimentos de outras locações!
   const { data: existingPayments, error: selectError } = await supabase
     .from("payments")
     .select("id, reference_month, reference_year")
@@ -596,7 +697,44 @@ export async function createPaymentsForRental(params: {
     throw selectError;
   }
 
-  console.log(`📊 [createPaymentsForRental] ${existingPayments?.length || 0} recebimentos já existem`);
+  console.log(`📊 [createPaymentsForRental] ${existingPayments?.length || 0} recebimentos já existem PARA ESTA LOCAÇÃO`);
+
+  // ✅ PROTEÇÃO CRÍTICA: Verificar se há recebimentos de OUTRAS locações no mesmo mês
+  // Isso pode acontecer quando há rescisão + nova locação no mesmo mês
+  const firstExpectedMonth = expectedPayments[0]?.reference_month;
+  const firstExpectedYear = expectedPayments[0]?.reference_year;
+  
+  if (firstExpectedMonth && firstExpectedYear) {
+    const { data: otherRentalsPayments } = await supabase
+      .from("payments")
+      .select(`
+        id, 
+        rental_id, 
+        reference_month, 
+        reference_year, 
+        status,
+        notes,
+        breakdown
+      `)
+      .eq("reference_month", firstExpectedMonth)
+      .eq("reference_year", firstExpectedYear)
+      .neq("rental_id", rental.id);
+
+    if (otherRentalsPayments && otherRentalsPayments.length > 0) {
+      console.warn("⚠️ [createPaymentsForRental] ATENÇÃO: Existem recebimentos de OUTRAS locações no mês " + 
+        `${firstExpectedMonth}/${firstExpectedYear}. Isso pode ser um recebimento de rescisão.`);
+      console.warn("⚠️ Recebimentos encontrados:", otherRentalsPayments.map(p => ({
+        id: p.id,
+        rental_id: p.rental_id,
+        status: p.status,
+        notes: p.notes,
+        is_termination: p.notes?.toLowerCase().includes("rescisão") || 
+                        p.breakdown?.some((b: any) => b.description?.toLowerCase().includes("rescisão") || 
+                                                       b.description?.toLowerCase().includes("multa"))
+      })));
+      console.warn("⚠️ [createPaymentsForRental] NUNCA deletar estes recebimentos! Eles pertencem a outra locação.");
+    }
+  }
 
   const existingRefs = new Set(
     (existingPayments || []).map((p) => `${p.reference_year}-${p.reference_month}`)
