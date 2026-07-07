@@ -170,7 +170,26 @@ export function usePaymentCalculations({
     const valorAPagar = removeLateFee ? (removeInterest ? valorAluguel : Math.round((valorAluguel + juros) * 100) / 100) : Math.round((valorAluguel + multa) * 100) / 100;
     
     const valorJaPago = payment?.paid_amount || 0;
-    const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
+    
+    // 🔥 CORREÇÃO CRÍTICA: Calcular o valor restante corretamente
+    // Se o status é "paid", não há valor restante
+    // Se o status é "partial" ou "pending", calcular a diferença
+    let valorRestante = 0;
+    if (payment?.status === "paid") {
+      valorRestante = 0;
+    } else {
+      // Calcular quanto falta pagar baseado no valor esperado (expected_amount)
+      const expectedAmount = payment?.expected_amount || valorAPagar;
+      valorRestante = Math.max(0, Math.round((expectedAmount - valorJaPago) * 100) / 100);
+    }
+    
+    console.log("💰 CÁLCULO VALOR RESTANTE:", {
+      status: payment?.status,
+      expected_amount: payment?.expected_amount,
+      valorAPagar,
+      valorJaPago,
+      valorRestante
+    });
 
     const getPaymentInstallmentLabel = (paymentItem: any): string => {
       if (!paymentItem.installment && paymentItem.notes?.includes("proporcional")) {

@@ -755,13 +755,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      // 🔥 CORREÇÃO CRÍTICA: Preservar sinal negativo do valor digitado
-      const paidAmount = formData.amount_to_pay 
+      // 🔥 CORREÇÃO CRÍTICA: Valor digitado pelo usuário
+      const userInputAmount = formData.amount_to_pay 
         ? parseCurrency(formData.amount_to_pay)
         : 0;
       
-      console.log("💰 VALOR DIGITADO:", formData.amount_to_pay);
-      console.log("💰 VALOR PARSEADO (COM SINAL):", paidAmount);
+      console.log("💰 VALOR DIGITADO PELO USUÁRIO:", formData.amount_to_pay);
+      console.log("💰 VALOR PARSEADO:", userInputAmount);
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -841,54 +841,59 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         console.log("💰 PAGAMENTO NORMAL - Expected Total:", expectedTotal);
       }
       
-      // 🔥 CORREÇÃO: NÃO usar Math.abs() - preservar sinal do expectedTotal
-      console.log("📊 VALOR FINAL A SER SALVO - expected_amount:", expectedTotal);
+      console.log("📊 VALOR ESPERADO (expected_amount):", expectedTotal);
       
       let paymentStatus: string;
       let finalPaidAmount: number;
       
-      if (paidAmount === 0) {
+      // 🔥 CORREÇÃO CRÍTICA: Lógica simplificada e correta para pagamentos parciais
+      if (userInputAmount === 0) {
+        // Apenas editando outros campos, não o valor pago
         finalPaidAmount = payment?.paid_amount || 0;
         paymentStatus = payment?.status || "pending";
         console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
-        // 🔥 LÓGICA DE PAGAMENTOS PARCIAIS
-        if (isTerminationPayment) {
-          // Para rescisões, comparar valores considerando sinais
-          const difference = Math.abs(Math.abs(paidAmount) - Math.abs(expectedTotal));
-          paymentStatus = difference < 0.01 ? "paid" : "partial";
-          finalPaidAmount = paidAmount; // Preservar sinal do valor digitado
+        const previousPaid = payment?.paid_amount || 0;
+        const previousStatus = payment?.status || "pending";
+        
+        console.log("📊 ESTADO ANTERIOR:", {
+          previousPaid,
+          previousStatus,
+          userInputAmount
+        });
+        
+        // 🔥 NOVA LÓGICA: Se o status anterior era "partial", o valor digitado é ADICIONAL
+        // Se o status anterior era "pending" ou outro, o valor digitado é o TOTAL
+        if (previousStatus === "partial" && previousPaid > 0) {
+          // Pagamento adicional em cima do que já foi pago
+          finalPaidAmount = previousPaid + userInputAmount;
+          console.log("💰 PAGAMENTO PARCIAL ADICIONAL - Somando:", {
+            valorAnterior: previousPaid,
+            valorAdicional: userInputAmount,
+            totalNovo: finalPaidAmount
+          });
         } else {
-          // 🔥 PAGAMENTOS NORMAIS - Somar com valor anterior se for parcial
-          const previousPaid = payment?.paid_amount || 0;
-          
-          // Se já existe um valor pago anterior (status parcial), SOMAR com o novo valor
-          if (previousPaid > 0 && payment?.status === "partial") {
-            finalPaidAmount = previousPaid + paidAmount;
-            console.log("💰 PAGAMENTO PARCIAL - Somando:", {
-              valorAnterior: previousPaid,
-              valorNovo: paidAmount,
-              total: finalPaidAmount
-            });
-          } else {
-            // Primeiro pagamento - usar apenas o valor digitado
-            finalPaidAmount = paidAmount;
-            console.log("💰 PRIMEIRO PAGAMENTO:", finalPaidAmount);
-          }
-          
-          // Verificar se o total pago atingiu ou superou o valor esperado
-          const totalExpected = Math.abs(expectedTotal);
-          if (finalPaidAmount >= totalExpected) {
-            paymentStatus = "paid";
-            console.log("✅ Pagamento COMPLETO - Total pago:", finalPaidAmount, ">=", totalExpected);
-          } else {
-            paymentStatus = "partial";
-            console.log("⚠️ Pagamento PARCIAL - Total pago:", finalPaidAmount, "<", totalExpected, "Faltam:", totalExpected - finalPaidAmount);
-          }
+          // Primeiro pagamento ou substituindo valor anterior
+          finalPaidAmount = userInputAmount;
+          console.log("💰 NOVO PAGAMENTO COMPLETO:", finalPaidAmount);
+        }
+        
+        // Verificar se o pagamento está completo
+        const totalExpected = Math.abs(expectedTotal);
+        const totalPaid = Math.abs(finalPaidAmount);
+        
+        // Tolerância de 1 centavo para considerar como pago
+        if (totalPaid >= (totalExpected - 0.01)) {
+          paymentStatus = "paid";
+          console.log("✅ Pagamento COMPLETO - Total pago:", totalPaid, ">=", totalExpected);
+        } else {
+          paymentStatus = "partial";
+          const remaining = totalExpected - totalPaid;
+          console.log("⚠️ Pagamento PARCIAL - Total pago:", totalPaid, "<", totalExpected, "Faltam:", remaining);
         }
       }
 
-      console.log("💾 VALORES A SEREM SALVOS:", {
+      console.log("💾 VALORES FINAIS A SEREM SALVOS:", {
         paid_amount: finalPaidAmount,
         expected_amount: expectedTotal,
         status: paymentStatus
@@ -906,7 +911,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_time: formData.payment_method === "pix" 
           ? `${paymentHour.padStart(2, '0')}:${paymentMinute.padStart(2, '0')}:${paymentSecond.padStart(2, '0')}`
           : null,
-        paid_amount: finalPaidAmount, // 🔥 Preservar sinal negativo
+        paid_amount: finalPaidAmount,
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
@@ -918,7 +923,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         updated_at: new Date().toISOString(),
         pix_code_type: null,
         breakdown: updatedBreakdown,
-        expected_amount: expectedTotal, // 🔥 Preservar sinal negativo
+        expected_amount: expectedTotal,
       };
 
       const { error: updateError } = await supabase
@@ -931,12 +936,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (updateError) throw updateError;
 
+      const remainingAmount = Math.max(0, Math.abs(expectedTotal) - Math.abs(finalPaidAmount));
+
       toast({
         title: "Sucesso",
-        description: paidAmount === 0
+        description: userInputAmount === 0
           ? "Pagamento atualizado com sucesso!"
           : paymentStatus === "partial" 
-            ? `Pagamento parcial registrado! Total pago: ${formatCurrency(finalPaidAmount.toFixed(2))} de ${formatCurrency(Math.abs(expectedTotal).toFixed(2))}. Restante: ${formatCurrency((Math.abs(expectedTotal) - finalPaidAmount).toFixed(2))}`
+            ? `Pagamento parcial registrado! Total pago: ${formatCurrency(Math.abs(finalPaidAmount).toFixed(2))} de ${formatCurrency(Math.abs(expectedTotal).toFixed(2))}. Restante: ${formatCurrency(remainingAmount.toFixed(2))}`
             : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
@@ -967,7 +974,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       console.error("Erro ao confirmar recebimento:", error);
       toast({
         title: "Erro",
-        description: "Erro inesperado ao registrar pagamento.",
+        description: error instanceof Error ? error.message : "Erro inesperado ao registrar pagamento.",
         variant: "destructive",
       });
     } finally {
