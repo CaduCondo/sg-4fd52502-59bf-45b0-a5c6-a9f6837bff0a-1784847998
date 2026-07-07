@@ -81,7 +81,13 @@ export function PaymentReceipt({
   console.log("📊 DISCOUNT DO BANCO:", paymentData.discount_amount, "CONVERTIDO:", discount);
   console.log("🔍 PAID_AMOUNT DO BANCO:", paymentData.paid_amount, "CONVERTIDO:", paidAmount);
   console.log("🔍 RENTAL COMPLETO:", rental);
-  console.log("🔍 START_DATE:", rental.start_date, "| STARTDATE:", rental.startDate);
+  
+  // 🔥 CORREÇÃO: Verificar se rental existe antes de acessar propriedades
+  if (rental) {
+    console.log("🔍 START_DATE:", rental.start_date, "| STARTDATE:", rental.startDate);
+  } else {
+    console.warn("⚠️ RENTAL está undefined - pode causar problemas no recibo");
+  }
 
   // Usar breakdown do banco
   const paymentBreakdown = paymentData.breakdown;
@@ -232,10 +238,10 @@ export function PaymentReceipt({
       }
     }
     
-    // Se não encontrou no breakdown, usar valores da rental
+    // 🔥 CORREÇÃO: Se não encontrou no breakdown E rental existe, usar valores da rental
     if (rentAmount === 0 && rental) {
-      rentAmount = Number(rental.monthlyRent || rental.value || 0);
-      garageAmount = rental.hasGarage ? Number(rental.garageValue || 0) : 0;
+      rentAmount = Number(rental.monthlyRent || rental.value || rental.rent_value || 0);
+      garageAmount = (rental.hasGarage || rental.has_garage) ? Number(rental.garageValue || rental.garage_value || 0) : 0;
     }
     
     // Adicionar Aluguel ao breakdown
@@ -314,10 +320,11 @@ export function PaymentReceipt({
 
   console.log("💰 TOTAL USADO NO RECIBO (paid_amount):", totalAmount);
 
+  // 🔥 CORREÇÃO: Verificar se rental existe antes de acessar propriedades
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
     ? currentInstallment
-    : (payment.totalInstallments || rental.installments || rental.totalInstallments || 24);
+    : (payment.totalInstallments || (rental?.installments) || (rental?.totalInstallments) || 24);
 
   const formatCurrency = (value: number): string => {
     if (!Number.isFinite(value)) {
@@ -510,13 +517,17 @@ export function PaymentReceipt({
 
   const referenceYear = payment.referenceYear || new Date().getFullYear();
 
-  // Obter data do contrato (usar start_date ou startDate)
-  const contractDate = rental.start_date || rental.startDate || "";
+  // 🔥 CORREÇÃO: Obter data do contrato com verificação de segurança
+  const contractDate = rental?.start_date || rental?.startDate || "";
   
   console.log("\n📅 ===== DEBUG DATA DO CONTRATO =====");
   console.log("📅 RENTAL OBJECT:", JSON.stringify(rental, null, 2));
-  console.log("📅 rental.start_date:", rental.start_date);
-  console.log("📅 rental.startDate:", rental.startDate);
+  if (rental) {
+    console.log("📅 rental.start_date:", rental.start_date);
+    console.log("📅 rental.startDate:", rental.startDate);
+  } else {
+    console.log("⚠️ RENTAL está undefined!");
+  }
   console.log("📅 contractDate FINAL:", contractDate);
   console.log("📅 typeof contractDate:", typeof contractDate);
   
