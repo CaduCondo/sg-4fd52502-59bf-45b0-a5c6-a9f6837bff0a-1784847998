@@ -350,7 +350,7 @@ export default function Payments() {
                 lateFee: paymentData.late_fee || 0,
                 interest: paymentData.interest || 0,
                 breakdown: paymentData.breakdown || null,
-                attachments: Array.isArray(paymentData.attachments) ? paymentData.attachments : null,
+                attachments: paymentData.attachments as any, // Json type from database
                 installment: paymentData.installment || 1,
                 totalInstallments: paymentData.total_installments || 24,
                 discountAmount: paymentData.discount_amount || 0,
@@ -368,7 +368,6 @@ export default function Payments() {
                 endDate: rentalData.end_date,
                 monthlyRent: rentalData.rent_value || 0,
                 value: rentalData.rent_value || 0,
-                deposit: rentalData.security_deposit || rentalData.deposit_value || 0,
                 status: (rentalData.status === "active" || rentalData.status === "ended" || rentalData.status === "terminated") 
                   ? rentalData.status 
                   : "active" as "active" | "ended" | "terminated",
@@ -390,10 +389,7 @@ export default function Payments() {
                 city: locationData?.city || "",
                 state: locationData?.state || "",
                 zipCode: locationData?.zip_code || "",
-                type: (propertyData.type === "apartment" || propertyData.type === "house" || propertyData.type === "commercial")
-                  ? propertyData.type
-                  : "apartment" as "apartment" | "house" | "commercial",
-                bedrooms: propertyData.rooms || 0,
+                type: "apartment" as "apartment" | "house" | "commercial",
                 bathrooms: propertyData.bathrooms || 0,
                 area: propertyData.area || 0,
                 status: (propertyData.status === "available" || propertyData.status === "occupied" || propertyData.status === "unavailable")
