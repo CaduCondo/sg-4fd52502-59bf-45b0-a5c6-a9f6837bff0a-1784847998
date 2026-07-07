@@ -353,8 +353,6 @@ export default function Payments() {
                 attachments: paymentData.attachments as any, // Json type from database
                 installment: paymentData.installment || 1,
                 totalInstallments: paymentData.total_installments || 24,
-                createdAt: paymentData.created_at,
-                updatedAt: paymentData.updated_at,
               };
               
               // Converter rental com valores corretos
