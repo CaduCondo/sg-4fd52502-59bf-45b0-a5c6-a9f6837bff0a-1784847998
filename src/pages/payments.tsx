@@ -353,7 +353,6 @@ export default function Payments() {
                 attachments: paymentData.attachments as any, // Json type from database
                 installment: paymentData.installment || 1,
                 totalInstallments: paymentData.total_installments || 24,
-                discountAmount: paymentData.discount_amount || 0,
                 createdAt: paymentData.created_at,
                 updatedAt: paymentData.updated_at,
               };
@@ -372,8 +371,7 @@ export default function Payments() {
                 value: rentalData.rent_value || 0,
                 monthlyRent: rentalData.rent_value || 0,
                 monthly_rent: rentalData.rent_value || 0,
-                paymentDay: rentalData.payment_day || 10,
-                payment_day: rentalData.payment_day || 10,
+                paymentDay: 10, // Valor padrão já que não existe no banco
                 depositAmount: rentalData.security_deposit || rentalData.deposit_value || 0,
                 deposit_amount: rentalData.security_deposit || rentalData.deposit_value || 0,
                 security_deposit: rentalData.security_deposit || rentalData.deposit_value || 0,
@@ -393,7 +391,6 @@ export default function Payments() {
                 has_partner_broker: false,
                 installments: rentalData.deposit_installments || 24,
                 totalInstallments: rentalData.deposit_installments || 24,
-                createdAt: rentalData.created_at,
               };
               
               // 🔥 CORREÇÃO: Converter property COM dados da location E TODOS OS CAMPOS OBRIGATÓRIOS
@@ -424,7 +421,7 @@ export default function Payments() {
                 created_at: propertyData.created_at,
                 address: locationData?.street || "",
                 features: [],
-                type: propertyData.type || "apartment",
+                type: "apartment" as "apartment" | "house" | "commercial", // Valor padrão já que não existe no banco
                 monthlyRent: rentalData.rent_value || 0,
                 number: locationData?.number || propertyData.property_identifier || "",
                 neighborhood: locationData?.neighborhood || "",
