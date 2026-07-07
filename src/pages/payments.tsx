@@ -338,8 +338,8 @@ export default function Payments() {
               const payment: Payment = {
                 id: paymentData.id,
                 rentalId: paymentData.rental_id,
-                referenceMonth: paymentData.reference_month,
-                referenceYear: paymentData.reference_year,
+                referenceMonth: Number(paymentData.reference_month),
+                referenceYear: Number(paymentData.reference_year),
                 dueDate: paymentData.due_date,
                 expectedAmount: paymentData.expected_amount || 0,
                 paidAmount: paymentData.paid_amount || 0,
@@ -350,7 +350,7 @@ export default function Payments() {
                 lateFee: paymentData.late_fee || 0,
                 interest: paymentData.interest || 0,
                 breakdown: paymentData.breakdown || null,
-                attachments: paymentData.attachments || null,
+                attachments: Array.isArray(paymentData.attachments) ? paymentData.attachments : null,
                 installment: paymentData.installment || 1,
                 totalInstallments: paymentData.total_installments || 24,
                 discountAmount: paymentData.discount_amount || 0,
@@ -369,7 +369,9 @@ export default function Payments() {
                 monthlyRent: rentalData.rent_value || 0,
                 value: rentalData.rent_value || 0,
                 deposit: rentalData.security_deposit || rentalData.deposit_value || 0,
-                status: rentalData.status,
+                status: (rentalData.status === "active" || rentalData.status === "ended" || rentalData.status === "terminated") 
+                  ? rentalData.status 
+                  : "active" as "active" | "ended" | "terminated",
                 hasGarage: rentalData.has_garage || false,
                 has_garage: rentalData.has_garage || false,
                 garageValue: rentalData.garage_value || 0,
@@ -388,11 +390,15 @@ export default function Payments() {
                 city: locationData?.city || "",
                 state: locationData?.state || "",
                 zipCode: locationData?.zip_code || "",
-                type: propertyData.type || "apartment",
+                type: (propertyData.type === "apartment" || propertyData.type === "house" || propertyData.type === "commercial")
+                  ? propertyData.type
+                  : "apartment" as "apartment" | "house" | "commercial",
                 bedrooms: propertyData.rooms || 0,
                 bathrooms: propertyData.bathrooms || 0,
                 area: propertyData.area || 0,
-                status: propertyData.status,
+                status: (propertyData.status === "available" || propertyData.status === "occupied" || propertyData.status === "unavailable")
+                  ? propertyData.status
+                  : "available" as "available" | "occupied" | "unavailable",
                 locationId: propertyData.location_id,
                 createdAt: propertyData.created_at,
               };
@@ -407,7 +413,9 @@ export default function Payments() {
                 rg: tenantData.rg || "",
                 createdAt: tenantData.created_at,
                 document: tenantData.document || tenantData.cpf || "",
-                status: tenantData.status || "active",
+                status: (tenantData.status === "active" || tenantData.status === "inactive" || tenantData.status === "rented" || tenantData.status === "late" || tenantData.status === "debt")
+                  ? tenantData.status
+                  : "active" as "active" | "inactive" | "rented" | "late" | "debt",
               };
               
               console.log("✅ DADOS CONVERTIDOS PARA O RECIBO:", {
