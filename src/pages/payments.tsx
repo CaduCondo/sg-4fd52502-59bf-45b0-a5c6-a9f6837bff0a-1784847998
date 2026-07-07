@@ -269,7 +269,7 @@ export default function Payments() {
     // 🔥 CORREÇÃO: Recarregar com os filtros corretos
     await loadPayments(selectedMonth.toString(), selectedYear.toString());
     
-    // 🔥 NOVA ABORDAGEM: Buscar dados completos DIRETAMENTE do banco
+    // 🔥 NOVA ABORDAGEM: Buscar dados completos DIRETAMENTE do banco COM JOINS
     if (paymentId) {
       try {
         // Buscar o payment atualizado
@@ -292,25 +292,36 @@ export default function Payments() {
           if (rentalError) throw rentalError;
           
           if (rentalData) {
-            // Buscar property e tenant
-            const [propertyResult, tenantResult] = await Promise.all([
-              supabase
-                .from("properties")
-                .select("*")
-                .eq("id", rentalData.property_id)
-                .single(),
-              supabase
-                .from("tenants")
-                .select("*")
-                .eq("id", rentalData.tenant_id)
-                .single()
-            ]);
+            // 🔥 CORREÇÃO CRÍTICA: Buscar property COM location via JOIN
+            const { data: propertyData, error: propertyError } = await supabase
+              .from("properties")
+              .select(`
+                *,
+                locations:location_id (
+                  id,
+                  name,
+                  street,
+                  number,
+                  complement,
+                  neighborhood,
+                  city,
+                  state,
+                  zip_code
+                )
+              `)
+              .eq("id", rentalData.property_id)
+              .single();
+              
+            if (propertyError) throw propertyError;
             
-            if (propertyResult.error) throw propertyResult.error;
-            if (tenantResult.error) throw tenantResult.error;
-            
-            const propertyData = propertyResult.data;
-            const tenantData = tenantResult.data;
+            // Buscar tenant
+            const { data: tenantData, error: tenantError } = await supabase
+              .from("tenants")
+              .select("*")
+              .eq("id", rentalData.tenant_id)
+              .single();
+              
+            if (tenantError) throw tenantError;
             
             console.log("✅ DADOS COMPLETOS BUSCADOS DO BANCO:", {
               payment: paymentData,
@@ -320,6 +331,9 @@ export default function Payments() {
             });
             
             if (propertyData && tenantData) {
+              // Extrair dados da location
+              const locationData = propertyData.locations as any;
+              
               // Converter os dados do banco para o formato do tipo Payment
               const payment: Payment = {
                 id: paymentData.id,
@@ -344,7 +358,7 @@ export default function Payments() {
                 updatedAt: paymentData.updated_at,
               };
               
-              // Converter rental
+              // Converter rental com valores corretos
               const rental: Rental = {
                 id: rentalData.id,
                 propertyId: rentalData.property_id,
@@ -352,32 +366,32 @@ export default function Payments() {
                 startDate: rentalData.start_date,
                 start_date: rentalData.start_date,
                 endDate: rentalData.end_date,
-                monthlyRent: rentalData.monthly_rent,
-                value: rentalData.monthly_rent,
-                deposit: rentalData.deposit,
+                monthlyRent: rentalData.rent_value || 0,
+                value: rentalData.rent_value || 0,
+                deposit: rentalData.security_deposit || rentalData.deposit_value || 0,
                 status: rentalData.status,
-                hasGarage: rentalData.has_garage,
-                has_garage: rentalData.has_garage,
-                garageValue: rentalData.garage_value,
-                installments: rentalData.installments,
-                totalInstallments: rentalData.installments,
+                hasGarage: rentalData.has_garage || false,
+                has_garage: rentalData.has_garage || false,
+                garageValue: rentalData.garage_value || 0,
+                installments: rentalData.deposit_installments || 24,
+                totalInstallments: rentalData.deposit_installments || 24,
                 createdAt: rentalData.created_at,
               };
               
-              // Converter property
+              // 🔥 CORREÇÃO: Converter property COM dados da location
               const property: Property = {
                 id: propertyData.id,
-                address: propertyData.address,
-                number: propertyData.number,
-                complement: propertyData.complement,
-                neighborhood: propertyData.neighborhood,
-                city: propertyData.city,
-                state: propertyData.state,
-                zipCode: propertyData.zip_code,
-                type: propertyData.type,
-                bedrooms: propertyData.bedrooms,
-                bathrooms: propertyData.bathrooms,
-                area: propertyData.area,
+                address: locationData?.street || "",
+                number: locationData?.number || propertyData.property_identifier || "",
+                complement: locationData?.complement || propertyData.complement || "",
+                neighborhood: locationData?.neighborhood || "",
+                city: locationData?.city || "",
+                state: locationData?.state || "",
+                zipCode: locationData?.zip_code || "",
+                type: propertyData.type || "apartment",
+                bedrooms: propertyData.rooms || 0,
+                bathrooms: propertyData.bathrooms || 0,
+                area: propertyData.area || 0,
                 status: propertyData.status,
                 locationId: propertyData.location_id,
                 createdAt: propertyData.created_at,
@@ -389,10 +403,19 @@ export default function Payments() {
                 name: tenantData.name,
                 email: tenantData.email,
                 phone: tenantData.phone,
-                cpf: tenantData.cpf,
-                rg: tenantData.rg,
+                cpf: tenantData.cpf || tenantData.document || "",
+                rg: tenantData.rg || "",
                 createdAt: tenantData.created_at,
+                document: tenantData.document || tenantData.cpf || "",
+                status: tenantData.status || "active",
               };
+              
+              console.log("✅ DADOS CONVERTIDOS PARA O RECIBO:", {
+                payment,
+                rental,
+                property,
+                tenant
+              });
               
               // Abrir o recibo com os dados completos
               setUiState(prev => ({
