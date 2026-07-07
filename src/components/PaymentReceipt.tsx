@@ -463,6 +463,12 @@ export function PaymentReceipt({
   const getPropertyAddress = () => {
     console.log("\n🏠 DADOS DO PROPERTY COMPLETO:", property);
     
+    // 🔥 CORREÇÃO: Verificar se property existe
+    if (!property) {
+      console.warn("⚠️ PROPERTY está null/undefined!");
+      return "IMÓVEL NÃO INFORMADO";
+    }
+    
     const parts = [];
     
     if (property.address) {
@@ -496,6 +502,9 @@ export function PaymentReceipt({
   };
 
   const propertyAddress = getPropertyAddress();
+  
+  // 🔥 CORREÇÃO: Verificar se tenant existe
+  const tenantName = tenant?.name?.toUpperCase() || "LOCATÁRIO NÃO INFORMADO";
 
   const handleShareWhatsApp = () => {
     const referenceMonthName = payment.referenceMonth 
@@ -504,8 +513,8 @@ export function PaymentReceipt({
     const referenceYear = payment.referenceYear || new Date().getFullYear();
 
     const message = isTermination
-      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.`
-      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
+      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenantName}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.`
+      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenantName}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
@@ -573,7 +582,7 @@ export function PaymentReceipt({
           <div className="space-y-2 text-justify leading-tight text-sm">
             {isTermination ? (
               <p>
-                Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
+                Recebi dos Srs. <strong>{tenantName}</strong>, a importância de{" "}
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, referente à rescisão do contrato de locação
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, conforme detalhamento abaixo, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, 
@@ -581,7 +590,7 @@ export function PaymentReceipt({
               </p>
             ) : (
               <p>
-                Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
+                Recebi dos Srs. <strong>{tenantName}</strong>, a importância de{" "}
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
                 referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
                 tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
