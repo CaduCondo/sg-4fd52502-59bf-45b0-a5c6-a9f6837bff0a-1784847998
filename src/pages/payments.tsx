@@ -265,14 +265,70 @@ export default function Payments() {
     
     setUiState(prev => ({ ...prev, selectedPaymentId: null }));
     
-    // 🔥 CORREÇÃO: Usar os filtros atuais em vez de "all", "all"
-    // Isso garante que rentals, properties e tenants estejam carregados para o período correto
+    // 🔥 CORREÇÃO: Recarregar com os filtros corretos
     await loadPayments(selectedMonth.toString(), selectedYear.toString());
     
+    // 🔥 NOVA LÓGICA: Aguardar um momento para o estado ser atualizado, então buscar os dados completos
     setTimeout(() => {
       const updatedPayment = payments.find(p => p.id === paymentId);
       
       if (updatedPayment) {
+        // Buscar dados relacionados
+        const paymentRental = rentals.find(r => r.id === updatedPayment.rentalId);
+        const paymentProperty = paymentRental ? properties.find(p => p.id === paymentRental.propertyId) : null;
+        const paymentTenant = paymentRental ? tenants.find(t => t.id === paymentRental.tenantId) : null;
+        
+        console.log("🔍 VERIFICANDO DADOS PARA RECIBO:", {
+          paymentId,
+          hasRental: !!paymentRental,
+          hasProperty: !!paymentProperty,
+          hasTenant: !!paymentTenant,
+          rental: paymentRental,
+          property: paymentProperty,
+          tenant: paymentTenant
+        });
+        
+        // Verificar se TODOS os dados necessários estão disponíveis
+        if (!paymentRental || !paymentProperty || !paymentTenant) {
+          console.warn("⚠️ DADOS INCOMPLETOS - Aguardando mais tempo...");
+          
+          // Se os dados não estão prontos, aguardar mais um pouco
+          setTimeout(() => {
+            const finalRental = rentals.find(r => r.id === updatedPayment.rentalId);
+            const finalProperty = finalRental ? properties.find(p => p.id === finalRental.propertyId) : null;
+            const finalTenant = finalRental ? tenants.find(t => t.id === finalRental.tenantId) : null;
+            
+            console.log("🔍 SEGUNDA TENTATIVA - DADOS PARA RECIBO:", {
+              hasRental: !!finalRental,
+              hasProperty: !!finalProperty,
+              hasTenant: !!finalTenant
+            });
+            
+            if (finalRental && finalProperty && finalTenant) {
+              setUiState(prev => ({
+                ...prev,
+                selectedPayment: updatedPayment,
+                showReceiptDialog: true,
+              }));
+              
+              toast({
+                title: "Sucesso!",
+                description: "Recebimento registrado com sucesso.",
+              });
+            } else {
+              // Se ainda não tem os dados, mostrar erro
+              toast({
+                title: "Aviso",
+                description: "Recebimento registrado, mas não foi possível carregar todos os dados. Por favor, recarregue a página.",
+                variant: "destructive",
+              });
+            }
+          }, 1000); // Esperar mais 1 segundo
+          
+          return;
+        }
+        
+        // Se chegou aqui, todos os dados estão disponíveis
         setUiState(prev => ({
           ...prev,
           selectedPayment: updatedPayment,
@@ -284,13 +340,15 @@ export default function Payments() {
           description: "Recebimento registrado com sucesso.",
         });
       } else {
+        // Payment não encontrado após reload
+        console.warn("⚠️ Payment não encontrado após reload");
         toast({
           title: "Sucesso!",
           description: "Recebimento registrado com sucesso.",
         });
       }
-    }, 500);
-  }, [uiState.selectedPaymentId, loadPayments, payments, toast, selectedMonth, selectedYear]);
+    }, 800); // Aumentar o tempo inicial para 800ms
+  }, [uiState.selectedPaymentId, loadPayments, payments, rentals, properties, tenants, toast, selectedMonth, selectedYear]);
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
