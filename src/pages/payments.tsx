@@ -338,6 +338,8 @@ export default function Payments() {
               const payment: Payment = {
                 id: paymentData.id,
                 rentalId: paymentData.rental_id,
+                propertyId: rentalData.property_id,
+                tenantId: rentalData.tenant_id,
                 referenceMonth: Number(paymentData.reference_month),
                 referenceYear: Number(paymentData.reference_year),
                 dueDate: paymentData.due_date,
