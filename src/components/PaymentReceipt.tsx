@@ -240,8 +240,8 @@ export function PaymentReceipt({
     
     // 🔥 CORREÇÃO: Se não encontrou no breakdown E rental existe, usar valores da rental
     if (rentAmount === 0 && rental) {
-      rentAmount = Number(rental.monthlyRent || rental.value || rental.rent_value || 0);
-      garageAmount = (rental.hasGarage || rental.has_garage) ? Number(rental.garageValue || rental.garage_value || 0) : 0;
+      rentAmount = Number(rental.monthlyRent || rental.value || 0);
+      garageAmount = (rental.hasGarage || rental.has_garage) ? Number(rental.garageValue || 0) : 0;
     }
     
     // Adicionar Aluguel ao breakdown
