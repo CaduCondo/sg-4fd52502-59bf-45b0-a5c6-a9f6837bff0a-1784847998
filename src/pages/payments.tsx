@@ -265,7 +265,9 @@ export default function Payments() {
     
     setUiState(prev => ({ ...prev, selectedPaymentId: null }));
     
-    await loadPayments("all", "all");
+    // 🔥 CORREÇÃO: Usar os filtros atuais em vez de "all", "all"
+    // Isso garante que rentals, properties e tenants estejam carregados para o período correto
+    await loadPayments(selectedMonth.toString(), selectedYear.toString());
     
     setTimeout(() => {
       const updatedPayment = payments.find(p => p.id === paymentId);
@@ -288,7 +290,7 @@ export default function Payments() {
         });
       }
     }, 500);
-  }, [uiState.selectedPaymentId, loadPayments, payments, toast]);
+  }, [uiState.selectedPaymentId, loadPayments, payments, toast, selectedMonth, selectedYear]);
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
