@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasPermission } from "@/lib/permissions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -268,46 +269,135 @@ export default function Payments() {
     // 🔥 CORREÇÃO: Recarregar com os filtros corretos
     await loadPayments(selectedMonth.toString(), selectedYear.toString());
     
-    // 🔥 NOVA LÓGICA: Aguardar um momento para o estado ser atualizado, então buscar os dados completos
-    setTimeout(() => {
-      const updatedPayment = payments.find(p => p.id === paymentId);
-      
-      if (updatedPayment) {
-        // Buscar dados relacionados
-        const paymentRental = rentals.find(r => r.id === updatedPayment.rentalId);
-        const paymentProperty = paymentRental ? properties.find(p => p.id === paymentRental.propertyId) : null;
-        const paymentTenant = paymentRental ? tenants.find(t => t.id === paymentRental.tenantId) : null;
-        
-        console.log("🔍 VERIFICANDO DADOS PARA RECIBO:", {
-          paymentId,
-          hasRental: !!paymentRental,
-          hasProperty: !!paymentProperty,
-          hasTenant: !!paymentTenant,
-          rental: paymentRental,
-          property: paymentProperty,
-          tenant: paymentTenant
-        });
-        
-        // Verificar se TODOS os dados necessários estão disponíveis
-        if (!paymentRental || !paymentProperty || !paymentTenant) {
-          console.warn("⚠️ DADOS INCOMPLETOS - Aguardando mais tempo...");
+    // 🔥 NOVA ABORDAGEM: Buscar dados completos DIRETAMENTE do banco
+    if (paymentId) {
+      try {
+        // Buscar o payment atualizado
+        const { data: paymentData, error: paymentError } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("id", paymentId)
+          .single();
           
-          // Se os dados não estão prontos, aguardar mais um pouco
-          setTimeout(() => {
-            const finalRental = rentals.find(r => r.id === updatedPayment.rentalId);
-            const finalProperty = finalRental ? properties.find(p => p.id === finalRental.propertyId) : null;
-            const finalTenant = finalRental ? tenants.find(t => t.id === finalRental.tenantId) : null;
+        if (paymentError) throw paymentError;
+        
+        if (paymentData) {
+          // Buscar a rental associada
+          const { data: rentalData, error: rentalError } = await supabase
+            .from("rentals")
+            .select("*")
+            .eq("id", paymentData.rental_id)
+            .single();
             
-            console.log("🔍 SEGUNDA TENTATIVA - DADOS PARA RECIBO:", {
-              hasRental: !!finalRental,
-              hasProperty: !!finalProperty,
-              hasTenant: !!finalTenant
+          if (rentalError) throw rentalError;
+          
+          if (rentalData) {
+            // Buscar property e tenant
+            const [propertyResult, tenantResult] = await Promise.all([
+              supabase
+                .from("properties")
+                .select("*")
+                .eq("id", rentalData.property_id)
+                .single(),
+              supabase
+                .from("tenants")
+                .select("*")
+                .eq("id", rentalData.tenant_id)
+                .single()
+            ]);
+            
+            if (propertyResult.error) throw propertyResult.error;
+            if (tenantResult.error) throw tenantResult.error;
+            
+            const propertyData = propertyResult.data;
+            const tenantData = tenantResult.data;
+            
+            console.log("✅ DADOS COMPLETOS BUSCADOS DO BANCO:", {
+              payment: paymentData,
+              rental: rentalData,
+              property: propertyData,
+              tenant: tenantData
             });
             
-            if (finalRental && finalProperty && finalTenant) {
+            if (propertyData && tenantData) {
+              // Converter os dados do banco para o formato do tipo Payment
+              const payment: Payment = {
+                id: paymentData.id,
+                rentalId: paymentData.rental_id,
+                referenceMonth: paymentData.reference_month,
+                referenceYear: paymentData.reference_year,
+                dueDate: paymentData.due_date,
+                expectedAmount: paymentData.expected_amount || 0,
+                paidAmount: paymentData.paid_amount || 0,
+                status: paymentData.status as "pending" | "paid" | "overdue" | "partial",
+                paymentDate: paymentData.payment_date || null,
+                paymentMethod: paymentData.payment_method || null,
+                notes: paymentData.notes || null,
+                lateFee: paymentData.late_fee || 0,
+                interest: paymentData.interest || 0,
+                breakdown: paymentData.breakdown || null,
+                attachments: paymentData.attachments || null,
+                installment: paymentData.installment || 1,
+                totalInstallments: paymentData.total_installments || 24,
+                discountAmount: paymentData.discount_amount || 0,
+                createdAt: paymentData.created_at,
+                updatedAt: paymentData.updated_at,
+              };
+              
+              // Converter rental
+              const rental: Rental = {
+                id: rentalData.id,
+                propertyId: rentalData.property_id,
+                tenantId: rentalData.tenant_id,
+                startDate: rentalData.start_date,
+                start_date: rentalData.start_date,
+                endDate: rentalData.end_date,
+                monthlyRent: rentalData.monthly_rent,
+                value: rentalData.monthly_rent,
+                deposit: rentalData.deposit,
+                status: rentalData.status,
+                hasGarage: rentalData.has_garage,
+                has_garage: rentalData.has_garage,
+                garageValue: rentalData.garage_value,
+                installments: rentalData.installments,
+                totalInstallments: rentalData.installments,
+                createdAt: rentalData.created_at,
+              };
+              
+              // Converter property
+              const property: Property = {
+                id: propertyData.id,
+                address: propertyData.address,
+                number: propertyData.number,
+                complement: propertyData.complement,
+                neighborhood: propertyData.neighborhood,
+                city: propertyData.city,
+                state: propertyData.state,
+                zipCode: propertyData.zip_code,
+                type: propertyData.type,
+                bedrooms: propertyData.bedrooms,
+                bathrooms: propertyData.bathrooms,
+                area: propertyData.area,
+                status: propertyData.status,
+                locationId: propertyData.location_id,
+                createdAt: propertyData.created_at,
+              };
+              
+              // Converter tenant
+              const tenant: Tenant = {
+                id: tenantData.id,
+                name: tenantData.name,
+                email: tenantData.email,
+                phone: tenantData.phone,
+                cpf: tenantData.cpf,
+                rg: tenantData.rg,
+                createdAt: tenantData.created_at,
+              };
+              
+              // Abrir o recibo com os dados completos
               setUiState(prev => ({
                 ...prev,
-                selectedPayment: updatedPayment,
+                selectedPayment: payment,
                 showReceiptDialog: true,
               }));
               
@@ -315,40 +405,29 @@ export default function Payments() {
                 title: "Sucesso!",
                 description: "Recebimento registrado com sucesso.",
               });
-            } else {
-              // Se ainda não tem os dados, mostrar erro
-              toast({
-                title: "Aviso",
-                description: "Recebimento registrado, mas não foi possível carregar todos os dados. Por favor, recarregue a página.",
-                variant: "destructive",
-              });
+              
+              return;
             }
-          }, 1000); // Esperar mais 1 segundo
-          
-          return;
+          }
         }
         
-        // Se chegou aqui, todos os dados estão disponíveis
-        setUiState(prev => ({
-          ...prev,
-          selectedPayment: updatedPayment,
-          showReceiptDialog: true,
-        }));
-        
+        // Se chegou aqui, algo deu errado
         toast({
-          title: "Sucesso!",
-          description: "Recebimento registrado com sucesso.",
+          title: "Aviso",
+          description: "Recebimento registrado, mas não foi possível carregar os dados completos. Recarregue a página.",
+          variant: "destructive",
         });
-      } else {
-        // Payment não encontrado após reload
-        console.warn("⚠️ Payment não encontrado após reload");
+        
+      } catch (error) {
+        console.error("❌ Erro ao buscar dados completos:", error);
         toast({
-          title: "Sucesso!",
-          description: "Recebimento registrado com sucesso.",
+          title: "Erro",
+          description: "Erro ao buscar dados do recebimento.",
+          variant: "destructive",
         });
       }
-    }, 800); // Aumentar o tempo inicial para 800ms
-  }, [uiState.selectedPaymentId, loadPayments, payments, rentals, properties, tenants, toast, selectedMonth, selectedYear]);
+    }
+  }, [uiState.selectedPaymentId, loadPayments, selectedMonth, selectedYear, toast]);
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
