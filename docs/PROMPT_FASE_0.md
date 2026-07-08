@@ -91,8 +91,9 @@
     **RESUMO - Você deve ter copiado:**
     ```
     ✅ Project URL: https://fpruonjwqbmyiqulwnis.supabase.co
-    ✅ anon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcnVvbmp3cWJteWlxdWx3bmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzA4OTcsImV4cCI6MjA5OTEwNjg5N30.UXDnnGp3Pgm22FGd_pBbQzYdh0pbVdDyxsIXos3tKB0
-    ✅ service_role key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcnVvbmp3cWJteWlxdWx3bmlzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzUzMDg5NywiZXhwIjoyMDk5MTA2ODk3fQ.V7CLg9Mp2VSVZ3LQNQNFuvg8YWY2mhFFstlhqb8hS3g
+       (da tela principal do projeto)
+    ✅ anon key: eyJhbGci... (da aba Legacy)
+    ✅ service_role key: eyJhbGci... (da aba Legacy)
     ```
 
 **✅ Pronto!** Agora volte para o Softgen e execute o prompt abaixo.
@@ -133,10 +134,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 # 🟢 DESENVOLVIMENTO (Novo - Preencher)
 # ============================================
 # Cole aqui os valores que você copiou do Supabase DEV:
-NEXT_PUBLIC_SUPABASE_URL_DEV=https://fpruonjwqbmyiqulwnis.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcnVvbmp3cWJteWlxdWx3bmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzA4OTcsImV4cCI6MjA5OTEwNjg5N30.UXDnnGp3Pgm22FGd_pBbQzYdh0pbVdDyxsIXos3tKB0
-
-    ✅ service_role key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcnVvbmp3cWJteWlxdWx3bmlzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzUzMDg5NywiZXhwIjoyMDk5MTA2ODk3fQ.V7CLg9Mp2VSVZ3LQNQNFuvg8YWY2mhFFstlhqb8hS3g
+NEXT_PUBLIC_SUPABASE_URL_DEV=https://XXXXXXXX.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV=eyJhbGci...
 
 # ============================================
 # 🔥 CHAVE MÁGICA - Alternar Bancos
