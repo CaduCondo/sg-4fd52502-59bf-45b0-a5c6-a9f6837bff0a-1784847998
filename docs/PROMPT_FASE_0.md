@@ -8,34 +8,65 @@
 
 **⚠️ ATENÇÃO:** Este passo você PRECISA fazer manualmente no navegador (não tem como automatizar).
 
-### Passo a Passo Visual (5 minutos):
+### Passo a Passo Visual (7-10 minutos):
+
+**ETAPA 1: Criar Organização Grátis (NOVO requisito do Supabase)**
 
 1. **Abra uma nova aba** no navegador
 2. **Acesse:** https://supabase.com/dashboard
 3. **Faça login** com sua conta Supabase
-4. **Clique em "New Project"** (botão verde no canto superior direito)
-5. **Preencha o formulário:**
+4. **Você verá a tela "New project"** tentando criar no plano PRO (pago)
+5. **⚠️ NÃO clique em "Create new project" ainda!**
+6. **Role a página para baixo** até ver a seção "Need a free project?"
+7. **Clique no link azul: "Create a free organization"**
+8. **Preencha o formulário da organização:**
    ```
-   Name: gerenciador-locacoes-DEV
-   Database Password: [crie uma senha forte e ANOTE]
-   Region: South America (São Paulo)
-   Pricing Plan: Free
+   Name: LocacaoDeImoveis-DEV
+   Type: Personal (ou Company, tanto faz)
+   Plan: Free - $0/month
    ```
-6. **Clique em "Create new project"**
-7. **Aguarde 2-3 minutos** (Supabase está criando o banco)
+9. **Clique em "Create organization"**
 
-8. **Após criar, copie as credenciais:**
-   - Na tela do projeto, vá em **Settings** (menu lateral esquerdo)
-   - Clique em **API**
-   - **COPIE E ANOTE** estes 3 valores:
+**ETAPA 2: Criar Projeto DEV dentro da Organização Grátis**
 
-   ```
-   Project URL: https://XXXXXXXX.supabase.co
-   anon/public key: eyJhbGci...
-   service_role key: eyJhbGci...
-   ```
+10. **Agora sim, clique em "New Project"** (dentro da nova organização)
+11. **Verifique se está criando na organização correta:**
+    - No topo da página deve mostrar: `LocacaoDeImoveis-DEV` (ou o nome que você escolheu)
+    - Se não estiver, troque usando o seletor de organização
+12. **Preencha o formulário do projeto:**
+    ```
+    Name: gerenciador-locacoes-DEV
+    Database Password: [crie uma senha forte e ANOTE]
+    Region: South America (São Paulo)
+    Compute size: Micro (vai mostrar como FREE agora!)
+    ```
+13. **Clique em "Create new project"**
+14. **Aguarde 2-3 minutos** (Supabase está criando o banco)
+
+**ETAPA 3: Copiar Credenciais**
+
+15. **Após criar, copie as credenciais:**
+    - Na tela do projeto, vá em **Settings** (menu lateral esquerdo)
+    - Clique em **API**
+    - **COPIE E ANOTE** estes 3 valores:
+
+    ```
+    Project URL: https://XXXXXXXX.supabase.co
+    anon/public key: eyJhbGci...
+    service_role key: eyJhbGci...
+    ```
 
 **✅ Pronto!** Agora volte para o Softgen e execute o prompt abaixo.
+
+---
+
+**💡 Por que fazer assim?**
+
+O Supabase mudou o modelo: agora cada **organização grátis** tem direito a **2 projetos sem custo**. Isso é perfeito porque você pode ter:
+- **Organização atual (PRO):** Projeto de PRODUÇÃO (pago, robusto)
+- **Organização DEV (FREE):** Projeto de DESENVOLVIMENTO (grátis, para testes)
+
+Zero custo adicional! 🎉
 
 ---
 
