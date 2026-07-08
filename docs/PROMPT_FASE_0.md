@@ -36,7 +36,7 @@
 12. **Preencha o formulário do projeto:**
     ```
     Name: gerenciador-locacoes-DEV
-    Database Password: [crie uma senha forte e ANOTE]
+    Database Password: [crie uma senha forte e ANOTE] KFdJHyx+2gkyN28
     Region: South America (São Paulo)
     Compute size: Micro (vai mostrar como FREE agora!)
     ```
@@ -45,15 +45,43 @@
 
 **ETAPA 3: Copiar Credenciais**
 
-15. **Após criar, copie as credenciais:**
+15. **Após criar, você precisa copiar 3 valores importantes:**
+    
+    **a) Project URL:**
     - Na tela do projeto, vá em **Settings** (menu lateral esquerdo)
     - Clique em **API**
-    - **COPIE E ANOTE** estes 3 valores:
+    - Na seção "Project URL" no topo, copie:
+      ```
+      Project URL: https://fpruonjwqbmyiqulwnis.supabase.co
+      ```
+    
+    **b) API Keys (IMPORTANTE - Aba Legacy):**
+    - Na mesma página (Settings > API), você verá **2 abas** no topo:
+      * "Publishable and secret API keys" ❌ NÃO use essa
+      * "Legacy anon, service_role API keys" ✅ **CLIQUE NESTA!**
+    
+    - **⚠️ Clique na aba "Legacy anon, service_role API keys"**
+    
+    - Você verá 2 chaves:
+      
+      **anon public:**
+      ```
+      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  [Copy]
+      ```
+      → Clique no botão "Copy" e anote (essa é a anon key)
+      
+      **service_role secret:**
+      ```
+      ••••••••••••••  [Reveal]
+      ```
+      → Clique em "Reveal" para mostrar
+      → Depois clique em "Copy" e anote (essa é a service_role key)
 
+    **RESUMO - Você deve ter copiado:**
     ```
-    Project URL: https://XXXXXXXX.supabase.co
-    anon/public key: eyJhbGci...
-    service_role key: eyJhbGci...
+    ✅ Project URL: https://XXXXXXXX.supabase.co
+    ✅ anon key: eyJhbGci... (da aba Legacy)
+    ✅ service_role key: eyJhbGci... (da aba Legacy)
     ```
 
 **✅ Pronto!** Agora volte para o Softgen e execute o prompt abaixo.
