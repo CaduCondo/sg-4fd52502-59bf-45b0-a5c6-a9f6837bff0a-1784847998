@@ -47,27 +47,16 @@
 
 15. **Após criar, você precisa copiar 3 valores importantes:**
     
-    **a) Project URL (FÁCIL - Tela Principal):**
-    - Você já está vendo na tela! Logo abaixo do nome do projeto:
-      ```
-      gerenciador-locacoes-DEV
-      fpruonjwqbmyiqulwnis.supabase.co  [Copy]
-      ```
-    - **Clique no botão "Copy"** ao lado do domínio
-    - Adicione `https://` na frente:
+    **a) Project URL:**
+    - Na tela do projeto, vá em **Settings** (menu lateral esquerdo)
+    - Clique em **API**
+    - Na seção "Project URL" no topo, copie:
       ```
       Project URL: https://fpruonjwqbmyiqulwnis.supabase.co
       ```
     
-    **Alternativa:** Vá em **Integrations > Data API** (menu lateral)
-    - Copie o "API URL" e remova o `/rest/v1/` do final
-    - Exemplo: `https://fpruonjwqbmyiqulwnis.supabase.co/rest/v1/`
-    - Project URL: `https://fpruonjwqbmyiqulwnis.supabase.co`
-    
     **b) API Keys (IMPORTANTE - Aba Legacy):**
-    - No menu lateral esquerdo, vá em **Settings**
-    - Clique em **API Keys**
-    - Você verá **2 abas** no topo:
+    - Na mesma página (Settings > API), você verá **2 abas** no topo:
       * "Publishable and secret API keys" ❌ NÃO use essa
       * "Legacy anon, service_role API keys" ✅ **CLIQUE NESTA!**
     
@@ -90,8 +79,7 @@
 
     **RESUMO - Você deve ter copiado:**
     ```
-    ✅ Project URL: https://fpruonjwqbmyiqulwnis.supabase.co
-       (da tela principal do projeto)
+    ✅ Project URL: https://XXXXXXXX.supabase.co
     ✅ anon key: eyJhbGci... (da aba Legacy)
     ✅ service_role key: eyJhbGci... (da aba Legacy)
     ```
