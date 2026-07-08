@@ -33,7 +33,7 @@
 2. Clique em **"New Project"**
 3. Preencha os dados:
    - **Name:** `gerenciador-locacoes-DEV`
-   - **Database Password:** Anote em local seguro
+   - **Database Password: KFdJHyx+2gkyN28
    - **Region:** `South America (São Paulo)`
    - **Pricing Plan:** `Free`
 
