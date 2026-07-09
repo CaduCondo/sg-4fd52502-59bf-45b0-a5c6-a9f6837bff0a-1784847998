@@ -99,7 +99,7 @@ export async function getAllTenants(): Promise<Tenant[]> {
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
     // Calcular status baseado nas locações
-    let calculatedStatus: "new" | "active" | "inactive" | "rented" | "late" | "debt";
+    let calculatedStatus: "new" | "rented" | "inactive";
     
     if (rentalStatuses.length === 0) {
       // Nunca teve contrato - status "new"
