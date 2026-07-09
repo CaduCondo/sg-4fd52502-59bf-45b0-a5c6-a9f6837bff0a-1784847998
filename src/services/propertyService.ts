@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - COM CONTADOR DE IMAGENS (sem carregar conteúdo)
+ * Buscar todos os imóveis - SEM IMAGES para evitar timeout (listagem admin)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco COM CONTADOR de imagens...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco SEM IMAGES (evita timeout)...");
 
-    // 🔥 QUERY COM CONTADOR de imagens (rápido, não carrega conteúdo)
+    // 🔥 QUERY SEM IMAGES - ultra-rápida para listagem admin
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,11 +131,10 @@ export const getAll = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
-        images,
         created_at
       `)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
 
     if (error) throw error;
 
@@ -149,9 +148,22 @@ export const getAll = async (): Promise<Property[]> => {
 
     const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
 
+    // 🔥 AGORA busca contagem de fotos em lote separado (rápido)
+    const propertyIds = (data || []).map(p => p.id);
+    const { data: photoCounts } = await supabase
+      .rpc('get_properties_photo_count', { property_ids: propertyIds })
+      .then(res => res)
+      .catch(() => ({ data: null })); // Fallback se RPC não existir
+
+    const photoCountMap = new Map(
+      (photoCounts || []).map((item: any) => [item.id, item.photo_count])
+    );
+
     const properties = (data || []).map((item) => {
-      // 🔥 Processar imagens para gerar array com contador
-      const images = processImages(item.images);
+      const photoCount = photoCountMap.get(item.id) || 0;
+      
+      // 🔥 Criar array vazio com length correto para o ícone funcionar
+      const images = photoCount > 0 ? new Array(photoCount).fill('') : [];
       
       return {
         id: item.id,
@@ -168,14 +180,14 @@ export const getAll = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: images, // 🔥 Array completo para mostrar contador no card
+        images: images, // 🔥 Array vazio com length correto (não carrega conteúdo)
         createdAt: item.created_at,
         address: "",
         features: [],
       };
     });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (SEM timeout)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
