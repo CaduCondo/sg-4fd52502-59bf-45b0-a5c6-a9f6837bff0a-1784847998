@@ -515,7 +515,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     );
 
     const properties = data.map((item) => {
-      const location = locationsMap.get(item.location_id);
+      const location = locationsMap.get(item.location_id) as any;
       
       // Montar endereço
       const addressParts = [];
