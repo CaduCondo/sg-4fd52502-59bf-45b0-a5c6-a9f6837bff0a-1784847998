@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Pencil, Trash2 } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
-  new: { label: "Novo", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
+  new: { label: "Novo", variant: "default" as const, className: "bg-green-500 text-white hover:bg-green-600" },
   rented: { label: "Locatário", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
   inactive: { label: "Inativo", variant: "destructive" as const, className: "bg-red-500 text-white hover:bg-red-600" },
 };
@@ -220,18 +220,6 @@ export default function TenantsPage() {
         <TableCell>{getStatusBadge(tenant.status)}</TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewTenant(tenant);
-              }}
-              title="Visualizar"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"

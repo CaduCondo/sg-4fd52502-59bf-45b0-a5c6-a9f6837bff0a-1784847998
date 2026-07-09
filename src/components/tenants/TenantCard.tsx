@@ -13,7 +13,7 @@ interface TenantCardProps {
 }
 
 const STATUS_STYLES = {
-  new: "bg-blue-500 hover:bg-blue-600",
+  new: "bg-green-500 hover:bg-green-600",
   rented: "bg-blue-500 hover:bg-blue-600",
   inactive: "bg-red-500 hover:bg-red-600",
   default: "bg-gray-500 hover:bg-gray-600",
