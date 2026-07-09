@@ -274,9 +274,11 @@ export default function PropertiesPage() {
         <TableCell>{getStatusBadge(property.status)}</TableCell>
         <TableCell className="text-right">
           <Button
-            variant="destructive"
-            size="sm"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
             onClick={(e) => confirmDelete(e, property.id)}
+            title="Excluir"
           >
             <Trash2 className="h-4 w-4" strokeWidth={2} />
           </Button>

@@ -85,11 +85,12 @@ export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md flex-shrink-0 touch-target"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete();
                 }}
+                title="Excluir"
               >
                 <Trash2 className="h-4 w-4" strokeWidth={2} />
               </Button>
@@ -142,11 +143,12 @@ export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, 
         <Button
           variant="ghost"
           size="icon"
-          className="absolute bottom-3 right-3 h-9 w-9 sm:h-10 sm:w-10 bg-red-500 hover:bg-red-600 text-white rounded-md touch-target"
+          className="absolute bottom-3 right-3 h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
+          title="Excluir"
         >
           <Trash2 className="h-4 w-4" strokeWidth={2} />
         </Button>

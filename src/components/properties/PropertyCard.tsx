@@ -123,10 +123,11 @@ export const PropertyCard = memo(function PropertyCard({
             </span>
           </div>
           <Button
-            variant="destructive"
-            size="sm"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
             onClick={(e) => onDeleteClick(e, property.id)}
-            className="h-8 w-8 p-0 flex-shrink-0"
+            title="Excluir"
           >
             <Trash2 className="h-4 w-4" strokeWidth={2} />
           </Button>
