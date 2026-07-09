@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Property } from "@/types";
-import { getPublicProperties } from "@/services/propertyService";
 import type { SortOption } from "@/components/public/SortSelector";
 
 interface UsePublicPropertiesOptions {
@@ -79,10 +78,16 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
           return;
         }
 
-        console.log("🔄 [usePublicProperties] Carregando imóveis públicos...");
+        console.log("🔄 [usePublicProperties] Carregando imóveis públicos via API...");
 
-        // Buscar do banco
-        const data = await getPublicProperties();
+        // 🔥 CORREÇÃO: Usar API route em vez de query direta no Supabase
+        const response = await fetch("/api/properties/available");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
 
         // Atualizar cache
         cachedProperties = data;
@@ -93,7 +98,7 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
         // Aplicar filtro de localização
         let filtered = data;
         if (location && location !== "all") {
-          filtered = data.filter((prop) => prop.locationId === location);
+          filtered = data.filter((prop: Property) => prop.locationId === location);
           console.log(`🔍 Filtrados por localização: ${filtered.length} imóveis`);
         }
 

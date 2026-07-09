@@ -83,16 +83,22 @@ export function useProperties(): UsePropertiesReturn {
       setLoading(true);
       console.log("🔄 [useProperties] Carregando imóveis e localizações...");
 
-      // Buscar properties (SEM IMAGES - rápido!) e locations em paralelo
-      const [propertiesData, locationsData] = await Promise.all([
-        propertyService.getAll(),
+      // 🔥 CORREÇÃO: Usar API route para properties (query otimizada no servidor)
+      const [propertiesResponse, locationsData] = await Promise.all([
+        fetch("/api/properties"),
         locationService.getAll(),
       ]);
+      
+      if (!propertiesResponse.ok) {
+        throw new Error(`HTTP error! status: ${propertiesResponse.status}`);
+      }
+      
+      const propertiesData = await propertiesResponse.json();
       
       setProperties(propertiesData);
       setLocations(locationsData);
       
-      console.log(`✅ [useProperties] ${propertiesData.length} imóveis carregados (sem imagens)`);
+      console.log(`✅ [useProperties] ${propertiesData.length} imóveis carregados (com imagens)`);
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error);
       toast({
