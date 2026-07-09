@@ -165,7 +165,7 @@ export function usePayments() {
               document: tenant.document || "",
               cpf: tenant.cpf || "",
               rg: "",
-              status: "active",
+              status: "rented",
             });
           }
         }

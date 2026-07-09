@@ -74,7 +74,7 @@ const mapRentalData = (data: any): Rental => {
       email: "",
       document: tenantData.cpf || "",
       cpf: tenantData.cpf || "",
-      status: "active" as const,
+      status: "rented",
     } : undefined,
 
     // 1ª Parcela (ou À Vista)
