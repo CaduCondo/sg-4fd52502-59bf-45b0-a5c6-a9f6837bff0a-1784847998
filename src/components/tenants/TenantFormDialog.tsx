@@ -31,7 +31,7 @@ interface FormState {
   neighborhood: string;
   city: string;
   state: string;
-  status: "active" | "inactive" | "rented" | "late" | "debt";
+  status: "new" | "active" | "inactive" | "rented" | "late" | "debt";
 }
 
 const INITIAL_FORM_STATE: FormState = {
@@ -398,7 +398,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
   }, []);
 
   const handleStatusChange = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, status: value as "active" | "inactive" | "rented" }));
+    setFormData(prev => ({ ...prev, status: value as "new" | "active" | "inactive" | "rented" | "late" | "debt" }));
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -419,7 +419,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
-      status: formData.status as "active" | "inactive" | "rented", // Fix casting
+      status: formData.status as "new" | "active" | "inactive" | "rented" | "late" | "debt",
     };
 
     const success = await onSave(newTenantData);
