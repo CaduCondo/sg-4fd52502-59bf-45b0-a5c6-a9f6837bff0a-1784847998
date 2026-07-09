@@ -16,12 +16,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "Ativo", variant: "default" as const },
-  inactive: { label: "Inativo", variant: "secondary" as const },
-  rented: { label: "Locatário", variant: "outline" as const },
-  late: { label: "Inadimplente", variant: "destructive" as const },
-  debt: { label: "Em Débito", variant: "destructive" as const },
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
+  active: { label: "Ativo", variant: "outline" as const, className: "bg-blue-50 text-blue-700 border-blue-200" },
+  inactive: { label: "Inativo", variant: "secondary" as const, className: "bg-slate-100 text-slate-700" },
+  rented: { label: "Locatário", variant: "outline" as const, className: "bg-green-50 text-green-700 border-green-200" },
+  late: { label: "Inadimplente", variant: "destructive" as const, className: "bg-red-50 text-red-700 border-red-200" },
+  debt: { label: "Em Débito", variant: "destructive" as const, className: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
 export default function TenantsPage() {
@@ -195,7 +195,11 @@ export default function TenantsPage() {
 
   const getStatusBadge = useCallback((status: string) => {
     const config = statusConfig[status] || statusConfig.active;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    );
   }, []);
 
   const getRowClassName = useCallback((tenant: Tenant) => {
@@ -210,36 +214,42 @@ export default function TenantsPage() {
         className={getRowClassName(tenant)}
         onClick={() => handleViewTenant(tenant)}
       >
-        <TableCell className="font-medium">{tenant.name}</TableCell>
-        <TableCell>{formatDocument(tenant)}</TableCell>
-        <TableCell>{formatPhone(tenant.phone)}</TableCell>
-        <TableCell>{tenant.email || "-"}</TableCell>
+        <TableCell className="font-semibold text-blue-600">{tenant.name}</TableCell>
+        <TableCell className="text-slate-600">{formatDocument(tenant)}</TableCell>
+        <TableCell className="text-slate-600">{formatPhone(tenant.phone)}</TableCell>
+        <TableCell className="text-slate-600">{tenant.email || "-"}</TableCell>
         <TableCell>{getStatusBadge(tenant.status)}</TableCell>
-        <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
+        <TableCell>
+          <div className="flex items-center justify-end gap-1">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
               onClick={(e) => {
                 e.stopPropagation();
                 handleViewTenant(tenant);
               }}
+              title="Visualizar"
             >
               <Eye className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="h-8 w-8 text-slate-600 hover:text-slate-700 hover:bg-slate-100"
               onClick={(e) => handleEditTenant(tenant, e)}
+              title="Editar"
             >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
               onClick={(e) => handleDelete(tenant.id, e)}
+              title="Excluir"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </TableCell>
