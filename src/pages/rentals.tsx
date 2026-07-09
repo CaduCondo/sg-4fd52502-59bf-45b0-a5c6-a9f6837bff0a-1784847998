@@ -718,7 +718,9 @@ export default function RentalsPage() {
                         <TableHead>Inquilino</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Data {statusFilter === 'terminated' ? 'Término' : 'Início'}</TableHead>
+                        <TableHead>Data Fim</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -747,6 +749,7 @@ export default function RentalsPage() {
                               {formatCurrency(rental.value || 0)}
                             </TableCell>
                             <TableCell>{formatDate(statusFilter === 'terminated' ? rental.endDate : rental.startDate)}</TableCell>
+                            <TableCell>{formatDate(rental.endDate)}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
                                 {isVisuallyActive ? (
@@ -776,6 +779,48 @@ export default function RentalsPage() {
                                   </Badge>
                                 )}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {rental.isActive && (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRentalToRenew(rental);
+                                    }}
+                                    title="Renovar Contrato"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRentalToEnd(rental);
+                                    }}
+                                    title="Rescisão de Contrato"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRentalToDelete(rental);
+                                    }}
+                                    title="Excluir Locação"
+                                  >
+                                    <Trash2 className="h-4 w-4" strokeWidth={2} />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

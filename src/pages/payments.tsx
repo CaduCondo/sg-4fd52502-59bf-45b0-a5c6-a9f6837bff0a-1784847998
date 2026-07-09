@@ -27,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -605,34 +607,91 @@ export default function Payments() {
             {/* Aba: Recebimentos Pendentes */}
             <TabsContent value="pending" className="space-y-6">
               {pendingPayments.length > 0 ? (
-                <div
-                  className={
-                    uiState.viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                      : "space-y-4"
-                  }
-                >
-                  {pendingPayments.map((payment) => (
-                    <PaymentCard
-                      key={payment.id}
-                      payment={payment}
-                      property={getPropertyForPayment(payment)}
-                      tenant={getTenantForPayment(payment)}
-                      isPaid={payment.status === "paid"}
-                      viewMode={uiState.viewMode}
-                      installment={getPaymentInstallment(payment)}
-                      expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
-                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
-                      getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
-                      onViewReceipt={permissions.canViewReceipt ? (id, e) => {
-                        e?.stopPropagation();
-                        handleViewReceipt(payment);
-                      } : undefined}
-                    />
-                  ))}
-                </div>
+                uiState.viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {pendingPayments.map((payment) => (
+                      <PaymentCard
+                        key={payment.id}
+                        payment={payment}
+                        property={getPropertyForPayment(payment)}
+                        tenant={getTenantForPayment(payment)}
+                        isPaid={payment.status === "paid"}
+                        viewMode={uiState.viewMode}
+                        installment={getPaymentInstallment(payment)}
+                        expectedAmount={getExpectedAmount(payment)}
+                        onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                        onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
+                        getMonthName={getMonthName}
+                        onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
+                        onViewReceipt={permissions.canViewReceipt ? (id, e) => {
+                          e?.stopPropagation();
+                          handleViewReceipt(payment);
+                        } : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border bg-white">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Local</TableHead>
+                          <TableHead>Complemento</TableHead>
+                          <TableHead>Período</TableHead>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Inquilino</TableHead>
+                          <TableHead>Celular</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead className="text-right">Valor Esperado</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingPayments.map((payment) => {
+                          const property = getPropertyForPayment(payment);
+                          const tenant = getTenantForPayment(payment);
+                          const statusConfig = {
+                            pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
+                            overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
+                            partial: { label: "Parcial", className: "bg-orange-100 text-orange-800" },
+                          };
+                          const config = statusConfig[payment.status as keyof typeof statusConfig] || statusConfig.pending;
+                          
+                          return (
+                            <TableRow
+                              key={payment.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
+                            >
+                              <TableCell className="font-medium text-blue-600">
+                                {property?.location || "-"}
+                              </TableCell>
+                              <TableCell>{property?.complement || "-"}</TableCell>
+                              <TableCell>
+                                {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                              </TableCell>
+                              <TableCell>{getPaymentInstallment(payment)}</TableCell>
+                              <TableCell>
+                                <Badge className={config.className}>{config.label}</Badge>
+                              </TableCell>
+                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell>{tenant?.phone || "-"}</TableCell>
+                              <TableCell>
+                                {payment.dueDate ? format(new Date(payment.dueDate), "dd/MM/yyyy") : "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-emerald-600">
+                                {getExpectedAmount(payment).toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum recebimento pendente encontrado</p>
@@ -643,34 +702,121 @@ export default function Payments() {
             {/* Aba: Recebimentos Pagos */}
             <TabsContent value="paid" className="space-y-6">
               {paidPayments.length > 0 ? (
-                <div
-                  className={
-                    uiState.viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                      : "space-y-4"
-                  }
-                >
-                  {paidPayments.map((payment) => (
-                    <PaymentCard
-                      key={payment.id}
-                      payment={payment}
-                      property={getPropertyForPayment(payment)}
-                      tenant={getTenantForPayment(payment)}
-                      isPaid={payment.status === "paid"}
-                      viewMode={uiState.viewMode}
-                      installment={getPaymentInstallment(payment)}
-                      expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
-                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
-                      getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
-                      onViewReceipt={permissions.canViewReceipt ? (id, e) => {
-                        e?.stopPropagation();
-                        handleViewReceipt(payment);
-                      } : undefined}
-                    />
-                  ))}
-                </div>
+                uiState.viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {paidPayments.map((payment) => (
+                      <PaymentCard
+                        key={payment.id}
+                        payment={payment}
+                        property={getPropertyForPayment(payment)}
+                        tenant={getTenantForPayment(payment)}
+                        isPaid={payment.status === "paid"}
+                        viewMode={uiState.viewMode}
+                        installment={getPaymentInstallment(payment)}
+                        expectedAmount={getExpectedAmount(payment)}
+                        onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                        onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
+                        getMonthName={getMonthName}
+                        onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
+                        onViewReceipt={permissions.canViewReceipt ? (id, e) => {
+                          e?.stopPropagation();
+                          handleViewReceipt(payment);
+                        } : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border bg-white">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Local</TableHead>
+                          <TableHead>Complemento</TableHead>
+                          <TableHead>Período</TableHead>
+                          <TableHead>Anexo</TableHead>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Inquilino</TableHead>
+                          <TableHead>Celular</TableHead>
+                          <TableHead>Pago em</TableHead>
+                          <TableHead className="text-right">Valor Pago</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paidPayments.map((payment) => {
+                          const property = getPropertyForPayment(payment);
+                          const tenant = getTenantForPayment(payment);
+                          const hasAttachments = payment.attachments && (Array.isArray(payment.attachments) ? payment.attachments.length > 0 : Object.keys(payment.attachments).length > 0);
+                          
+                          return (
+                            <TableRow
+                              key={payment.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleViewReceipt(payment)}
+                            >
+                              <TableCell className="font-medium text-blue-600">
+                                {property?.location || "-"}
+                              </TableCell>
+                              <TableCell>{property?.complement || "-"}</TableCell>
+                              <TableCell>
+                                {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                              </TableCell>
+                              <TableCell>
+                                {hasAttachments ? (
+                                  <Badge className="bg-blue-100 text-blue-800">Sim</Badge>
+                                ) : (
+                                  <Badge variant="outline">Não</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{getPaymentInstallment(payment)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-800">Pago</Badge>
+                              </TableCell>
+                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell>{tenant?.phone || "-"}</TableCell>
+                              <TableCell>
+                                {payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy") : "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-emerald-600">
+                                {(payment.paidAmount || 0).toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewReceipt(payment);
+                                    }}
+                                    title="Ver Recibo"
+                                  >
+                                    Ver Recibo
+                                  </Button>
+                                  {permissions.canDeletePayment && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      onClick={(e) => handleCancelPayment(payment.id, e)}
+                                      title="Cancelar Pagamento"
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum recebimento pago encontrado</p>
