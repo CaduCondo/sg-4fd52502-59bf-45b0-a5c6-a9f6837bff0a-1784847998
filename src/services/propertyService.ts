@@ -416,42 +416,36 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY COM IMAGENS (limit 20 para evitar timeout)
+ * PÁGINA PÚBLICA - QUERY COM IMAGENS (limit 10 para máxima velocidade)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Iniciando busca COM IMAGENS...");
 
-    // 🔥 Query COM IMAGES mas limit pequeno (20) para evitar timeout
-    const { data, error } = await Promise.race([
-      supabase
-        .from("properties")
-        .select(`
-          id,
-          location_id,
-          property_identifier,
-          complement,
-          description,
-          rooms,
-          bathrooms,
-          area,
-          value,
-          status,
-          has_garage,
-          has_furniture,
-          accepts_pets,
-          images,
-          created_at
-        `)
-        .eq("status", "available")
-        .order("created_at", { ascending: false })
-        .limit(20), // 🔥 Limit pequeno para evitar timeout
-      
-      // Timeout local de 8 segundos
-      new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Query timeout after 8s")), 8000)
-      )
-    ]);
+    // 🔥 Query COM IMAGES mas limit MUITO pequeno (10) para máxima velocidade
+    // SEM timeout local - deixa Supabase gerenciar (15-20s)
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        value,
+        status,
+        has_garage,
+        has_furniture,
+        accepts_pets,
+        images,
+        created_at
+      `)
+      .eq("status", "available")
+      .order("created_at", { ascending: false })
+      .limit(10); // 🔥 Apenas 10 imóveis para máxima velocidade
 
     if (error) {
       console.error("❌ Erro na query:", error);
@@ -489,26 +483,17 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images), // 🔥 Processa imagens
+        images: processImages(item.images),
         createdAt: item.created_at,
         features: [],
       }));
     }
 
-    // Query de locations COM timeout
-    const { data: locationsData } = await Promise.race([
-      supabase
-        .from("locations")
-        .select("id, name, city, neighborhood, state, street, number")
-        .in("id", locationIds),
-      
-      new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Locations timeout")), 5000)
-      )
-    ]).catch(err => {
-      console.error("⚠️ Erro ao buscar locations, continuando sem endereços:", err);
-      return { data: null };
-    });
+    // Query de locations (sem timeout)
+    const { data: locationsData } = await supabase
+      .from("locations")
+      .select("id, name, city, neighborhood, state, street, number")
+      .in("id", locationIds);
 
     const locationsMap = new Map(
       (locationsData || []).map(loc => [loc.id, loc])
@@ -542,7 +527,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images), // 🔥 Processa imagens de cada imóvel
+        images: processImages(item.images),
         createdAt: item.created_at,
         features: [],
       } as Property;
