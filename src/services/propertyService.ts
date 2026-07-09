@@ -421,12 +421,9 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query ULTRA-OTIMIZADA - apenas campos essenciais
+    // Query DIRETA otimizada - SEM RPC
     const { data, error } = await supabase
-      .rpc('get_public_properties_fast', {}, {
-        // Timeout de 10 segundos
-        head: false,
-      })
+      .from("properties")
       .select(`
         id,
         location_id,
