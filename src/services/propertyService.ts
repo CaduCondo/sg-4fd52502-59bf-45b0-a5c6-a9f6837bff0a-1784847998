@@ -442,7 +442,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query MÍNIMA - SEM IMAGES! Para evitar timeout
+    // Query com IMAGES incluído (mas vamos processar só a primeira)
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -456,6 +456,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         area,
         has_garage,
         value,
+        images,
         has_furniture,
         accepts_pets,
         created_at
@@ -503,6 +504,15 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
 
+      // Processar APENAS A PRIMEIRA IMAGEM (otimização de performance)
+      let firstImage: string[] = [];
+      if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        const img = item.images[0];
+        if (img && typeof img === 'string' && img.length > 0) {
+          firstImage = [img]; // Array com apenas UMA imagem
+        }
+      }
+
       return {
         id: item.id,
         locationId: item.location_id,
@@ -522,13 +532,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: "available" as const,
-        images: [], // VAZIO! Imagens carregam só ao clicar no imóvel
+        images: firstImage, // APENAS primeira imagem!
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (SEM imagens)`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (primeira imagem de cada)`);
 
     return properties;
   } catch (error) {
