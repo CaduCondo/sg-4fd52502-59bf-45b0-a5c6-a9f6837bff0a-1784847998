@@ -421,7 +421,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query DIRETA otimizada - SEM RPC
+    // Query ULTRA-SIMPLES - apenas properties com LEFT JOIN
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -439,11 +439,11 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_furniture,
         accepts_pets,
         created_at,
-        locations!inner(name, city, neighborhood, street, number, state)
+        locations(name, city, neighborhood, street, number, state)
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(100); // Limitar a 100 imóveis para evitar timeout
+      .limit(50); // Reduzir para 50 imóveis inicialmente
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
