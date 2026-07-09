@@ -57,7 +57,7 @@ export default async function handler(
 
     console.log("🔄 [API /public] Buscando imóveis públicos...");
 
-    // Query OTIMIZADA com LEFT JOIN (no servidor é rápido!)
+    // Query OTIMIZADA com LEFT JOIN e IMAGES
     const { data, error } = await supabaseAdmin
       .from("properties")
       .select(`
@@ -73,6 +73,7 @@ export default async function handler(
         value,
         has_furniture,
         accepts_pets,
+        images,
         created_at,
         locations(name, city, neighborhood, street, number, state)
       `)
@@ -95,7 +96,16 @@ export default async function handler(
       return res.status(200).json(emptyResult);
     }
 
-    // Mapear para formato esperado
+    // Helper para processar imagens
+    const processImages = (images: any): string[] => {
+      if (!images) return [];
+      if (Array.isArray(images)) {
+        return images.filter((img) => img && typeof img === 'string' && img.length > 0);
+      }
+      return [];
+    };
+
+    // Mapear para formato esperado COM IMAGENS
     const properties = data.map((item: any) => {
       const addressParts = [];
       if (item.locations?.street) addressParts.push(item.locations.street);
@@ -121,7 +131,7 @@ export default async function handler(
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: "available",
-        images: [], // SEM IMAGES na listagem
+        images: processImages(item.images), // PROCESSAR IMAGENS!
         createdAt: item.created_at,
         features: [],
       };

@@ -436,13 +436,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis disponíveis - QUERY OTIMIZADA
+ * PÁGINA PÚBLICA - Buscar imóveis disponíveis - QUERY OTIMIZADA COM IMAGENS
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query MÍNIMA - SEM JOIN pesado
+    // Query incluindo IMAGES
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -458,6 +458,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_furniture,
         accepts_pets,
         area,
+        images,
         created_at
       `)
       .eq("status", "available")
@@ -490,7 +491,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       }
     }
 
-    // Mapear propriedades
+    // Mapear propriedades COM IMAGENS
     const properties = data.map((item) => {
       const location = locationsMap.get(item.location_id);
       
@@ -518,13 +519,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: "available" as const,
-        images: [], // SEM IMAGES na listagem (carrega no detalhe)
+        images: processImages(item.images), // PROCESSAR IMAGENS!
         createdAt: item.created_at,
         features: [],
       };
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (com imagens)`);
 
     return properties;
   } catch (error) {
