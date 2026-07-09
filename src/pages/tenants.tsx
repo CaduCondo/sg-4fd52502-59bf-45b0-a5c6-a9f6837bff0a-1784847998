@@ -45,7 +45,7 @@ export default function TenantsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]); // Vazio = mostrar todos
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const formatDocument = useCallback((tenant: Tenant) => {
@@ -81,6 +81,7 @@ export default function TenantsPage() {
       });
     }
 
+    // Filtro de status: lista vazia = mostrar todos
     if (statusFilter.length > 0) {
       filtered = filtered.filter((t) => statusFilter.includes(t.status));
     }
@@ -327,11 +328,11 @@ export default function TenantsPage() {
         {filteredTenants.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              {searchTerm || statusFilter.length !== 3 
+              {searchTerm || statusFilter.length > 0
                 ? "Nenhum inquilino encontrado com os filtros aplicados." 
                 : "Nenhum inquilino encontrado."}
             </p>
-            {!searchTerm && statusFilter.length === 3 && (
+            {!searchTerm && statusFilter.length === 0 && (
               <Button onClick={handleCreateNew} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Inquilino
