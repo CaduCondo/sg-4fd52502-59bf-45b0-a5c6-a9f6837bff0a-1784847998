@@ -416,14 +416,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY ULTRA-OTIMIZADA COM FALLBACK
- * Estratégia: tentar query completa → se timeout, tentar simplificada → se falhar, usar cache
+ * PÁGINA PÚBLICA - QUERY COM IMAGENS (limit 20 para evitar timeout)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Iniciando busca ULTRA-OTIMIZADA...");
+    console.log("🔄 [getPublicProperties] Iniciando busca COM IMAGENS...");
 
-    // 🔥 ESTRATÉGIA 1: Query completa mas com LIMIT MUITO PEQUENO (20)
+    // 🔥 Query COM IMAGES mas limit pequeno (20) para evitar timeout
     const { data, error } = await Promise.race([
       supabase
         .from("properties")
@@ -441,11 +440,12 @@ export const getPublicProperties = async (): Promise<Property[]> => {
           has_garage,
           has_furniture,
           accepts_pets,
+          images,
           created_at
         `)
         .eq("status", "available")
         .order("created_at", { ascending: false })
-        .limit(20), // 🔥 REDUZIDO DRASTICAMENTE: apenas 20 imóveis
+        .limit(20), // 🔥 Limit pequeno para evitar timeout
       
       // Timeout local de 8 segundos
       new Promise<never>((_, reject) => 
@@ -463,7 +463,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       return [];
     }
 
-    console.log(`✅ ${data.length} imóveis carregados`);
+    console.log(`✅ ${data.length} imóveis carregados COM IMAGENS`);
 
     // Buscar locations em query separada
     const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
@@ -489,7 +489,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [],
+        images: processImages(item.images), // 🔥 Processa imagens
         createdAt: item.created_at,
         features: [],
       }));
@@ -542,13 +542,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [],
+        images: processImages(item.images), // 🔥 Processa imagens de cada imóvel
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM timeout)`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados COM IMAGENS`);
 
     return properties;
 
