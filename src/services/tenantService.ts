@@ -98,26 +98,18 @@ export async function getAllTenants(): Promise<Tenant[]> {
     const tenant = fromDatabase(data);
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
-    // Log para debug
-    if (rentalStatuses.length > 0) {
-      console.log(`👤 [tenantService] Inquilino ${tenant.name} (${tenant.id}): ${rentalStatuses.length} locações [${rentalStatuses.join(", ")}]`);
-    }
-    
     // Calcular status baseado nas locações
     let calculatedStatus: "new" | "active" | "inactive" | "rented" | "late" | "debt";
     
     if (rentalStatuses.length === 0) {
       // Nunca teve contrato - status "new"
       calculatedStatus = "new";
-      console.log(`  ✨ [tenantService] ${tenant.name} → Novo (sem contratos)`);
     } else if (rentalStatuses.includes("active")) {
       // Tem pelo menos um contrato ativo - status "rented" (Locatário)
       calculatedStatus = "rented";
-      console.log(`  🏠 [tenantService] ${tenant.name} → Locatário (contrato ativo)`);
     } else {
       // Teve contratos mas nenhum ativo (todos cancelled/terminated) - status "inactive"
       calculatedStatus = "inactive";
-      console.log(`  ⚫ [tenantService] ${tenant.name} → Inativo (sem contratos ativos)`);
     }
     
     return {
@@ -126,7 +118,10 @@ export async function getAllTenants(): Promise<Tenant[]> {
     };
   });
   
-  console.log(`✅ [tenantService] Status calculados: ${result.filter(t => t.status === "new").length} novos, ${result.filter(t => t.status === "rented").length} locatários, ${result.filter(t => t.status === "inactive").length} inativos`);
+  // Log de todos os status únicos encontrados
+  const uniqueStatuses = [...new Set(result.map(t => t.status))];
+  console.log(`✅ [tenantService] Status únicos encontrados:`, uniqueStatuses);
+  console.log(`📊 [tenantService] Resumo: ${result.filter(t => t.status === "new").length} novos, ${result.filter(t => t.status === "rented").length} locatários, ${result.filter(t => t.status === "inactive").length} inativos`);
   
   return result;
 }
