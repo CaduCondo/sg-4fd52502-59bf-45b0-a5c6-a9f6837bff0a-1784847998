@@ -65,8 +65,46 @@ function fromDatabase(data: any): Tenant {
 }
 
 export async function getAllTenants(): Promise<Tenant[]> {
-  const data = await fetchAll<any>(TABLE);
-  return data.map(fromDatabase);
+  // Buscar todos os inquilinos
+  const tenantsData = await fetchAll<any>(TABLE);
+  
+  // Buscar todas as locações para calcular status correto
+  const { data: rentalsData } = await supabase
+    .from("rentals")
+    .select("tenant_id, status");
+  
+  const rentalsMap = new Map<string, string[]>();
+  (rentalsData || []).forEach((rental: any) => {
+    if (!rentalsMap.has(rental.tenant_id)) {
+      rentalsMap.set(rental.tenant_id, []);
+    }
+    rentalsMap.get(rental.tenant_id)!.push(rental.status);
+  });
+  
+  // Calcular status correto para cada inquilino
+  return tenantsData.map((data) => {
+    const tenant = fromDatabase(data);
+    const rentalStatuses = rentalsMap.get(tenant.id) || [];
+    
+    // Calcular status baseado nas locações
+    let calculatedStatus = tenant.status; // Default do banco
+    
+    if (rentalStatuses.length === 0) {
+      // Nunca teve locação - manter status original (active/inactive)
+      calculatedStatus = tenant.status || "active";
+    } else if (rentalStatuses.includes("active")) {
+      // Tem pelo menos uma locação ativa
+      calculatedStatus = "rented";
+    } else {
+      // Teve locações mas nenhuma ativa (todas cancelled/terminated)
+      calculatedStatus = "inactive";
+    }
+    
+    return {
+      ...tenant,
+      status: calculatedStatus,
+    };
+  });
 }
 
 export const getAll = getAllTenants;
