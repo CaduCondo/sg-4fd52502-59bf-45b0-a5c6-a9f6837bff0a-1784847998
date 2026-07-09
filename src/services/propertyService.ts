@@ -442,7 +442,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query MÍNIMA - SEM JOIN! Apenas properties
+    // Query MÍNIMA - SEM IMAGES! Para evitar timeout
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -456,14 +456,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         area,
         has_garage,
         value,
-        images,
         has_furniture,
         accepts_pets,
         created_at
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(30); // Apenas 30 inicialmente
+      .limit(50); // Aumentar para 50 agora que removemos images
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
@@ -495,15 +494,6 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     }
 
     const properties = data.map((item: any) => {
-      // Processar apenas PRIMEIRA imagem para performance
-      let firstImage: string[] = [];
-      if (item.images && Array.isArray(item.images) && item.images.length > 0) {
-        const img = item.images[0];
-        if (img && typeof img === 'string' && img.length > 0) {
-          firstImage = [img];
-        }
-      }
-
       // Buscar location do map
       const location = locationsMap.get(item.location_id);
       
@@ -532,13 +522,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: "available" as const,
-        images: firstImage, // Apenas primeira imagem!
+        images: [], // VAZIO! Imagens carregam só ao clicar no imóvel
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (SEM imagens)`);
 
     return properties;
   } catch (error) {
