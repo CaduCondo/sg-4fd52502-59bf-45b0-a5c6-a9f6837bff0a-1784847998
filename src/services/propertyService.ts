@@ -114,7 +114,7 @@ export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [propertyService.getAll] Buscando do banco...");
 
-    // Query otimizada - SEM IMAGES para evitar timeout!
+    // Query MÍNIMA - SEM JOIN! Apenas properties
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,18 +131,43 @@ export const getAll = async (): Promise<Property[]> => {
         accepts_pets,
         area,
         has_garage,
-        created_at,
-        locations!properties_location_id_fkey(id, name)
+        created_at
       `)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    const properties = (data || []).map((item) => {
+    if (!data || data.length === 0) {
+      console.log("⚠️ Nenhum imóvel encontrado");
+      return [];
+    }
+
+    console.log(`📊 ${data.length} imóveis retornados do banco`);
+
+    // Buscar locations separadamente para os IDs únicos
+    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+    
+    const locationsMap = new Map();
+    if (locationIds.length > 0) {
+      const { data: locationsData } = await supabase
+        .from("locations")
+        .select("id, name")
+        .in("id", locationIds);
+      
+      if (locationsData) {
+        locationsData.forEach(loc => {
+          locationsMap.set(loc.id, loc);
+        });
+      }
+    }
+
+    const properties = data.map((item) => {
+      const location = locationsMap.get(item.location_id);
+      
       return {
         id: item.id,
         locationId: item.location_id,
-        location: item.locations?.name || "",
+        location: location?.name || "",
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
         description: item.description || "",
@@ -161,7 +186,7 @@ export const getAll = async (): Promise<Property[]> => {
       };
     });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis processados (sem imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
