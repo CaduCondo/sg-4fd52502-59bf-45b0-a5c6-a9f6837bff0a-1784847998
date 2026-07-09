@@ -416,7 +416,7 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY SEM IMAGES (ultra-rápida, sem timeout)
+ * PÁGINA PÚBLICA - QUERY SEM IMAGES (ultra-rápida, zero timeout)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
@@ -490,16 +490,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [], // VAZIO - imagens carregadas separadamente
+        images: [], // 🔥 VAZIO - sem carregamento de imagens para evitar timeout
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM imagens - ultra-rápido)`);
-
-    // 🔥 AGORA carrega primeira imagem de cada imóvel em LOTES menores
-    await loadImagesInBatches(properties);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM timeout garantido)`);
 
     return properties;
   } catch (error) {
@@ -507,53 +504,3 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     throw error;
   }
 };
-
-/**
- * Helper para carregar primeira imagem de cada imóvel em lotes pequenos
- * Evita timeout processando poucos imóveis por vez
- */
-async function loadImagesInBatches(properties: Property[]): Promise<void> {
-  try {
-    const BATCH_SIZE = 10; // Processar 10 imóveis por vez
-    
-    console.log(`🖼️ Carregando imagens em lotes de ${BATCH_SIZE}...`);
-    
-    for (let i = 0; i < properties.length; i += BATCH_SIZE) {
-      const batch = properties.slice(i, i + BATCH_SIZE);
-      const ids = batch.map(p => p.id);
-      
-      // Buscar apenas primeira imagem de cada imóvel (JSONB ->> 0)
-      const { data, error } = await supabase
-        .from("properties")
-        .select("id, images")
-        .in("id", ids);
-      
-      if (error) {
-        console.error(`⚠️ Erro ao carregar imagens do lote ${i / BATCH_SIZE + 1}:`, error);
-        continue; // Continua sem imagens se falhar
-      }
-      
-      if (data) {
-        // Atribuir primeira imagem a cada property
-        const imagesMap = new Map(
-          data.map(item => {
-            const images = processImages(item.images);
-            return [item.id, images.length > 0 ? images[0] : null];
-          })
-        );
-        
-        batch.forEach(prop => {
-          const firstImage = imagesMap.get(prop.id);
-          prop.images = firstImage ? [firstImage] : [];
-        });
-      }
-      
-      console.log(`✅ Lote ${i / BATCH_SIZE + 1}/${Math.ceil(properties.length / BATCH_SIZE)} carregado`);
-    }
-    
-    console.log(`✅ Total: ${properties.filter(p => p.images.length > 0).length} imóveis com imagens`);
-  } catch (error) {
-    console.error("⚠️ Erro ao carregar imagens em lotes:", error);
-    // Não faz throw - continua sem imagens se falhar
-  }
-}
