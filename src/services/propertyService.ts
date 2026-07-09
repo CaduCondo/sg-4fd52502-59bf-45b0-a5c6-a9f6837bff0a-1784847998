@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - SEM IMAGES para evitar timeout (listagem admin)
+ * Buscar todos os imóveis - COM CAMPO IMAGES para contador (sem carregar conteúdo completo)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco SEM IMAGES (evita timeout)...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco COM CAMPO IMAGES (apenas contador)...");
 
-    // 🔥 QUERY SEM IMAGES - ultra-rápida para listagem admin
+    // 🔥 QUERY COM IMAGES - processa apenas length, não conteúdo
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,10 +131,11 @@ export const getAll = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
+        images,
         created_at
       `)
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(200);
 
     if (error) throw error;
 
@@ -148,22 +149,13 @@ export const getAll = async (): Promise<Property[]> => {
 
     const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
 
-    // 🔥 AGORA busca contagem de fotos em lote separado (rápido)
-    const propertyIds = (data || []).map(p => p.id);
-    const { data: photoCounts } = await supabase
-      .rpc('get_properties_photo_count', { property_ids: propertyIds })
-      .then(res => res)
-      .catch(() => ({ data: null })); // Fallback se RPC não existir
-
-    const photoCountMap = new Map(
-      (photoCounts || []).map((item: any) => [item.id, item.photo_count])
-    );
-
     const properties = (data || []).map((item) => {
-      const photoCount = photoCountMap.get(item.id) || 0;
+      // 🔥 Processar images APENAS para pegar o length (contador)
+      const imagesArray = processImages(item.images);
+      const photoCount = imagesArray.length;
       
-      // 🔥 Criar array vazio com length correto para o ícone funcionar
-      const images = photoCount > 0 ? new Array(photoCount).fill('') : [];
+      // Criar array vazio com length correto para o ícone funcionar
+      const images: string[] = photoCount > 0 ? new Array(photoCount).fill('') as string[] : [];
       
       return {
         id: item.id,
@@ -180,14 +172,14 @@ export const getAll = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: images, // 🔥 Array vazio com length correto (não carrega conteúdo)
+        images: images, // 🔥 Array vazio com length correto (ícone funciona)
         createdAt: item.created_at,
         address: "",
         features: [],
       };
     });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (SEM timeout)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de fotos)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
