@@ -161,7 +161,7 @@ export async function getActive(): Promise<Tenant[]> {
   const { data, error } = await supabase
     .from("tenants")
     .select("id, name, status")
-    .eq("status", "active")
+    .eq("status", "new")
     .order("name");
 
   if (error) throw error;

@@ -336,7 +336,7 @@ export default function RentalsPage() {
       await deletePaymentsByRentalId(rentalToDelete.id);
       await deleteRental(rentalToDelete.id);
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
-      await updateTenant(rentalToDelete.tenantId, { status: "active" });
+      // Status do tenant é calculado automaticamente em getAllTenants() baseado nas locações
 
       toast({
         title: "Sucesso!",
