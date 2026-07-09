@@ -114,7 +114,7 @@ export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [propertyService.getAll] Buscando do banco...");
 
-    // Query otimizada - Inclui contagem de fotos MAS NÃO as imagens!
+    // Query otimizada - SEM IMAGES para evitar timeout!
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -132,7 +132,6 @@ export const getAll = async (): Promise<Property[]> => {
         area,
         has_garage,
         created_at,
-        images,
         locations!properties_location_id_fkey(id, name)
       `)
       .order("created_at", { ascending: false });
@@ -140,9 +139,6 @@ export const getAll = async (): Promise<Property[]> => {
     if (error) throw error;
 
     const properties = (data || []).map((item) => {
-      // Processar apenas CONTADOR de imagens, não as imagens em si
-      const imageCount = item.images && Array.isArray(item.images) ? item.images.length : 0;
-      
       return {
         id: item.id,
         locationId: item.location_id,
@@ -158,14 +154,14 @@ export const getAll = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: imageCount > 0 ? new Array(imageCount).fill("placeholder") : [], // Array com placeholders
+        images: [], // VAZIO! Imagens carregam só no detalhe via getById()
         createdAt: item.created_at,
         address: "",
         features: [],
       };
     });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
