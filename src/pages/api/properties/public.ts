@@ -1,17 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
+// Validar variáveis de ambiente
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("❌ Variáveis de ambiente faltando:", {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseServiceKey
+  });
+}
+
 // Service role client - SEM RLS, queries super rápidas!
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(
+  supabaseUrl,
+  supabaseServiceKey,
   {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
   }
-);
+) : null;
 
 // Cache em memória no servidor
 let cachedData: any = null;
@@ -27,6 +38,15 @@ export default async function handler(
   }
 
   try {
+    // Validar se o cliente foi criado
+    if (!supabaseAdmin) {
+      console.error("❌ Supabase Admin client não foi inicializado");
+      return res.status(500).json({ 
+        error: "Configuração inválida",
+        message: "Service role key não configurada" 
+      });
+    }
+
     const now = Date.now();
 
     // Usar cache se válido
@@ -62,7 +82,12 @@ export default async function handler(
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
-      throw error;
+      return res.status(500).json({ 
+        error: "Erro na query do banco",
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
     }
 
     if (!data || data.length === 0) {
@@ -118,10 +143,11 @@ export default async function handler(
     
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error("❌ [API /public] Erro:", error);
+    console.error("❌ [API /public] Erro não tratado:", error);
     return res.status(500).json({ 
-      error: "Erro ao buscar imóveis",
-      message: error.message 
+      error: "Erro interno do servidor",
+      message: error?.message || "Erro desconhecido",
+      stack: process.env.NODE_ENV === "development" ? error?.stack : undefined
     });
   }
 }
