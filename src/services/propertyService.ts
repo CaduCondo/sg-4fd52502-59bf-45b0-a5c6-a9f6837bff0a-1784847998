@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - COM CAMPO IMAGES para contador (sem carregar conteúdo completo)
+ * Buscar todos os imóveis - SEM IMAGES para evitar timeout (listagem admin)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco COM CAMPO IMAGES (apenas contador)...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco SEM IMAGES (evita timeout)...");
 
-    // 🔥 QUERY COM IMAGES - processa apenas length, não conteúdo
+    // 🔥 QUERY SEM IMAGES - ultra-rápida para listagem admin
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,11 +131,10 @@ export const getAll = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
-        images,
         created_at
       `)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
 
     if (error) throw error;
 
@@ -149,37 +148,28 @@ export const getAll = async (): Promise<Property[]> => {
 
     const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
 
-    const properties = (data || []).map((item) => {
-      // 🔥 Processar images APENAS para pegar o length (contador)
-      const imagesArray = processImages(item.images);
-      const photoCount = imagesArray.length;
-      
-      // Criar array vazio com length correto para o ícone funcionar
-      const images: string[] = photoCount > 0 ? new Array(photoCount).fill('') as string[] : [];
-      
-      return {
-        id: item.id,
-        locationId: item.location_id,
-        location: locationsMap.get(item.location_id) || "",
-        propertyIdentifier: item.property_identifier || "",
-        complement: item.complement || "",
-        description: item.description || "",
-        rooms: item.rooms || 0,
-        bathrooms: item.bathrooms || 0,
-        area: item.area || 0,
-        value: item.value || 0,
-        hasGarage: item.has_garage || false,
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        status: item.status as "available" | "occupied" | "unavailable",
-        images: images, // 🔥 Array vazio com length correto (ícone funciona)
-        createdAt: item.created_at,
-        address: "",
-        features: [],
-      };
-    });
+    const properties = (data || []).map((item) => ({
+      id: item.id,
+      locationId: item.location_id,
+      location: locationsMap.get(item.location_id) || "",
+      propertyIdentifier: item.property_identifier || "",
+      complement: item.complement || "",
+      description: item.description || "",
+      rooms: item.rooms || 0,
+      bathrooms: item.bathrooms || 0,
+      area: item.area || 0,
+      value: item.value || 0,
+      hasGarage: item.has_garage || false,
+      hasFurniture: item.has_furniture || false,
+      acceptsPets: item.accepts_pets || false,
+      status: item.status as "available" | "occupied" | "unavailable",
+      images: [], // 🔥 VAZIO - sem imagens na listagem admin (evita timeout)
+      createdAt: item.created_at,
+      address: "",
+      features: [],
+    }));
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de fotos)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (SEM timeout)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
