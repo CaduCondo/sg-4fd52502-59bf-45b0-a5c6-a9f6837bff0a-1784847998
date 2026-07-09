@@ -436,34 +436,95 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS - OTIMIZADO via API Route
+ * PÁGINA PÚBLICA - Buscar imóveis disponíveis - QUERY OTIMIZADA
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Chamando API route otimizada...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Garantir que estamos no cliente
-    if (typeof window === "undefined") {
-      console.log("⚠️ [getPublicProperties] Executando no servidor, retornando array vazio");
+    // Query MÍNIMA - SEM JOIN pesado
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        value,
+        has_garage,
+        has_furniture,
+        accepts_pets,
+        area,
+        created_at
+      `)
+      .eq("status", "available")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      console.log("⚠️ Nenhum imóvel público encontrado");
       return [];
     }
 
-    // Usar URL absoluta para evitar problemas de fetch
-    const url = `${window.location.origin}/api/properties/public`;
-    console.log(`🌐 Chamando: ${url}`);
+    console.log(`📊 ${data.length} imóveis públicos retornados`);
 
-    const response = await fetch(url);
+    // Buscar locations separadamente para os IDs únicos (mais rápido que JOIN)
+    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ Erro na API route:", errorData);
-      throw new Error(errorData.message || "Erro ao buscar imóveis");
+    const locationsMap = new Map();
+    if (locationIds.length > 0) {
+      const { data: locationsData } = await supabase
+        .from("locations")
+        .select("id, name, city, neighborhood, street, number, state")
+        .in("id", locationIds);
+      
+      if (locationsData) {
+        locationsData.forEach(loc => {
+          locationsMap.set(loc.id, loc);
+        });
+      }
     }
 
-    const result = await response.json();
-    const properties = result.properties || [];
+    // Mapear propriedades
+    const properties = data.map((item) => {
+      const location = locationsMap.get(item.location_id);
+      
+      const addressParts = [];
+      if (location?.street) addressParts.push(location.street);
+      if (location?.number) addressParts.push(location.number);
+      const address = addressParts.join(", ");
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados via API`);
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: location?.name || "",
+        city: location?.city || "",
+        neighborhood: location?.neighborhood || "",
+        state: location?.state || "",
+        address: address,
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: "available" as const,
+        images: [], // SEM IMAGES na listagem (carrega no detalhe)
+        createdAt: item.created_at,
+        features: [],
+      };
+    });
+
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados`);
 
     return properties;
   } catch (error) {
