@@ -440,18 +440,95 @@ export async function getAvailable(): Promise<Property[]> {
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos via API...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Usar API route do Next.js (servidor) ao invés de Supabase client direto
-    const response = await fetch("/api/properties/public");
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+    // Query MÍNIMA - SEM IMAGES! Para evitar timeout
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        has_garage,
+        value,
+        has_furniture,
+        accepts_pets,
+        created_at
+      `)
+      .eq("status", "available")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("❌ Erro ao buscar imóveis:", error);
+      throw error;
     }
 
-    const { properties } = await response.json();
+    if (!data || data.length === 0) {
+      console.log("⚠️ Nenhum imóvel encontrado");
+      return [];
+    }
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados via API`);
+    console.log(`📊 ${data.length} imóveis retornados do banco`);
+
+    // Buscar locations separadamente para os IDs únicos
+    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+    
+    const locationsMap = new Map();
+    if (locationIds.length > 0) {
+      const { data: locationsData } = await supabase
+        .from("locations")
+        .select("id, name, city, neighborhood, street, number, state")
+        .in("id", locationIds);
+      
+      if (locationsData) {
+        locationsData.forEach(loc => {
+          locationsMap.set(loc.id, loc);
+        });
+      }
+    }
+
+    const properties = data.map((item: any) => {
+      // Buscar location do map
+      const location = locationsMap.get(item.location_id);
+      
+      // Montar endereço simplificado
+      const addressParts = [];
+      if (location?.street) addressParts.push(location.street);
+      if (location?.number) addressParts.push(location.number);
+      const address = addressParts.join(", ");
+
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: location?.name || "",
+        city: location?.city || "",
+        neighborhood: location?.neighborhood || "",
+        state: location?.state || "",
+        address: address,
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: "available" as const,
+        images: [], // VAZIO! Imagens carregam só ao clicar no imóvel
+        createdAt: item.created_at,
+        features: [],
+      } as Property;
+    });
+
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (SEM imagens)`);
 
     return properties;
   } catch (error) {
