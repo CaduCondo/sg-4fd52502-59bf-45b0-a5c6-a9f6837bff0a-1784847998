@@ -16,7 +16,7 @@ export function useTenants() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]); // Padrão: Ativo e Locatário
+  const [statusFilter, setStatusFilter] = useState<string[]>([]); // Não usar - sempre vazio
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
@@ -123,10 +123,7 @@ export function useTenants() {
       );
     }
 
-    // Filtro de status (multi-select)
-    if (statusFilter.length > 0) {
-      list = list.filter((tenant) => statusFilter.includes(tenant.status));
-    }
+    // NÃO FILTRAR POR STATUS - SEMPRE MOSTRAR TODOS
 
     // Ordenação
     if (sortBy === "alphabetical") {
@@ -134,7 +131,7 @@ export function useTenants() {
     }
 
     return list;
-  }, [tenants, searchTerm, statusFilter, sortBy]);
+  }, [tenants, searchTerm, sortBy]);
 
   return {
     tenants: filteredTenants,

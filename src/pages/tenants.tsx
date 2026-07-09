@@ -3,10 +3,9 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Eye, Pencil, Trash2, Search } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
-import { TenantFilters } from "@/components/tenants/TenantFilters";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
 import { TenantDeleteAlert } from "@/components/tenants/TenantDeleteAlert";
 import { Tenant } from "@/types";
@@ -15,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   new: { label: "Novo", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
@@ -45,7 +46,7 @@ export default function TenantsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]); // Padrão: Ativo e Locatário
+  const [statusFilter, setStatusFilter] = useState<string[]>([]); // Não usar filtro de status
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const formatDocument = useCallback((tenant: Tenant) => {
@@ -81,10 +82,7 @@ export default function TenantsPage() {
       });
     }
 
-    // Filtro de status: lista vazia = mostrar todos
-    if (statusFilter.length > 0) {
-      filtered = filtered.filter((t) => statusFilter.includes(t.status));
-    }
+    // NÃO FILTRAR POR STATUS - SEMPRE MOSTRAR TODOS
 
     if (sortBy === "alphabetical") {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -96,7 +94,7 @@ export default function TenantsPage() {
     }
 
     return filtered;
-  }, [tenants, searchTerm, statusFilter, sortBy, formatDocument, formatPhone]);
+  }, [tenants, searchTerm, sortBy, formatDocument, formatPhone]);
 
   useEffect(() => {
     const viewId = router.query.view as string;
@@ -313,26 +311,50 @@ export default function TenantsPage() {
 
         <Card>
           <CardContent>
-            <TenantFilters
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              sortBy={sortBy}
-              onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
-              totalCount={filteredTenants.length}
-            />
+            <div className="flex flex-col gap-3 py-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground font-medium">
+                  {filteredTenants.length} {filteredTenants.length === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1 lg:max-w-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome, documento, telefone ou email..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden lg:flex gap-3 ml-auto">
+                  <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => setSortBy(value)}>
+                    <SelectTrigger className="w-[140px] h-10">
+                      <SelectValue placeholder="Ordenar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alphabetical">A-Z</SelectItem>
+                      <SelectItem value="recent">Recentes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         {filteredTenants.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              {searchTerm || statusFilter.length > 0
-                ? "Nenhum inquilino encontrado com os filtros aplicados." 
+              {searchTerm
+                ? "Nenhum inquilino encontrado com o termo de busca." 
                 : "Nenhum inquilino encontrado."}
             </p>
-            {!searchTerm && statusFilter.length === 0 && (
+            {!searchTerm && (
               <Button onClick={handleCreateNew} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Inquilino
