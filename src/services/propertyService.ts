@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA (SEM IMAGES!)
+ * Buscar todos os imóveis - QUERY MINIMALISTA (SEM IMAGES, SEM JOIN!)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco (QUERY MINIMALISTA)...");
 
-    // Query otimizada - Inclui contagem de fotos MAS NÃO as imagens!
+    // 🔥 QUERY MINIMALISTA - Apenas campos essenciais, SEM JOIN, SEM IMAGES
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -122,56 +122,52 @@ export const getAll = async (): Promise<Property[]> => {
         location_id,
         property_identifier,
         complement,
-        description,
         rooms,
         bathrooms,
         value,
         status,
-        has_furniture,
-        accepts_pets,
-        area,
-        has_garage,
-        created_at,
-        images,
-        locations!properties_location_id_fkey(id, name)
+        created_at
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (error) throw error;
 
-    const properties = (data || []).map((item) => {
-      // Processar apenas CONTADOR de imagens, não as imagens em si
-      const imageCount = item.images && Array.isArray(item.images) ? item.images.length : 0;
-      
-      return {
-        id: item.id,
-        locationId: item.location_id,
-        location: item.locations?.name || "",
-        propertyIdentifier: item.property_identifier || "",
-        complement: item.complement || "",
-        description: item.description || "",
-        rooms: item.rooms || 0,
-        bathrooms: item.bathrooms || 0,
-        area: item.area || 0,
-        value: item.value || 0,
-        hasGarage: item.has_garage || false,
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        status: item.status as "available" | "occupied" | "unavailable",
-        images: imageCount > 0 ? new Array(imageCount).fill("placeholder") : [], // Array com placeholders
-        createdAt: item.created_at,
-        address: "",
-        features: [],
-      };
-    });
+    // Buscar nomes das locations em paralelo (query separada mais rápida)
+    const locationIds = [...new Set((data || []).map(p => p.location_id).filter(Boolean))];
+    
+    const { data: locationsData } = await supabase
+      .from("locations")
+      .select("id, name")
+      .in("id", locationIds);
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
+    const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
+
+    const properties = (data || []).map((item) => ({
+      id: item.id,
+      locationId: item.location_id,
+      location: locationsMap.get(item.location_id) || "",
+      propertyIdentifier: item.property_identifier || "",
+      complement: item.complement || "",
+      description: "",
+      rooms: item.rooms || 0,
+      bathrooms: item.bathrooms || 0,
+      area: 0,
+      value: item.value || 0,
+      hasGarage: false,
+      hasFurniture: false,
+      acceptsPets: false,
+      status: item.status as "available" | "occupied" | "unavailable",
+      images: [], // VAZIO - carrega sob demanda
+      createdAt: item.created_at,
+      address: "",
+      features: [],
+    }));
+
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
-
-    // Cache no localStorage (fallback)
-    cacheService.set("properties_list", properties, CACHE_DURATION);
 
     return properties;
   } catch (error) {
@@ -183,19 +179,12 @@ export const getAll = async (): Promise<Property[]> => {
       return propertiesListCache.data;
     }
 
-    // Último recurso: cache do localStorage
-    const cachedData = cacheService.get<Property[]>("properties_list");
-    if (cachedData) {
-      console.log("⚠️ Usando cache do localStorage como fallback");
-      return cachedData;
-    }
-
     throw error;
   }
 };
 
 /**
- * Buscar imóvel por ID - QUERY COMPLETA COM IMAGES
+ * Buscar imóvel por ID - QUERY COMPLETA COM IMAGES (só quando abrir detalhes)
  */
 export const getById = async (id: string): Promise<Property | null> => {
   const now = Date.now();
@@ -208,8 +197,9 @@ export const getById = async (id: string): Promise<Property | null> => {
   }
 
   try {
-    console.log(`🔄 [propertyService.getById] Buscando ${id} do banco...`);
+    console.log(`🔄 [propertyService.getById] Buscando ${id} COM IMAGENS...`);
 
+    // 🔥 Query simples SEM JOIN para evitar timeout
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -228,8 +218,7 @@ export const getById = async (id: string): Promise<Property | null> => {
         has_furniture,
         accepts_pets,
         created_at,
-        updated_at,
-        locations!properties_location_id_fkey(name)
+        updated_at
       `)
       .eq("id", id)
       .single();
@@ -237,15 +226,22 @@ export const getById = async (id: string): Promise<Property | null> => {
     if (error) throw error;
     if (!data) return null;
 
+    // Buscar location separadamente
+    const { data: locationData } = await supabase
+      .from("locations")
+      .select("name")
+      .eq("id", data.location_id)
+      .single();
+
     const property = mapDatabasePropertyFull({
       ...data,
-      location_name: data.locations?.name,
+      location_name: locationData?.name,
     });
 
     // Atualizar cache em memória
     propertyDetailsCache.set(id, { data: property, timestamp: now });
 
-    console.log(`✅ [propertyService.getById] Imóvel ${id} retornado (com imagens)`);
+    console.log(`✅ [propertyService.getById] Imóvel ${id} retornado (com ${property.images.length} imagens)`);
 
     return property;
   } catch (error) {
@@ -415,12 +411,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS
+ * PÁGINA PÚBLICA - QUERY MINIMALISTA (SEM IMAGENS INICIALMENTE)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM IMAGENS...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos (QUERY MINIMALISTA)...");
 
+    // 🔥 QUERY MINIMALISTA - Apenas campos essenciais, SEM IMAGES
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -432,49 +429,47 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         rooms,
         bathrooms,
         area,
-        has_garage,
         value,
         status,
-        images,
-        has_furniture,
-        accepts_pets,
-        created_at,
-        locations!properties_location_id_fkey(id, name, street, number, city, neighborhood, state)
+        created_at
       `)
       .eq("status", "available")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100);
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
       throw error;
     }
 
-    console.log(`📊 Dados brutos do banco:`, data?.slice(0, 2));
+    // Buscar locations em query separada (mais rápido)
+    const locationIds = [...new Set((data || []).map(p => p.location_id).filter(Boolean))];
+    
+    const { data: locationsData } = await supabase
+      .from("locations")
+      .select("id, name, city, neighborhood, state, street, number")
+      .in("id", locationIds);
+
+    const locationsMap = new Map(
+      (locationsData || []).map(loc => [loc.id, loc])
+    );
 
     const properties = (data || []).map((item) => {
-      // Processar imagens de forma otimizada
-      const allImages = processImages(item.images);
+      const location = locationsMap.get(item.location_id);
       
-      // Para performance inicial, carregar apenas primeira imagem
-      const optimizedImages = allImages.length > 0 ? [allImages[0]] : [];
-      
-      // Armazenar todas as imagens para uso posterior
-      const fullImages = allImages;
-
-      // Montar endereço completo a partir dos dados de locations
+      // Montar endereço
       const addressParts = [];
-      if (item.locations?.street) addressParts.push(item.locations.street);
-      if (item.locations?.number) addressParts.push(item.locations.number);
-      
+      if (location?.street) addressParts.push(location.street);
+      if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
 
       return {
         id: item.id,
         locationId: item.location_id,
-        location: item.locations?.name || "",
-        city: item.locations?.city || "",
-        neighborhood: item.locations?.neighborhood || "",
-        state: item.locations?.state || "",
+        location: location?.name || "",
+        city: location?.city || "",
+        neighborhood: location?.neighborhood || "",
+        state: location?.state || "",
         address: address,
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
@@ -483,22 +478,17 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         bathrooms: item.bathrooms || 0,
         area: item.area || 0,
         value: item.value || 0,
-        hasGarage: item.has_garage || false,
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
+        hasGarage: false,
+        hasFurniture: false,
+        acceptsPets: false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: optimizedImages, // Apenas primeira imagem
-        allImages: fullImages, // Todas as imagens para modal
+        images: [], // VAZIO - carrega sob demanda quando abrir o imóvel
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados`);
-    console.log(`📸 Resumo de imagens:`, properties.map(p => ({ 
-      id: p.propertyIdentifier, 
-      images: p.images.length 
-    })));
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (sem imagens)`);
 
     return properties;
   } catch (error) {
