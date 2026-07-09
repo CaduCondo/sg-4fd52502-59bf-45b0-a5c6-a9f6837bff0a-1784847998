@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - SEM IMAGES para evitar timeout
+ * Buscar todos os imóveis - COM CONTADOR DE IMAGENS (sem carregar conteúdo)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco (SEM IMAGES para evitar timeout)...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco COM CONTADOR de imagens...");
 
-    // 🔥 QUERY SEM IMAGES - ultra-rápida
+    // 🔥 QUERY COM CONTADOR de imagens (rápido, não carrega conteúdo)
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,6 +131,7 @@ export const getAll = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
+        images,
         created_at
       `)
       .order("created_at", { ascending: false })
@@ -148,28 +149,33 @@ export const getAll = async (): Promise<Property[]> => {
 
     const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
 
-    const properties = (data || []).map((item) => ({
-      id: item.id,
-      locationId: item.location_id,
-      location: locationsMap.get(item.location_id) || "",
-      propertyIdentifier: item.property_identifier || "",
-      complement: item.complement || "",
-      description: item.description || "",
-      rooms: item.rooms || 0,
-      bathrooms: item.bathrooms || 0,
-      area: item.area || 0,
-      value: item.value || 0,
-      hasGarage: item.has_garage || false,
-      hasFurniture: item.has_furniture || false,
-      acceptsPets: item.accepts_pets || false,
-      status: item.status as "available" | "occupied" | "unavailable",
-      images: [], // VAZIO - admin pode abrir detalhes para ver imagens
-      createdAt: item.created_at,
-      address: "",
-      features: [],
-    }));
+    const properties = (data || []).map((item) => {
+      // 🔥 Processar imagens para gerar array com contador
+      const images = processImages(item.images);
+      
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: locationsMap.get(item.location_id) || "",
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status as "available" | "occupied" | "unavailable",
+        images: images, // 🔥 Array completo para mostrar contador no card
+        createdAt: item.created_at,
+        address: "",
+        features: [],
+      };
+    });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (SEM imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
