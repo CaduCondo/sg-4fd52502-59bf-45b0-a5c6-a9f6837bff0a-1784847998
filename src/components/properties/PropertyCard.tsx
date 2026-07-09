@@ -128,7 +128,7 @@ export const PropertyCard = memo(function PropertyCard({
             onClick={(e) => onDeleteClick(e, property.id)}
             className="h-8 w-8 p-0 flex-shrink-0"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
           </Button>
         </div>
       </CardContent>

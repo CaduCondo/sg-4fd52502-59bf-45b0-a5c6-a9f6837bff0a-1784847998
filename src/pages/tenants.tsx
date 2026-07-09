@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Pencil, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Trash2 } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
@@ -223,26 +223,17 @@ export default function TenantsPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-600 hover:text-slate-700 hover:bg-slate-100"
-              onClick={(e) => handleEditTenant(tenant, e)}
-              title="Editar"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
               onClick={(e) => handleDelete(tenant.id, e)}
               title="Excluir"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" strokeWidth={2} />
             </Button>
           </div>
         </TableCell>
       </TableRow>
     ))
-  ), [filteredTenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleEditTenant, handleDelete]);
+  ), [filteredTenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleDelete]);
 
   if (isLoading) {
     return (
@@ -346,7 +337,7 @@ export default function TenantsPage() {
                   <TableHead>Telefone</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right">Deletar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

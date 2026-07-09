@@ -278,7 +278,7 @@ export default function PropertiesPage() {
             size="sm"
             onClick={(e) => confirmDelete(e, property.id)}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
           </Button>
         </TableCell>
       </TableRow>
@@ -375,13 +375,13 @@ export default function PropertiesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="whitespace-nowrap">Local</TableHead>
-                        <TableHead className="whitespace-nowrap">Complemento</TableHead>
-                        <TableHead className="whitespace-nowrap">Quartos</TableHead>
-                        <TableHead className="whitespace-nowrap">Banheiros</TableHead>
-                        <TableHead className="whitespace-nowrap">Aluguel</TableHead>
-                        <TableHead className="whitespace-nowrap">Status</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
+                        <TableHead>Identificador</TableHead>
+                        <TableHead>Endereço</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Quartos</TableHead>
+                        <TableHead>Banheiros</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Deletar</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
