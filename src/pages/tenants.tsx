@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Eye, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, LayoutGrid, List, Eye, Pencil, Trash2 } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
@@ -15,8 +15,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   new: { label: "Novo", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
