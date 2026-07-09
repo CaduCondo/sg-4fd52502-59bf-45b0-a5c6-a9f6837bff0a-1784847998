@@ -158,13 +158,44 @@ export async function deleteTenant(id: string): Promise<void> {
 export const remove = deleteTenant;
 
 export async function getActive(): Promise<Tenant[]> {
-  const { data, error } = await supabase
+  console.log("🔄 [tenantService.getActive] Buscando inquilinos disponíveis (sem locações ativas)...");
+  
+  // Buscar todos os inquilinos
+  const { data: tenantsData, error: tenantsError } = await supabase
     .from("tenants")
     .select("id, name, status")
-    .eq("status", "new")
     .order("name");
 
-  if (error) throw error;
+  if (tenantsError) {
+    console.error("❌ [tenantService.getActive] Erro ao buscar inquilinos:", tenantsError);
+    throw tenantsError;
+  }
 
-  return (data || []) as unknown as Tenant[];
+  console.log(`📊 [tenantService.getActive] ${(tenantsData || []).length} inquilinos encontrados`);
+  
+  // Buscar todas as locações ativas para filtrar inquilinos disponíveis
+  const { data: rentalsData, error: rentalsError } = await supabase
+    .from("rentals")
+    .select("tenant_id, status")
+    .eq("status", "active") as any;
+  
+  if (rentalsError) {
+    console.error("❌ [tenantService.getActive] Erro ao buscar locações:", rentalsError);
+  }
+  
+  // Criar set de inquilinos que TÊM locações ativas
+  const tenantsWithActiveRentals = new Set(
+    (rentalsData || []).map((rental: any) => rental.tenant_id)
+  );
+  
+  console.log(`📊 [tenantService.getActive] ${tenantsWithActiveRentals.size} inquilinos com locações ativas`);
+  
+  // Retornar apenas inquilinos que NÃO têm locações ativas (disponíveis)
+  const availableTenants = (tenantsData || []).filter(
+    (tenant: any) => !tenantsWithActiveRentals.has(tenant.id)
+  );
+  
+  console.log(`✅ [tenantService.getActive] ${availableTenants.length} inquilinos disponíveis (sem locações ativas)`);
+  
+  return availableTenants as unknown as Tenant[];
 }
