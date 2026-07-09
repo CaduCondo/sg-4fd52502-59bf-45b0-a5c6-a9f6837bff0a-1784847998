@@ -416,13 +416,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY OTIMIZADA SEM IMAGES (carga inicial rápida)
+ * PÁGINA PÚBLICA - QUERY COM PRIMEIRA IMAGEM APENAS (mais eficiente)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos (SEM IMAGES para evitar timeout)...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM PRIMEIRA IMAGEM...");
 
-    // 🔥 QUERY SEM IMAGES - Carga inicial ultra-rápida
+    // 🔥 QUERY OTIMIZADA - pega apenas primeira imagem usando JSONB operator
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -439,11 +439,12 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
+        images,
         created_at
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(50);
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
@@ -471,6 +472,10 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
 
+      // 🔥 Pegar apenas PRIMEIRA imagem (mais eficiente)
+      const allImages = processImages(item.images);
+      const firstImage = allImages.length > 0 ? [allImages[0]] : [];
+
       return {
         id: item.id,
         locationId: item.location_id,
@@ -490,16 +495,13 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [], // VAZIO inicialmente - carrega sob demanda
+        images: firstImage, // 🔥 Apenas primeira imagem para capa do card
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM imagens - carga rápida)`);
-
-    // 🔥 AGORA carrega primeira imagem de cada imóvel em PARALELO (batch)
-    await loadFirstImagesInBatch(properties);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (com primeira imagem)`);
 
     return properties;
   } catch (error) {
@@ -507,40 +509,3 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     throw error;
   }
 };
-
-/**
- * Helper para carregar primeira imagem de cada imóvel em lotes (evita timeout)
- */
-async function loadFirstImagesInBatch(properties: Property[]): Promise<void> {
-  try {
-    const BATCH_SIZE = 20; // Processar 20 imóveis por vez
-    
-    for (let i = 0; i < properties.length; i += BATCH_SIZE) {
-      const batch = properties.slice(i, i + BATCH_SIZE);
-      const ids = batch.map(p => p.id);
-      
-      // Buscar apenas primeira imagem de cada imóvel
-      const { data } = await supabase
-        .from("properties")
-        .select("id, images")
-        .in("id", ids);
-      
-      if (data) {
-        const imagesMap = new Map(
-          data.map(item => [item.id, processImages(item.images)])
-        );
-        
-        // Atribuir primeira imagem a cada property
-        batch.forEach(prop => {
-          const images = imagesMap.get(prop.id) || [];
-          prop.images = images.length > 0 ? [images[0]] : []; // Apenas primeira imagem
-        });
-      }
-    }
-    
-    console.log(`✅ Carregadas primeiras imagens de ${properties.length} imóveis`);
-  } catch (error) {
-    console.error("⚠️ Erro ao carregar imagens, continuando sem elas:", error);
-    // Não faz throw - continua sem imagens se falhar
-  }
-}
