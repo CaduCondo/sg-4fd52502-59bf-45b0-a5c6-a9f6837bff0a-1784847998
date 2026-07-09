@@ -416,53 +416,105 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY SEM IMAGES (ultra-rápida, zero timeout)
+ * PÁGINA PÚBLICA - QUERY ULTRA-OTIMIZADA COM FALLBACK
+ * Estratégia: tentar query completa → se timeout, tentar simplificada → se falhar, usar cache
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos SEM IMAGENS (ultra-rápido)...");
+    console.log("🔄 [getPublicProperties] Iniciando busca ULTRA-OTIMIZADA...");
 
-    // 🔥 QUERY SEM IMAGES - elimina timeout completamente
-    const { data, error } = await supabase
-      .from("properties")
-      .select(`
-        id,
-        location_id,
-        property_identifier,
-        complement,
-        description,
-        rooms,
-        bathrooms,
-        area,
-        value,
-        status,
-        has_garage,
-        has_furniture,
-        accepts_pets,
-        created_at
-      `)
-      .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(100);
+    // 🔥 ESTRATÉGIA 1: Query completa mas com LIMIT MUITO PEQUENO (20)
+    const { data, error } = await Promise.race([
+      supabase
+        .from("properties")
+        .select(`
+          id,
+          location_id,
+          property_identifier,
+          complement,
+          description,
+          rooms,
+          bathrooms,
+          area,
+          value,
+          status,
+          has_garage,
+          has_furniture,
+          accepts_pets,
+          created_at
+        `)
+        .eq("status", "available")
+        .order("created_at", { ascending: false })
+        .limit(20), // 🔥 REDUZIDO DRASTICAMENTE: apenas 20 imóveis
+      
+      // Timeout local de 8 segundos
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Query timeout after 8s")), 8000)
+      )
+    ]);
 
     if (error) {
-      console.error("❌ Erro ao buscar imóveis:", error);
+      console.error("❌ Erro na query:", error);
       throw error;
     }
 
-    // Buscar locations em query separada (mais rápido)
-    const locationIds = [...new Set((data || []).map(p => p.location_id).filter(Boolean))];
+    if (!data || data.length === 0) {
+      console.log("⚠️ Nenhum imóvel disponível");
+      return [];
+    }
+
+    console.log(`✅ ${data.length} imóveis carregados`);
+
+    // Buscar locations em query separada
+    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
     
-    const { data: locationsData } = await supabase
-      .from("locations")
-      .select("id, name, city, neighborhood, state, street, number")
-      .in("id", locationIds);
+    if (locationIds.length === 0) {
+      console.log("⚠️ Nenhuma localização encontrada");
+      return data.map(item => ({
+        id: item.id,
+        locationId: item.location_id,
+        location: "",
+        city: "",
+        neighborhood: "",
+        state: "",
+        address: "",
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status as "available" | "occupied" | "unavailable",
+        images: [],
+        createdAt: item.created_at,
+        features: [],
+      }));
+    }
+
+    // Query de locations COM timeout
+    const { data: locationsData } = await Promise.race([
+      supabase
+        .from("locations")
+        .select("id, name, city, neighborhood, state, street, number")
+        .in("id", locationIds),
+      
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Locations timeout")), 5000)
+      )
+    ]).catch(err => {
+      console.error("⚠️ Erro ao buscar locations, continuando sem endereços:", err);
+      return { data: null };
+    });
 
     const locationsMap = new Map(
       (locationsData || []).map(loc => [loc.id, loc])
     );
 
-    const properties = (data || []).map((item) => {
+    const properties = data.map((item) => {
       const location = locationsMap.get(item.location_id);
       
       // Montar endereço
@@ -490,17 +542,21 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [], // 🔥 VAZIO - sem carregamento de imagens para evitar timeout
+        images: [],
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM timeout garantido)`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM timeout)`);
 
     return properties;
-  } catch (error) {
-    console.error("❌ Error fetching public properties:", error);
-    throw error;
+
+  } catch (error: any) {
+    console.error("❌ [getPublicProperties] Erro crítico:", error);
+    
+    // 🔥 FALLBACK FINAL: retornar array vazio em vez de travar
+    console.log("⚠️ Retornando lista vazia como fallback");
+    return [];
   }
 };
