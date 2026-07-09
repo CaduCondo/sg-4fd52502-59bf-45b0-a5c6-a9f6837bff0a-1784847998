@@ -123,7 +123,10 @@ export function useTenants() {
       );
     }
 
-    // NÃO FILTRAR POR STATUS - SEMPRE MOSTRAR TODOS
+    // Filtrar por status se houver filtro selecionado
+    if (statusFilter.length > 0) {
+      list = list.filter((t) => statusFilter.includes(t.status));
+    }
 
     // Ordenação
     if (sortBy === "alphabetical") {
@@ -131,7 +134,7 @@ export function useTenants() {
     }
 
     return list;
-  }, [tenants, searchTerm, sortBy]);
+  }, [tenants, searchTerm, statusFilter, sortBy]);
 
   return {
     tenants: filteredTenants,

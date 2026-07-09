@@ -64,7 +64,7 @@ export const TenantFilters = memo(function TenantFilters({
         
         <div className="hidden lg:flex gap-3">
           <div className="w-[180px] text-sm font-medium text-foreground">Status:</div>
-          <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
+          <div className="w-[140px] text-sm font-medium text-foreground">Ordenar:</div>
         </div>
       </div>
 

@@ -49,7 +49,7 @@ const INITIAL_FORM_STATE: FormState = {
   neighborhood: "",
   city: "",
   state: "",
-  status: "active",
+  status: "new",
 };
 
 const PersonalDataSection = memo(function PersonalDataSection({
@@ -338,7 +338,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
         neighborhood: tenant.neighborhood || "",
         city: tenant.city || "",
         state: tenant.state || "",
-        status: tenant.status || "active",
+        status: tenant.status || "new",
       });
       setDocumentType(docType);
     } else {
