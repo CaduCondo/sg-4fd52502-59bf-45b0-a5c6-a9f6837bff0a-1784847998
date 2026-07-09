@@ -37,7 +37,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { roleMenuPermissionService } from "@/services/roleMenuPermissionService";
 import { ConnectionStatusToast } from "./ConnectionStatusToast";
-import { EnvironmentBadge } from "@/components/EnvironmentBadge";
 
 interface LayoutProps {
   children: ReactNode;
@@ -209,8 +208,6 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 overflow-x-hidden">
-      <EnvironmentBadge />
-      
       {/* Scroll Progress Bar */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600 origin-left z-50"
