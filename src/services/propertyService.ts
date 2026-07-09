@@ -436,109 +436,25 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS - OTIMIZADO
+ * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS - OTIMIZADO via API Route
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
+    console.log("🔄 [getPublicProperties] Chamando API route otimizada...");
 
-    // Query com IMAGES incluído (mas vamos processar só a primeira)
-    const { data, error } = await supabase
-      .from("properties")
-      .select(`
-        id,
-        location_id,
-        property_identifier,
-        complement,
-        description,
-        rooms,
-        bathrooms,
-        area,
-        has_garage,
-        value,
-        images,
-        has_furniture,
-        accepts_pets,
-        created_at
-      `)
-      .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error("❌ Erro ao buscar imóveis:", error);
-      throw error;
-    }
-
-    if (!data || data.length === 0) {
-      console.log("⚠️ Nenhum imóvel encontrado");
-      return [];
-    }
-
-    console.log(`📊 ${data.length} imóveis retornados do banco`);
-
-    // Buscar locations separadamente para os IDs únicos
-    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+    // Chamar API route que usa service role (bypassa RLS, super rápido!)
+    const response = await fetch("/api/properties/public");
     
-    const locationsMap = new Map();
-    if (locationIds.length > 0) {
-      const { data: locationsData } = await supabase
-        .from("locations")
-        .select("id, name, city, neighborhood, street, number, state")
-        .in("id", locationIds);
-      
-      if (locationsData) {
-        locationsData.forEach(loc => {
-          locationsMap.set(loc.id, loc);
-        });
-      }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ Erro na API route:", errorData);
+      throw new Error(errorData.message || "Erro ao buscar imóveis");
     }
 
-    const properties = data.map((item: any) => {
-      // Buscar location do map
-      const location = locationsMap.get(item.location_id);
-      
-      // Montar endereço simplificado
-      const addressParts = [];
-      if (location?.street) addressParts.push(location.street);
-      if (location?.number) addressParts.push(location.number);
-      const address = addressParts.join(", ");
+    const result = await response.json();
+    const properties = result.properties || [];
 
-      // Processar APENAS A PRIMEIRA IMAGEM (otimização de performance)
-      let firstImage: string[] = [];
-      if (item.images && Array.isArray(item.images) && item.images.length > 0) {
-        const img = item.images[0];
-        if (img && typeof img === 'string' && img.length > 0) {
-          firstImage = [img]; // Array com apenas UMA imagem
-        }
-      }
-
-      return {
-        id: item.id,
-        locationId: item.location_id,
-        location: location?.name || "",
-        city: location?.city || "",
-        neighborhood: location?.neighborhood || "",
-        state: location?.state || "",
-        address: address,
-        propertyIdentifier: item.property_identifier || "",
-        complement: item.complement || "",
-        description: item.description || "",
-        rooms: item.rooms || 0,
-        bathrooms: item.bathrooms || 0,
-        area: item.area || 0,
-        value: item.value || 0,
-        hasGarage: item.has_garage || false,
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        status: "available" as const,
-        images: firstImage, // APENAS primeira imagem!
-        createdAt: item.created_at,
-        features: [],
-      } as Property;
-    });
-
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados (primeira imagem de cada)`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados via API`);
 
     return properties;
   } catch (error) {
