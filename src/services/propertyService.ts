@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - QUERY OTIMIZADA COM IMAGENS
+ * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA (SEM IMAGES!)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -114,7 +114,7 @@ export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [propertyService.getAll] Buscando do banco...");
 
-    // Query incluindo IMAGES
+    // Query otimizada - Inclui contagem de fotos MAS NÃO as imagens!
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -131,44 +131,22 @@ export const getAll = async (): Promise<Property[]> => {
         accepts_pets,
         area,
         has_garage,
+        created_at,
         images,
-        created_at
+        locations!properties_location_id_fkey(id, name)
       `)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    if (!data || data.length === 0) {
-      console.log("⚠️ Nenhum imóvel encontrado");
-      return [];
-    }
-
-    console.log(`📊 ${data.length} imóveis retornados do banco`);
-
-    // Buscar locations separadamente para os IDs únicos
-    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
-    
-    const locationsMap = new Map();
-    if (locationIds.length > 0) {
-      const { data: locationsData } = await supabase
-        .from("locations")
-        .select("id, name")
-        .in("id", locationIds);
-      
-      if (locationsData) {
-        locationsData.forEach(loc => {
-          locationsMap.set(loc.id, loc);
-        });
-      }
-    }
-
-    const properties = data.map((item) => {
-      const location = locationsMap.get(item.location_id);
+    const properties = (data || []).map((item) => {
+      // Processar apenas CONTADOR de imagens, não as imagens em si
+      const imageCount = item.images && Array.isArray(item.images) ? item.images.length : 0;
       
       return {
         id: item.id,
         locationId: item.location_id,
-        location: location?.name || "",
+        location: item.locations?.name || "",
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
         description: item.description || "",
@@ -180,14 +158,14 @@ export const getAll = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images), // PROCESSAR IMAGENS!
+        images: imageCount > 0 ? new Array(imageCount).fill("placeholder") : [], // Array com placeholders
         createdAt: item.created_at,
         address: "",
         features: [],
       };
     });
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis processados (com imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (com contador de imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
@@ -437,32 +415,90 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS via API Route otimizada
+ * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Chamando API route otimizada...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM IMAGENS...");
 
-    // Construir URL absoluta apenas no cliente
-    const baseUrl = typeof window !== "undefined" 
-      ? window.location.origin 
-      : process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    
-    const url = `${baseUrl}/api/properties/public`;
-    console.log(`🌐 Chamando: ${url}`);
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        has_garage,
+        value,
+        status,
+        images,
+        has_furniture,
+        accepts_pets,
+        created_at,
+        locations!properties_location_id_fkey(id, name, street, number, city, neighborhood, state)
+      `)
+      .eq("status", "available")
+      .order("created_at", { ascending: false });
 
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ Erro na API route:", errorData);
-      throw new Error(errorData.message || "Erro ao buscar imóveis");
+    if (error) {
+      console.error("❌ Erro ao buscar imóveis:", error);
+      throw error;
     }
 
-    const result = await response.json();
-    const properties = result.properties || [];
+    console.log(`📊 Dados brutos do banco:`, data?.slice(0, 2));
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados via API`);
+    const properties = (data || []).map((item) => {
+      // Processar imagens de forma otimizada
+      const allImages = processImages(item.images);
+      
+      // Para performance inicial, carregar apenas primeira imagem
+      const optimizedImages = allImages.length > 0 ? [allImages[0]] : [];
+      
+      // Armazenar todas as imagens para uso posterior
+      const fullImages = allImages;
+
+      // Montar endereço completo a partir dos dados de locations
+      const addressParts = [];
+      if (item.locations?.street) addressParts.push(item.locations.street);
+      if (item.locations?.number) addressParts.push(item.locations.number);
+      
+      const address = addressParts.join(", ");
+
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: item.locations?.name || "",
+        city: item.locations?.city || "",
+        neighborhood: item.locations?.neighborhood || "",
+        state: item.locations?.state || "",
+        address: address,
+        propertyIdentifier: item.property_identifier || "",
+        complement: item.complement || "",
+        description: item.description || "",
+        rooms: item.rooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area || 0,
+        value: item.value || 0,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status as "available" | "occupied" | "unavailable",
+        images: optimizedImages, // Apenas primeira imagem
+        allImages: fullImages, // Todas as imagens para modal
+        createdAt: item.created_at,
+        features: [],
+      } as Property;
+    });
+
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados`);
+    console.log(`📸 Resumo de imagens:`, properties.map(p => ({ 
+      id: p.propertyIdentifier, 
+      images: p.images.length 
+    })));
 
     return properties;
   } catch (error) {
