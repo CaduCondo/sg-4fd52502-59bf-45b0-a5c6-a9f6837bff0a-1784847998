@@ -133,14 +133,12 @@ export const getAll = async (): Promise<Property[]> => {
         accepts_pets,
         image_count,
         created_at
-      `)
-      .order("created_at", { ascending: false })
-      .limit(500);
+      `) as any; // Type assertion temporária até regenerar tipos
 
     if (error) throw error;
 
     // Buscar nomes das locations em paralelo (query separada mais rápida)
-    const locationIds = [...new Set((data || []).map(p => p.location_id).filter(Boolean))];
+    const locationIds = [...new Set((data || []).map((p: any) => p.location_id).filter(Boolean))];
     
     const { data: locationsData } = await supabase
       .from("locations")
@@ -149,7 +147,7 @@ export const getAll = async (): Promise<Property[]> => {
 
     const locationsMap = new Map((locationsData || []).map(loc => [loc.id, loc.name]));
 
-    const properties = (data || []).map((item) => {
+    const properties = (data || []).map((item: any) => {
       // 🔥 Criar array vazio com length correto baseado em image_count
       const imageCount = item.image_count || 0;
       const images: string[] = imageCount > 0 ? new Array(imageCount).fill('') : [];
