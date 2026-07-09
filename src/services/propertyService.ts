@@ -415,14 +415,18 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS
+ * PÁGINA PÚBLICA - Buscar imóveis COM IMAGENS - OTIMIZADO
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM IMAGENS...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
+    // Query ULTRA-OTIMIZADA - apenas campos essenciais
     const { data, error } = await supabase
-      .from("properties")
+      .rpc('get_public_properties_fast', {}, {
+        // Timeout de 10 segundos
+        head: false,
+      })
       .select(`
         id,
         location_id,
@@ -434,38 +438,42 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         area,
         has_garage,
         value,
-        status,
         images,
         has_furniture,
         accepts_pets,
         created_at,
-        locations!properties_location_id_fkey(id, name, street, number, city, neighborhood, state)
+        locations!inner(name, city, neighborhood, street, number, state)
       `)
       .eq("status", "available")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100); // Limitar a 100 imóveis para evitar timeout
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
       throw error;
     }
 
-    console.log(`📊 Dados brutos do banco:`, data?.slice(0, 2));
+    if (!data || data.length === 0) {
+      console.log("⚠️ Nenhum imóvel encontrado");
+      return [];
+    }
 
-    const properties = (data || []).map((item) => {
-      // Processar imagens de forma otimizada
-      const allImages = processImages(item.images);
-      
-      // Para performance inicial, carregar apenas primeira imagem
-      const optimizedImages = allImages.length > 0 ? [allImages[0]] : [];
-      
-      // Armazenar todas as imagens para uso posterior
-      const fullImages = allImages;
+    console.log(`📊 ${data.length} imóveis retornados do banco`);
 
-      // Montar endereço completo a partir dos dados de locations
+    const properties = data.map((item: any) => {
+      // Processar apenas PRIMEIRA imagem para performance
+      let firstImage: string[] = [];
+      if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        const img = item.images[0];
+        if (img && typeof img === 'string' && img.length > 0) {
+          firstImage = [img];
+        }
+      }
+
+      // Montar endereço simplificado
       const addressParts = [];
       if (item.locations?.street) addressParts.push(item.locations.street);
       if (item.locations?.number) addressParts.push(item.locations.number);
-      
       const address = addressParts.join(", ");
 
       return {
@@ -486,19 +494,14 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasGarage: item.has_garage || false,
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
-        status: item.status as "available" | "occupied" | "unavailable",
-        images: optimizedImages, // Apenas primeira imagem
-        allImages: fullImages, // Todas as imagens para modal
+        status: "available" as const,
+        images: firstImage, // Apenas primeira imagem!
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados`);
-    console.log(`📸 Resumo de imagens:`, properties.map(p => ({ 
-      id: p.propertyIdentifier, 
-      images: p.images.length 
-    })));
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis processados`);
 
     return properties;
   } catch (error) {
