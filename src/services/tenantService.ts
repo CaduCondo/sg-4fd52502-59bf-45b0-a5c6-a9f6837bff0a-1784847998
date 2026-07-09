@@ -65,14 +65,24 @@ function fromDatabase(data: any): Tenant {
 }
 
 export async function getAllTenants(): Promise<Tenant[]> {
+  console.log("🔄 [tenantService] Buscando inquilinos e suas locações...");
+  
   // Buscar todos os inquilinos
   const tenantsData = await fetchAll<any>(TABLE);
+  console.log(`📊 [tenantService] ${tenantsData.length} inquilinos encontrados`);
   
   // Buscar todas as locações para calcular status correto
-  const { data: rentalsData } = await supabase
+  const { data: rentalsData, error: rentalsError } = await supabase
     .from("rentals")
-    .select("tenant_id, status");
+    .select("tenant_id, status") as any;
   
+  if (rentalsError) {
+    console.error("❌ [tenantService] Erro ao buscar locações:", rentalsError);
+  } else {
+    console.log(`📊 [tenantService] ${(rentalsData || []).length} locações encontradas`);
+  }
+  
+  // Criar mapa de locações por inquilino
   const rentalsMap = new Map<string, string[]>();
   (rentalsData || []).forEach((rental: any) => {
     if (!rentalsMap.has(rental.tenant_id)) {
@@ -81,10 +91,17 @@ export async function getAllTenants(): Promise<Tenant[]> {
     rentalsMap.get(rental.tenant_id)!.push(rental.status);
   });
   
+  console.log(`📊 [tenantService] Mapa de locações criado com ${rentalsMap.size} inquilinos`);
+  
   // Calcular status correto para cada inquilino
-  return tenantsData.map((data) => {
+  const result = tenantsData.map((data) => {
     const tenant = fromDatabase(data);
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
+    
+    // Log para debug
+    if (rentalStatuses.length > 0) {
+      console.log(`👤 [tenantService] Inquilino ${tenant.name} (${tenant.id}): ${rentalStatuses.length} locações [${rentalStatuses.join(", ")}]`);
+    }
     
     // Calcular status baseado nas locações
     let calculatedStatus: "new" | "active" | "inactive" | "rented" | "late" | "debt";
@@ -92,12 +109,15 @@ export async function getAllTenants(): Promise<Tenant[]> {
     if (rentalStatuses.length === 0) {
       // Nunca teve contrato - status "new"
       calculatedStatus = "new";
+      console.log(`  ✨ [tenantService] ${tenant.name} → Novo (sem contratos)`);
     } else if (rentalStatuses.includes("active")) {
       // Tem pelo menos um contrato ativo - status "rented" (Locatário)
       calculatedStatus = "rented";
+      console.log(`  🏠 [tenantService] ${tenant.name} → Locatário (contrato ativo)`);
     } else {
       // Teve contratos mas nenhum ativo (todos cancelled/terminated) - status "inactive"
       calculatedStatus = "inactive";
+      console.log(`  ⚫ [tenantService] ${tenant.name} → Inativo (sem contratos ativos)`);
     }
     
     return {
@@ -105,6 +125,10 @@ export async function getAllTenants(): Promise<Tenant[]> {
       status: calculatedStatus,
     };
   });
+  
+  console.log(`✅ [tenantService] Status calculados: ${result.filter(t => t.status === "new").length} novos, ${result.filter(t => t.status === "rented").length} locatários, ${result.filter(t => t.status === "inactive").length} inativos`);
+  
+  return result;
 }
 
 export const getAll = getAllTenants;
