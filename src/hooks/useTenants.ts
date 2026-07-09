@@ -16,7 +16,7 @@ export function useTenants() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]); // Vazio = mostrar todos
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
