@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Property } from "@/types";
 import type { SortOption } from "@/components/public/SortSelector";
+import { propertyService } from "@/services";
 
 interface UsePublicPropertiesOptions {
   location?: string;
@@ -78,16 +79,10 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
           return;
         }
 
-        console.log("🔄 [usePublicProperties] Carregando imóveis públicos via API...");
+        console.log("🔄 [usePublicProperties] Carregando imóveis públicos COM IMAGENS...");
 
-        // 🔥 CORREÇÃO: Usar API route em vez de query direta no Supabase
-        const response = await fetch("/api/properties/available");
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        // 🔥 VOLTA PARA SERVICE DIRETO (mais confiável)
+        const data = await propertyService.getPublicProperties();
 
         // Atualizar cache
         cachedProperties = data;
