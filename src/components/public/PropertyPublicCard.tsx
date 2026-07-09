@@ -67,7 +67,13 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
 
   const displayTitle = property.location || property.propertyIdentifier || "Localização não informada";
   
-  // Formatar endereço completo
+  // Formatar apenas cidade e bairro para o card (não o endereço completo)
+  const locationParts = [];
+  if (property.neighborhood) locationParts.push(property.neighborhood);
+  if (property.city) locationParts.push(property.city);
+  const locationDisplay = locationParts.join(", ") || displayTitle;
+  
+  // Endereço completo só para o dialog de detalhes
   const addressParts = [];
   if (property.address) addressParts.push(property.address);
   if (property.complement && property.complement.trim() !== "") addressParts.push(property.complement);
@@ -115,9 +121,10 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
                 
-                {fullAddress && (
+                {/* Mostrar apenas cidade e bairro no card */}
+                {locationDisplay && locationDisplay !== displayTitle && (
                   <p className="text-sm text-slate-600 mt-1">
-                    {fullAddress}
+                    {locationDisplay}
                   </p>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
@@ -11,11 +11,11 @@ import { SortSelector } from "@/components/public/SortSelector";
 import { usePublicProperties } from "@/hooks/usePublicProperties";
 import { SortOption } from "@/components/public/SortSelector";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Home, Building2, Phone, Mail, MapPin, ChevronDown } from "lucide-react";
+import { Search, Home, Building2, Phone, Mail, MapPin, Loader2 } from "lucide-react";
 import { siteConfig } from "@/services/configService";
 
-const ITEMS_PER_PAGE = 9;
+const INITIAL_LOAD = 6; // 2 linhas × 3 cards
+const LOAD_MORE = 3; // Carrega 3 cards por vez (1 linha)
 
 export default function PublicHomePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -23,7 +23,11 @@ export default function PublicHomePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("random");
-  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
+  const [displayCount, setDisplayCount] = useState(INITIAL_LOAD);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const { properties, loading, error } = usePublicProperties({
     location: selectedLocation,
@@ -41,7 +45,7 @@ export default function PublicHomePage() {
 
   // Reset display count when filters change
   useEffect(() => {
-    setDisplayCount(ITEMS_PER_PAGE);
+    setDisplayCount(INITIAL_LOAD);
   }, [selectedLocation, debouncedSearchTerm, sortBy]);
 
   // Filter properties by search term (memoized)
@@ -87,9 +91,41 @@ export default function PublicHomePage() {
     return Array.from(locationMap.values());
   }, [properties]);
 
-  const handleLoadMore = useCallback(() => {
-    setDisplayCount((prev) => prev + ITEMS_PER_PAGE);
-  }, []);
+  // Infinite scroll com Intersection Observer
+  useEffect(() => {
+    if (loading || !hasMore) return;
+
+    const loadMore = () => {
+      if (isLoadingMore) return;
+      
+      setIsLoadingMore(true);
+      
+      // Simular pequeno delay para UX suave
+      setTimeout(() => {
+        setDisplayCount(prev => prev + LOAD_MORE);
+        setIsLoadingMore(false);
+      }, 300);
+    };
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loading, hasMore, isLoadingMore]);
 
   return (
     <>
@@ -138,8 +174,8 @@ export default function PublicHomePage() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-5 text-base rounded-full shadow-2xl border-0" />
-
+                  className="pl-12 pr-4 py-5 text-base rounded-full shadow-2xl border-0"
+                />
               </div>
             </div>
           </div>
@@ -152,8 +188,8 @@ export default function PublicHomePage() {
               <LocationFilter
                 locations={uniqueLocations}
                 selectedLocation={selectedLocation}
-                onLocationChange={setSelectedLocation} />
-
+                onLocationChange={setSelectedLocation}
+              />
               
               <div className="flex gap-3 items-center">
                 <SortSelector sortBy={sortBy} onSortChange={setSortBy} />
@@ -167,8 +203,8 @@ export default function PublicHomePage() {
         <section className="py-12">
           <div className="container mx-auto px-4">
             {loading ? (
-              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" : "space-y-6"}>
-                {[...Array(12)].map((_, i) => (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) => (
                   <PropertyCardSkeleton key={i} />
                 ))}
               </div>
@@ -188,8 +224,8 @@ export default function PublicHomePage() {
                   Tentar novamente
                 </button>
               </div>
-            ) : filteredProperties.length === 0 ?
-            <div className="text-center py-20">
+            ) : filteredProperties.length === 0 ? (
+              <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -199,9 +235,9 @@ export default function PublicHomePage() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div> :
-
-            <>
+              </div>
+            ) : (
+              <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -216,20 +252,45 @@ export default function PublicHomePage() {
                 </div>
 
                 {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {displayedProperties.map((property, index) => {
-                      const type = property.description?.includes("Comercial") ? "Comercial" : "Residencial";
-                      
-                      return (
+                  <>
+                    {/* Grid 3 colunas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {displayedProperties.map((property, index) => (
                         <PropertyPublicCard
                           key={property.id}
                           property={property}
                           priority={index < 6}
                           index={index}
                         />
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+
+                    {/* Sentinel para infinite scroll */}
+                    {hasMore && (
+                      <div ref={sentinelRef} className="flex justify-center mt-12 py-8">
+                        <div className="flex items-center gap-3 text-slate-500">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <span className="text-sm font-medium">Carregando mais imóveis...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Indicador de progresso */}
+                    {displayedProperties.length < filteredProperties.length && (
+                      <div className="text-center mt-6 text-slate-600 text-sm">
+                        Mostrando {displayedProperties.length} de {filteredProperties.length} imóveis
+                      </div>
+                    )}
+
+                    {/* Mensagem final quando todos carregados */}
+                    {!hasMore && filteredProperties.length > INITIAL_LOAD && (
+                      <div className="text-center mt-12 py-6 border-t">
+                        <p className="text-slate-500 text-sm">
+                          ✨ Você viu todos os {filteredProperties.length} imóveis disponíveis
+                        </p>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="space-y-6">
                     {displayedProperties.map((property) => (
@@ -237,29 +298,8 @@ export default function PublicHomePage() {
                     ))}
                   </div>
                 )}
-
-                {/* Load More Button */}
-                {hasMore &&
-              <div className="flex justify-center mt-12">
-                    <Button
-                  onClick={handleLoadMore}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-lg transition-all hover:shadow-xl">
-
-                      <ChevronDown className="h-5 w-5 mr-2" />
-                      Mostrar Mais Imóveis
-                    </Button>
-                  </div>
-              }
-
-                {/* Show count indicator */}
-                {displayedProperties.length < filteredProperties.length &&
-              <div className="text-center mt-6 text-slate-600">
-                    Mostrando {displayedProperties.length} de {filteredProperties.length} imóveis
-                  </div>
-              }
               </>
-            }
+            )}
           </div>
         </section>
 
@@ -288,15 +328,15 @@ export default function PublicHomePage() {
                 <div className="space-y-3">
                   <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
                   <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
@@ -320,6 +360,6 @@ export default function PublicHomePage() {
         {/* WhatsApp Floating Button */}
         <WhatsAppButton />
       </div>
-    </>);
-
+    </>
+  );
 }
