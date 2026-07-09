@@ -17,12 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
-  new: { label: "Novo", variant: "outline" as const, className: "bg-blue-50 text-blue-700 border-blue-200" },
-  active: { label: "Ativo", variant: "outline" as const, className: "bg-blue-50 text-blue-700 border-blue-200" },
-  inactive: { label: "Inativo", variant: "secondary" as const, className: "bg-slate-100 text-slate-700" },
-  rented: { label: "Locatário", variant: "outline" as const, className: "bg-green-50 text-green-700 border-green-200" },
-  late: { label: "Inadimplente", variant: "destructive" as const, className: "bg-red-50 text-red-700 border-red-200" },
-  debt: { label: "Em Débito", variant: "destructive" as const, className: "bg-orange-50 text-orange-700 border-orange-200" },
+  new: { label: "Novo", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
+  active: { label: "Ativo", variant: "default" as const, className: "bg-green-500 text-white hover:bg-green-600" },
+  inactive: { label: "Inativo", variant: "destructive" as const, className: "bg-red-500 text-white hover:bg-red-600" },
+  rented: { label: "Locatário", variant: "default" as const, className: "bg-blue-500 text-white hover:bg-blue-600" },
+  late: { label: "Inadimplente", variant: "destructive" as const, className: "bg-red-500 text-white hover:bg-red-600" },
+  debt: { label: "Em Débito", variant: "destructive" as const, className: "bg-orange-500 text-white hover:bg-orange-600" },
 };
 
 export default function TenantsPage() {
@@ -45,7 +45,7 @@ export default function TenantsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>([]); // Vazio = mostrar todos
+  const [statusFilter, setStatusFilter] = useState<string[]>(["active", "rented"]); // Padrão: Ativo e Locatário
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const formatDocument = useCallback((tenant: Tenant) => {

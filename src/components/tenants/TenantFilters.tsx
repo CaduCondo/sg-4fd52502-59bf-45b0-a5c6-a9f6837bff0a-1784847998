@@ -17,12 +17,10 @@ interface TenantFiltersProps {
 }
 
 const statusOptions = [
-  { value: "all", label: "Todos os Status" },
+  { value: "new", label: "Novo" },
   { value: "active", label: "Ativo" },
   { value: "rented", label: "Locatário" },
   { value: "inactive", label: "Inativo" },
-  { value: "late", label: "Inadimplente" },
-  { value: "debt", label: "Em Débito" },
 ];
 
 export const TenantFilters = memo(function TenantFilters({
@@ -40,8 +38,7 @@ export const TenantFilters = memo(function TenantFilters({
   );
 
   const statusText = useMemo(() => {
-    if (statusFilter.length === 0) return "Nenhum";
-    if (statusFilter.length === statusOptions.length) return "Todos";
+    if (statusFilter.length === 0) return "Todos";
     return statusOptions
       .filter(opt => statusFilter.includes(opt.value))
       .map(opt => opt.label)
