@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - QUERY MINIMALISTA (SEM IMAGES, SEM JOIN!)
+ * Buscar todos os imóveis - COM IMAGES (limite 100 para evitar timeout)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco (QUERY MINIMALISTA)...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco COM IMAGENS...");
 
-    // 🔥 QUERY MINIMALISTA - Apenas campos essenciais, SEM JOIN, SEM IMAGES
+    // 🔥 QUERY COM IMAGES mas LIMIT 100 para evitar timeout
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -122,14 +122,20 @@ export const getAll = async (): Promise<Property[]> => {
         location_id,
         property_identifier,
         complement,
+        description,
         rooms,
         bathrooms,
+        area,
         value,
         status,
+        images,
+        has_garage,
+        has_furniture,
+        accepts_pets,
         created_at
       `)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(100);
 
     if (error) throw error;
 
@@ -149,22 +155,22 @@ export const getAll = async (): Promise<Property[]> => {
       location: locationsMap.get(item.location_id) || "",
       propertyIdentifier: item.property_identifier || "",
       complement: item.complement || "",
-      description: "",
+      description: item.description || "",
       rooms: item.rooms || 0,
       bathrooms: item.bathrooms || 0,
-      area: 0,
+      area: item.area || 0,
       value: item.value || 0,
-      hasGarage: false,
-      hasFurniture: false,
-      acceptsPets: false,
+      hasGarage: item.has_garage || false,
+      hasFurniture: item.has_furniture || false,
+      acceptsPets: item.accepts_pets || false,
       status: item.status as "available" | "occupied" | "unavailable",
-      images: [], // VAZIO - carrega sob demanda
+      images: processImages(item.images), // 🔥 RESTAURADO - processa imagens
       createdAt: item.created_at,
       address: "",
       features: [],
     }));
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados COM IMAGENS`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
@@ -411,13 +417,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY MINIMALISTA (SEM IMAGENS INICIALMENTE)
+ * PÁGINA PÚBLICA - QUERY COM IMAGENS (limite 50 para evitar timeout)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos (QUERY MINIMALISTA)...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM IMAGENS...");
 
-    // 🔥 QUERY MINIMALISTA - Apenas campos essenciais, SEM IMAGES
+    // 🔥 QUERY COM IMAGES mas LIMIT 50 para evitar timeout
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -431,11 +437,15 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         area,
         value,
         status,
+        images,
+        has_garage,
+        has_furniture,
+        accepts_pets,
         created_at
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(50);
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
@@ -478,17 +488,17 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         bathrooms: item.bathrooms || 0,
         area: item.area || 0,
         value: item.value || 0,
-        hasGarage: false,
-        hasFurniture: false,
-        acceptsPets: false,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: [], // VAZIO - carrega sob demanda quando abrir o imóvel
+        images: processImages(item.images), // 🔥 RESTAURADO - processa imagens
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (sem imagens)`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados COM IMAGENS`);
 
     return properties;
   } catch (error) {
