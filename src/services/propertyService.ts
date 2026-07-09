@@ -442,8 +442,17 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Chamando API route otimizada...");
 
-    // Chamar API route que usa service role (bypassa RLS, super rápido!)
-    const response = await fetch("/api/properties/public");
+    // Garantir que estamos no cliente
+    if (typeof window === "undefined") {
+      console.log("⚠️ [getPublicProperties] Executando no servidor, retornando array vazio");
+      return [];
+    }
+
+    // Usar URL absoluta para evitar problemas de fetch
+    const url = `${window.location.origin}/api/properties/public`;
+    console.log(`🌐 Chamando: ${url}`);
+
+    const response = await fetch(url);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
