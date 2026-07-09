@@ -100,7 +100,7 @@ const invalidateCache = () => {
 };
 
 /**
- * Buscar todos os imóveis - COM IMAGES (limite 100 para evitar timeout)
+ * Buscar todos os imóveis - SEM IMAGES para evitar timeout
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
@@ -112,9 +112,9 @@ export const getAll = async (): Promise<Property[]> => {
   }
 
   try {
-    console.log("🔄 [propertyService.getAll] Buscando do banco COM IMAGENS...");
+    console.log("🔄 [propertyService.getAll] Buscando do banco (SEM IMAGES para evitar timeout)...");
 
-    // 🔥 QUERY COM IMAGES mas LIMIT 100 para evitar timeout
+    // 🔥 QUERY SEM IMAGES - ultra-rápida
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -128,14 +128,13 @@ export const getAll = async (): Promise<Property[]> => {
         area,
         value,
         status,
-        images,
         has_garage,
         has_furniture,
         accepts_pets,
         created_at
       `)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (error) throw error;
 
@@ -164,13 +163,13 @@ export const getAll = async (): Promise<Property[]> => {
       hasFurniture: item.has_furniture || false,
       acceptsPets: item.accepts_pets || false,
       status: item.status as "available" | "occupied" | "unavailable",
-      images: processImages(item.images), // 🔥 RESTAURADO - processa imagens
+      images: [], // VAZIO - admin pode abrir detalhes para ver imagens
       createdAt: item.created_at,
       address: "",
       features: [],
     }));
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados COM IMAGENS`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (SEM imagens)`);
 
     // Atualizar cache em memória
     propertiesListCache = { data: properties, timestamp: now };
@@ -417,13 +416,13 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY COM IMAGENS (limite 50 para evitar timeout)
+ * PÁGINA PÚBLICA - QUERY OTIMIZADA SEM IMAGES (carga inicial rápida)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Buscando imóveis públicos COM IMAGENS...");
+    console.log("🔄 [getPublicProperties] Buscando imóveis públicos (SEM IMAGES para evitar timeout)...");
 
-    // 🔥 QUERY COM IMAGES mas LIMIT 50 para evitar timeout
+    // 🔥 QUERY SEM IMAGES - Carga inicial ultra-rápida
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -437,7 +436,6 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         area,
         value,
         status,
-        images,
         has_garage,
         has_furniture,
         accepts_pets,
@@ -445,7 +443,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
@@ -492,13 +490,16 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images), // 🔥 RESTAURADO - processa imagens
+        images: [], // VAZIO inicialmente - carrega sob demanda
         createdAt: item.created_at,
         features: [],
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados COM IMAGENS`);
+    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados (SEM imagens - carga rápida)`);
+
+    // 🔥 AGORA carrega primeira imagem de cada imóvel em PARALELO (batch)
+    await loadFirstImagesInBatch(properties);
 
     return properties;
   } catch (error) {
@@ -506,3 +507,40 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     throw error;
   }
 };
+
+/**
+ * Helper para carregar primeira imagem de cada imóvel em lotes (evita timeout)
+ */
+async function loadFirstImagesInBatch(properties: Property[]): Promise<void> {
+  try {
+    const BATCH_SIZE = 20; // Processar 20 imóveis por vez
+    
+    for (let i = 0; i < properties.length; i += BATCH_SIZE) {
+      const batch = properties.slice(i, i + BATCH_SIZE);
+      const ids = batch.map(p => p.id);
+      
+      // Buscar apenas primeira imagem de cada imóvel
+      const { data } = await supabase
+        .from("properties")
+        .select("id, images")
+        .in("id", ids);
+      
+      if (data) {
+        const imagesMap = new Map(
+          data.map(item => [item.id, processImages(item.images)])
+        );
+        
+        // Atribuir primeira imagem a cada property
+        batch.forEach(prop => {
+          const images = imagesMap.get(prop.id) || [];
+          prop.images = images.length > 0 ? [images[0]] : []; // Apenas primeira imagem
+        });
+      }
+    }
+    
+    console.log(`✅ Carregadas primeiras imagens de ${properties.length} imóveis`);
+  } catch (error) {
+    console.error("⚠️ Erro ao carregar imagens, continuando sem elas:", error);
+    // Não faz throw - continua sem imagens se falhar
+  }
+}
