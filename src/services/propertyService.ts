@@ -421,7 +421,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Buscando imóveis públicos...");
 
-    // Query ULTRA-SIMPLES - apenas properties com LEFT JOIN
+    // Query MÍNIMA - SEM JOIN! Apenas properties
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -438,12 +438,11 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         images,
         has_furniture,
         accepts_pets,
-        created_at,
-        locations(name, city, neighborhood, street, number, state)
+        created_at
       `)
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(50); // Reduzir para 50 imóveis inicialmente
+      .limit(30); // Apenas 30 inicialmente
 
     if (error) {
       console.error("❌ Erro ao buscar imóveis:", error);
@@ -457,6 +456,23 @@ export const getPublicProperties = async (): Promise<Property[]> => {
 
     console.log(`📊 ${data.length} imóveis retornados do banco`);
 
+    // Buscar locations separadamente para os IDs únicos
+    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+    
+    const locationsMap = new Map();
+    if (locationIds.length > 0) {
+      const { data: locationsData } = await supabase
+        .from("locations")
+        .select("id, name, city, neighborhood, street, number, state")
+        .in("id", locationIds);
+      
+      if (locationsData) {
+        locationsData.forEach(loc => {
+          locationsMap.set(loc.id, loc);
+        });
+      }
+    }
+
     const properties = data.map((item: any) => {
       // Processar apenas PRIMEIRA imagem para performance
       let firstImage: string[] = [];
@@ -467,19 +483,22 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         }
       }
 
+      // Buscar location do map
+      const location = locationsMap.get(item.location_id);
+      
       // Montar endereço simplificado
       const addressParts = [];
-      if (item.locations?.street) addressParts.push(item.locations.street);
-      if (item.locations?.number) addressParts.push(item.locations.number);
+      if (location?.street) addressParts.push(location.street);
+      if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
 
       return {
         id: item.id,
         locationId: item.location_id,
-        location: item.locations?.name || "",
-        city: item.locations?.city || "",
-        neighborhood: item.locations?.neighborhood || "",
-        state: item.locations?.state || "",
+        location: location?.name || "",
+        city: location?.city || "",
+        neighborhood: location?.neighborhood || "",
+        state: location?.state || "",
         address: address,
         propertyIdentifier: item.property_identifier || "",
         complement: item.complement || "",
