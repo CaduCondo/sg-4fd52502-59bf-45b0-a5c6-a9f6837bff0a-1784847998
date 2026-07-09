@@ -254,6 +254,7 @@ export default function PropertiesPage() {
         <TableCell>
           {property.complement || "-"}
         </TableCell>
+        <TableCell>{formatCurrency(property.value || 0)}</TableCell>
         <TableCell>
           {property.rooms ? (
             <div className="flex items-center gap-1">
@@ -270,7 +271,6 @@ export default function PropertiesPage() {
             </div>
           ) : "-"}
         </TableCell>
-        <TableCell>{formatCurrency(property.value || 0)}</TableCell>
         <TableCell>{getStatusBadge(property.status)}</TableCell>
         <TableCell className="text-right">
           <Button
@@ -375,7 +375,7 @@ export default function PropertiesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Identificador</TableHead>
+                        <TableHead>Local</TableHead>
                         <TableHead>Endereço</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Quartos</TableHead>
