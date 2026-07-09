@@ -18,11 +18,8 @@ interface TenantFiltersProps {
 
 const statusOptions = [
   { value: "new", label: "Novo" },
-  { value: "active", label: "Ativo" },
   { value: "rented", label: "Locatário" },
   { value: "inactive", label: "Inativo" },
-  { value: "late", label: "Inadimplente" },
-  { value: "debt", label: "Em Débito" },
 ];
 
 export const TenantFilters = memo(function TenantFilters({

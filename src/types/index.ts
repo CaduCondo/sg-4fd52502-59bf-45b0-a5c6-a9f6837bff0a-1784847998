@@ -147,7 +147,7 @@ export interface Tenant {
   rg?: string;
   cpf?: string;
   cnpj?: string;
-  status: "new" | "active" | "inactive" | "rented" | "late" | "debt";
+  status: "new" | "rented" | "inactive";
   cep?: string;
   street?: string;
   number?: string;

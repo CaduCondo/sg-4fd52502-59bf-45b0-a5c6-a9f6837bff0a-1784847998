@@ -31,7 +31,7 @@ interface FormState {
   neighborhood: string;
   city: string;
   state: string;
-  status: "new" | "active" | "inactive" | "rented" | "late" | "debt";
+  status: "new" | "rented" | "inactive";
 }
 
 const INITIAL_FORM_STATE: FormState = {
@@ -180,7 +180,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="new">Novo</SelectItem>
                 <SelectItem value="rented">Locatário</SelectItem>
                 <SelectItem value="inactive">Inativo</SelectItem>
               </SelectContent>
@@ -398,7 +398,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
   }, []);
 
   const handleStatusChange = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, status: value as "new" | "active" | "inactive" | "rented" | "late" | "debt" }));
+    setFormData(prev => ({ ...prev, status: value as "new" | "rented" | "inactive" }));
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -419,7 +419,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
-      status: formData.status as "new" | "active" | "inactive" | "rented" | "late" | "debt",
+      status: formData.status as "new" | "rented" | "inactive",
     };
 
     const success = await onSave(newTenantData);

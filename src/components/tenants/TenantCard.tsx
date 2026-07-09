@@ -13,18 +13,16 @@ interface TenantCardProps {
 }
 
 const STATUS_STYLES = {
-  active: "bg-green-500 hover:bg-green-600",
+  new: "bg-blue-500 hover:bg-blue-600",
   rented: "bg-blue-500 hover:bg-blue-600",
   inactive: "bg-red-500 hover:bg-red-600",
   default: "bg-gray-500 hover:bg-gray-600",
 } as const;
 
 const statusLabels: Record<string, string> = {
-  active: "Ativo",
+  new: "Novo",
   rented: "Locatário",
   inactive: "Inativo",
-  late: "Inadimplente",
-  debt: "Em Débito",
 };
 
 export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
