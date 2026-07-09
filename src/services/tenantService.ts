@@ -87,16 +87,16 @@ export async function getAllTenants(): Promise<Tenant[]> {
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
     // Calcular status baseado nas locações
-    let calculatedStatus = tenant.status; // Default do banco
+    let calculatedStatus: string;
     
     if (rentalStatuses.length === 0) {
-      // Nunca teve locação - manter status original (active/inactive)
-      calculatedStatus = tenant.status || "active";
+      // Nunca teve contrato - status "new"
+      calculatedStatus = "new";
     } else if (rentalStatuses.includes("active")) {
-      // Tem pelo menos uma locação ativa
+      // Tem pelo menos um contrato ativo - status "rented" (Locatário)
       calculatedStatus = "rented";
     } else {
-      // Teve locações mas nenhuma ativa (todas cancelled/terminated)
+      // Teve contratos mas nenhum ativo (todos cancelled/terminated) - status "inactive"
       calculatedStatus = "inactive";
     }
     

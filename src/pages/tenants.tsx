@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
+  new: { label: "Novo", variant: "outline" as const, className: "bg-blue-50 text-blue-700 border-blue-200" },
   active: { label: "Ativo", variant: "outline" as const, className: "bg-blue-50 text-blue-700 border-blue-200" },
   inactive: { label: "Inativo", variant: "secondary" as const, className: "bg-slate-100 text-slate-700" },
   rented: { label: "Locatário", variant: "outline" as const, className: "bg-green-50 text-green-700 border-green-200" },
