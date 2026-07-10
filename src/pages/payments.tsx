@@ -613,7 +613,7 @@ export default function Payments() {
     }},
     { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
-    { key: "dueDate", label: "Vencimento", render: (p: Payment) => p.dueDate ? format(new Date(p.dueDate), "dd/MM/yyyy") : "-" },
+    { key: "dueDate", label: "Vencimento", render: (p: Payment) => p.dueDate ? new Date(p.dueDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
     { key: "amount", label: "Valor Esperado", className: "text-right", render: (p: Payment) => <span className="font-bold text-emerald-600">{getExpectedAmount(p).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> }
   ], [getPropertyForPayment, getMonthName, getPaymentInstallment, getTenantForPayment, getExpectedAmount]);
 
@@ -626,7 +626,7 @@ export default function Payments() {
     { key: "status", label: "Status", render: () => <Badge className="bg-green-100 text-green-800">Pago</Badge> },
     { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
-    { key: "paymentDate", label: "Pago em", render: (p: Payment) => p.paymentDate ? format(new Date(p.paymentDate), "dd/MM/yyyy") : "-" },
+    { key: "paymentDate", label: "Pago em", render: (p: Payment) => p.paymentDate ? new Date(p.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
     { key: "amount", label: "Valor Pago", className: "text-right", render: (p: Payment) => <span className="font-bold text-emerald-600">{(p.paidAmount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> },
     { key: "actions", label: "Ações", sortable: false, className: "text-right", render: (p: Payment) => (
       <div className="flex flex-col items-end gap-1">
