@@ -244,25 +244,23 @@ export default function TenantsPage() {
   }, []);
 
   const tenantColumns = useMemo(() => [
-    { key: "name", label: "Nome", render: (t: Tenant) => <span className="font-semibold text-blue-600">{t.name}</span> },
-    { key: "document", label: "Documento", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{formatDocument(t)}</span> },
-    { key: "phone", label: "Telefone", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{formatPhone(t.phone)}</span> },
-    { key: "email", label: "Email", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{t.email || "-"}</span> },
-    { key: "status", label: "Status", render: (t: Tenant) => getStatusBadge(t.status) },
-    { key: "actions", label: "Deletar", sortable: false, className: "text-right", render: (t: Tenant) => (
-      <div className="flex items-center justify-end gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-          onClick={(e) => handleDelete(t.id, e)}
-          title="Excluir"
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={2} />
-        </Button>
-      </div>
+    { key: "name", label: "Nome", headerClassName: "text-center", render: (t: Tenant) => <span className="font-medium text-blue-600">{t.name}</span> },
+    { key: "document", label: "Documento", headerClassName: "text-center", render: (t: Tenant) => t.cpf || t.cnpj || t.document || "-" },
+    { key: "phone", label: "Telefone", headerClassName: "text-center", render: (t: Tenant) => t.phone || "-" },
+    { key: "email", label: "Email", headerClassName: "text-center", render: (t: Tenant) => t.email || "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (t: Tenant) => getStatusBadge(t.status) },
+    { key: "actions", label: "Deletar", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (t: Tenant) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+        onClick={(e) => confirmDelete(e, t.id)}
+        title="Excluir"
+      >
+        <Trash2 className="h-4 w-4" strokeWidth={2} />
+      </Button>
     )}
-  ], [formatDocument, formatPhone, getStatusBadge, handleDelete]);
+  ], [getStatusBadge, confirmDelete]);
 
   if (isLoading) {
     return (

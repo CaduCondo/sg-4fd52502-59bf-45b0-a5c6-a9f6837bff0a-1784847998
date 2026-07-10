@@ -516,73 +516,23 @@ export default function RentalsPage() {
   }, [loadRentalsData, loadAvailableData]);
 
   const rentalColumns = useMemo(() => [
-    { 
-      key: "local", 
-      label: "Local", 
-      render: (r: Rental) => <span className="font-medium text-blue-600">{locations.find(loc => loc.id === r.property?.locationId)?.name || r.property?.location || "Local não encontrado"}</span> 
-    },
-    { key: "complement", label: "Complemento", render: (r: Rental) => r.property?.complement || "-" },
-    { key: "tenant", label: "Inquilino", render: (r: Rental) => <span className="whitespace-nowrap">{r.tenant?.name || "-"}</span> },
-    { key: "value", label: "Valor", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(r.value || 0)}</span> },
-    { key: "startDate", label: statusFilter === 'terminated' ? "Data Término" : "Data Início", render: (r: Rental) => formatDate(statusFilter === 'terminated' ? r.endDate : r.startDate) },
-    { key: "endDate", label: "Data Fim", render: (r: Rental) => formatDate(r.endDate) },
-    { 
-      key: "status", 
-      label: "Status", 
-      render: (r: Rental) => {
-        const alert = calculateContractAlert(r.endDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const isExpired = r.endDate && new Date(r.endDate) < today;
-        const isVisuallyActive = r.isActive && !isExpired;
-        const shouldShowAlert = r.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
-        const badgeClasses = getAlertBadgeClasses(alert.level);
-        return (
-          <div className="flex flex-col gap-1">
-            {isVisuallyActive ? (
-              <>
-                <Badge className={badgeClasses}>Ativa</Badge>
-                {shouldShowAlert && (
-                  <Badge variant="outline" className={`text-xs ${alert.level === "critical" ? "border-red-500 text-red-700" : "border-yellow-500 text-yellow-700"}`}>
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    {alert.message}
-                  </Badge>
-                )}
-                {rentalTerminations[r.id] && (
-                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs">Rescisão</Badge>
-                )}
-              </>
-            ) : (
-              <Badge className={isExpired && r.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
-                Encerrado
-              </Badge>
-            )}
-          </div>
-        );
-      }
-    },
-    { 
-      key: "actions", 
-      label: "Ações", 
-      sortable: false, 
-      className: "text-right", 
-      render: (r: Rental) => (
-        r.isActive && (
-          <div className="flex items-center justify-end gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500" onClick={(e) => { e.stopPropagation(); setRentalToRenew(r); }} title="Renovar Contrato">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500" onClick={(e) => { e.stopPropagation(); setRentalToEnd(r); }} title="Rescisão de Contrato">
-              <XCircle className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => handleOpenDeleteDialog(r, e)} title="Excluir Locação">
-              <Trash2 className="h-4 w-4" strokeWidth={2} />
-            </Button>
-          </div>
-        )
-      ) 
-    }
-  ], [locations, statusFilter, rentalTerminations, formatDate, handleOpenDeleteDialog]);
+    { key: "local", label: "Local", headerClassName: "text-center", render: (r: Rental) => <span className="font-medium text-blue-600">{getPropertyForRental(r)?.location || "-"}</span> },
+    { key: "complement", label: "Complemento", headerClassName: "text-center", render: (r: Rental) => getPropertyForRental(r)?.complement || "-" },
+    { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.name || "-" },
+    { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.phone || "-" },
+    { key: "value", label: "Valor", headerClassName: "text-center", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
+    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => getStatusBadge(r.status) },
+    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[120px]", render: (r: Rental) => (
+      <div className="flex flex-col items-center gap-1">
+        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewPayments(r); }} title="Ver Recebimentos">Recebimentos</Button>
+        {permissions.canViewContract && (
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewContract(r); }} title="Ver Contrato">Contrato</Button>
+        )}
+      </div>
+    )}
+  ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, permissions, handleViewPayments, handleViewContract]);
 
   return (
     <>
