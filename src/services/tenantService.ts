@@ -158,7 +158,7 @@ export async function deleteTenant(id: string): Promise<void> {
 export const remove = deleteTenant;
 
 export async function getActive(): Promise<Tenant[]> {
-  console.log("🔄 [tenantService.getActive] Buscando inquilinos disponíveis (sem locações ativas)...");
+  console.log("🔄 [tenantService.getActive] Buscando inquilinos disponíveis (apenas status 'new')...");
   
   // Buscar todos os inquilinos
   const { data: tenantsData, error: tenantsError } = await supabase
@@ -173,29 +173,32 @@ export async function getActive(): Promise<Tenant[]> {
 
   console.log(`📊 [tenantService.getActive] ${(tenantsData || []).length} inquilinos encontrados`);
   
-  // Buscar todas as locações ativas para filtrar inquilinos disponíveis
+  // Buscar TODAS as locações (ativas, canceladas, terminadas) para calcular status
   const { data: rentalsData, error: rentalsError } = await supabase
     .from("rentals")
-    .select("tenant_id, status")
-    .eq("status", "active") as any;
+    .select("tenant_id, status") as any;
   
   if (rentalsError) {
     console.error("❌ [tenantService.getActive] Erro ao buscar locações:", rentalsError);
   }
   
-  // Criar set de inquilinos que TÊM locações ativas
-  const tenantsWithActiveRentals = new Set(
-    (rentalsData || []).map((rental: any) => rental.tenant_id)
+  // Criar mapa de locações por inquilino
+  const rentalsMap = new Map<string, string[]>();
+  (rentalsData || []).forEach((rental: any) => {
+    if (!rentalsMap.has(rental.tenant_id)) {
+      rentalsMap.set(rental.tenant_id, []);
+    }
+    rentalsMap.get(rental.tenant_id)!.push(rental.status);
+  });
+  
+  console.log(`📊 [tenantService.getActive] Mapa de locações criado com ${rentalsMap.size} inquilinos que já tiveram/têm locações`);
+  
+  // Retornar APENAS inquilinos que NUNCA tiveram locações (status "new")
+  const newTenants = (tenantsData || []).filter(
+    (tenant: any) => !rentalsMap.has(tenant.id) // Nunca teve locação = status "new"
   );
   
-  console.log(`📊 [tenantService.getActive] ${tenantsWithActiveRentals.size} inquilinos com locações ativas`);
+  console.log(`✅ [tenantService.getActive] ${newTenants.length} inquilinos com status "new" (nunca tiveram locações)`);
   
-  // Retornar apenas inquilinos que NÃO têm locações ativas (disponíveis)
-  const availableTenants = (tenantsData || []).filter(
-    (tenant: any) => !tenantsWithActiveRentals.has(tenant.id)
-  );
-  
-  console.log(`✅ [tenantService.getActive] ${availableTenants.length} inquilinos disponíveis (sem locações ativas)`);
-  
-  return availableTenants as unknown as Tenant[];
+  return newTenants as unknown as Tenant[];
 }
