@@ -4,7 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Bed, Bath, Trash2, Grid3x3, List } from "lucide-react";
+import { Building, Plus, LayoutGrid, List, Bed, Bath, Trash2, Camera } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
@@ -271,7 +271,20 @@ export default function PropertiesPage() {
             </div>
           ) : "-"}
         </TableCell>
+        <TableCell>
+          {property.area ? `${property.area} m²` : "-"}
+        </TableCell>
         <TableCell>{getStatusBadge(property.status)}</TableCell>
+        <TableCell>
+          {property.images && property.images.length > 0 ? (
+            <div className="flex items-center gap-1 text-blue-600">
+              <Camera className="h-4 w-4" />
+              <span className="text-xs font-medium">{property.images.length}</span>
+            </div>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          )}
+        </TableCell>
         <TableCell className="text-right">
           <Button
             variant="ghost"
@@ -382,7 +395,9 @@ export default function PropertiesPage() {
                         <TableHead>Valor</TableHead>
                         <TableHead>Quartos</TableHead>
                         <TableHead>Banheiros</TableHead>
+                        <TableHead>Área Útil</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Foto</TableHead>
                         <TableHead className="text-right">Deletar</TableHead>
                       </TableRow>
                     </TableHeader>
