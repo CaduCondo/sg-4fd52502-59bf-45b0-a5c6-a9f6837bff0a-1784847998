@@ -34,7 +34,6 @@ const CACHE_TTL = 5 * 60 * 1000;
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log(`✅ [useDashboardData] Cache hit para ${key}`);
     return cached.data as T;
   }
   cache.delete(key);
@@ -43,12 +42,10 @@ function getCached<T>(key: string): T | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
-  console.log(`💾 [useDashboardData] Cache atualizado para ${key}`);
 }
 
 export function invalidateDashboardCache(): void {
   cache.clear();
-  console.log("🗑️ [useDashboardData] Cache limpo");
 }
 
 export function useDashboardData(
@@ -156,19 +153,11 @@ export function useDashboardData(
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
-        // Data para 2 meses à frente (para contratos a vencer)
         const twoMonthsFromNow = new Date(today);
         twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
         const twoMonthsStr = twoMonthsFromNow.toISOString().split('T')[0];
 
-        console.log("📅 [useDashboardData] Período:", {
-          month,
-          year,
-          today: todayStr,
-          twoMonthsFromNow: twoMonthsStr
-        });
-
-        // 2. Buscar dados em paralelo
+        // Buscar dados em paralelo
         const [
           exemptLocationsResult,
           propertiesResult,
@@ -307,67 +296,19 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // Contratos a vencer nos próximos 60 dias
-        console.log("🔍 [useDashboardData] ===== ANÁLISE DE CONTRATOS A VENCER =====");
-        console.log("📊 [useDashboardData] Total de rentals recebidos:", rentals.length);
-        console.log("📊 [useDashboardData] Rentals ativos:", rentals.filter(r => r.status === "active").length);
-        
-        const contractsToExpire: any[] = [];
-        
+        // Contratos a vencer nos próximos 60 dias (status=active E end_date dentro de 60 dias)
         const expiringContracts = rentals.filter(r => {
-          if (r.status !== "active" || !r.end_date) {
-            if (r.status === "active" && !r.end_date) {
-              console.log("⚠️ [useDashboardData] Contrato ativo SEM end_date:", r.id);
-            }
-            return false;
-          }
+          if (r.status !== "active" || !r.end_date) return false;
           
           const endDate = new Date(r.end_date);
           const todayCheck = new Date();
           todayCheck.setHours(0, 0, 0, 0);
           
-          if (endDate < todayCheck) {
-            console.log("❌ [useDashboardData] Contrato VENCIDO (excluído):", {
-              id: r.id,
-              end_date: r.end_date,
-              daysAgo: Math.ceil((todayCheck.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24))
-            });
-            return false;
-          }
+          if (endDate < todayCheck) return false;
           
           const alert = calculateContractAlert(r.end_date);
-          const shouldCount = alert.level === "warning" || alert.level === "critical";
-          
-          if (shouldCount) {
-            console.log("✅ [useDashboardData] Contrato A VENCER (CONTADO):", {
-              id: r.id,
-              end_date: r.end_date,
-              alertLevel: alert.level,
-              daysRemaining: alert.daysRemaining,
-              message: alert.message
-            });
-            contractsToExpire.push({
-              id: r.id,
-              end_date: r.end_date,
-              level: alert.level,
-              days: alert.daysRemaining
-            });
-          } else {
-            console.log("⚪ [useDashboardData] Contrato NORMAL (não contado):", {
-              id: r.id,
-              end_date: r.end_date,
-              alertLevel: alert.level,
-              daysRemaining: alert.daysRemaining
-            });
-          }
-          
-          return shouldCount;
+          return alert.level === "warning" || alert.level === "critical";
         }).length;
-
-        console.log("🔔 [useDashboardData] ===== RESULTADO FINAL =====");
-        console.log("📊 [useDashboardData] Total de contratos A VENCER:", expiringContracts);
-        console.log("📋 [useDashboardData] Lista de contratos contados:", contractsToExpire);
-        console.log("========================================");
 
         // 🔥 Processar pagamentos com lógica CORRETA
         const paymentsData = paymentsResult.data || [];
@@ -382,15 +323,6 @@ export function useDashboardData(
         let adminFees = 0;
         let managementFees = 0;
 
-        console.log("📊 [useDashboardData] Analisando pagamentos:", {
-          total: paymentsData.length,
-          today: todayStr,
-          month,
-          year,
-          adminFeePercent,
-          managementFeePercent
-        });
-
         paymentsData.forEach((payment: any) => {
           const dueDate = payment.due_date;
           const status = payment.status;
@@ -398,87 +330,40 @@ export function useDashboardData(
           const paidAmount = payment.paid_amount || 0;
           const expectedAmountValue = payment.expected_amount || 0;
           
-          console.log("💳 [useDashboardData] Processando pagamento:", {
-            id: payment.id,
-            status,
-            dueDate,
-            paidAmount,
-            expectedAmount: expectedAmountValue,
-            locationId,
-            isExempt: locationId && exemptIds.includes(locationId)
-          });
-          
-          // Receita esperada = soma de todos os expected_amount do mês
           expectedAmount += expectedAmountValue;
           
-          // ✅ PAGO OU PARCIAL: contar como recebido e calcular taxas
           if (status === 'paid' || status === 'partial') {
             if (status === 'paid') {
               completedPayments++;
             }
             
-            // Adicionar à receita bruta
             grossRevenue += paidAmount;
             
-            console.log("💰 [useDashboardData] Pagamento PAGO/PARCIAL detectado:", {
-              paidAmount,
-              grossRevenue,
-              completedPayments
-            });
-            
-            // Calcular taxas apenas se houver valor pago
             if (paidAmount > 0) {
               const isExempt = locationId && exemptIds.includes(locationId);
               
-              // Taxa de Administração (apenas locais não isentos)
               if (!isExempt) {
                 const adminFee = paidAmount * (adminFeePercent / 100);
                 adminFees += adminFee;
-                console.log("💰 [useDashboardData] Taxa Admin calculada:", {
-                  paidAmount,
-                  percent: adminFeePercent,
-                  fee: adminFee,
-                  totalAdminFees: adminFees
-                });
               }
               
-              // Taxa de Gerenciamento (todos os locais)
               const mgmtFee = paidAmount * (managementFeePercent / 100);
               managementFees += mgmtFee;
-              console.log("💰 [useDashboardData] Taxa Mgmt calculada:", {
-                paidAmount,
-                percent: managementFeePercent,
-                fee: mgmtFee,
-                totalMgmtFees: managementFees
-              });
             }
           }
           
-          // ✅ ATRASADO: vencimento < hoje E status pending/partial
           if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overduePayments++;
             overdueAmount += expectedAmountValue;
             pendingPayments++;
           } 
-          // ✅ VENCE HOJE: vencimento = hoje E status pending/partial
           else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
             dueTodayPayments++;
             pendingPayments++;
           }
-          // ✅ PENDENTE FUTURO: pending/partial com vencimento futuro
           else if (status === 'pending' || status === 'partial') {
             pendingPayments++;
           }
-        });
-
-        console.log("📊 [useDashboardData] TOTAIS CALCULADOS ANTES DAS DESPESAS:", {
-          totalPagamentos: paymentsData.length,
-          completedPayments,
-          pendingPayments,
-          grossRevenue,
-          expectedAmount,
-          adminFees,
-          managementFees
         });
 
         // Processar despesas do mês
@@ -487,28 +372,6 @@ export function useDashboardData(
           (sum: number, e: any) => sum + (Number(e.amount) || 0), 
           0
         );
-
-        console.log("📊 [useDashboardData] Resultado da contagem:", {
-          completedPayments,
-          overduePayments,
-          dueTodayPayments,
-          pendingPayments,
-          grossRevenue,
-          overdueAmount,
-          adminFees,
-          managementFees,
-          locationExpenses,
-          adminFeePercent,
-          managementFeePercent,
-          exemptIds: exemptIds.length
-        });
-
-        console.log("💰 [useDashboardData] Valores finais calculados:", {
-          adminFees,
-          managementFees,
-          locationExpenses,
-          total: adminFees + managementFees + locationExpenses
-        });
 
         const newCounts: DashboardCounts = {
           totalProperties,
@@ -530,18 +393,15 @@ export function useDashboardData(
           managementFees,
         };
 
-        console.log("📦 [useDashboardData] Retornando counts:", newCounts);
-
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
 
       } catch (error: any) {
         if (error.name === 'AbortError') {
-          console.log("ℹ️ [useDashboardData] Requisição cancelada");
           return;
         }
         
-        console.error("❌ [useDashboardData] Error loading dashboard data:", error);
+        console.error("Error loading dashboard data:", error);
       } finally {
         setLoading(false);
         loadingRef.current = false;
