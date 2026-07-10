@@ -40,7 +40,6 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (!id) return;
     
-    // Garantir que id é string (não array)
     const propertyId = Array.isArray(id) ? id[0] : id;
     if (!propertyId) return;
 
@@ -49,6 +48,7 @@ export default function PropertyDetailPage() {
         setLoading(true);
         setError(null);
 
+        // 🔥 Buscar imóvel COM imagens (query completa)
         const { data, error: fetchError } = await supabase
           .from("properties")
           .select(`
@@ -71,9 +71,15 @@ export default function PropertyDetailPage() {
         if (fetchError) throw fetchError;
         if (!data) throw new Error("Imóvel não encontrado");
 
-        // As imagens já vêm na propriedade ou podem ser buscadas separadamente
-        // Por enquanto, usar array vazio se não houver imagens
+        // 🔥 Processar imagens do campo JSONB
         const allImages: string[] = [];
+        if (data.images && Array.isArray(data.images)) {
+          data.images.forEach((img: any) => {
+            if (img && typeof img === 'string' && img.length > 0) {
+              allImages.push(img);
+            }
+          });
+        }
 
         const location = data.locations;
         const mappedProperty: Property = {

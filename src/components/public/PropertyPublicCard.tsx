@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { InterestFormDialog } from "./InterestFormDialog";
 import { ShareButtons } from "./ShareButtons";
 import { Lightbox } from "@/components/Lightbox";
 import { Property } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 import type React from "react";
 
 interface PropertyPublicCardProps {
@@ -40,9 +41,69 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [firstImage, setFirstImage] = useState<string | null>(null);
+  const [allImages, setAllImages] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
-  // Usar todas as imagens quando disponível (allImages), senão usar images
-  const images = property.allImages || property.images || [];
+  // 🔥 Carregar primeira imagem quando o card for montado
+  useEffect(() => {
+    async function loadFirstImage() {
+      if (firstImage || loadingImages) return;
+      
+      setLoadingImages(true);
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("images")
+          .eq("id", property.id)
+          .single();
+
+        if (error) throw error;
+        
+        const images = data?.images;
+        if (images && Array.isArray(images) && images.length > 0) {
+          setFirstImage(images[0]);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar primeira imagem:", err);
+      } finally {
+        setLoadingImages(false);
+      }
+    }
+
+    loadFirstImage();
+  }, [property.id, firstImage, loadingImages]);
+
+  // 🔥 Carregar todas as imagens quando abrir o dialog de detalhes
+  useEffect(() => {
+    async function loadAllImages() {
+      if (!showDetails || allImages.length > 0 || loadingImages) return;
+      
+      setLoadingImages(true);
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("images")
+          .eq("id", property.id)
+          .single();
+
+        if (error) throw error;
+        
+        const images = data?.images;
+        if (images && Array.isArray(images)) {
+          setAllImages(images);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar imagens:", err);
+      } finally {
+        setLoadingImages(false);
+      }
+    }
+
+    loadAllImages();
+  }, [showDetails, property.id, allImages.length, loadingImages]);
+
+  const images = allImages.length > 0 ? allImages : (property.allImages || property.images || []);
   const totalMonthly = property.value;
 
   const handleImageClick = () => {
@@ -87,13 +148,13 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
     <>
       <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
         <div className="relative aspect-video overflow-hidden bg-slate-100" onClick={handleImageClick}>
-          {property.images && property.images.length > 0 ? (
+          {firstImage ? (
             <>
               {!imageLoaded && (
                 <div className="absolute inset-0 bg-slate-200 animate-pulse" />
               )}
               <img
-                src={property.images[0]}
+                src={firstImage}
                 alt={displayTitle}
                 className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-110 ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'
@@ -109,7 +170,13 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
             </>
           ) : (
             <div className="flex h-full items-center justify-center bg-slate-100">
-              <Home className="h-16 w-16 text-slate-300" />
+              {loadingImages ? (
+                <div className="animate-pulse">
+                  <Home className="h-16 w-16 text-slate-300" />
+                </div>
+              ) : (
+                <Home className="h-16 w-16 text-slate-300" />
+              )}
             </div>
           )}
         </div>
