@@ -305,59 +305,22 @@ export function useDashboardData(
 
         // Processar locações
         const rentals = rentalsResult.data || [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
         // 🔥 Contratos a vencer nos próximos 2 meses (apenas ATIVOS não vencidos)
         // USA A MESMA FUNÇÃO que a página de locações para garantir sincronização 100%
-        
-        console.log("🔍 [useDashboardData] Iniciando contagem de contratos a vencer...");
-        console.log("📅 [useDashboardData] Data de hoje:", today.toISOString().split('T')[0]);
-        console.log("📊 [useDashboardData] Total de locações:", rentals.length);
-        console.log("📊 [useDashboardData] Locações ativas:", rentals.filter(r => r.status === "active").length);
-        
-        const expiringList: any[] = [];
-        
         const expiringContracts = rentals.filter(r => {
           if (r.status !== "active" || !r.end_date) return false;
           
           // ✅ Excluir contratos já vencidos
           const endDate = new Date(r.end_date);
-          if (endDate < today) {
-            console.log("❌ [useDashboardData] Contrato VENCIDO (excluído):", {
-              id: r.id,
-              end_date: r.end_date,
-              endDate: endDate.toISOString().split('T')[0],
-              today: today.toISOString().split('T')[0]
-            });
-            return false;
-          }
+          if (endDate < today) return false;
           
           // ✅ USA calculateContractAlert - MESMA lógica da página de locações
           const alert = calculateContractAlert(r.end_date);
           
-          const shouldCount = alert.level === "warning" || alert.level === "critical";
-          
-          if (shouldCount) {
-            console.log("✅ [useDashboardData] Contrato A VENCER (contado):", {
-              id: r.id,
-              end_date: r.end_date,
-              alertLevel: alert.level,
-              daysRemaining: alert.daysRemaining,
-              message: alert.message
-            });
-            expiringList.push({
-              id: r.id,
-              end_date: r.end_date,
-              level: alert.level,
-              days: alert.daysRemaining
-            });
-          }
-          
           // Contar apenas contratos com alerta (amarelo OU vermelho) dentro de 60 dias
-          return shouldCount;
+          return alert.level === "warning" || alert.level === "critical";
         }).length;
 
         console.log("🔔 [useDashboardData] Contratos a vencer:", {
