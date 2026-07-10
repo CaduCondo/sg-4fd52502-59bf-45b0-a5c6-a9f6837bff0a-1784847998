@@ -146,12 +146,11 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
             .lte("end_date", next30Days.toISOString().split('T')[0]);
 
           if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-            activeQuery = activeQuery.in("property_id", 
-              (await supabase.from("properties").select("id").in("location_id", allowedLocations)).data?.map(p => p.id) || []
-            );
-            expiringQuery = expiringQuery.in("property_id",
-              (await supabase.from("properties").select("id").in("location_id", allowedLocations)).data?.map(p => p.id) || []
-            );
+            const propertiesInLocations = await supabase.from("properties").select("id").in("location_id", allowedLocations);
+            const propertyIds = ((propertiesInLocations.data as Array<{ id: string }> | null) || []).map(p => p.id);
+            
+            activeQuery = activeQuery.in("property_id", propertyIds);
+            expiringQuery = expiringQuery.in("property_id", propertyIds);
           }
 
           const [active, expiring] = await Promise.all([activeQuery, expiringQuery]);
