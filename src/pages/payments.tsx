@@ -557,11 +557,26 @@ export default function Payments() {
         const tenB = getTenantForPayment(b);
 
         switch (sortKeyPending) {
-          case "local": aVal = propA?.location || ""; bVal = propB?.location || ""; break;
-          case "complement": aVal = propA?.complement || ""; bVal = propB?.complement || ""; break;
+          case "local": 
+            aVal = (propA?.location || "").toLowerCase(); 
+            bVal = (propB?.location || "").toLowerCase();
+            return sortDirectionPending === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
+          case "complement": 
+            aVal = (propA?.complement || "").toLowerCase(); 
+            bVal = (propB?.complement || "").toLowerCase();
+            return sortDirectionPending === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
           case "installment": aVal = getPaymentInstallment(a); bVal = getPaymentInstallment(b); break;
           case "status": aVal = a.status; bVal = b.status; break;
-          case "tenant": aVal = tenA?.name || ""; bVal = tenB?.name || ""; break;
+          case "tenant": 
+            aVal = (tenA?.name || "").toLowerCase(); 
+            bVal = (tenB?.name || "").toLowerCase();
+            return sortDirectionPending === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
           case "dueDate": aVal = a.dueDate || ""; bVal = b.dueDate || ""; break;
           case "amount": aVal = getExpectedAmount(a); bVal = getExpectedAmount(b); break;
         }
@@ -581,11 +596,26 @@ export default function Payments() {
         const tenB = getTenantForPayment(b);
 
         switch (sortKeyPaid) {
-          case "local": aVal = propA?.location || ""; bVal = propB?.location || ""; break;
-          case "complement": aVal = propA?.complement || ""; bVal = propB?.complement || ""; break;
+          case "local": 
+            aVal = (propA?.location || "").toLowerCase(); 
+            bVal = (propB?.location || "").toLowerCase();
+            return sortDirectionPaid === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
+          case "complement": 
+            aVal = (propA?.complement || "").toLowerCase(); 
+            bVal = (propB?.complement || "").toLowerCase();
+            return sortDirectionPaid === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
           case "installment": aVal = getPaymentInstallment(a); bVal = getPaymentInstallment(b); break;
           case "status": aVal = a.status; bVal = b.status; break;
-          case "tenant": aVal = tenA?.name || ""; bVal = tenB?.name || ""; break;
+          case "tenant": 
+            aVal = (tenA?.name || "").toLowerCase(); 
+            bVal = (tenB?.name || "").toLowerCase();
+            return sortDirectionPaid === "asc" 
+              ? aVal.localeCompare(bVal, 'pt-BR') 
+              : bVal.localeCompare(aVal, 'pt-BR');
           case "paymentDate": aVal = a.paymentDate || ""; bVal = b.paymentDate || ""; break;
           case "amount": aVal = a.paidAmount || 0; bVal = b.paidAmount || 0; break;
         }
@@ -597,6 +627,25 @@ export default function Payments() {
 
     return { pendingPayments: pending, paidPayments: paid };
   }, [payments, debouncedSearchQuery, rentals, properties, tenants, sortKeyPending, sortDirectionPending, sortKeyPaid, sortDirectionPaid, getPropertyForPayment, getTenantForPayment, getPaymentInstallment, getExpectedAmount]);
+
+  // Helper para determinar cores baseado na data de vencimento
+  const getDueDateColor = (dueDate: string, isPaid: boolean): string => {
+    if (isPaid) return "";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const due = new Date(dueDate + "T00:00:00");
+    due.setHours(0, 0, 0, 0);
+    
+    if (due < today) {
+      return "bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100";
+    } else if (due.getTime() === today.getTime()) {
+      return "bg-yellow-50 border-l-4 border-l-yellow-500 hover:bg-yellow-100";
+    } else {
+      return "bg-blue-50 border-l-4 border-l-blue-500 hover:bg-blue-100";
+    }
+  };
 
   const pendingColumns = useMemo(() => [
     { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-blue-600">{getPropertyForPayment(p)?.location || "-"}</span> },
@@ -750,6 +799,7 @@ export default function Payments() {
                     sortDirection={sortDirectionPending}
                     onSort={handleSortPending}
                     onRowClick={(p) => setUiState(prev => ({ ...prev, selectedPaymentId: p.id }))}
+                    getRowClassName={(p) => getDueDateColor(p.dueDate, false)}
                     emptyMessage="Nenhum recebimento pendente encontrado."
                   />
                 )
