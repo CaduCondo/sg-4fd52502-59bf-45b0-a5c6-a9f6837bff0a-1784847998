@@ -63,6 +63,14 @@ export default function PropertiesPage() {
     locations,
     statusFilter,
     selectedLocations,
+    searchTerm,
+    sortOrder,
+    viewMode,
+    setSearchTerm,
+    setStatusFilter,
+    setSelectedLocations,
+    setSortOrder,
+    setViewMode,
     handleLocationToggle,
     loadData,
     createProperty: createPropertyService,
@@ -74,6 +82,7 @@ export default function PropertiesPage() {
   } = useProperties();
 
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -197,7 +206,7 @@ export default function PropertiesPage() {
     }
 
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       
       if (editingProperty) {
         // Tentar atualizar - pode retornar false se precisar de confirmação
@@ -220,28 +229,31 @@ export default function PropertiesPage() {
           description: "Imóvel criado com sucesso.",
         });
       }
-      setIsLoading(false);
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error: unknown) {
+
+      handleCloseDialog(false);
+    } catch (error: any) {
+      console.error("Erro ao salvar imóvel:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao salvar o imóvel. Tente novamente.",
+        description: error?.message || "Não foi possível salvar o imóvel.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [editingProperty, formData, updatePropertyService, createPropertyService, toast, resetForm]);
+  }, [formData, editingProperty, updatePropertyService, createPropertyService, toast, handleCloseDialog]);
 
   const handleConfirmRentAdjustment = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       await confirmRentAdjustment();
-      setIsLoading(false);
-      setIsDialogOpen(false);
+      handleCloseDialog(false);
     } catch (error) {
       // Erro já foi tratado no hook
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [confirmRentAdjustment, setIsLoading, setIsDialogOpen]);
+  }, [confirmRentAdjustment, handleCloseDialog]);
 
   const handleCancelRentAdjustment = useCallback(() => {
     cancelRentAdjustment();
@@ -317,13 +329,13 @@ export default function PropertiesPage() {
     if (!propertyToDelete) return;
 
     try {
-      await deleteProperty(propertyToDelete);
+      await deletePropertyService(propertyToDelete);
       setIsDeleteDialogOpen(false);
       setPropertyToDelete(null);
     } catch (error) {
       console.error("Erro ao excluir imóvel:", error);
     }
-  }, [propertyToDelete, deleteProperty]);
+  }, [propertyToDelete, deletePropertyService]);
 
   const getStatusBadge = useCallback((status: string) => (
     <Badge variant={STATUS_VARIANTS[status]}>
@@ -475,7 +487,7 @@ export default function PropertiesPage() {
           handleNumberChange={handleNumberChange}
           handleImageUpload={handleImageUpload}
           removeImage={removeImage}
-          isSubmitting={isLoading}
+          isSubmitting={isSubmitting}
           viewOnly={isViewMode}
           onEdit={handleEnableEdit}
         />

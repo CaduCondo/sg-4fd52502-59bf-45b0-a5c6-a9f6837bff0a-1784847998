@@ -61,7 +61,7 @@ async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void>
     id: rental.id,
     valor_antigo: oldValue,
     valor_novo: newValue,
-    dia_pagamento: rental.payment_day,
+    dia_pagamento: (rental as any).payment_day,
   });
 
   // Buscar TODOS os recebimentos pendentes futuros (>= data efetiva)
@@ -110,7 +110,7 @@ async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void>
   if (currentPeriodPayment) {
     console.log("📅 Processando período atual (proporcional)...");
     
-    const paymentDay = rental.payment_day;
+    const paymentDay = (rental as any).payment_day;
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     
     // Calcular dias restantes do mês a partir de hoje
