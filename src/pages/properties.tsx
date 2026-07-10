@@ -95,7 +95,6 @@ export default function PropertiesPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // 🔥 Forçar visualização em lista no primeiro carregamento
   useEffect(() => {
     if (viewMode === "grid") {
       setViewMode("table");
@@ -221,13 +220,11 @@ export default function PropertiesPage() {
       setIsSubmitting(true);
       
       if (editingProperty) {
-        // Tentar atualizar - pode retornar false se precisar de confirmação
         const result = await updatePropertyService(editingProperty.id, formData);
         
-        // Se retornou false, significa que precisa de confirmação (AlertDialog vai abrir)
         if (result === false) {
           console.log("⏸️ Aguardando confirmação do usuário para ajuste de valor");
-          return; // Não fechar o dialog ainda
+          return;
         }
         
         toast({
@@ -261,7 +258,6 @@ export default function PropertiesPage() {
       await confirmRentAdjustment();
       handleCloseDialog(false);
     } catch (error) {
-      // Erro já foi tratado no hook
     } finally {
       setIsSubmitting(false);
     }
@@ -273,7 +269,6 @@ export default function PropertiesPage() {
 
   const handleCardClick = useCallback(async (property: Property) => {
     try {
-      // Buscar dados completos do imóvel com description e images
       console.log("🔄 Carregando dados completos do imóvel:", property.id);
       
       const fullProperty = await propertyService.getById(property.id);
@@ -283,7 +278,6 @@ export default function PropertiesPage() {
         setFormData(prepareFormDataFromProperty(fullProperty));
         console.log("✅ Descrição carregada:", fullProperty.description);
       } else {
-        // Fallback: usar dados da listagem
         setEditingProperty(property);
         setFormData(prepareFormDataFromProperty(property));
       }
@@ -293,7 +287,6 @@ export default function PropertiesPage() {
       setIsEditMode(true);
     } catch (error) {
       console.error("❌ Erro ao carregar dados completos:", error);
-      // Fallback: usar dados da listagem
       setEditingProperty(property);
       setFormData(prepareFormDataFromProperty(property));
       setIsDialogOpen(true);
@@ -309,7 +302,6 @@ export default function PropertiesPage() {
   const confirmDelete = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
-    // Verificar se o imóvel está ocupado ANTES de abrir o dialog
     const property = sortedAndFilteredProperties.find(p => p.id === id);
     
     if (property?.status === "occupied") {
@@ -507,7 +499,6 @@ export default function PropertiesPage() {
         />
       </div>
 
-      {/* AlertDialog de Confirmação de Ajuste de Valor */}
       <AlertDialog open={!!pendingRentAdjustment} onOpenChange={(open) => !open && handleCancelRentAdjustment()}>
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
