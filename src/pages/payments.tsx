@@ -630,7 +630,7 @@ export default function Payments() {
 
   // Helper para determinar cores baseado na data de vencimento
   const getDueDateColor = (dueDate: string, isPaid: boolean): string => {
-    if (isPaid) return "";
+    if (isPaid) return "bg-green-50 border-l-4 border-l-green-500 hover:bg-green-100";
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -647,8 +647,34 @@ export default function Payments() {
     }
   };
 
+  // Helper para determinar cor do texto baseado na data de vencimento
+  const getDueDateTextColor = (dueDate: string, isPaid: boolean): string => {
+    if (isPaid) return "text-green-600";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const due = new Date(dueDate + "T00:00:00");
+    due.setHours(0, 0, 0, 0);
+    
+    if (due < today) {
+      return "text-red-600";
+    } else if (due.getTime() === today.getTime()) {
+      return "text-yellow-700";
+    } else {
+      return "text-blue-600";
+    }
+  };
+
   const pendingColumns = useMemo(() => [
-    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-blue-600">{getPropertyForPayment(p)?.location || "-"}</span> },
+    { 
+      key: "local", 
+      label: "Local", 
+      render: (p: Payment) => {
+        const textColor = getDueDateTextColor(p.dueDate, false);
+        return <span className={`font-medium ${textColor}`}>{getPropertyForPayment(p)?.location || "-"}</span>;
+      }
+    },
     { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
     { key: "period", label: "Período", sortable: false, render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
     { key: "installment", label: "Parcela", render: (p: Payment) => getPaymentInstallment(p) },
@@ -663,11 +689,19 @@ export default function Payments() {
     { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
     { key: "dueDate", label: "Vencimento", render: (p: Payment) => p.dueDate ? new Date(p.dueDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "amount", label: "Valor Esperado", className: "text-right", render: (p: Payment) => <span className="font-bold text-emerald-600">{getExpectedAmount(p).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> }
+    { 
+      key: "amount", 
+      label: "Valor Esperado", 
+      className: "text-right", 
+      render: (p: Payment) => {
+        const textColor = getDueDateTextColor(p.dueDate, false);
+        return <span className={`font-bold text-lg ${textColor}`}>{getExpectedAmount(p).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>;
+      }
+    }
   ], [getPropertyForPayment, getMonthName, getPaymentInstallment, getTenantForPayment, getExpectedAmount]);
 
   const paidColumns = useMemo(() => [
-    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-blue-600">{getPropertyForPayment(p)?.location || "-"}</span> },
+    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-green-600">{getPropertyForPayment(p)?.location || "-"}</span> },
     { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
     { key: "period", label: "Período", sortable: false, render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
     { key: "attachments", label: "Anexo", sortable: false, render: (p: Payment) => (p.attachments && (Array.isArray(p.attachments) ? p.attachments.length > 0 : Object.keys(p.attachments).length > 0)) ? <Badge className="bg-blue-100 text-blue-800">Sim</Badge> : <Badge variant="outline">Não</Badge> },
@@ -844,6 +878,7 @@ export default function Payments() {
                     sortDirection={sortDirectionPaid}
                     onSort={handleSortPaid}
                     onRowClick={(p) => setUiState(prev => ({ ...prev, selectedPaymentId: p.id }))}
+                    getRowClassName={(p) => getDueDateColor(p.dueDate, true)}
                     emptyMessage="Nenhum recebimento pago encontrado."
                   />
                 )
