@@ -147,10 +147,14 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
           if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
             const propertiesInLocations = await supabase.from("properties").select("id").in("location_id", allowedLocations);
-            const propertyIds = ((propertiesInLocations.data as Array<{ id: string }> | null) || []).map(p => p.id);
             
-            activeQuery = activeQuery.in("property_id", propertyIds);
-            expiringQuery = expiringQuery.in("property_id", propertyIds);
+            if (propertiesInLocations.error) {
+              console.error("❌ Erro ao buscar propriedades:", propertiesInLocations.error);
+            } else if (propertiesInLocations.data) {
+              const propertyIds = propertiesInLocations.data.map((p: any) => p.id);
+              activeQuery = activeQuery.in("property_id", propertyIds);
+              expiringQuery = expiringQuery.in("property_id", propertyIds);
+            }
           }
 
           const [active, expiring] = await Promise.all([activeQuery, expiringQuery]);
