@@ -431,14 +431,14 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY COM IMAGE_COUNT (ultra-rápido, sem timeout)
+ * PÁGINA PÚBLICA - QUERY COM PRIMEIRA IMAGEM (ultra-rápido, sem timeout)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Iniciando busca de imóveis disponíveis...");
-    console.log("🔍 [getPublicProperties] Query: status = 'available' COM IMAGE_COUNT");
+    console.log("🔍 [getPublicProperties] Query: status = 'available' COM PRIMEIRA IMAGEM");
 
-    // 🔥 Query COM IMAGE_COUNT ao invés de IMAGES (evita timeout!)
+    // 🔥 Query COM images COMPLETO - mas vamos processar apenas a primeira
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -455,6 +455,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
+        images,
         image_count,
         created_at
       `)
@@ -491,8 +492,9 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     if (locationIds.length === 0) {
       console.log("⚠️ [getPublicProperties] Nenhuma localização vinculada aos imóveis");
       return data.map((item: any) => {
-        const imageCount = item.image_count || 0;
-        const images: string[] = imageCount > 0 ? new Array(imageCount).fill('') : [];
+        // 🔥 Processar apenas a PRIMEIRA imagem para o card
+        const allImages = processImages(item.images);
+        const firstImage = allImages.length > 0 ? [allImages[0]] : [];
         
         return {
           id: item.id,
@@ -513,7 +515,8 @@ export const getPublicProperties = async (): Promise<Property[]> => {
           hasFurniture: item.has_furniture || false,
           acceptsPets: item.accepts_pets || false,
           status: item.status as "available" | "occupied" | "unavailable",
-          images: images,
+          images: firstImage, // Apenas primeira imagem para o card
+          allImages: allImages, // Todas as imagens para o dialog
           createdAt: item.created_at,
           features: [],
         };
@@ -548,9 +551,9 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
 
-      // 🔥 Criar array vazio com length correto baseado em image_count
-      const imageCount = item.image_count || 0;
-      const images: string[] = imageCount > 0 ? new Array(imageCount).fill('') : [];
+      // 🔥 Processar apenas a PRIMEIRA imagem para o card
+      const allImages = processImages(item.images);
+      const firstImage = allImages.length > 0 ? [allImages[0]] : [];
 
       return {
         id: item.id,
@@ -571,7 +574,8 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: images, // 🔥 Array vazio com length correto (ícone funciona!)
+        images: firstImage, // Apenas primeira imagem para o card
+        allImages: allImages, // Todas as imagens para o dialog de detalhes
         createdAt: item.created_at,
         features: [],
       } as Property;

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Property } from "@/types";
 import type { SortOption } from "@/components/public/SortSelector";
 import { propertyService } from "@/services";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UsePublicPropertiesOptions {
   location?: string;
@@ -45,46 +44,6 @@ function applySorting(properties: Property[], sort?: SortOption): Property[] {
   }
 }
 
-/**
- * Converte Json do Supabase para array de strings
- */
-function processImages(imagesJson: any): string[] {
-  if (!imagesJson) return [];
-  if (Array.isArray(imagesJson)) return imagesJson.filter((url: any) => typeof url === "string");
-  if (typeof imagesJson === "string") {
-    try {
-      const parsed = JSON.parse(imagesJson);
-      return Array.isArray(parsed) ? parsed.filter((url: any) => typeof url === "string") : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-/**
- * Busca as imagens de um imóvel específico
- */
-async function loadPropertyImages(propertyId: string): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from("properties")
-      .select("images")
-      .eq("id", propertyId)
-      .single();
-
-    if (error) {
-      console.error(`❌ Erro ao carregar imagens do imóvel ${propertyId}:`, error);
-      return [];
-    }
-
-    return processImages(data?.images);
-  } catch (err) {
-    console.error(`❌ Exceção ao carregar imagens do imóvel ${propertyId}:`, err);
-    return [];
-  }
-}
-
 // Cache em memória para evitar requisições repetidas
 let cachedProperties: Property[] | null = null;
 let cacheTimestamp = 0;
@@ -120,16 +79,16 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
           return;
         }
 
-        console.log("🔄 [usePublicProperties] Carregando imóveis públicos (dados básicos)...");
+        console.log("🔄 [usePublicProperties] Carregando imóveis públicos...");
 
-        // 🔥 ETAPA 1: Carregar dados básicos SEM images (rápido, sem timeout)
+        // Carregar imóveis (já vem com primeira imagem + todas as imagens)
         const data = await propertyService.getPublicProperties();
 
         // Atualizar cache
         cachedProperties = data;
         cacheTimestamp = now;
 
-        console.log(`✅ [usePublicProperties] ${data.length} imóveis carregados (sem images)`);
+        console.log(`✅ [usePublicProperties] ${data.length} imóveis carregados com imagens`);
 
         // Aplicar filtro de localização
         let filtered = data;
@@ -141,37 +100,8 @@ export function usePublicProperties({ location, sort }: UsePublicPropertiesOptio
         // Aplicar ordenação
         const sorted = applySorting(filtered, sort);
 
-        // Atualizar estado com imóveis SEM images (lista aparece rapidamente)
+        // Atualizar estado com imóveis completos (com imagens)
         setProperties(sorted);
-        setLoading(false);
-
-        // 🔥 ETAPA 2: Carregar images progressivamente (um por vez)
-        console.log("🖼️ [usePublicProperties] Iniciando carregamento progressivo de imagens...");
-        
-        for (let i = 0; i < sorted.length; i++) {
-          const property = sorted[i];
-          
-          // Pular se não tem imagens
-          if (!property.images || property.images.length === 0) continue;
-
-          // Carregar imagens deste imóvel
-          const images = await loadPropertyImages(property.id);
-          
-          if (images.length > 0) {
-            console.log(`  ✅ Imóvel ${i + 1}/${sorted.length}: ${images.length} imagens carregadas`);
-            
-            // Atualizar APENAS este imóvel no estado
-            setProperties(prevProperties => 
-              prevProperties.map(p => 
-                p.id === property.id 
-                  ? { ...p, images, allImages: images }
-                  : p
-              )
-            );
-          }
-        }
-
-        console.log("✅ [usePublicProperties] Carregamento progressivo concluído!");
 
       } catch (err) {
         console.error("❌ [usePublicProperties] Erro ao carregar imóveis:", err);
