@@ -314,19 +314,31 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
               .lt("due_date", new Date().toISOString().split('T')[0]);
 
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              const propertiesInLocation = (await supabase
+              const { data: propertiesData, error: propertiesError } = await supabase
                 .from("properties")
                 .select("id")
-                .in("location_id", allowedLocations)).data?.map(p => p.id) || [];
+                .in("location_id", allowedLocations);
 
-              const rentalsInProperties = (await supabase
-                .from("rentals")
-                .select("id")
-                .in("property_id", propertiesInLocation)).data?.map(r => r.id) || [];
+              if (propertiesError) {
+                console.error("❌ Erro ao buscar propriedades:", propertiesError);
+              } else if (propertiesData) {
+                const propertiesInLocation = propertiesData.map((p: any) => p.id);
 
-              if (rentalsInProperties.length > 0) {
-                totalQuery = totalQuery.in("rental_id", rentalsInProperties);
-                overdueQuery = overdueQuery.in("rental_id", rentalsInProperties);
+                const { data: rentalsData, error: rentalsError } = await supabase
+                  .from("rentals")
+                  .select("id")
+                  .in("property_id", propertiesInLocation);
+
+                if (rentalsError) {
+                  console.error("❌ Erro ao buscar locações:", rentalsError);
+                } else if (rentalsData) {
+                  const rentalsInProperties = rentalsData.map((r: any) => r.id);
+
+                  if (rentalsInProperties.length > 0) {
+                    totalQuery = totalQuery.in("rental_id", rentalsInProperties);
+                    overdueQuery = overdueQuery.in("rental_id", rentalsInProperties);
+                  }
+                }
               }
             }
 
