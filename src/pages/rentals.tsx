@@ -556,19 +556,57 @@ export default function RentalsPage() {
     { key: "complement", label: "Complemento", headerClassName: "text-center", render: (r: Rental) => getPropertyForRental(r)?.complement || "-" },
     { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.phone || "-" },
-    { key: "value", label: "Valor", headerClassName: "text-center", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
-    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (r: Rental) => getStatusBadge(r.status) },
-    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[120px]", render: (r: Rental) => (
-      <div className="flex flex-col items-center gap-1">
-        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewPayments(r); }} title="Ver Recebimentos">Recebimentos</Button>
-        {permissions.canViewContract && (
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewContract(r); }} title="Ver Contrato">Contrato</Button>
-        )}
-      </div>
-    )}
-  ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, permissions, handleViewPayments, handleViewContract]);
+    { key: "value", label: "Valor", headerClassName: "text-center", cellClassName: "px-1", className: "w-[120px]", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
+    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[100px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[100px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[100px]", render: (r: Rental) => getStatusBadge(r.status) },
+    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[140px]", render: (r: Rental) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isExpired = r.endDate && new Date(r.endDate) < today;
+      const isVisuallyActive = r.isActive && !isExpired;
+      
+      if (!isVisuallyActive) return <span className="text-xs text-muted-foreground">-</span>;
+      
+      return (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRentalToRenew(r);
+            }}
+            title="Renovar Contrato"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRentalToEnd(r);
+            }}
+            title="Rescisão de Contrato"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="destructive"
+            size="icon"
+            className="h-7 w-7"
+            onClick={(e) => handleOpenDeleteDialog(r, e)}
+            title="Excluir Locação"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      );
+    }}
+  ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, handleOpenDeleteDialog]);
 
   return (
     <>

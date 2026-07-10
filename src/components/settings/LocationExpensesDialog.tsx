@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Filter, AlertTriangle } from "lucide-react";
+import { Trash2, Filter, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, Printer } from "lucide-react";
 import { LocationExpense, Location } from "@/types";
 import { locationExpenseService } from "@/services/locationExpenseService";
 import { formatCurrency, applyRealMask, parseCurrencyToNumber } from "@/lib/masks";
@@ -19,6 +19,9 @@ interface LocationExpensesDialogProps {
   location: Location;
 }
 
+type SortField = "location_name" | "description" | "amount";
+type SortDirection = "asc" | "desc" | null;
+
 export function LocationExpensesDialog({ open, onOpenChange, location }: LocationExpensesDialogProps) {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<LocationExpense[]>([]);
@@ -27,6 +30,10 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [isEditing, setIsEditing] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<LocationExpense | null>(null);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   // Filtros
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -70,6 +77,60 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortDirection(null);
+        setSortField(null);
+      } else {
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    if (sortDirection === "asc") return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
+    return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
+  };
+
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    if (!sortField || !sortDirection) return 0;
+
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortField) {
+      case "location_name":
+        aValue = location.name.toLowerCase();
+        bValue = location.name.toLowerCase();
+        break;
+      case "description":
+        aValue = (a.description || "").toLowerCase();
+        bValue = (b.description || "").toLowerCase();
+        break;
+      case "amount":
+        aValue = a.amount;
+        bValue = b.amount;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const handleSave = async () => {
@@ -197,7 +258,18 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="flex items-center gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -236,9 +308,19 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Descrição</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("description")}>
+                      <div className="flex items-center">
+                        Descrição
+                        <SortIcon field="description" />
+                      </div>
+                    </TableHead>
                     <TableHead>Período</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right cursor-pointer" onClick={() => handleSort("amount")}>
+                      <div className="flex items-center justify-end">
+                        Valor
+                        <SortIcon field="amount" />
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center w-24">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -249,14 +331,14 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                         Carregando...
                       </TableCell>
                     </TableRow>
-                  ) : expenses.length === 0 ? (
+                  ) : sortedExpenses.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Nenhuma conta cadastrada para {getMonthName(filterMonth)}/{filterYear}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    expenses.map((expense) => (
+                    sortedExpenses.map((expense) => (
                       <TableRow 
                         key={expense.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -294,12 +376,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               </Table>
             </div>
 
-            {expenses.length > 0 && (
+            {sortedExpenses.length > 0 && (
               <div className="p-4 bg-muted rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total de Contas ({getMonthName(filterMonth)}/{filterYear}):</span>
                   <span className="text-xl font-bold text-red-600">
-                    {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
+                    {formatCurrency(sortedExpenses.reduce((sum, e) => sum + e.amount, 0))}
                   </span>
                 </div>
               </div>
