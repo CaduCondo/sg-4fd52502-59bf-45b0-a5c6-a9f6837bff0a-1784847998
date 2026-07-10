@@ -334,81 +334,338 @@ export const rentalUpdateService = {
     // 1. MUDANÇA NA DATA DE INÍCIO
     if (newChanges.startDate && newChanges.startDate !== oldRental.startDate) {
       console.log("📅 Detectada mudança na data de início");
-      const firstPayment = payments.find(p => p.installment === null || p.installment === 1);
+      console.log(`   - Data antiga: ${oldRental.startDate}`);
+      console.log(`   - Data nova: ${newChanges.startDate}`);
       
-      if (firstPayment && (firstPayment.status === "pending" || firstPayment.status === "overdue")) {
-        const newStartDate = new Date(newChanges.startDate + "T00:00:00");
+      const oldStartDate = new Date(oldRental.startDate + "T00:00:00");
+      const newStartDate = new Date(newChanges.startDate + "T00:00:00");
+      
+      const paymentDay = newChanges.paymentDay ?? oldRental.paymentDay;
+      const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
+      const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
+        ? (newChanges.garageValue ?? oldRental.garageValue ?? 0) 
+        : 0;
+      const totalMonthlyRent = monthlyRent + garageAmount;
+
+      // CENÁRIO 1: Data de início ANTECIPADA (movida para trás) - precisa CRIAR recebimentos faltantes
+      if (newStartDate < oldStartDate) {
+        console.log("🔙 Data de início ANTECIPADA - criando recebimentos faltantes...");
+        
+        // Buscar todos os pagamentos existentes
+        const { data: existingPayments, error: existingError } = await supabase
+          .from("payments")
+          .select("reference_month, reference_year")
+          .eq("rental_id", rentalId);
+
+        if (existingError) {
+          console.error("❌ Erro ao buscar pagamentos existentes:", existingError);
+          throw existingError;
+        }
+
+        const existingRefs = new Set(
+          (existingPayments || []).map(p => `${p.reference_year}-${p.reference_month}`)
+        );
+
+        console.log("🔍 Recebimentos existentes:", Array.from(existingRefs).sort());
+
+        // Calcular primeiro mês de pagamento baseado na NOVA data de início
         const startDay = newStartDate.getDate();
         const startMonth = newStartDate.getMonth() + 1;
         const startYear = newStartDate.getFullYear();
         
-        const paymentDay = newChanges.paymentDay ?? oldRental.paymentDay;
-        const monthlyRent = newChanges.monthlyRent ?? oldRental.monthlyRent;
-        const garageAmount = (newChanges.hasGarage ?? oldRental.hasGarage) 
-          ? (newChanges.garageValue ?? oldRental.garageValue ?? 0) 
-          : 0;
-        const totalMonthlyRent = monthlyRent + garageAmount;
-
-        // Determinar o mês do primeiro pagamento
         let firstPaymentMonth: number;
         let firstPaymentYear: number;
-        let daysToCharge: number;
+        let firstPaymentDays: number;
         
-        // REGRA: Se dia_inicio === dia_vencimento, primeira parcela no mês seguinte (integral)
         if (startDay === paymentDay) {
-          console.log("🎯 REGRA: Dia início === Dia vencimento → Primeira parcela no MÊS SEGUINTE (integral)");
+          // Dia início === dia vencimento → primeiro pagamento no MÊS SEGUINTE (integral)
           firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
           firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
-          daysToCharge = 30; // Mês completo
-        }
-        // REGRA: Se dia_inicio < dia_vencimento, primeira parcela no mesmo mês (proporcional)
-        else if (startDay < paymentDay) {
-          console.log("🎯 REGRA: Dia início < Dia vencimento → Primeira parcela no MESMO MÊS (proporcional)");
+          firstPaymentDays = 30;
+          console.log(`📅 Primeiro pagamento: ${firstPaymentMonth}/${firstPaymentYear} (INTEGRAL)`);
+        } else if (startDay < paymentDay) {
+          // Dia início < dia vencimento → primeiro pagamento no MESMO MÊS (proporcional)
           firstPaymentMonth = startMonth;
           firstPaymentYear = startYear;
-          daysToCharge = paymentDay - startDay + 1;
-        }
-        // REGRA: Se dia_inicio > dia_vencimento, primeira parcela no próximo mês (proporcional)
-        else {
-          console.log("🎯 REGRA: Dia início > Dia vencimento → Primeira parcela no PRÓXIMO MÊS (proporcional)");
+          firstPaymentDays = paymentDay - startDay;
+          console.log(`📅 Primeiro pagamento: ${firstPaymentMonth}/${firstPaymentYear} (PROPORCIONAL - ${firstPaymentDays} dias)`);
+        } else {
+          // Dia início > dia vencimento → primeiro pagamento no PRÓXIMO MÊS (proporcional)
           firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
           firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
           
-          // Calcular dias proporcionais
           const daysInStartMonth = new Date(startYear, startMonth, 0).getDate();
           const daysUntilEndOfStartMonth = daysInStartMonth - startDay + 1;
-          daysToCharge = daysUntilEndOfStartMonth + paymentDay;
+          firstPaymentDays = daysUntilEndOfStartMonth + (paymentDay - 1);
+          console.log(`📅 Primeiro pagamento: ${firstPaymentMonth}/${firstPaymentYear} (PROPORCIONAL - ${firstPaymentDays} dias)`);
         }
 
-        // Calcular a data de vencimento correta
-        const newDueDate = new Date(firstPaymentYear, firstPaymentMonth - 1, paymentDay);
-
-        // Verificar se é proporcional
-        const isProportional = daysToCharge !== 30;
+        // Gerar todos os pagamentos desde a nova data de início até o primeiro existente
+        const newPayments = [];
+        const currentDate = new Date(firstPaymentYear, firstPaymentMonth - 1, 1);
         
-        if (isProportional) {
-          // Calcular valor proporcional
-          const proportionalAmount = calculateProportionalAmount(totalMonthlyRent, daysToCharge);
+        // Encontrar o último mês que precisamos criar (menor mês existente)
+        let stopBeforeMonth: number | null = null;
+        let stopBeforeYear: number | null = null;
+        
+        if (existingPayments && existingPayments.length > 0) {
+          const sortedExisting = existingPayments
+            .map(p => ({
+              month: Number(p.reference_month),
+              year: Number(p.reference_year),
+            }))
+            .sort((a, b) => {
+              if (a.year !== b.year) return a.year - b.year;
+              return a.month - b.month;
+            });
           
-          updates.push({
-            id: firstPayment.id,
-            changes: {
-              due_date: newDueDate.toISOString().split('T')[0],
-              expected_amount: proportionalAmount,
+          stopBeforeMonth = sortedExisting[0].month;
+          stopBeforeYear = sortedExisting[0].year;
+          console.log(`⏹️ Parar antes de: ${stopBeforeMonth}/${stopBeforeYear}`);
+        }
+
+        let monthCount = 0;
+        while (true) {
+          const month = currentDate.getMonth() + 1;
+          const year = currentDate.getFullYear();
+          const refKey = `${year}-${month}`;
+          
+          // Parar se chegamos no primeiro mês existente
+          if (stopBeforeMonth && stopBeforeYear) {
+            if (year > stopBeforeYear || (year === stopBeforeYear && month >= stopBeforeMonth)) {
+              console.log(`⏹️ Parando em ${month}/${year} (chegou no primeiro existente)`);
+              break;
             }
-          });
+          }
           
-          console.log(`✅ Primeira parcela (proporcional): ${daysToCharge} dias = R$ ${proportionalAmount.toFixed(2)}`);
-        } else {
-          updates.push({
-            id: firstPayment.id,
-            changes: {
-              due_date: newDueDate.toISOString().split('T')[0],
-              expected_amount: totalMonthlyRent,
+          // Só criar se não existir
+          if (!existingRefs.has(refKey)) {
+            const dueDate = new Date(year, month - 1, paymentDay);
+            const isFirstPayment = (year === firstPaymentYear && month === firstPaymentMonth);
+            
+            monthCount++;
+            console.log(`➕ Criando pagamento ${monthCount}: ${month}/${year} (primeiro? ${isFirstPayment})`);
+            
+            if (isFirstPayment && firstPaymentDays !== 30) {
+              // Primeiro pagamento proporcional
+              const proportionalRent = (monthlyRent / 30) * firstPaymentDays;
+              const proportionalGarage = garageAmount > 0 ? (garageAmount / 30) * firstPaymentDays : 0;
+              const proportionalTotal = proportionalRent + proportionalGarage;
+              
+              const breakdown = [
+                {
+                  description: `Aluguel - Primeira Parcela (${firstPaymentDays} dias)`,
+                  amount: parseFloat(proportionalRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (garageAmount > 0) {
+                breakdown.push({
+                  description: `Garagem (${firstPaymentDays} dias)`,
+                  amount: parseFloat(proportionalGarage.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              newPayments.push({
+                rental_id: rentalId,
+                reference_month: month.toString(),
+                reference_year: year.toString(),
+                due_date: dueDate.toISOString().split('T')[0],
+                expected_amount: parseFloat(proportionalTotal.toFixed(2)),
+                status: "pending",
+                breakdown: breakdown,
+              });
+              
+              console.log(`   ✅ Primeiro pagamento PROPORCIONAL: R$ ${proportionalTotal.toFixed(2)} (${firstPaymentDays} dias)`);
+            } else {
+              // Pagamento integral
+              const breakdown = [
+                {
+                  description: "Aluguel",
+                  amount: parseFloat(monthlyRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (garageAmount > 0) {
+                breakdown.push({
+                  description: "Garagem",
+                  amount: parseFloat(garageAmount.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              newPayments.push({
+                rental_id: rentalId,
+                reference_month: month.toString(),
+                reference_year: year.toString(),
+                due_date: dueDate.toISOString().split('T')[0],
+                expected_amount: totalMonthlyRent,
+                status: "pending",
+                breakdown: breakdown,
+              });
+              
+              console.log(`   ✅ Pagamento INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
             }
-          });
+          } else {
+            console.log(`   ⏭️ Mês ${month}/${year} já existe, pulando...`);
+          }
           
-          console.log(`✅ Primeira parcela (integral): R$ ${totalMonthlyRent.toFixed(2)}`);
+          // Avançar para o próximo mês
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          
+          // Segurança: parar após 100 meses
+          if (monthCount > 100) {
+            console.log("⚠️ Limite de segurança atingido (100 meses)");
+            break;
+          }
+        }
+
+        console.log(`📊 Total de novos pagamentos a criar: ${newPayments.length}`);
+
+        // Inserir novos pagamentos
+        if (newPayments.length > 0) {
+          console.log("💾 Inserindo novos pagamentos no banco...");
+          
+          const { data: insertedData, error: insertError } = await supabase
+            .from("payments")
+            .insert(newPayments)
+            .select();
+
+          if (insertError) {
+            console.error("❌ Erro ao inserir novos pagamentos:", insertError);
+            throw insertError;
+          } else {
+            console.log(`✅ ${newPayments.length} novos pagamentos criados com sucesso!`);
+          }
+
+          // Atualizar total_installments
+          const { data: allPaymentsAfter } = await supabase
+            .from("payments")
+            .select("id")
+            .eq("rental_id", rentalId);
+
+          const totalInstallments = (allPaymentsAfter || []).length;
+
+          await supabase
+            .from("payments")
+            .update({ total_installments: totalInstallments })
+            .eq("rental_id", rentalId);
+
+          console.log(`✅ Total de parcelas atualizado: ${totalInstallments}`);
+        }
+
+        // Atualizar o primeiro pagamento existente se necessário (pode ter ficado proporcional quando deveria ser integral)
+        if (stopBeforeMonth && stopBeforeYear) {
+          const firstExistingRef = `${stopBeforeYear}-${stopBeforeMonth}`;
+          const firstExistingPayment = payments.find(
+            p => `${p.reference_year}-${p.reference_month}` === firstExistingRef && 
+                 (p.status === "pending" || p.status === "overdue")
+          );
+          
+          if (firstExistingPayment) {
+            console.log(`🔄 Verificando primeiro pagamento existente: ${stopBeforeMonth}/${stopBeforeYear}`);
+            
+            // Verificar se deveria ser integral
+            const shouldBeIntegral = (
+              (stopBeforeMonth === firstPaymentMonth && stopBeforeYear === firstPaymentYear) ? 
+              false : // É o primeiro proporcional
+              true    // É um mês subsequente integral
+            );
+            
+            if (shouldBeIntegral && firstExistingPayment.expected_amount !== totalMonthlyRent) {
+              console.log(`🔄 Convertendo primeiro existente de proporcional para INTEGRAL`);
+              
+              const breakdown = [
+                {
+                  description: "Aluguel",
+                  amount: parseFloat(monthlyRent.toFixed(2)),
+                  type: "addition",
+                }
+              ];
+
+              if (garageAmount > 0) {
+                breakdown.push({
+                  description: "Garagem",
+                  amount: parseFloat(garageAmount.toFixed(2)),
+                  type: "addition",
+                });
+              }
+
+              updates.push({
+                id: firstExistingPayment.id,
+                changes: {
+                  expected_amount: totalMonthlyRent,
+                  breakdown: breakdown,
+                }
+              });
+              
+              console.log(`✅ Primeiro pagamento existente atualizado para INTEGRAL: R$ ${totalMonthlyRent.toFixed(2)}`);
+            }
+          }
+        }
+      }
+      // CENÁRIO 2: Data de início POSTERGADA (movida para frente) - atualizar primeiro pagamento
+      else if (newStartDate > oldStartDate) {
+        console.log("⏩ Data de início POSTERGADA - atualizando primeiro pagamento...");
+        
+        const firstPayment = payments.find(p => p.installment === null || p.installment === 1);
+        
+        if (firstPayment && (firstPayment.status === "pending" || firstPayment.status === "overdue")) {
+          const startDay = newStartDate.getDate();
+          const startMonth = newStartDate.getMonth() + 1;
+          const startYear = newStartDate.getFullYear();
+
+          // Determinar o mês do primeiro pagamento
+          let firstPaymentMonth: number;
+          let firstPaymentYear: number;
+          let daysToCharge: number;
+          
+          if (startDay === paymentDay) {
+            firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
+            firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
+            daysToCharge = 30;
+          } else if (startDay < paymentDay) {
+            firstPaymentMonth = startMonth;
+            firstPaymentYear = startYear;
+            daysToCharge = paymentDay - startDay;
+          } else {
+            firstPaymentMonth = startMonth === 12 ? 1 : startMonth + 1;
+            firstPaymentYear = startMonth === 12 ? startYear + 1 : startYear;
+            
+            const daysInStartMonth = new Date(startYear, startMonth, 0).getDate();
+            const daysUntilEndOfStartMonth = daysInStartMonth - startDay + 1;
+            daysToCharge = daysUntilEndOfStartMonth + (paymentDay - 1);
+          }
+
+          const newDueDate = new Date(firstPaymentYear, firstPaymentMonth - 1, paymentDay);
+          const isProportional = daysToCharge !== 30;
+          
+          if (isProportional) {
+            const proportionalAmount = calculateProportionalAmount(totalMonthlyRent, daysToCharge);
+            
+            updates.push({
+              id: firstPayment.id,
+              changes: {
+                due_date: newDueDate.toISOString().split('T')[0],
+                expected_amount: proportionalAmount,
+              }
+            });
+            
+            console.log(`✅ Primeira parcela (proporcional): ${daysToCharge} dias = R$ ${proportionalAmount.toFixed(2)}`);
+          } else {
+            updates.push({
+              id: firstPayment.id,
+              changes: {
+                due_date: newDueDate.toISOString().split('T')[0],
+                expected_amount: totalMonthlyRent,
+              }
+            });
+            
+            console.log(`✅ Primeira parcela (integral): R$ ${totalMonthlyRent.toFixed(2)}`);
+          }
         }
       }
     }

@@ -171,6 +171,11 @@ export default function PropertiesPage() {
     setIsViewMode(false);
   }, []);
 
+  const handleCloseDialog = useCallback((open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) resetForm();
+  }, [resetForm]);
+
   const prepareFormDataFromProperty = useCallback((property: Property): PropertyFormData => ({
     location_id: property.locationId || "",
     property_identifier: property.propertyIdentifier || "",
@@ -346,11 +351,6 @@ export default function PropertiesPage() {
   const handleOpenDialog = useCallback(() => {
     resetForm();
     setIsDialogOpen(true);
-  }, [resetForm]);
-
-  const handleCloseDialog = useCallback((open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) resetForm();
   }, [resetForm]);
 
   const propertyColumns = useMemo(() => [
