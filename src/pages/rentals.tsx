@@ -224,10 +224,9 @@ export default function RentalsPage() {
 
       if (statusFilter === "all") return matchesSearch;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isExpired = rental.endDate && new Date(rental.endDate) < today;
-      const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
+      // ✅ CORRIGIDO: Usar status direto do banco (isActive) sem verificar vencimento
+      // Contratos vencidos mas ativos aparecem com cor vermelha no filtro "active"
+      const effectiveStatus = rental.isActive ? "active" : "terminated";
 
       return matchesSearch && statusFilter === effectiveStatus;
     });
