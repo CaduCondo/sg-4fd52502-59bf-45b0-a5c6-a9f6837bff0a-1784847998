@@ -431,14 +431,14 @@ export async function getAvailable(): Promise<Property[]> {
 }
 
 /**
- * PÁGINA PÚBLICA - QUERY COM IMAGENS (limit 10 para máxima velocidade)
+ * PÁGINA PÚBLICA - QUERY COM IMAGE_COUNT (ultra-rápido, sem timeout)
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Iniciando busca de imóveis disponíveis...");
-    console.log("🔍 [getPublicProperties] Query: status = 'available'");
+    console.log("🔍 [getPublicProperties] Query: status = 'available' COM IMAGE_COUNT");
 
-    // 🔥 Query COM IMAGES para página pública
+    // 🔥 Query COM IMAGE_COUNT ao invés de IMAGES (evita timeout!)
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -455,7 +455,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         has_garage,
         has_furniture,
         accepts_pets,
-        images,
+        image_count,
         created_at
       `)
       .eq("status", "available")
@@ -478,41 +478,46 @@ export const getPublicProperties = async (): Promise<Property[]> => {
     }
 
     console.log("✅ [getPublicProperties] Imóveis encontrados:");
-    data.forEach((prop, idx) => {
-      const imageCount = Array.isArray(prop.images) ? prop.images.length : 0;
+    data.forEach((prop: any, idx) => {
+      const imageCount = prop.image_count || 0;
       console.log(`  ${idx + 1}. ID: ${prop.id} | Location: ${prop.location_id} | Status: ${prop.status} | Images: ${imageCount}`);
     });
 
     // Buscar locations em query separada
-    const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+    const locationIds = [...new Set(data.map((p: any) => p.location_id).filter(Boolean))];
     
     console.log(`🔍 [getPublicProperties] Buscando ${locationIds.length} localizações...`);
 
     if (locationIds.length === 0) {
       console.log("⚠️ [getPublicProperties] Nenhuma localização vinculada aos imóveis");
-      return data.map(item => ({
-        id: item.id,
-        locationId: item.location_id,
-        location: "",
-        city: "",
-        neighborhood: "",
-        state: "",
-        address: "",
-        propertyIdentifier: item.property_identifier || "",
-        complement: item.complement || "",
-        description: item.description || "",
-        rooms: item.rooms || 0,
-        bathrooms: item.bathrooms || 0,
-        area: item.area || 0,
-        value: item.value || 0,
-        hasGarage: item.has_garage || false,
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images),
-        createdAt: item.created_at,
-        features: [],
-      }));
+      return data.map((item: any) => {
+        const imageCount = item.image_count || 0;
+        const images: string[] = imageCount > 0 ? new Array(imageCount).fill('') : [];
+        
+        return {
+          id: item.id,
+          locationId: item.location_id,
+          location: "",
+          city: "",
+          neighborhood: "",
+          state: "",
+          address: "",
+          propertyIdentifier: item.property_identifier || "",
+          complement: item.complement || "",
+          description: item.description || "",
+          rooms: item.rooms || 0,
+          bathrooms: item.bathrooms || 0,
+          area: item.area || 0,
+          value: item.value || 0,
+          hasGarage: item.has_garage || false,
+          hasFurniture: item.has_furniture || false,
+          acceptsPets: item.accepts_pets || false,
+          status: item.status as "available" | "occupied" | "unavailable",
+          images: images,
+          createdAt: item.created_at,
+          features: [],
+        };
+      });
     }
 
     // Query de locations
@@ -534,7 +539,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       (locationsData || []).map(loc => [loc.id, loc])
     );
 
-    const properties = data.map((item) => {
+    const properties = data.map((item: any) => {
       const location = locationsMap.get(item.location_id) as any;
       
       // Montar endereço
@@ -542,6 +547,10 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       if (location?.street) addressParts.push(location.street);
       if (location?.number) addressParts.push(location.number);
       const address = addressParts.join(", ");
+
+      // 🔥 Criar array vazio com length correto baseado em image_count
+      const imageCount = item.image_count || 0;
+      const images: string[] = imageCount > 0 ? new Array(imageCount).fill('') : [];
 
       return {
         id: item.id,
@@ -562,7 +571,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         status: item.status as "available" | "occupied" | "unavailable",
-        images: processImages(item.images),
+        images: images, // 🔥 Array vazio com length correto (ícone funciona!)
         createdAt: item.created_at,
         features: [],
       } as Property;
