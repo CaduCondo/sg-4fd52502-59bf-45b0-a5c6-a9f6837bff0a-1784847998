@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 const TABLE = "tenants";
 
 function toDatabase(data: Partial<Tenant>): any {
+  console.log("🔄 [tenantService.toDatabase] Dados recebidos:", data);
+  
   const dbData: any = {};
   
   if (data.name !== undefined) dbData.name = data.name;
@@ -31,23 +33,41 @@ function toDatabase(data: Partial<Tenant>): any {
   const docType = data.documentType || data.document_type || "cpf";
   dbData.document_type = docType;
   
+  console.log("📋 [tenantService.toDatabase] Tipo de documento:", docType);
+  console.log("📋 [tenantService.toDatabase] CPF:", data.cpf);
+  console.log("📋 [tenantService.toDatabase] CNPJ:", data.cnpj);
+  console.log("📋 [tenantService.toDatabase] Document:", data.document);
+  
   // Definir o campo document baseado no tipo
-  if (docType === "cpf" && data.cpf && data.cpf !== "") {
-    dbData.document = data.cpf;
-    dbData.cpf = data.cpf; // Manter cpf para compatibilidade
-  } else if (docType === "cnpj" && data.cnpj && data.cnpj !== "") {
-    dbData.document = data.cnpj;
-  } else if (data.document && data.document !== "") {
-    dbData.document = data.document;
-    // Se tiver document mas não tiver tipo explícito, inferir pelo tamanho
-    if (!data.documentType && !data.document_type) {
-      const cleanDoc = data.document.replace(/\D/g, "");
-      dbData.document_type = cleanDoc.length === 11 ? "cpf" : "cnpj";
-      if (cleanDoc.length === 11) {
-        dbData.cpf = data.document;
-      }
+  if (docType === "cpf") {
+    const cpfValue = data.cpf || data.document || "";
+    if (cpfValue && cpfValue !== "") {
+      dbData.document = cpfValue;
+      dbData.cpf = cpfValue;
+      console.log("✅ [tenantService.toDatabase] CPF definido:", cpfValue);
+    } else {
+      console.warn("⚠️ [tenantService.toDatabase] CPF não definido!");
     }
+  } else if (docType === "cnpj") {
+    const cnpjValue = data.cnpj || data.document || "";
+    if (cnpjValue && cnpjValue !== "") {
+      dbData.document = cnpjValue;
+      console.log("✅ [tenantService.toDatabase] CNPJ definido:", cnpjValue);
+    } else {
+      console.warn("⚠️ [tenantService.toDatabase] CNPJ não definido!");
+    }
+  } else if (data.document && data.document !== "") {
+    // Fallback para campo genérico 'document'
+    dbData.document = data.document;
+    const cleanDoc = data.document.replace(/\D/g, "");
+    dbData.document_type = cleanDoc.length === 11 ? "cpf" : "cnpj";
+    if (cleanDoc.length === 11) {
+      dbData.cpf = data.document;
+    }
+    console.log("✅ [tenantService.toDatabase] Document genérico definido:", data.document);
   }
+  
+  console.log("📤 [tenantService.toDatabase] Dados para banco:", dbData);
   
   return dbData;
 }
