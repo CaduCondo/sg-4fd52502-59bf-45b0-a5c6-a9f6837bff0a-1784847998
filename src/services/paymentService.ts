@@ -374,6 +374,49 @@ export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> 
 };
 
 /**
+ * Deleta recebimentos de uma locação de forma seletiva
+ * @param rentalId - ID da locação
+ * @param deletePending - Se true, deleta recebimentos pendentes
+ * @param deletePaid - Se true, deleta recebimentos pagos/parciais
+ */
+export const deletePaymentsByRentalIdSelective = async (
+  rentalId: string,
+  deletePending: boolean,
+  deletePaid: boolean
+): Promise<void> => {
+  if (!deletePending && !deletePaid) {
+    // Não deletar nada
+    return;
+  }
+
+  if (deletePending && deletePaid) {
+    // Deletar tudo
+    const { error } = await supabase.from("payments").delete().eq("rental_id", rentalId);
+    if (error) throw error;
+    return;
+  }
+
+  // Deletar seletivamente
+  const statusToDelete: string[] = [];
+  
+  if (deletePending) {
+    statusToDelete.push("pending", "overdue");
+  }
+  
+  if (deletePaid) {
+    statusToDelete.push("paid", "partial");
+  }
+
+  const { error } = await supabase
+    .from("payments")
+    .delete()
+    .eq("rental_id", rentalId)
+    .in("status", statusToDelete);
+  
+  if (error) throw error;
+};
+
+/**
  * NOVA LÓGICA DE GERAÇÃO DE RECEBIMENTOS
  * 
  * Regras:

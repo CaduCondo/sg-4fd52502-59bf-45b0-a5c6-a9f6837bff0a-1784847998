@@ -68,7 +68,9 @@ export default function RentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
-  const [deletePaymentsToo, setDeletePaymentsToo] = useState(false);
+  const [paymentCounts, setPaymentCounts] = useState<{ pending: number; paid: number } | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2 | 3>(1);
+  const [deleteChoices, setDeleteChoices] = useState({ pending: false, paid: false });
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
   
@@ -387,28 +389,45 @@ export default function RentalsPage() {
   }, [rentalToRenew, toast, formatDate, loadRentalsData]);
 
   // Handler para deletar locação
-  const handleDeleteRental = useCallback(async (shouldDeletePayments: boolean) => {
+  const handleDeleteRental = useCallback(async () => {
     if (!rentalToDelete) return;
 
     try {
-      // Deletar recebimentos APENAS se o usuário escolher
-      if (shouldDeletePayments) {
-        const { deletePaymentsByRentalId } = await import("@/services/paymentService");
-        await deletePaymentsByRentalId(rentalToDelete.id);
+      // Deletar recebimentos conforme escolhas do usuário
+      if (deleteChoices.pending || deleteChoices.paid) {
+        const { deletePaymentsByRentalIdSelective } = await import("@/services/paymentService");
+        await deletePaymentsByRentalIdSelective(
+          rentalToDelete.id, 
+          deleteChoices.pending, 
+          deleteChoices.paid
+        );
       }
       
       await deleteRental(rentalToDelete.id);
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
-      // Status do tenant é calculado automaticamente em getAllTenants() baseado nas locações
+
+      let message = "Locação removida.";
+      if (deleteChoices.pending && deleteChoices.paid) {
+        message = "Locação e todos os recebimentos foram removidos.";
+      } else if (deleteChoices.pending) {
+        message = "Locação e recebimentos pendentes foram removidos. Recebimentos pagos foram preservados.";
+      } else if (deleteChoices.paid) {
+        message = "Locação e recebimentos pagos foram removidos. Recebimentos pendentes foram preservados.";
+      } else {
+        message = "Locação removida. Todo o histórico financeiro foi preservado.";
+      }
 
       toast({
         title: "Sucesso!",
-        description: shouldDeletePayments 
-          ? "Locação e todos os recebimentos foram removidos."
-          : "Locação removida. O histórico financeiro foi preservado.",
+        description: message,
       });
+      
+      // Resetar estados
       setRentalToDelete(null);
-      setDeletePaymentsToo(false);
+      setPaymentCounts(null);
+      setDeleteStep(1);
+      setDeleteChoices({ pending: false, paid: false });
+      
       await loadRentalsData();
       await loadAvailableData();
     } catch (error) {
@@ -419,19 +438,18 @@ export default function RentalsPage() {
         variant: "destructive",
       });
     }
-  }, [rentalToDelete, toast, loadRentalsData, loadAvailableData]);
+  }, [rentalToDelete, deleteChoices, toast, loadRentalsData, loadAvailableData]);
 
   // Função para abrir o dialog de exclusão com validação prévia
   const handleOpenDeleteDialog = useCallback(async (rental: Rental, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // ✅ CORREÇÃO: Verificar se há recebimentos PENDING ao invés de apenas status
     try {
-      const { data: pendingPayments, error } = await supabase
+      // Buscar contagem de recebimentos
+      const { data: payments, error } = await supabase
         .from("payments")
-        .select("id")
-        .eq("rental_id", rental.id)
-        .eq("status", "pending");
+        .select("id, status")
+        .eq("rental_id", rental.id);
 
       if (error) {
         console.error("Erro ao verificar recebimentos:", error);
@@ -443,28 +461,13 @@ export default function RentalsPage() {
         return;
       }
 
-      if (pendingPayments && pendingPayments.length > 0) {
-        toast({
-          title: "Locação com Recebimentos Pendentes",
-          description: (
-            <div className="space-y-2">
-              <p>Esta locação possui {pendingPayments.length} recebimento(s) pendente(s) e não pode ser deletada.</p>
-              <p className="font-semibold">Para deletar esta locação:</p>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                <li>Se o contrato está ativo, use o botão <strong>Rescisão de Contrato</strong> (ícone amarelo)</li>
-                <li>Processe todos os pagamentos pendentes</li>
-                <li>Depois volte aqui para deletar a locação</li>
-              </ol>
-            </div>
-          ),
-          variant: "destructive",
-          duration: 10000,
-        });
-        return;
-      }
+      const pending = payments?.filter(p => p.status === "pending").length || 0;
+      const paid = payments?.filter(p => p.status === "paid" || p.status === "partial").length || 0;
 
-      // Se não há recebimentos pendentes, pode abrir o dialog de confirmação
+      setPaymentCounts({ pending, paid });
       setRentalToDelete(rental);
+      setDeleteStep(1);
+      setDeleteChoices({ pending: false, paid: false });
     } catch (error) {
       console.error("Erro ao validar locação:", error);
       toast({
@@ -961,34 +964,151 @@ export default function RentalsPage() {
           onConfirm={handleConfirmTermination}
         />
 
-        <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
+        {/* Dialog Step 1: Confirmar exclusão da locação */}
+        <AlertDialog 
+          open={!!rentalToDelete && deleteStep === 1} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setRentalToDelete(null);
+              setPaymentCounts(null);
+              setDeleteStep(1);
+              setDeleteChoices({ pending: false, paid: false });
+            }
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar exclusão da locação</AlertDialogTitle>
               <AlertDialogDescription className="space-y-4">
-                <p>Tem certeza que deseja excluir esta locação?</p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-                  <p className="font-semibold text-amber-900">⚠️ Atenção: Histórico Financeiro</p>
-                  <p className="text-sm text-amber-800">
-                    Esta locação pode ter recebimentos pagos (histórico financeiro). 
-                    Deseja manter este histórico para fins contábeis?
-                  </p>
+                <p>Esta locação possui:</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                  <p className="font-semibold text-blue-900">📊 Histórico Financeiro:</p>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s)</li>
+                    <li>• <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is)</li>
+                  </ul>
                 </div>
+                <p className="font-semibold">Tem certeza que deseja deletar esta locação?</p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
+              <AlertDialogCancel className="w-full sm:w-auto">Não</AlertDialogCancel>
               <Button
-                onClick={() => handleDeleteRental(false)}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Não, manter histórico
-              </Button>
-              <Button
-                onClick={() => handleDeleteRental(true)}
+                onClick={() => {
+                  if (paymentCounts && paymentCounts.pending > 0) {
+                    setDeleteStep(2); // Ir para pergunta sobre pendentes
+                  } else if (paymentCounts && paymentCounts.paid > 0) {
+                    setDeleteStep(3); // Pular para pergunta sobre pagos
+                  } else {
+                    handleDeleteRental(); // Sem recebimentos, deletar direto
+                  }
+                }}
                 className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Sim, deletar tudo
+                Sim
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog Step 2: Deletar recebimentos pendentes? */}
+        <AlertDialog 
+          open={!!rentalToDelete && deleteStep === 2} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setRentalToDelete(null);
+              setPaymentCounts(null);
+              setDeleteStep(1);
+              setDeleteChoices({ pending: false, paid: false });
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Deletar recebimentos pendentes?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4">
+                <p>Esta locação possui <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s).</p>
+                <p className="font-semibold">Deseja deletar também os recebimentos pendentes?</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  setDeleteChoices(prev => ({ ...prev, pending: false }));
+                  if (paymentCounts && paymentCounts.paid > 0) {
+                    setDeleteStep(3); // Ir para pergunta sobre pagos
+                  } else {
+                    handleDeleteRental(); // Sem pagos, deletar agora
+                  }
+                }}
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                Não
+              </Button>
+              <Button
+                onClick={() => {
+                  setDeleteChoices(prev => ({ ...prev, pending: true }));
+                  if (paymentCounts && paymentCounts.paid > 0) {
+                    setDeleteStep(3); // Ir para pergunta sobre pagos
+                  } else {
+                    handleDeleteRental(); // Sem pagos, deletar agora
+                  }
+                }}
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog Step 3: Deletar recebimentos pagos? */}
+        <AlertDialog 
+          open={!!rentalToDelete && deleteStep === 3} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setRentalToDelete(null);
+              setPaymentCounts(null);
+              setDeleteStep(1);
+              setDeleteChoices({ pending: false, paid: false });
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Deletar recebimentos pagos/parciais?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4">
+                <p>Esta locação possui <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is).</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                  <p className="font-semibold text-amber-900">⚠️ Atenção:</p>
+                  <p className="text-sm text-amber-800">
+                    Deletar recebimentos pagos remove o histórico financeiro. 
+                    Esta ação pode impactar relatórios contábeis.
+                  </p>
+                </div>
+                <p className="font-semibold">Deseja deletar também os recebimentos pagos/parciais?</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  setDeleteChoices(prev => ({ ...prev, paid: false }));
+                  handleDeleteRental();
+                }}
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                Não
+              </Button>
+              <Button
+                onClick={() => {
+                  setDeleteChoices(prev => ({ ...prev, paid: true }));
+                  handleDeleteRental();
+                }}
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
