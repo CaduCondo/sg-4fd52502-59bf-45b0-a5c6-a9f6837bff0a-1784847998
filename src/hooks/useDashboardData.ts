@@ -326,8 +326,7 @@ export function useDashboardData(
         console.log("🔔 [useDashboardData] Contratos a vencer:", {
           total: activeContracts,
           expiringContracts,
-          criteria: "status=active E end_date > hoje E alert (≤60 dias)",
-          details: expiringList
+          criteria: "status=active E end_date > hoje E alert (≤60 dias)"
         });
 
         // 🔥 Processar pagamentos com lógica CORRETA
