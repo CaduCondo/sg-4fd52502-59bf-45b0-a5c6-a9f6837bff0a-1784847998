@@ -27,8 +27,6 @@ export const TenantFilters = memo(function TenantFilters({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
-  sortBy,
-  onSortChange,
   totalCount,
 }: TenantFiltersProps) {
   const countText = useMemo(() => 
@@ -59,10 +57,7 @@ export const TenantFilters = memo(function TenantFilters({
           {countText}
         </div>
         
-        <div className="hidden lg:flex gap-3">
-          <div className="w-[180px] text-sm font-medium text-foreground">Status:</div>
-          <div className="w-[140px] text-sm font-medium text-foreground">Ordenar:</div>
-        </div>
+        <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-right">Status:</div>
       </div>
 
       <div className="flex gap-3">
@@ -78,7 +73,7 @@ export const TenantFilters = memo(function TenantFilters({
           </div>
         </div>
 
-        <div className="hidden lg:flex gap-3 ml-auto">
+        <div className="hidden lg:flex ml-auto">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-[180px] h-10 justify-between">
@@ -103,16 +98,6 @@ export const TenantFilters = memo(function TenantFilters({
               </div>
             </PopoverContent>
           </Popover>
-
-          <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
-            <SelectTrigger className="w-[140px] h-10">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alphabetical">A-Z</SelectItem>
-              <SelectItem value="recent">Recentes</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
     </div>

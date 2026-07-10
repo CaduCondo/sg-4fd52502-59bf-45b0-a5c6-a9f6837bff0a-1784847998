@@ -96,8 +96,8 @@ export default function TenantsPage() {
 
     if (sortKey) {
       filtered.sort((a, b) => {
-        let aVal = sortKey === "name" ? a.name.toLowerCase() : a.status;
-        let bVal = sortKey === "name" ? b.name.toLowerCase() : b.status;
+        const aVal = sortKey === "name" ? a.name.toLowerCase() : a.status;
+        const bVal = sortKey === "name" ? b.name.toLowerCase() : b.status;
         if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
         if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
         return 0;

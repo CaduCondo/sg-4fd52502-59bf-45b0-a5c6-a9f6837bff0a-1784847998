@@ -89,7 +89,7 @@ export default function PropertiesPage() {
   };
 
   const sortedAndFilteredProperties = useMemo(() => {
-    let result = [...filteredProperties];
+    const result = [...filteredProperties];
     if (sortKey) {
       result.sort((a, b) => {
         let aVal: any = "";
