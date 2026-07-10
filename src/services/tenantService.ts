@@ -18,7 +18,20 @@ function toDatabase(data: Partial<Tenant>): any {
   if (data.name !== undefined) dbData.name = data.name;
   if (data.email !== undefined) dbData.email = data.email;
   if (data.phone !== undefined) dbData.phone = data.phone;
-  if (data.status !== undefined) dbData.status = data.status;
+  
+  // 🔥 MAPEAMENTO DE STATUS - banco só aceita: active, inactive, rented
+  // Frontend usa "new" mas banco usa "active"
+  if (data.status !== undefined) {
+    const statusMap: Record<string, string> = {
+      "new": "active",      // Inquilino novo = ativo no banco
+      "active": "active",   // Manter active
+      "rented": "rented",   // Inquilino locatário
+      "inactive": "inactive" // Inquilino inativo
+    };
+    dbData.status = statusMap[data.status] || "active";
+    console.log(`📋 [tenantService.toDatabase] Status mapeado: ${data.status} → ${dbData.status}`);
+  }
+  
   if (data.rg !== undefined && data.rg !== "") dbData.rg = data.rg;
   
   if (data.cep !== undefined && data.cep !== "") dbData.zip_code = data.cep;
@@ -73,6 +86,9 @@ function toDatabase(data: Partial<Tenant>): any {
 }
 
 function fromDatabase(data: any): Tenant {
+  // 🔥 MAPEAMENTO REVERSO - banco retorna active/inactive/rented
+  // Converter "active" para "new" apenas se o inquilino NUNCA teve locações
+  // (será calculado na função getAllTenants/getActive)
   return {
     ...data,
     documentType: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
@@ -87,6 +103,7 @@ function fromDatabase(data: any): Tenant {
     neighborhood: data.neighborhood,
     city: data.city,
     state: data.state,
+    status: data.status, // Manter status do banco (será recalculado em getAllTenants)
   };
 }
 
