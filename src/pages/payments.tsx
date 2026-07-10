@@ -785,7 +785,7 @@ export default function Payments() {
                                 })}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="flex flex-col items-end gap-1">
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -795,7 +795,7 @@ export default function Payments() {
                                     }}
                                     title="Ver Recibo"
                                   >
-                                    Ver Recibo
+                                    Recibo
                                   </Button>
                                   {permissions.canDeletePayment && (
                                     <Button
