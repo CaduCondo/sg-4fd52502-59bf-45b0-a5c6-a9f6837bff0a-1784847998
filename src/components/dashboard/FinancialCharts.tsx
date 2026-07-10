@@ -226,13 +226,15 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
               query = query.in("location_id", allowedLocations);
             }
 
-            const { data: expenses } = await query;
-            const total = (expenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
+            const { data: expenses, error: expensesError } = await query;
             
-            data.push({
-              month: m.label,
-              total
-            });
+            if (expensesError) {
+              console.error("❌ Erro ao buscar despesas:", expensesError);
+              data.push({ month: m.label, total: 0 });
+            } else {
+              const total = (expenses || []).reduce((sum, e: any) => sum + (e.amount || 0), 0);
+              data.push({ month: m.label, total });
+            }
           }
           
           return data;
