@@ -224,9 +224,12 @@ export default function RentalsPage() {
 
       if (statusFilter === "all") return matchesSearch;
 
-      // ✅ CORRIGIDO: Usar status direto do banco (isActive) sem verificar vencimento
-      // Contratos vencidos mas ativos aparecem com cor vermelha no filtro "active"
-      const effectiveStatus = rental.isActive ? "active" : "terminated";
+      // ✅ CORRIGIDO: Contratos ATIVOS = status active E não vencidos
+      // Contratos vencidos são classificados como "terminated" mesmo com status active no banco
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isExpired = rental.endDate && new Date(rental.endDate) < today;
+      const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
 
       return matchesSearch && statusFilter === effectiveStatus;
     });
@@ -580,11 +583,14 @@ export default function RentalsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredRentals.map((rental) => {
                     const alert = calculateContractAlert(rental.endDate);
-                    const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isExpired = rental.endDate && new Date(rental.endDate) < today;
                     const isVisuallyActive = rental.isActive && !isExpired;
                     
-                    // ✅ CORRIGIDO: Mostrar cores TAMBÉM para contratos vencidos ativos (vermelho)
-                    const shouldShowAlert = rental.isActive && (alert.level === "warning" || alert.level === "critical");
+                    // ✅ CORRIGIDO: Aplicar cores APENAS para contratos ativos dentro de 60 dias
+                    // Vermelho: ≤30 dias | Amarelo: 31-60 dias
+                    const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
                     const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                     const badgeClasses = getAlertBadgeClasses(alert.level);
 
@@ -727,11 +733,14 @@ export default function RentalsPage() {
                     <TableBody>
                       {filteredRentals.map((rental) => {
                         const alert = calculateContractAlert(rental.endDate);
-                        const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const isExpired = rental.endDate && new Date(rental.endDate) < today;
                         const isVisuallyActive = rental.isActive && !isExpired;
                         
-                        // ✅ CORRIGIDO: Mostrar cores TAMBÉM para contratos vencidos ativos (vermelho)
-                        const shouldShowAlert = rental.isActive && (alert.level === "warning" || alert.level === "critical");
+                        // ✅ CORRIGIDO: Aplicar cores APENAS para contratos ativos dentro de 60 dias
+                        // Vermelho: ≤30 dias | Amarelo: 31-60 dias
+                        const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
                         const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                         const badgeClasses = getAlertBadgeClasses(alert.level);
 
