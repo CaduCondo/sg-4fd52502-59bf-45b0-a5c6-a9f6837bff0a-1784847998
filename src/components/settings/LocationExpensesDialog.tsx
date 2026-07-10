@@ -259,7 +259,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+              <DialogTitle>Detalhamento das Contas do Mês - {location.name}</DialogTitle>
               <Button
                 variant="outline"
                 size="sm"
@@ -308,14 +308,20 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tipo</TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort("description")}>
+                    <TableHead 
+                      className="cursor-pointer select-none" 
+                      onClick={() => handleSort("description")}
+                    >
                       <div className="flex items-center">
                         Descrição
                         <SortIcon field="description" />
                       </div>
                     </TableHead>
                     <TableHead>Período</TableHead>
-                    <TableHead className="text-right cursor-pointer" onClick={() => handleSort("amount")}>
+                    <TableHead 
+                      className="text-right cursor-pointer select-none" 
+                      onClick={() => handleSort("amount")}
+                    >
                       <div className="flex items-center justify-end">
                         Valor
                         <SortIcon field="amount" />
