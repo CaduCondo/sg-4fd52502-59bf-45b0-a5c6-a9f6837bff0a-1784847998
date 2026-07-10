@@ -152,10 +152,33 @@ export default function TenantsPage() {
   const handleDelete = useCallback((id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const tenant = tenants.find(t => t.id === id);
-    if (tenant) {
-      setTenantToDelete(tenant);
+    
+    if (!tenant) return;
+    
+    // Verificar se o inquilino está como locatário ANTES de abrir o dialog
+    if (tenant.status === "rented") {
+      toast({
+        title: "Inquilino é Locatário",
+        description: (
+          <div className="space-y-2">
+            <p>Este inquilino não pode ser deletado porque está como locatário em uma locação ativa.</p>
+            <p className="font-semibold">Para deletar este inquilino:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Vá para a página <strong>Locações</strong></li>
+              <li>Encontre a locação ativa deste inquilino</li>
+              <li>Encerre ou rescinda o contrato</li>
+              <li>Depois volte aqui para deletar o inquilino</li>
+            </ol>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 10000,
+      });
+      return;
     }
-  }, [tenants]);
+    
+    setTenantToDelete(tenant);
+  }, [tenants, toast]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (tenantToDelete) {

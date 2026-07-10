@@ -166,8 +166,8 @@ export async function deleteTenant(id: string): Promise<void> {
 
   if (activeRentals && activeRentals.length > 0) {
     throw new Error(
-      "❌ Não é possível deletar este inquilino porque ele está como LOCATÁRIO em uma locação ativa. " +
-      "Encerre ou cancele a locação antes de deletar o inquilino."
+      "Não é possível deletar este inquilino porque ele está como locatário em uma locação ativa. " +
+      "Encerre ou rescinda o contrato de locação antes de deletar o inquilino."
     );
   }
 
