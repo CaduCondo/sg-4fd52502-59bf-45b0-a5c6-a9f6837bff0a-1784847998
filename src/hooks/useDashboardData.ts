@@ -307,15 +307,14 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // 🔥 Contratos a vencer nos próximos 60 dias
-        // USA EXATAMENTE a mesma lógica do card de debug da página de Locações
+        // Contratos a vencer nos próximos 60 dias
         const expiringContracts = rentals.filter(r => {
-          if (!r.isActive || !r.endDate) return false;
+          if (r.status !== "active" || !r.end_date) return false;
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const endDate = new Date(r.endDate);
+          const endDate = new Date(r.end_date);
           if (endDate < today) return false;
-          const alert = calculateContractAlert(r.endDate);
+          const alert = calculateContractAlert(r.end_date);
           return alert.level === "warning" || alert.level === "critical";
         }).length;
 
