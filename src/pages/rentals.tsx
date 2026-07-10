@@ -584,7 +584,9 @@ export default function RentalsPage() {
                     const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
                     const isVisuallyActive = rental.isActive && !isExpired;
                     
-                    const alertClasses = isVisuallyActive ? getAlertClasses(alert.level) : "";
+                    // ✅ CORRIGIDO: Mostrar cores TAMBÉM para contratos vencidos ativos (vermelho)
+                    const shouldShowAlert = rental.isActive && (alert.level === "warning" || alert.level === "critical");
+                    const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                     const badgeClasses = getAlertBadgeClasses(alert.level);
 
                     return (
@@ -729,7 +731,9 @@ export default function RentalsPage() {
                         const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
                         const isVisuallyActive = rental.isActive && !isExpired;
                         
-                        const alertClasses = isVisuallyActive ? getAlertClasses(alert.level) : "";
+                        // ✅ CORRIGIDO: Mostrar cores TAMBÉM para contratos vencidos ativos (vermelho)
+                        const shouldShowAlert = rental.isActive && (alert.level === "warning" || alert.level === "critical");
+                        const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                         const badgeClasses = getAlertBadgeClasses(alert.level);
 
                         return (
