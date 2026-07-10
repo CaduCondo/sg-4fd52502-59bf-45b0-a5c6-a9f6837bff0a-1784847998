@@ -386,8 +386,8 @@ export const remove = async (id: string): Promise<void> => {
   
   if (property && property.status === "occupied") {
     throw new Error(
-      "❌ Não é possível deletar este imóvel porque ele está OCUPADO. " +
-      "Encerre ou cancele a locação antes de deletar o imóvel."
+      "Não é possível deletar este imóvel porque ele possui uma locação ativa. " +
+      "Encerre ou rescinda o contrato de locação antes de deletar o imóvel."
     );
   }
 

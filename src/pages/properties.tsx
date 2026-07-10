@@ -245,9 +245,34 @@ export default function PropertiesPage() {
 
   const confirmDelete = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    
+    // Verificar se o imóvel está ocupado ANTES de abrir o dialog
+    const property = sortedAndFilteredProperties.find(p => p.id === id);
+    
+    if (property?.status === "occupied") {
+      toast({
+        title: "Imóvel Ocupado",
+        description: (
+          <div className="space-y-2">
+            <p>Este imóvel não pode ser deletado porque está ocupado com uma locação ativa.</p>
+            <p className="font-semibold">Para deletar este imóvel:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Vá para a página <strong>Locações</strong></li>
+              <li>Encontre a locação ativa deste imóvel</li>
+              <li>Encerre ou rescinda o contrato</li>
+              <li>Depois volte aqui para deletar o imóvel</li>
+            </ol>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 10000,
+      });
+      return;
+    }
+    
     setPropertyToDelete(id);
     setIsDeleteDialogOpen(true);
-  }, []);
+  }, [sortedAndFilteredProperties, toast]);
 
   const handleDelete = useCallback(async () => {
     if (!propertyToDelete) return;
