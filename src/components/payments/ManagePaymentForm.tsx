@@ -148,11 +148,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Erro ao buscar config:", error);
+        return;
+      }
 
       if (data) {
-        setLateFeePercentage(data.late_fee_percentage || 0);
-        setInterestRatePercentage(data.interest_rate_percentage || 0);
+        // Type assertion necessária para bypass do erro de tipo complexo do Supabase
+        const configData = data as any;
+        setLateFeePercentage(configData.late_fee_percentage || 0);
+        setInterestRatePercentage(configData.interest_rate_percentage || 0);
       }
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
