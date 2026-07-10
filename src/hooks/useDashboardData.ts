@@ -306,13 +306,23 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // Contratos que vencem nos próximos 2 meses
-        const expiringContracts = rentals.filter(r => 
-          r.status === "active" && 
-          r.end_date &&
-          r.end_date >= todayStr &&
-          r.end_date <= twoMonthsStr
-        ).length;
+        // 🔥 Contratos a vencer nos próximos 2 meses (incluindo vencidos)
+        // Alinhado com contractAlerts.ts: daysRemaining <= 60 (amarelo/vermelho)
+        const expiringContracts = rentals.filter(r => {
+          if (r.status !== "active" || !r.end_date) return false;
+          
+          const endDate = new Date(r.end_date);
+          const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Incluir contratos que vencem em até 60 dias (amarelo) ou já vencidos (vermelho)
+          return diffDays <= 60;
+        }).length;
+
+        console.log("🔔 [useDashboardData] Contratos a vencer:", {
+          total: activeContracts,
+          expiringContracts,
+          criteria: "≤ 60 dias (incluindo vencidos)"
+        });
 
         // 🔥 Processar pagamentos com lógica CORRETA
         const paymentsData = paymentsResult.data || [];
