@@ -95,6 +95,13 @@ export default function PropertiesPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // 🔥 Forçar visualização em lista no primeiro carregamento
+  useEffect(() => {
+    if (viewMode === "grid") {
+      setViewMode("table");
+    }
+  }, []);
+
   const handleSort = (key: string) => {
     if (sortKey === key) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");

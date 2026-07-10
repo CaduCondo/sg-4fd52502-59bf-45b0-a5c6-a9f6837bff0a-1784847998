@@ -756,9 +756,9 @@ export default function Financial() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-4 sm:py-8 space-y-6 sm:space-y-8 px-4 sm:px-6">
+      <div className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
-          <div className="flex flex-col gap-2 sm:gap-4">
+          <div className="flex flex-col gap-1 sm:gap-2">
             <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
               Acompanhe suas receitas, despesas e fluxo de caixa
@@ -767,19 +767,19 @@ export default function Financial() {
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-full sm:max-w-md gap-1 sm:gap-2 h-auto p-1">
-            <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-              Locações
-            </TabsTrigger>
-            {(isAdmin || user?.role === "broker") && (
-              <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-2">
-                Cauções
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1">
+              <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+                Locações
               </TabsTrigger>
-            )}
-          </TabsList>
+              {(isAdmin || user?.role === "broker") && (
+                <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+                  Cauções
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-          <TabsContent value="rentals" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
-            <div className="w-full">
+            <div className="w-full sm:w-auto">
               <PeriodSelector 
                 selectedMonth={selectedMonth} 
                 selectedYear={selectedYear}
@@ -790,7 +790,9 @@ export default function Financial() {
                 showAllOption={false}
               />
             </div>
+          </div>
 
+          <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
             {/* Cards de Métricas - Locações */}
             <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
               {isFinancial ? (
@@ -810,7 +812,7 @@ export default function Financial() {
                             }).format(kpiCalculations.totalExpected)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Total de aluguéis esperados no período
+                            Total de aluguéis esperados
                           </p>
                         </div>
                       </div>
@@ -832,7 +834,7 @@ export default function Financial() {
                             }).format(kpiCalculations.totalReceived)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Total recebido no período
+                            Total recebido
                           </p>
                         </div>
                       </div>
@@ -854,7 +856,7 @@ export default function Financial() {
                             }).format(kpiCalculations.adminFee + kpiCalculations.managementFee + kpiCalculations.locationExpenses)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Taxas e contas a pagar do mês
+                            Taxas e contas a pagar
                           </p>
                         </div>
                       </div>
@@ -876,7 +878,7 @@ export default function Financial() {
                             }).format(kpiCalculations.netRevenue)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Valor após subtração das taxas e contas
+                            Após taxas e contas
                           </p>
                         </div>
                       </div>
@@ -900,7 +902,7 @@ export default function Financial() {
                             }).format(kpiCalculations.totalReceived)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Total recebido no período
+                            Total recebido
                           </p>
                         </div>
                       </div>
@@ -922,7 +924,7 @@ export default function Financial() {
                             }).format(kpiCalculations.adminFee)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {config ? config.admin_fee_percentage : 5}% sobre a receita bruta
+                            {config ? config.admin_fee_percentage : 5}% sobre receita
                           </p>
                         </div>
                       </div>
@@ -945,7 +947,7 @@ export default function Financial() {
                               }).format(kpiCalculations.managementFee)}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {config ? config.management_fee_percentage : 3}% sobre a receita bruta
+                              {config ? config.management_fee_percentage : 3}% sobre receita
                             </p>
                           </div>
                         </div>
@@ -969,8 +971,8 @@ export default function Financial() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {user?.role === "broker" 
-                              ? "Água, luz, taxa de gerenciamento e outras despesas"
-                              : "Água, luz e outras despesas dos locais"}
+                              ? "Despesas + taxa gerenciamento"
+                              : "Despesas dos locais"}
                           </p>
                         </div>
                       </div>
@@ -992,7 +994,7 @@ export default function Financial() {
                             }).format(kpiCalculations.netRevenue)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Valor após subtração das taxas e contas
+                            Após taxas e contas
                           </p>
                         </div>
                       </div>
