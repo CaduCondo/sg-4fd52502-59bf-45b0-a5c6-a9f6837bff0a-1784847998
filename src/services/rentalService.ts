@@ -505,19 +505,19 @@ export const rentalService = {
   },
 
   async remove(id: string): Promise<void> {
-    // 🔒 GATILHO DE SEGURANÇA: Verificar status antes de deletar
-    const { data: rental, error: fetchError } = await supabase
-      .from("rentals")
-      .select("status")
-      .eq("id", id)
-      .single();
+    // 🔒 GATILHO DE SEGURANÇA: Verificar recebimentos PENDING antes de deletar
+    const { data: pendingPayments, error: paymentsError } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("rental_id", id)
+      .eq("status", "pending");
 
-    if (fetchError) throw fetchError;
+    if (paymentsError) throw paymentsError;
 
-    if (rental && rental.status === "active") {
+    if (pendingPayments && pendingPayments.length > 0) {
       throw new Error(
-        "❌ Não é possível deletar esta locação porque ela está ATIVA. " +
-        "Use a opção 'Rescisão de Contrato' para encerrar a locação antes de deletá-la."
+        `❌ Não é possível deletar esta locação porque ela possui ${pendingPayments.length} recebimento(s) pendente(s). ` +
+        "Finalize ou cancele todos os recebimentos pendentes antes de deletar a locação."
       );
     }
 

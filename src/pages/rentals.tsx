@@ -414,32 +414,57 @@ export default function RentalsPage() {
   }, [rentalToDelete, toast, loadRentalsData, loadAvailableData]);
 
   // Função para abrir o dialog de exclusão com validação prévia
-  const handleOpenDeleteDialog = useCallback((rental: Rental, e: React.MouseEvent) => {
+  const handleOpenDeleteDialog = useCallback(async (rental: Rental, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Verificar se a locação está ATIVA ANTES de abrir o dialog
-    if (rental.status === "active" && rental.isActive) {
+    // ✅ CORREÇÃO: Verificar se há recebimentos PENDING ao invés de apenas status
+    try {
+      const { data: pendingPayments, error } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("rental_id", rental.id)
+        .eq("status", "pending");
+
+      if (error) {
+        console.error("Erro ao verificar recebimentos:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível verificar os recebimentos da locação.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (pendingPayments && pendingPayments.length > 0) {
+        toast({
+          title: "Locação com Recebimentos Pendentes",
+          description: (
+            <div className="space-y-2">
+              <p>Esta locação possui {pendingPayments.length} recebimento(s) pendente(s) e não pode ser deletada.</p>
+              <p className="font-semibold">Para deletar esta locação:</p>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                <li>Se o contrato está ativo, use o botão <strong>Rescisão de Contrato</strong> (ícone amarelo)</li>
+                <li>Processe todos os pagamentos pendentes</li>
+                <li>Depois volte aqui para deletar a locação</li>
+              </ol>
+            </div>
+          ),
+          variant: "destructive",
+          duration: 10000,
+        });
+        return;
+      }
+
+      // Se não há recebimentos pendentes, pode abrir o dialog de confirmação
+      setRentalToDelete(rental);
+    } catch (error) {
+      console.error("Erro ao validar locação:", error);
       toast({
-        title: "Locação Ativa",
-        description: (
-          <div className="space-y-2">
-            <p>Esta locação não pode ser deletada porque está ativa com um contrato vigente.</p>
-            <p className="font-semibold">Para deletar esta locação:</p>
-            <ol className="list-decimal list-inside space-y-1 text-sm">
-              <li>Use o botão <strong>Rescisão de Contrato</strong> (ícone amarelo)</li>
-              <li>Processe a rescisão do contrato</li>
-              <li>Aguarde o pagamento final ser concluído</li>
-              <li>Depois volte aqui para deletar a locação</li>
-            </ol>
-          </div>
-        ),
+        title: "Erro",
+        description: "Não foi possível validar a locação.",
         variant: "destructive",
-        duration: 10000,
       });
-      return;
     }
-    
-    setRentalToDelete(rental);
   }, [toast]);
 
   // Handler para visualizar locação
