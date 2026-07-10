@@ -214,7 +214,13 @@ export default function RentalsPage() {
 
   // Filtrar locações
   const filteredRentals = useMemo(() => {
-    return rentals.filter((rental) => {
+    console.log("🔍 [rentals.tsx] Iniciando filtro de locações:", {
+      total: rentals.length,
+      statusFilter,
+      searchTerm: debouncedSearchTerm
+    });
+
+    const filtered = rentals.filter((rental) => {
       const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
         !debouncedSearchTerm ||
@@ -231,8 +237,32 @@ export default function RentalsPage() {
       const isExpired = rental.endDate && new Date(rental.endDate) < today;
       const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
 
-      return matchesSearch && statusFilter === effectiveStatus;
+      const matches = matchesSearch && statusFilter === effectiveStatus;
+      
+      if (!matches && rental.isActive) {
+        console.log("❌ [rentals.tsx] Contrato filtrado:", {
+          id: rental.id,
+          tenant: rental.tenant?.name,
+          endDate: rental.endDate,
+          isActive: rental.isActive,
+          isExpired,
+          effectiveStatus,
+          statusFilter,
+          matchesSearch,
+          reason: !matchesSearch ? "busca" : "status"
+        });
+      }
+
+      return matches;
     });
+
+    console.log("✅ [rentals.tsx] Filtro concluído:", {
+      totalRentals: rentals.length,
+      filteredCount: filtered.length,
+      statusFilter
+    });
+
+    return filtered;
   }, [rentals, debouncedSearchTerm, statusFilter]);
 
   const activeRentals = useMemo(() => rentals.filter((r) => r.isActive), [rentals]);
@@ -581,7 +611,7 @@ export default function RentalsPage() {
                 </div>
               ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredRentals.map((rental) => {
+                  {filteredRentals.map((rental, index) => {
                     const alert = calculateContractAlert(rental.endDate);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -593,6 +623,21 @@ export default function RentalsPage() {
                     const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
                     const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                     const badgeClasses = getAlertBadgeClasses(alert.level);
+
+                    // 🔍 DEBUG: Log contratos com alerta
+                    if (index === 0 || shouldShowAlert) {
+                      console.log(`${shouldShowAlert ? "🎨" : "⚪"} [rentals.tsx] Card ${index + 1}:`, {
+                        tenant: rental.tenant?.name,
+                        endDate: rental.endDate,
+                        isActive: rental.isActive,
+                        isExpired,
+                        isVisuallyActive,
+                        alertLevel: alert.level,
+                        daysRemaining: alert.daysRemaining,
+                        shouldShowAlert,
+                        alertClasses: alertClasses || "nenhuma"
+                      });
+                    }
 
                     return (
                       <Card

@@ -27,23 +27,26 @@ export function calculateContractAlert(endDate: string | Date | null | undefined
   try {
     const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // ✅ Garantir comparação apenas de data, sem hora
     
     const daysRemaining = differenceInDays(end, now);
     const monthsRemaining = differenceInMonths(end, now);
 
-    // Vermelho: 1 mês ou menos (30 dias)
+    // 🔴 Vermelho CRÍTICO: <= 30 dias (incluindo vencidos)
     if (daysRemaining <= 30) {
       return {
         level: "critical",
         daysRemaining,
         monthsRemaining,
-        message: daysRemaining <= 0 
+        message: daysRemaining < 0 
           ? "Contrato vencido" 
+          : daysRemaining === 0
+          ? "Vence hoje"
           : `Vence em ${daysRemaining} dia${daysRemaining !== 1 ? "s" : ""}`,
       };
     }
 
-    // Amarelo: 2 meses ou menos (60 dias)
+    // 🟡 Amarelo AVISO: 31-60 dias
     if (daysRemaining <= 60) {
       return {
         level: "warning",
@@ -53,7 +56,7 @@ export function calculateContractAlert(endDate: string | Date | null | undefined
       };
     }
 
-    // Verde/Normal: Mais de 2 meses
+    // ✅ Verde/Normal: > 60 dias
     return {
       level: "normal",
       daysRemaining,
