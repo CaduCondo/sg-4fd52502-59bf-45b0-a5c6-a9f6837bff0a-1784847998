@@ -1,16 +1,13 @@
 ---
 title: Padronizar Tabela de Locações
-status: todo
+status: done
 priority: high
 type: feature
-tags: [rentals, table]
+tags: [rentals, ui]
 created_by: agent
-created_at: 2026-07-10T13:45:47Z
+created_at: 2026-07-10T13:51:00Z
 position: 4
 ---
 
-## Notes:
-- Colunas ordenáveis: Local, Complemento, Inquilino, Valor, Data Inicio, Data Fim e Status.
-
 ## Checklist:
-- [ ] Substituir/Atualizar tabela para usar o padrão de ordenação por cabeçalho nas colunas especificadas.
+- [x] Implementar ordenação clicável em `src/pages/rentals.tsx` nas colunas: Local, Complemento, Inquilino, Valor, Data Início, Data Fim, Status.

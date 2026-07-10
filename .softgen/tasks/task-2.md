@@ -1,19 +1,15 @@
 ---
 title: Padronizar Tabela de Imóveis
-status: todo
+status: done
 priority: high
 type: feature
-tags: [properties, table]
+tags: [properties, ui]
 created_by: agent
-created_at: 2026-07-10T13:45:47Z
+created_at: 2026-07-10T13:51:00Z
 position: 2
 ---
 
-## Notes:
-- Colunas ordenáveis: Local, Complemento (antigo Endereço), Valor, Quartos, Banheiros, Área Útil, Status e Foto.
-- Remover combo de "Ordenação" da barra de busca.
-
 ## Checklist:
-- [ ] Renomear coluna "Endereço" para "Complemento".
-- [ ] Implementar ordenação clicando no cabeçalho das colunas especificadas.
-- [ ] Remover combo de ordenação em `src/components/properties/PropertyFilters.tsx` ou onde estiver.
+- [x] Renomear coluna "Endereço" para "Complemento" em `src/pages/properties.tsx`.
+- [x] Implementar ordenação clicável nas colunas: Local, Complemento, Valor, Quartos, Banheiros, Área Útil, Status, Foto.
+- [x] Remover combo de ordenação em `src/components/properties/PropertyFilters.tsx` ou onde estiver.

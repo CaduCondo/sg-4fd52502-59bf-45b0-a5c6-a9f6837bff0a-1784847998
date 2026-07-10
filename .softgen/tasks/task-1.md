@@ -1,18 +1,13 @@
 ---
 title: Padronização UI das Tabelas
-status: in_progress
+status: done
 priority: high
 type: feature
-tags: [ui, table]
+tags: [ui, tables]
 created_by: agent
-created_at: 2026-07-10T13:45:47Z
+created_at: 2026-07-10T13:51:00Z
 position: 1
 ---
-
-## Notes:
-- A primeira linha da tabela (cabeçalho) deve ter o mesmo tipo de letra, tamanho e cor em todas as tabelas.
-- O efeito de hover ("mouse on") das linhas deve ser mais escuro para ficar mais visível.
-- Criar/Ajustar componente para suportar ordenação ao clicar no cabeçalho.
 
 ## Checklist:
 - [x] Atualizar `src/components/ui/table.tsx` para padronizar cabeçalho (font, text, color).
