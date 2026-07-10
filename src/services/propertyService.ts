@@ -138,7 +138,7 @@ export const getAll = async (): Promise<Property[]> => {
     if (error) throw error;
 
     // Buscar nomes das locations em paralelo (query separada mais rápida)
-    const locationIds = [...new Set((data || []).map((p: any) => p.location_id).filter(Boolean))];
+    const locationIds = [...new Set((data || []).map((p: any) => p.location_id as string).filter(Boolean))];
     
     const { data: locationsData } = await supabase
       .from("locations")

@@ -212,27 +212,30 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         throw new Error("Pagamento não encontrado");
       }
 
-      console.log("📦 Payment data loaded:", paymentData);
+      // Type assertion para garantir TypeScript type safety
+      const validatedPayment = paymentData as any;
+
+      console.log("📦 Payment data loaded:", validatedPayment);
       console.log("🔍 TODOS OS CAMPOS DO PAYMENT:", {
-        id: paymentData.id,
-        discount_amount: paymentData.discount_amount,
-        discount: (paymentData as any).discount,
-        expected_amount: paymentData.expected_amount,
-        paid_amount: paymentData.paid_amount,
-        late_fee: paymentData.late_fee,
-        interest: paymentData.interest
+        id: validatedPayment.id,
+        discount_amount: validatedPayment.discount_amount,
+        discount: validatedPayment.discount,
+        expected_amount: validatedPayment.expected_amount,
+        paid_amount: validatedPayment.paid_amount,
+        late_fee: validatedPayment.late_fee,
+        interest: validatedPayment.interest
       });
 
-      setPayment(paymentData);
-      setRental(paymentData.rentals);
-      setProperty(paymentData.rentals.properties);
-      setLocation(paymentData.rentals.properties.locations);
-      setTenant(paymentData.rentals.tenants);
+      setPayment(validatedPayment);
+      setRental(validatedPayment.rentals);
+      setProperty(validatedPayment.rentals.properties);
+      setLocation(validatedPayment.rentals.properties.locations);
+      setTenant(validatedPayment.rentals.tenants);
 
       // SEMPRE usar valores do contrato - NUNCA extrair do breakdown
       // O breakdown pode conter valores incorretos de cálculos anteriores
-      const baseRentalValue = paymentData.rentals.rent_value || 0;
-      const baseGarageValue = paymentData.rentals.has_garage ? (paymentData.rentals.garage_value || 0) : 0;
+      const baseRentalValue = validatedPayment.rentals.rent_value || 0;
+      const baseGarageValue = validatedPayment.rentals.has_garage ? (validatedPayment.rentals.garage_value || 0) : 0;
       
       console.log("💰 Valores do CONTRATO - Aluguel:", baseRentalValue, "Garagem:", baseGarageValue);
 
@@ -241,25 +244,25 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setEffectiveRentalValue(baseRentalValue);
       setEffectiveGarageValue(baseGarageValue);
 
-      const alreadyPaid = paymentData.status === "paid";
+      const alreadyPaid = validatedPayment.status === "paid";
       setIsPaid(alreadyPaid);
       setIsEditMode(!alreadyPaid);
 
-      const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
+      const isTermination = validatedPayment.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
       
       // CRITICAL: Carregar estados dos checkboxes salvos no banco
-      const waiveLateFee = (paymentData as any).late_fee_waived || false;
-      const waiveInterest = (paymentData as any).interest_waived || false;
+      const waiveLateFee = validatedPayment.late_fee_waived || false;
+      const waiveInterest = validatedPayment.interest_waived || false;
       
       console.log("📋 Carregando estados salvos - Multa perdoada:", waiveLateFee, "Juros perdoados:", waiveInterest);
       
       setRemoveLateFee(waiveLateFee);
       setRemoveInterest(waiveInterest);
       
-      if (paymentData.breakdown) {
+      if (validatedPayment.breakdown) {
         try {
-          let breakdownData = paymentData.breakdown;
+          let breakdownData = validatedPayment.breakdown;
           if (typeof breakdownData === 'string') {
             breakdownData = JSON.parse(breakdownData);
           }
@@ -298,16 +301,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
       
       // CRITICAL: Carregar discount_amount do banco de dados
-      if (paymentData.discount_amount !== undefined && paymentData.discount_amount !== null) {
-        console.log("💰 CARREGANDO DISCOUNT_AMOUNT DO BANCO:", paymentData.discount_amount);
-        setDiscountAmount(paymentData.discount_amount);
-        setDiscountAmountInput(formatCurrency(paymentData.discount_amount.toFixed(2)));
+      if (validatedPayment.discount_amount !== undefined && validatedPayment.discount_amount !== null) {
+        console.log("💰 CARREGANDO DISCOUNT_AMOUNT DO BANCO:", validatedPayment.discount_amount);
+        setDiscountAmount(validatedPayment.discount_amount);
+        setDiscountAmountInput(formatCurrency(validatedPayment.discount_amount.toFixed(2)));
       }
 
-      if (isTermination && paymentData.rentals) {
+      if (isTermination && validatedPayment.rentals) {
         console.log("🚨🚨🚨 BUSCANDO PARCELAS DO CAUÇÃO NA TABELA deposit_installments");
         
-        const rentalId = (paymentData.rentals as any).id;
+        const rentalId = validatedPayment.rentals.id;
 
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
@@ -325,8 +328,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             
             console.log(`💰 SOMA TOTAL (2 parcelas?): R$ ${totalDeposit.toFixed(2)}`);
             
-            const startDate = paymentData.rentals.start_date;
-            const endDate = paymentData.rentals.end_date;
+            const startDate = validatedPayment.rentals.start_date;
+            const endDate = validatedPayment.rentals.end_date;
             
             if (totalDeposit > 0 && startDate && endDate) {
               const igpmCorrectionValue = calculateCorrectedDeposit(
@@ -343,8 +346,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }
       }
 
-      if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        const attachmentData = paymentData.attachments.map((att: any) => {
+      if (validatedPayment.attachments && Array.isArray(validatedPayment.attachments)) {
+        const attachmentData = validatedPayment.attachments.map((att: any) => {
           if (typeof att === 'string') {
             return {
               url: att,
@@ -358,17 +361,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       setFormData({
-        payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
-        payment_method: paymentData.payment_method || "pix",
-        payment_time: (paymentData as any).payment_time || "",
-        amount_to_pay: paymentData.paid_amount 
-          ? formatCurrency(paymentData.paid_amount.toFixed(2))
+        payment_date: validatedPayment.payment_date || new Date().toISOString().split("T")[0],
+        payment_method: validatedPayment.payment_method || "pix",
+        payment_time: validatedPayment.payment_time || "",
+        amount_to_pay: validatedPayment.paid_amount 
+          ? formatCurrency(validatedPayment.paid_amount.toFixed(2))
           : "",
-        notes: paymentData.notes || "",
+        notes: validatedPayment.notes || "",
       });
 
-      if ((paymentData as any).payment_time) {
-        const [h, m, s] = (paymentData as any).payment_time.split(":");
+      if (validatedPayment.payment_time) {
+        const [h, m, s] = validatedPayment.payment_time.split(":");
         setPaymentHour(h || "");
         setPaymentMinute(m || "");
         setPaymentSecond(s || "00");

@@ -442,9 +442,9 @@ export default function Payments() {
                 rg: tenantData.rg || "",
                 createdAt: tenantData.created_at,
                 document: tenantData.document || tenantData.cpf || "",
-                status: (tenantData.status === "active" || tenantData.status === "inactive" || tenantData.status === "rented" || tenantData.status === "late" || tenantData.status === "debt")
+                status: (tenantData.status === "active" || tenantData.status === "inactive" || tenantData.status === "rented")
                   ? tenantData.status
-                  : "active" as "active" | "inactive" | "rented" | "late" | "debt",
+                  : "active" as "active" | "inactive" | "rented",
               };
               
               console.log("✅ DADOS CONVERTIDOS PARA O RECIBO:", {
