@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
+import type React from "react";
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
@@ -412,6 +413,35 @@ export default function RentalsPage() {
     }
   }, [rentalToDelete, toast, loadRentalsData, loadAvailableData]);
 
+  // Função para abrir o dialog de exclusão com validação prévia
+  const handleOpenDeleteDialog = useCallback((rental: Rental, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Verificar se a locação está ATIVA ANTES de abrir o dialog
+    if (rental.status === "active" && rental.isActive) {
+      toast({
+        title: "Locação Ativa",
+        description: (
+          <div className="space-y-2">
+            <p>Esta locação não pode ser deletada porque está ativa com um contrato vigente.</p>
+            <p className="font-semibold">Para deletar esta locação:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Use o botão <strong>Rescisão de Contrato</strong> (ícone amarelo)</li>
+              <li>Processe a rescisão do contrato</li>
+              <li>Aguarde o pagamento final ser concluído</li>
+              <li>Depois volte aqui para deletar a locação</li>
+            </ol>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 10000,
+      });
+      return;
+    }
+    
+    setRentalToDelete(rental);
+  }, [toast]);
+
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
     try {
@@ -506,14 +536,14 @@ export default function RentalsPage() {
             <Button variant="outline" size="icon" className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500" onClick={(e) => { e.stopPropagation(); setRentalToEnd(r); }} title="Rescisão de Contrato">
               <XCircle className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); setRentalToDelete(r); }} title="Excluir Locação">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => handleOpenDeleteDialog(r, e)} title="Excluir Locação">
               <Trash2 className="h-4 w-4" strokeWidth={2} />
             </Button>
           </div>
         )
       ) 
     }
-  ], [locations, statusFilter, rentalTerminations, formatDate]);
+  ], [locations, statusFilter, rentalTerminations, formatDate, handleOpenDeleteDialog]);
 
   return (
     <>
@@ -823,10 +853,7 @@ export default function RentalsPage() {
                                   variant="destructive"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRentalToDelete(rental);
-                                  }}
+                                  onClick={(e) => handleOpenDeleteDialog(rental, e)}
                                   title="Excluir Locação"
                                 >
                                   <Trash2 className="h-4 w-4" />
