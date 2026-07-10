@@ -62,7 +62,10 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
         
         const images = data?.images;
         if (images && Array.isArray(images) && images.length > 0) {
-          setFirstImage(images[0]);
+          const firstImg = images[0];
+          if (firstImg && typeof firstImg === 'string') {
+            setFirstImage(firstImg);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar primeira imagem:", err);
@@ -91,7 +94,14 @@ export function PropertyPublicCard({ property, priority = false, index = 0 }: Pr
         
         const images = data?.images;
         if (images && Array.isArray(images)) {
-          setAllImages(images);
+          // Filtrar e validar que todos são strings
+          const validImages: string[] = [];
+          for (const img of images) {
+            if (img && typeof img === 'string' && img.length > 0) {
+              validImages.push(img);
+            }
+          }
+          setAllImages(validImages);
         }
       } catch (err) {
         console.error("Erro ao carregar imagens:", err);
