@@ -308,21 +308,66 @@ export function useDashboardData(
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
         // Contratos a vencer nos próximos 60 dias
+        console.log("🔍 [useDashboardData] ===== ANÁLISE DE CONTRATOS A VENCER =====");
+        console.log("📊 [useDashboardData] Total de rentals recebidos:", rentals.length);
+        console.log("📊 [useDashboardData] Rentals ativos:", rentals.filter(r => r.status === "active").length);
+        
+        const contractsToExpire: any[] = [];
+        
         const expiringContracts = rentals.filter(r => {
-          if (r.status !== "active" || !r.end_date) return false;
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          if (r.status !== "active" || !r.end_date) {
+            if (r.status === "active" && !r.end_date) {
+              console.log("⚠️ [useDashboardData] Contrato ativo SEM end_date:", r.id);
+            }
+            return false;
+          }
+          
           const endDate = new Date(r.end_date);
-          if (endDate < today) return false;
+          const todayCheck = new Date();
+          todayCheck.setHours(0, 0, 0, 0);
+          
+          if (endDate < todayCheck) {
+            console.log("❌ [useDashboardData] Contrato VENCIDO (excluído):", {
+              id: r.id,
+              end_date: r.end_date,
+              daysAgo: Math.ceil((todayCheck.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24))
+            });
+            return false;
+          }
+          
           const alert = calculateContractAlert(r.end_date);
-          return alert.level === "warning" || alert.level === "critical";
+          const shouldCount = alert.level === "warning" || alert.level === "critical";
+          
+          if (shouldCount) {
+            console.log("✅ [useDashboardData] Contrato A VENCER (CONTADO):", {
+              id: r.id,
+              end_date: r.end_date,
+              alertLevel: alert.level,
+              daysRemaining: alert.daysRemaining,
+              message: alert.message
+            });
+            contractsToExpire.push({
+              id: r.id,
+              end_date: r.end_date,
+              level: alert.level,
+              days: alert.daysRemaining
+            });
+          } else {
+            console.log("⚪ [useDashboardData] Contrato NORMAL (não contado):", {
+              id: r.id,
+              end_date: r.end_date,
+              alertLevel: alert.level,
+              daysRemaining: alert.daysRemaining
+            });
+          }
+          
+          return shouldCount;
         }).length;
 
-        console.log("🔔 [useDashboardData] Contratos a vencer:", {
-          total: activeContracts,
-          expiringContracts,
-          criteria: "status=active E end_date > hoje E alert (≤60 dias)"
-        });
+        console.log("🔔 [useDashboardData] ===== RESULTADO FINAL =====");
+        console.log("📊 [useDashboardData] Total de contratos A VENCER:", expiringContracts);
+        console.log("📋 [useDashboardData] Lista de contratos contados:", contractsToExpire);
+        console.log("========================================");
 
         // 🔥 Processar pagamentos com lógica CORRETA
         const paymentsData = paymentsResult.data || [];
