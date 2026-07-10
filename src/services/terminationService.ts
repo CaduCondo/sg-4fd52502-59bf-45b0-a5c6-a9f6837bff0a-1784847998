@@ -147,6 +147,27 @@ export async function processContractTermination(data: TerminationData): Promise
     // ========== REGRA 1: RESCISÃO POSTERIOR AO VENCIMENTO ==========
     console.log("\n  🔵 REGRA 1: Criar 2 recebimentos no mesmo mês");
     
+    // PRIMEIRO: Buscar TODOS os recebimentos do mês da rescisão
+    console.log("\n  🔍 Buscando recebimentos existentes do mês da rescisão...");
+    const { data: allMonthPayments, error: fetchAllError } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("rental_id", rentalId)
+      .eq("reference_month", String(terminationMonth).padStart(2, "0"))
+      .eq("reference_year", String(terminationYear));
+
+    if (fetchAllError) {
+      console.error("    ❌ Erro ao buscar recebimentos do mês:", fetchAllError);
+      throw fetchAllError;
+    }
+
+    console.log(`  📊 Recebimentos encontrados no mês ${terminationMonth}/${terminationYear}: ${allMonthPayments?.length || 0}`);
+    if (allMonthPayments && allMonthPayments.length > 0) {
+      allMonthPayments.forEach((p, idx) => {
+        console.log(`    ${idx + 1}. ID: ${p.id} | Due: ${p.due_date} | Amount: ${p.expected_amount} | Status: ${p.status}`);
+      });
+    }
+
     // --- Recebimento 1: Aluguel cheio no vencimento normal ---
     console.log("\n  📄 RECEBIMENTO 1 (Aluguel Cheio):");
     const dueDate1 = new Date(terminationYear, terminationMonth - 1, paymentDay);
@@ -155,17 +176,8 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log(`    Vencimento: ${dueDateStr1}`);
     console.log(`    Valor: R$ ${fullMonthRent.toFixed(2)}`);
     
-    const { data: existingPayment1, error: fetchError1 } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("rental_id", rentalId)
-      .eq("due_date", dueDateStr1)
-      .maybeSingle();
-
-    if (fetchError1) {
-      console.error("    ❌ Erro ao buscar recebimento 1:", fetchError1);
-      throw fetchError1;
-    }
+    // Buscar se já existe recebimento com esse vencimento
+    const existingPayment1 = allMonthPayments?.find(p => p.due_date === dueDateStr1);
 
     if (!existingPayment1) {
       console.log("    ⚙️ Criando recebimento 1...");
@@ -188,12 +200,13 @@ export async function processContractTermination(data: TerminationData): Promise
 
       if (createError1) {
         console.error("    ❌ Erro ao criar recebimento 1:", createError1);
+        console.error("    📋 Detalhes do erro:", JSON.stringify(createError1, null, 2));
         throw createError1;
       }
       
       console.log("    ✅ Recebimento 1 criado com sucesso!");
     } else {
-      console.log("    ✅ Recebimento 1 já existe!");
+      console.log(`    ✅ Recebimento 1 já existe (ID: ${existingPayment1.id})!`);
     }
 
     // --- Recebimento 2: Rescisão no dia da saída ---
@@ -234,21 +247,11 @@ export async function processContractTermination(data: TerminationData): Promise
     });
     console.log(`    Total: R$ ${totalAmount2.toFixed(2)}`);
 
-    // Buscar se já existe recebimento de rescisão
-    const { data: existingPayment2, error: fetchError2 } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("rental_id", rentalId)
-      .eq("due_date", dueDateStr2)
-      .maybeSingle();
-
-    if (fetchError2) {
-      console.error("    ❌ Erro ao buscar recebimento 2:", fetchError2);
-      throw fetchError2;
-    }
+    // Buscar se já existe recebimento com esse vencimento
+    const existingPayment2 = allMonthPayments?.find(p => p.due_date === dueDateStr2);
 
     if (existingPayment2) {
-      console.log("    ⚙️ Atualizando recebimento de rescisão existente...");
+      console.log(`    ⚙️ Atualizando recebimento de rescisão existente (ID: ${existingPayment2.id})...`);
       
       const { error: updateError2 } = await supabase
         .from("payments")
@@ -262,6 +265,7 @@ export async function processContractTermination(data: TerminationData): Promise
 
       if (updateError2) {
         console.error("    ❌ Erro ao atualizar recebimento 2:", updateError2);
+        console.error("    📋 Detalhes do erro:", JSON.stringify(updateError2, null, 2));
         throw updateError2;
       }
       
@@ -284,6 +288,14 @@ export async function processContractTermination(data: TerminationData): Promise
 
       if (createError2) {
         console.error("    ❌ Erro ao criar recebimento 2:", createError2);
+        console.error("    📋 Detalhes do erro:", JSON.stringify(createError2, null, 2));
+        console.error("    📋 Dados enviados:", {
+          rental_id: rentalId,
+          due_date: dueDateStr2,
+          expected_amount: totalAmount2,
+          reference_month: String(terminationMonth).padStart(2, "0"),
+          reference_year: String(terminationYear),
+        });
         throw createError2;
       }
       
