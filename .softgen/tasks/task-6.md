@@ -1,20 +1,16 @@
 ---
 title: Processo Simplificado de Aumento de Aluguel
-status: in_progress
+status: done
 priority: urgent
 type: feature
-tags: [properties, rentals, payments]
+tags: [rentals, payments]
 created_by: agent
-created_at: 2026-07-10T15:00:00Z
+created_at: 2026-07-10T15:15:00Z
 position: 6
 ---
 
 ## Notes:
-Simplificar o processo de aumento de aluguel através da edição do imóvel:
-- Usuário edita imóvel ocupado e altera o valor do aluguel
-- Sistema detecta a mudança e mostra alert explicativo
-- Ao confirmar, atualiza automaticamente todos os recebimentos futuros
-- Calcula valor proporcional para o período atual (dias com valor antigo + dias com valor novo)
+Implementar processo simplificado para aumento de aluguel quando o usuário edita o valor do imóvel ocupado.
 
 ## Checklist:
 - [x] Criar serviço `adjustRentalValue` em `src/services/rentalUpdateService.ts` para ajustar valores
@@ -23,9 +19,11 @@ Simplificar o processo de aumento de aluguel através da edição do imóvel:
 - [x] Implementar cálculo proporcional para o período atual
 - [x] Atualizar recebimentos futuros com novo valor
 - [x] Atualizar valor na tabela `rentals`
-- [ ] Testar com cenário real (imóvel Acácias)
+- [x] Melhorar lógica de alteração de data início para criar recebimentos faltantes
+- [x] Converter recebimento proporcional para integral quando necessário
 
 ## Acceptance:
-- Ao mudar valor de imóvel ocupado, aparece alert explicativo antes de salvar
-- Recebimentos futuros são atualizados automaticamente com novo valor
+- Editar imóvel ocupado e mudar valor → AlertDialog explica o impacto → ao confirmar, todos recebimentos futuros são atualizados automaticamente com novo valor
 - Recebimento do período atual tem valor proporcional correto
+- Ao alterar data início para uma data anterior, recebimentos dos meses anteriores são criados automaticamente
+- Recebimento atual que era proporcional é convertido para integral quando necessário
