@@ -15,6 +15,6 @@ position: 1
 - Criar/Ajustar componente para suportar ordenação ao clicar no cabeçalho.
 
 ## Checklist:
-- [ ] Atualizar `src/components/ui/table.tsx` para padronizar cabeçalho (font, text, color).
-- [ ] Atualizar `src/components/ui/table.tsx` para escurecer o hover das linhas (`TableRow`).
-- [ ] Verificar e preparar componente de ordenação (ex: `sortable-table.tsx`).
+- [x] Atualizar `src/components/ui/table.tsx` para padronizar cabeçalho (font, text, color).
+- [x] Atualizar `src/components/ui/table.tsx` para escurecer o hover das linhas (`TableRow`).
+- [x] Verificar e preparar componente de ordenação (ex: `sortable-table.tsx`).

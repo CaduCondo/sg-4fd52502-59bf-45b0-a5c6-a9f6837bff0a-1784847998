@@ -35,12 +35,12 @@ export function SortableTable<T extends { id: string }>({
     <div className="rounded-md border bg-white">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50 hover:bg-slate-100">
+          <TableRow className="hover:bg-slate-100">
             {columns.map((column) => (
               <TableHead
                 key={column.key}
-                className={`font-semibold text-slate-700 ${column.className || ""} ${
-                  column.sortable !== false ? "cursor-pointer select-none" : ""
+                className={`${column.className || ""} ${
+                  column.sortable !== false ? "cursor-pointer select-none hover:bg-slate-200 transition-colors" : ""
                 }`}
                 onClick={() => column.sortable !== false && onSort(column.key)}
               >
@@ -75,7 +75,7 @@ export function SortableTable<T extends { id: string }>({
             data.map((item) => (
               <TableRow
                 key={item.id}
-                className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                className={`cursor-pointer transition-colors ${
                   getRowClassName ? getRowClassName(item) : ""
                 }`}
                 onClick={() => onRowClick?.(item)}
