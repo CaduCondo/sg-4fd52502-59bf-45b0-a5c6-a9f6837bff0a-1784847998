@@ -328,7 +328,7 @@ export default function PropertiesPage() {
                 onClick={() => setViewMode("grid")}
                 className="h-8 px-2 sm:px-3"
               >
-                <Grid3x3 className="h-4 w-4 sm:mr-1.5" />
+                <LayoutGrid className="h-4 w-4 sm:mr-1.5" />
                 <span className="hidden sm:inline">Grade</span>
               </Button>
               <Button
