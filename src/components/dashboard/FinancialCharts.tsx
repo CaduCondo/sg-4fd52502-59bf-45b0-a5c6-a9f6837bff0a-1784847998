@@ -53,10 +53,13 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           
           if (permError) {
             console.error("❌ Erro ao buscar permissões:", permError);
+            allowedLocations = [];
+          } else if (permData) {
+            allowedLocations = permData.map(p => p.location_id);
+          } else {
+            allowedLocations = [];
           }
           
-          // Type assertion para corrigir erro de build
-          allowedLocations = (permData as Array<{ location_id: string }> | null)?.map(p => p.location_id) || [];
           console.log("📍 Localizações permitidas:", allowedLocations);
           
           if (allowedLocations.length === 0) {
