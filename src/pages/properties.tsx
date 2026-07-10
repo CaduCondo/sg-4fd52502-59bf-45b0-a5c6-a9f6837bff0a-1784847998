@@ -361,15 +361,15 @@ export default function PropertiesPage() {
   }, [resetForm]);
 
   const propertyColumns = useMemo(() => [
-    { key: "local", label: "Local", render: (p: Property) => <span className="font-medium text-blue-600">{p.location}</span> },
-    { key: "complement", label: "Complemento", render: (p: Property) => p.complement || "-" },
-    { key: "value", label: "Valor", render: (p: Property) => formatCurrency(p.value || 0) },
-    { key: "rooms", label: "Quartos", render: (p: Property) => p.rooms ? <div className="flex items-center gap-1"><Bed className="h-4 w-4" /><span>{p.rooms}</span></div> : "-" },
-    { key: "bathrooms", label: "Banheiros", render: (p: Property) => p.bathrooms ? <div className="flex items-center gap-1"><Bath className="h-4 w-4" /><span>{p.bathrooms}</span></div> : "-" },
-    { key: "area", label: "Área Útil", render: (p: Property) => p.area ? `${p.area} m²` : "-" },
-    { key: "status", label: "Status", render: (p: Property) => getStatusBadge(p.status) },
-    { key: "foto", label: "Foto", render: (p: Property) => p.images && p.images.length > 0 ? <div className="flex items-center gap-1 text-blue-600"><Camera className="h-4 w-4" /><span className="text-xs font-medium">{p.images.length}</span></div> : <span className="text-muted-foreground text-xs">-</span> },
-    { key: "actions", label: "Deletar", sortable: false, className: "text-right", render: (p: Property) => (
+    { key: "local", label: "Local", headerClassName: "text-center", render: (p: Property) => <span className="font-medium text-blue-600">{p.location}</span> },
+    { key: "complement", label: "Complemento", headerClassName: "text-center", render: (p: Property) => p.complement || "-" },
+    { key: "value", label: "Valor", headerClassName: "text-center", render: (p: Property) => formatCurrency(p.value || 0) },
+    { key: "rooms", label: "Quartos", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: (p: Property) => p.rooms ? <div className="flex items-center justify-center gap-1"><Bed className="h-4 w-4" /><span>{p.rooms}</span></div> : "-" },
+    { key: "bathrooms", label: "Banheiros", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: (p: Property) => p.bathrooms ? <div className="flex items-center justify-center gap-1"><Bath className="h-4 w-4" /><span>{p.bathrooms}</span></div> : "-" },
+    { key: "area", label: "Área Útil", headerClassName: "text-center", cellClassName: "text-right px-2", className: "w-[100px]", render: (p: Property) => p.area ? `${p.area} m²` : "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (p: Property) => getStatusBadge(p.status) },
+    { key: "foto", label: "Foto", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Property) => p.images && p.images.length > 0 ? <div className="flex items-center justify-center gap-1 text-blue-600"><Camera className="h-4 w-4" /><span className="text-xs font-medium">{p.images.length}</span></div> : <span className="text-muted-foreground text-xs">-</span> },
+    { key: "actions", label: "Deletar", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Property) => (
       <Button
         variant="ghost"
         size="icon"

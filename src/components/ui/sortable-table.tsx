@@ -8,6 +8,8 @@ interface Column<T> {
   label: string;
   sortable?: boolean;
   className?: string;
+  headerClassName?: string;
+  cellClassName?: string;
   render?: (item: T) => React.ReactNode;
 }
 
@@ -51,7 +53,7 @@ export function SortableTable<T extends Record<string, any>>({
         <TableHeader>
           <TableRow>
             {columns.map((column) => (
-              <TableHead key={column.key} className={column.className}>
+              <TableHead key={column.key} className={`${column.className || ""} ${column.headerClassName || ""}`}>
                 {column.sortable !== false ? (
                   <Button
                     variant="ghost"
@@ -77,7 +79,7 @@ export function SortableTable<T extends Record<string, any>>({
               className={`${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""} ${getRowClassName?.(item) || ""}`}
             >
               {columns.map((column) => (
-                <TableCell key={column.key} className={column.className}>
+                <TableCell key={column.key} className={`${column.className || ""} ${column.cellClassName || ""}`}>
                   {column.render ? column.render(item) : item[column.key]}
                 </TableCell>
               ))}

@@ -669,16 +669,17 @@ export default function Payments() {
   const pendingColumns = useMemo(() => [
     { 
       key: "local", 
-      label: "Local", 
+      label: "Local",
+      headerClassName: "text-center",
       render: (p: Payment) => {
         const textColor = getDueDateTextColor(p.dueDate, false);
         return <span className={`font-medium ${textColor}`}>{getPropertyForPayment(p)?.location || "-"}</span>;
       }
     },
-    { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
-    { key: "period", label: "Período", sortable: false, className: "w-[100px]", render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
-    { key: "installment", label: "Parcela", sortable: false, className: "w-[80px]", render: (p: Payment) => getPaymentInstallment(p) },
-    { key: "status", label: "Status", sortable: false, className: "w-[100px]", render: (p: Payment) => {
+    { key: "complement", label: "Complemento", headerClassName: "text-center", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
+    { key: "period", label: "Período", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
+    { key: "installment", label: "Parcela", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Payment) => getPaymentInstallment(p) },
+    { key: "status", label: "Status", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: (p: Payment) => {
         const config = {
           pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
           overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
@@ -686,12 +687,13 @@ export default function Payments() {
         }[p.status] || { label: "Pendente", className: "bg-yellow-100 text-yellow-800" };
         return <Badge className={config.className}>{config.label}</Badge>;
     }},
-    { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
-    { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
-    { key: "dueDate", label: "Vencimento", render: (p: Payment) => p.dueDate ? new Date(p.dueDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
+    { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
+    { key: "dueDate", label: "Vencimento", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (p: Payment) => p.dueDate ? new Date(p.dueDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
     { 
       key: "amount", 
-      label: "Valor Esperado", 
+      label: "Valor Esperado",
+      headerClassName: "text-center",
       className: "text-right", 
       render: (p: Payment) => {
         const textColor = getDueDateTextColor(p.dueDate, false);
@@ -701,18 +703,18 @@ export default function Payments() {
   ], [getPropertyForPayment, getMonthName, getPaymentInstallment, getTenantForPayment, getExpectedAmount]);
 
   const paidColumns = useMemo(() => [
-    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-green-600">{getPropertyForPayment(p)?.location || "-"}</span> },
-    { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
-    { key: "period", label: "Período", sortable: false, className: "w-[100px]", render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
-    { key: "attachments", label: "Anexo", sortable: false, className: "w-[80px]", render: (p: Payment) => (p.attachments && (Array.isArray(p.attachments) ? p.attachments.length > 0 : Object.keys(p.attachments).length > 0)) ? <Badge className="bg-blue-100 text-blue-800">Sim</Badge> : <Badge variant="outline">Não</Badge> },
-    { key: "installment", label: "Parcela", sortable: false, className: "w-[80px]", render: (p: Payment) => getPaymentInstallment(p) },
-    { key: "status", label: "Status", sortable: false, className: "w-[100px]", render: () => <Badge className="bg-green-100 text-green-800">Pago</Badge> },
-    { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
-    { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
-    { key: "paymentDate", label: "Pago em", render: (p: Payment) => p.paymentDate ? new Date(p.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "amount", label: "Valor Pago", className: "text-right", render: (p: Payment) => <span className="font-bold text-lg text-green-600">{(p.paidAmount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> },
-    { key: "actions", label: "Ações", sortable: false, className: "text-right w-[120px]", render: (p: Payment) => (
-      <div className="flex flex-col items-end gap-1">
+    { key: "local", label: "Local", headerClassName: "text-center", render: (p: Payment) => <span className="font-medium text-green-600">{getPropertyForPayment(p)?.location || "-"}</span> },
+    { key: "complement", label: "Complemento", headerClassName: "text-center", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
+    { key: "period", label: "Período", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
+    { key: "attachments", label: "Anexo", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Payment) => (p.attachments && (Array.isArray(p.attachments) ? p.attachments.length > 0 : Object.keys(p.attachments).length > 0)) ? <Badge className="bg-blue-100 text-blue-800">Sim</Badge> : <Badge variant="outline">Não</Badge> },
+    { key: "installment", label: "Parcela", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Payment) => getPaymentInstallment(p) },
+    { key: "status", label: "Status", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: () => <Badge className="bg-green-100 text-green-800">Pago</Badge> },
+    { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
+    { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
+    { key: "paymentDate", label: "Pago em", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (p: Payment) => p.paymentDate ? new Date(p.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "amount", label: "Valor Pago", headerClassName: "text-center", className: "text-right", render: (p: Payment) => <span className="font-bold text-lg text-green-600">{(p.paidAmount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> },
+    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[120px]", render: (p: Payment) => (
+      <div className="flex flex-col items-center gap-1">
         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewReceipt(p); }} title="Ver Recibo">Recibo</Button>
         {permissions.canDeletePayment && (
           <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => handleCancelPayment(p.id, e)} title="Cancelar Pagamento">Cancelar</Button>
