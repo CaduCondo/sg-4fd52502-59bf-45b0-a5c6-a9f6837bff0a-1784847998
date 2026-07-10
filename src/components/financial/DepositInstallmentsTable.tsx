@@ -135,9 +135,9 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // Type assertion direta - bypass do tipo complexo do Supabase
+        // Type assertion em duas etapas - bypass do tipo complexo do Supabase
         console.log("✅ Dados carregados, total:", installmentsData.length);
-        setData(installmentsData as DepositInstallment[]);
+        setData(installmentsData as unknown as DepositInstallment[]);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
