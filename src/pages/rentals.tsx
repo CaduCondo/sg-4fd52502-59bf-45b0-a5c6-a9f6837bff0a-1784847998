@@ -83,6 +83,42 @@ export default function RentalsPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // Permissions helper
+  const permissions = useMemo(() => ({
+    canViewContract: true, // Todos podem ver contrato
+  }), []);
+
+  // Helper functions
+  const getPropertyForRental = useCallback((rental: Rental) => {
+    return rental.property || allProperties.find(p => p.id === rental.propertyId);
+  }, [allProperties]);
+
+  const getTenantForRental = useCallback((rental: Rental) => {
+    return rental.tenant || allTenants.find(t => t.id === rental.tenantId);
+  }, [allTenants]);
+
+  const getRentalMonthlyRent = useCallback((rental: Rental) => {
+    return (rental.value || 0) + (rental.garageValue || 0);
+  }, []);
+
+  const getStatusBadge = useCallback((status: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (status === "active") {
+      return <Badge className="bg-green-500 text-white hover:bg-green-600">Ativa</Badge>;
+    }
+    return <Badge className="bg-gray-500 text-white hover:bg-gray-600">Encerrado</Badge>;
+  }, []);
+
+  const handleViewPayments = useCallback((rental: Rental) => {
+    router.push(`/payments?rental=${rental.id}`);
+  }, [router]);
+
+  const handleViewContract = useCallback((rental: Rental) => {
+    router.push(`/rentals?contract=${rental.id}`);
+  }, [router]);
+
   const handleSort = (key: string) => {
     if (sortKey === key) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
