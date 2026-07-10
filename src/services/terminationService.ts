@@ -147,74 +147,86 @@ export async function processContractTermination(data: TerminationData): Promise
     // ========== REGRA 1: RESCISÃO POSTERIOR AO VENCIMENTO ==========
     console.log("\n  🔵 REGRA 1: Criar 2 recebimentos no mesmo mês");
     
-    // PRIMEIRO: Buscar TODOS os recebimentos do mês da rescisão
-    console.log("\n  🔍 Buscando recebimentos existentes do mês da rescisão...");
-    const { data: allMonthPayments, error: fetchAllError } = await supabase
+    // ✅ SOLUÇÃO DEFINITIVA: DELETAR TODOS os recebimentos PENDING do mês ANTES de criar os novos
+    console.log("\n  🗑️ PASSO CRÍTICO: Deletar TODOS os recebimentos PENDING do mês da rescisão");
+    
+    const { data: pendingPayments, error: fetchPendingError } = await supabase
       .from("payments")
-      .select("*")
+      .select("id, due_date, status, expected_amount, installment")
       .eq("rental_id", rentalId)
       .eq("reference_month", String(terminationMonth).padStart(2, "0"))
-      .eq("reference_year", String(terminationYear));
+      .eq("reference_year", String(terminationYear))
+      .eq("status", "pending");
 
-    if (fetchAllError) {
-      console.error("    ❌ Erro ao buscar recebimentos do mês:", fetchAllError);
-      throw fetchAllError;
+    if (fetchPendingError) {
+      console.error("    ❌ Erro ao buscar recebimentos pending:", fetchPendingError);
+      throw fetchPendingError;
     }
 
-    console.log(`  📊 Recebimentos encontrados no mês ${terminationMonth}/${terminationYear}: ${allMonthPayments?.length || 0}`);
-    if (allMonthPayments && allMonthPayments.length > 0) {
-      allMonthPayments.forEach((p, idx) => {
-        console.log(`    ${idx + 1}. ID: ${p.id} | Due: ${p.due_date} | Amount: ${p.expected_amount} | Status: ${p.status}`);
+    if (pendingPayments && pendingPayments.length > 0) {
+      console.log(`  ⚠️ Encontrados ${pendingPayments.length} recebimento(s) PENDING no mês ${terminationMonth}/${terminationYear}`);
+      pendingPayments.forEach((p, idx) => {
+        console.log(`    ${idx + 1}. ID: ${p.id} | Due: ${p.due_date} | Amount: ${p.expected_amount} | Installment: ${p.installment}`);
       });
+
+      console.log(`  🔥 Deletando TODOS os ${pendingPayments.length} recebimentos PENDING...`);
+      
+      const { error: deleteAllError } = await supabase
+        .from("payments")
+        .delete()
+        .in("id", pendingPayments.map(p => p.id));
+
+      if (deleteAllError) {
+        console.error("    ❌ Erro ao deletar recebimentos pending:", deleteAllError);
+        throw deleteAllError;
+      }
+      
+      console.log("    ✅ Todos os recebimentos PENDING deletados com sucesso!");
+    } else {
+      console.log("  ℹ️ Nenhum recebimento PENDING encontrado no mês");
     }
 
     // --- Recebimento 1: Aluguel cheio no vencimento normal ---
-    console.log("\n  📄 RECEBIMENTO 1 (Aluguel Cheio):");
+    console.log("\n  📄 CRIANDO RECEBIMENTO 1 (Aluguel Cheio):");
     const dueDate1 = new Date(terminationYear, terminationMonth - 1, paymentDay);
     const dueDateStr1 = dueDate1.toISOString().split("T")[0];
     
     console.log(`    Vencimento: ${dueDateStr1}`);
     console.log(`    Valor: R$ ${fullMonthRent.toFixed(2)}`);
+    console.log(`    Installment: 1`);
     
-    // Buscar se já existe recebimento com esse vencimento
-    const existingPayment1 = allMonthPayments?.find(p => p.due_date === dueDateStr1);
+    const { error: createError1 } = await supabase
+      .from("payments")
+      .insert({
+        rental_id: rentalId,
+        due_date: dueDateStr1,
+        expected_amount: fullMonthRent,
+        reference_month: String(terminationMonth).padStart(2, "0"),
+        reference_year: String(terminationYear),
+        status: "pending",
+        installment: 1, // ✅ CORREÇÃO DEFINITIVA: usar installment 1
+        total_installments: 2, // ✅ Total de 2 recebimentos neste mês
+        breakdown: [{
+          description: `Aluguel Mês ${terminationMonth}/${terminationYear}`,
+          amount: fullMonthRent,
+          type: "addition"
+        }]
+      });
 
-    if (!existingPayment1) {
-      console.log("    ⚙️ Criando recebimento 1...");
-      
-      const { error: createError1 } = await supabase
-        .from("payments")
-        .insert({
-          rental_id: rentalId,
-          due_date: dueDateStr1,
-          expected_amount: fullMonthRent,
-          reference_month: String(terminationMonth).padStart(2, "0"),
-          reference_year: String(terminationYear),
-          status: "pending",
-          installment: null, // ✅ CORREÇÃO: Definir como null para o primeiro recebimento
-          breakdown: [{
-            description: `Aluguel Mês ${terminationMonth}/${terminationYear}`,
-            amount: fullMonthRent,
-            type: "addition"
-          }]
-        });
-
-      if (createError1) {
-        console.error("    ❌ Erro ao criar recebimento 1:", createError1);
-        console.error("    📋 Detalhes do erro:", JSON.stringify(createError1, null, 2));
-        throw createError1;
-      }
-      
-      console.log("    ✅ Recebimento 1 criado com sucesso!");
-    } else {
-      console.log(`    ✅ Recebimento 1 já existe (ID: ${existingPayment1.id})!`);
+    if (createError1) {
+      console.error("    ❌ Erro ao criar recebimento 1:", createError1);
+      console.error("    📋 Detalhes do erro:", JSON.stringify(createError1, null, 2));
+      throw createError1;
     }
+    
+    console.log("    ✅ Recebimento 1 criado com sucesso!");
 
     // --- Recebimento 2: Rescisão no dia da saída ---
-    console.log("\n  📄 RECEBIMENTO 2 (Rescisão):");
+    console.log("\n  📄 CRIANDO RECEBIMENTO 2 (Rescisão):");
     const dueDateStr2 = terminationDate;
     
     console.log(`    Vencimento: ${dueDateStr2}`);
+    console.log(`    Installment: 2`);
     
     const breakdown2 = [];
     
@@ -248,106 +260,30 @@ export async function processContractTermination(data: TerminationData): Promise
     });
     console.log(`    Total: R$ ${totalAmount2.toFixed(2)}`);
 
-    // Buscar se já existe recebimento com esse vencimento E MESMO MÊS/ANO
-    const existingPayment2 = allMonthPayments?.find(p => 
-      p.due_date === dueDateStr2 && 
-      p.reference_month === String(terminationMonth).padStart(2, "0") &&
-      p.reference_year === String(terminationYear)
-    );
+    const { error: createError2 } = await supabase
+      .from("payments")
+      .insert({
+        rental_id: rentalId,
+        due_date: dueDateStr2,
+        expected_amount: totalAmount2,
+        reference_month: String(terminationMonth).padStart(2, "0"),
+        reference_year: String(terminationYear),
+        status: "pending",
+        installment: 2, // ✅ CORREÇÃO DEFINITIVA: usar installment 2 (diferente do primeiro)
+        total_installments: 2, // ✅ Total de 2 recebimentos neste mês
+        breakdown: breakdown2,
+        notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`
+      });
 
-    if (existingPayment2) {
-      console.log(`    ⚙️ Atualizando recebimento de rescisão existente (ID: ${existingPayment2.id})...`);
-      
-      const { error: updateError2 } = await supabase
-        .from("payments")
-        .update({
-          expected_amount: totalAmount2,
-          breakdown: breakdown2,
-          notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existingPayment2.id);
-
-      if (updateError2) {
-        console.error("    ❌ Erro ao atualizar recebimento 2:", updateError2);
-        console.error("    📋 Detalhes do erro:", JSON.stringify(updateError2, null, 2));
-        throw updateError2;
-      }
-      
-      console.log("    ✅ Recebimento 2 atualizado com sucesso!");
-    } else {
-      console.log("    ⚙️ Criando recebimento 2...");
-      
-      // ✅ CORREÇÃO CRÍTICA: Deletar qualquer recebimento conflitante ANTES de inserir
-      console.log("    🔍 Verificando recebimentos conflitantes antes de inserir...");
-      
-      const { data: conflictingPayments, error: conflictCheckError } = await supabase
-        .from("payments")
-        .select("id, due_date, installment")
-        .eq("rental_id", rentalId)
-        .eq("reference_month", String(terminationMonth).padStart(2, "0"))
-        .eq("reference_year", String(terminationYear))
-        .eq("status", "pending");
-
-      if (conflictCheckError) {
-        console.error("    ❌ Erro ao verificar conflitos:", conflictCheckError);
-        throw conflictCheckError;
-      }
-
-      if (conflictingPayments && conflictingPayments.length > 0) {
-        console.log(`    ⚠️ Encontrados ${conflictingPayments.length} recebimento(s) pendente(s) no mesmo mês`);
-        conflictingPayments.forEach((p, idx) => {
-          console.log(`      ${idx + 1}. ID: ${p.id} | Due: ${p.due_date} | Installment: ${p.installment}`);
-        });
-
-        // Deletar recebimentos conflitantes que não são o recebimento 1 que acabamos de criar/verificar
-        const idsToDelete = conflictingPayments
-          .filter(p => p.due_date !== dueDateStr1) // Manter o recebimento 1
-          .map(p => p.id);
-
-        if (idsToDelete.length > 0) {
-          console.log(`    🗑️ Deletando ${idsToDelete.length} recebimento(s) conflitante(s)...`);
-          
-          const { error: deleteConflictError } = await supabase
-            .from("payments")
-            .delete()
-            .in("id", idsToDelete);
-
-          if (deleteConflictError) {
-            console.error("    ❌ Erro ao deletar conflitos:", deleteConflictError);
-            throw deleteConflictError;
-          }
-          
-          console.log("    ✅ Recebimentos conflitantes deletados!");
-        }
-      }
-
-      // Agora inserir o recebimento 2 sem installment (será null)
-      const { error: createError2 } = await supabase
-        .from("payments")
-        .insert({
-          rental_id: rentalId,
-          due_date: dueDateStr2,
-          expected_amount: totalAmount2,
-          reference_month: String(terminationMonth).padStart(2, "0"),
-          reference_year: String(terminationYear),
-          status: "pending",
-          installment: null, // ✅ CORREÇÃO: null para não conflitar com o primeiro
-          breakdown: breakdown2,
-          notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`
-        });
-
-      if (createError2) {
-        console.error("    ❌ Erro ao criar recebimento 2:", createError2);
-        console.error("    📋 Detalhes do erro:", JSON.stringify(createError2, null, 2));
-        console.error("    📋 Código do erro:", createError2.code);
-        console.error("    📋 Mensagem:", createError2.message);
-        throw createError2;
-      }
-      
-      console.log("    ✅ Recebimento 2 criado com sucesso!");
+    if (createError2) {
+      console.error("    ❌ Erro ao criar recebimento 2:", createError2);
+      console.error("    📋 Detalhes do erro:", JSON.stringify(createError2, null, 2));
+      console.error("    📋 Código do erro:", createError2.code);
+      console.error("    📋 Mensagem:", createError2.message);
+      throw createError2;
     }
     
+    console.log("    ✅ Recebimento 2 criado com sucesso!");
   } else {
     // ========== REGRA 2: RESCISÃO ANTERIOR AO VENCIMENTO ==========
     console.log("\n  🔵 REGRA 2: Atualizar recebimento existente do mês");
