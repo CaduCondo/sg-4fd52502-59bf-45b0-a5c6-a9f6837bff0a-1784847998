@@ -374,8 +374,8 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           const allPayments = paymentsResult[index]?.all || [];
           const paidPayments = paymentsResult[index]?.paid || [];
           
-          const esperada = allPayments.reduce((sum, p) => sum + (p.expected_amount || 0), 0);
-          const recebida = paidPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+          const esperada = allPayments.reduce((sum, p: any) => sum + (p.expected_amount || 0), 0);
+          const recebida = paidPayments.reduce((sum, p: any) => sum + (p.paid_amount || 0), 0);
           
           console.log(`💰 [DEBUG] Receita ${m.label}: esperada=${esperada}, recebida=${recebida}`);
           console.log(`💰 [DEBUG] ${m.label}: ${allPayments.length} pagamentos totais, ${paidPayments.length} pagos`);
@@ -391,7 +391,7 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
 
         const monthlyExpensesData = months.map((m, index) => {
           const paidPayments = paymentsResult[index]?.paid || [];
-          const bruta = paidPayments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+          const bruta = paidPayments.reduce((sum, p: any) => sum + (p.paid_amount || 0), 0);
           
           // Taxas: admin (5%) + mgmt (3%) = 8%
           const taxas = bruta * 0.08;
