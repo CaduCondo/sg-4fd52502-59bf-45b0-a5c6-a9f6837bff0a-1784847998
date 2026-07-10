@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateContractAlert } from "@/lib/contractAlerts";
 
 interface DashboardCounts {
   totalProperties: number;
@@ -306,22 +307,22 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // 🔥 Contratos a vencer nos próximos 2 meses (incluindo vencidos)
-        // Alinhado com contractAlerts.ts: daysRemaining <= 60 (amarelo/vermelho)
+        // 🔥 Contratos a vencer nos próximos 2 meses
+        // USA A MESMA FUNÇÃO que a página de locações para garantir sincronização 100%
         const expiringContracts = rentals.filter(r => {
           if (r.status !== "active" || !r.end_date) return false;
           
-          const endDate = new Date(r.end_date);
-          const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          // ✅ USA calculateContractAlert - MESMA lógica da página de locações
+          const alert = calculateContractAlert(r.end_date);
           
-          // Incluir contratos que vencem em até 60 dias (amarelo) ou já vencidos (vermelho)
-          return diffDays <= 60;
+          // Contar apenas contratos com alerta (amarelo OU vermelho)
+          return alert.level === "warning" || alert.level === "critical";
         }).length;
 
         console.log("🔔 [useDashboardData] Contratos a vencer:", {
           total: activeContracts,
           expiringContracts,
-          criteria: "≤ 60 dias (incluindo vencidos)"
+          criteria: "warning (≤60 dias) ou critical (≤30 dias)"
         });
 
         // 🔥 Processar pagamentos com lógica CORRETA
