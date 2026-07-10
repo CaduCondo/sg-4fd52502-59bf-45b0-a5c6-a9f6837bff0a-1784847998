@@ -196,7 +196,7 @@ export const PaymentCard = memo(function PaymentCard({
                 {isPaid ? "Pago em: " : "Vencimento: "}
                 {isPaid 
                   ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
-                  : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                  : new Date(payment.dueDate + "T12:00:00").toLocaleDateString("pt-BR")
                 }
               </p>
             </div>
@@ -352,7 +352,7 @@ export const PaymentCard = memo(function PaymentCard({
                   <p className="text-sm font-medium">
                     {isPaid 
                       ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
-                      : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                      : new Date(payment.dueDate + "T12:00:00").toLocaleDateString("pt-BR")
                     }
                   </p>
                   {isPaid && payment.paymentMethod && (
