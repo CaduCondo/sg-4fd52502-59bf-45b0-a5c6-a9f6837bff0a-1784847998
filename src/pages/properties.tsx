@@ -16,6 +16,16 @@ import { PropertyDeleteAlert } from "@/components/properties/PropertyDeleteAlert
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { propertyService } from "@/services";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const INITIAL_FORM_DATA: PropertyFormData = {
   location_id: "",
@@ -47,23 +57,20 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function PropertiesPage() {
   const {
+    properties,
     filteredProperties,
-    locations,
     loading,
-    searchTerm,
+    locations,
     statusFilter,
     selectedLocations,
-    sortOrder,
-    viewMode,
-    setSearchTerm,
-    setStatusFilter,
-    setSelectedLocations,
-    setSortOrder,
-    setViewMode,
     handleLocationToggle,
-    createProperty,
-    updateProperty,
-    deleteProperty,
+    loadData,
+    createProperty: createPropertyService,
+    updateProperty: updatePropertyService,
+    deleteProperty: deletePropertyService,
+    pendingRentAdjustment,
+    confirmRentAdjustment,
+    cancelRentAdjustment,
   } = useProperties();
 
   const { toast } = useToast();
@@ -179,22 +186,41 @@ export default function PropertiesPage() {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (!formData.location_id || !formData.rooms || !formData.bathrooms) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setIsLoading(true);
+      
       if (editingProperty) {
-        await updateProperty(editingProperty.id, formData);
+        // Tentar atualizar - pode retornar false se precisar de confirmação
+        const result = await updatePropertyService(editingProperty.id, formData);
+        
+        // Se retornou false, significa que precisa de confirmação (AlertDialog vai abrir)
+        if (result === false) {
+          console.log("⏸️ Aguardando confirmação do usuário para ajuste de valor");
+          return; // Não fechar o dialog ainda
+        }
+        
         toast({
           title: "Sucesso!",
           description: "Imóvel atualizado com sucesso.",
         });
       } else {
-        await createProperty(formData);
+        await createPropertyService(formData);
         toast({
           title: "Sucesso!",
           description: "Imóvel criado com sucesso.",
         });
       }
+      setIsLoading(false);
       setIsDialogOpen(false);
       resetForm();
     } catch (error: unknown) {
@@ -203,10 +229,23 @@ export default function PropertiesPage() {
         description: error instanceof Error ? error.message : "Erro ao salvar o imóvel. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  }, [editingProperty, formData, updateProperty, createProperty, toast, resetForm]);
+  }, [editingProperty, formData, updatePropertyService, createPropertyService, toast, resetForm]);
+
+  const handleConfirmRentAdjustment = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      await confirmRentAdjustment();
+      setIsLoading(false);
+      setIsDialogOpen(false);
+    } catch (error) {
+      // Erro já foi tratado no hook
+    }
+  }, [confirmRentAdjustment, setIsLoading, setIsDialogOpen]);
+
+  const handleCancelRentAdjustment = useCallback(() => {
+    cancelRentAdjustment();
+  }, [cancelRentAdjustment]);
 
   const handleCardClick = useCallback(async (property: Property) => {
     try {
@@ -448,6 +487,70 @@ export default function PropertiesPage() {
           onCancel={() => setPropertyToDelete(null)}
         />
       </div>
+
+      {/* AlertDialog de Confirmação de Ajuste de Valor */}
+      <AlertDialog open={!!pendingRentAdjustment} onOpenChange={(open) => !open && handleCancelRentAdjustment()}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold">
+              🔄 Atualização de Valor de Aluguel
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 text-base">
+              <p className="font-semibold text-foreground">
+                Você está alterando o valor do aluguel de um imóvel ocupado.
+              </p>
+              
+              <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Valor Antigo:</span>
+                  <span className="font-bold text-red-600">
+                    {pendingRentAdjustment?.oldValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Valor Novo:</span>
+                  <span className="font-bold text-green-600">
+                    {pendingRentAdjustment?.newValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-semibold text-foreground">O que acontecerá:</p>
+                <ol className="list-decimal list-inside space-y-1.5 text-sm">
+                  <li>
+                    <strong>Recebimentos futuros</strong> (todos os meses seguintes) serão atualizados com o <strong>novo valor integral</strong>
+                  </li>
+                  <li>
+                    <strong>Recebimento do mês atual</strong> terá valor proporcional calculado automaticamente:
+                    <ul className="list-disc list-inside ml-6 mt-1 space-y-0.5 text-xs text-slate-600">
+                      <li>Dias já passados = cobrado pelo valor antigo</li>
+                      <li>Dias restantes = cobrado pelo valor novo</li>
+                    </ul>
+                  </li>
+                  <li>
+                    O valor será atualizado tanto no <strong>imóvel</strong> quanto na <strong>locação</strong>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>⚠️ Atenção:</strong> Esta ação atualizará automaticamente todos os recebimentos pendentes desta locação.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelRentAdjustment} disabled={isSubmitting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRentAdjustment} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
+              {isSubmitting ? "Processando..." : "Confirmar Ajuste"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

@@ -14,6 +14,13 @@ interface RentalUpdateChanges {
   garageValue?: number;
 }
 
+interface RentValueAdjustment {
+  rentalId: string;
+  oldValue: number;
+  newValue: number;
+  effectiveDate: string; // Data em que a mudança entra em vigor
+}
+
 interface PaymentToUpdate {
   id: string;
   installment: number | null;
@@ -24,6 +31,196 @@ interface PaymentToUpdate {
   expected_amount: number;
   status: string;
   paid_amount: number;
+}
+
+/**
+ * Ajusta o valor do aluguel de uma locação ativa e recalcula os recebimentos futuros
+ */
+async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void> {
+  console.log("💰 [adjustRentalValue] Iniciando ajuste de valor do aluguel...");
+  console.log("📋 Dados do ajuste:", adjustment);
+
+  const { rentalId, oldValue, newValue, effectiveDate } = adjustment;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const effectiveDateTime = new Date(effectiveDate + "T00:00:00");
+
+  // Buscar a locação para obter informações necessárias
+  const { data: rental, error: rentalError } = await supabase
+    .from("rentals")
+    .select("*")
+    .eq("id", rentalId)
+    .single();
+
+  if (rentalError || !rental) {
+    console.error("❌ Erro ao buscar locação:", rentalError);
+    throw new Error("Locação não encontrada");
+  }
+
+  console.log("📋 Locação encontrada:", {
+    id: rental.id,
+    valor_antigo: oldValue,
+    valor_novo: newValue,
+    dia_pagamento: rental.payment_day,
+  });
+
+  // Buscar TODOS os recebimentos pendentes futuros (>= data efetiva)
+  const { data: pendingPayments, error: paymentsError } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("rental_id", rentalId)
+    .in("status", ["pending", "overdue"])
+    .order("reference_year", { ascending: true })
+    .order("reference_month", { ascending: true });
+
+  if (paymentsError) {
+    console.error("❌ Erro ao buscar pagamentos:", paymentsError);
+    throw paymentsError;
+  }
+
+  console.log(`📊 Total de recebimentos pendentes: ${(pendingPayments || []).length}`);
+
+  if (!pendingPayments || pendingPayments.length === 0) {
+    console.log("ℹ️ Nenhum recebimento pendente para atualizar");
+    return;
+  }
+
+  // Separar período atual e períodos futuros
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+
+  const currentPeriodPayment = pendingPayments.find(
+    p => Number(p.reference_month) === currentMonth && Number(p.reference_year) === currentYear
+  );
+
+  const futurePayments = pendingPayments.filter(
+    p => {
+      const paymentYear = Number(p.reference_year);
+      const paymentMonth = Number(p.reference_month);
+      return paymentYear > currentYear || (paymentYear === currentYear && paymentMonth > currentMonth);
+    }
+  );
+
+  console.log(`📊 Recebimento período atual: ${currentPeriodPayment ? "Sim" : "Não"}`);
+  console.log(`📊 Recebimentos futuros: ${futurePayments.length}`);
+
+  const updates: Array<{ id: string; changes: any }> = [];
+
+  // 1. ATUALIZAR PERÍODO ATUAL (proporcional)
+  if (currentPeriodPayment) {
+    console.log("📅 Processando período atual (proporcional)...");
+    
+    const paymentDay = rental.payment_day;
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    
+    // Calcular dias restantes do mês a partir de hoje
+    const daysRemaining = daysInMonth - today.getDate() + 1;
+    
+    // Calcular dias que já passaram com valor antigo
+    const daysPassed = today.getDate() - 1; // Não incluir hoje
+    
+    console.log(`📊 Dias do mês: ${daysInMonth}`);
+    console.log(`📊 Dias com valor ANTIGO: ${daysPassed}`);
+    console.log(`📊 Dias com valor NOVO: ${daysRemaining}`);
+    
+    // Calcular valores proporcionais
+    const dailyRateOld = oldValue / 30;
+    const dailyRateNew = newValue / 30;
+    
+    const amountForOldDays = dailyRateOld * daysPassed;
+    const amountForNewDays = dailyRateNew * daysRemaining;
+    const totalAmount = amountForOldDays + amountForNewDays;
+    
+    console.log(`💰 Cálculo proporcional:`);
+    console.log(`   - Valor antigo (${daysPassed} dias): R$ ${amountForOldDays.toFixed(2)}`);
+    console.log(`   - Valor novo (${daysRemaining} dias): R$ ${amountForNewDays.toFixed(2)}`);
+    console.log(`   - Total: R$ ${totalAmount.toFixed(2)}`);
+    
+    // Criar breakdown detalhado
+    const breakdown = [
+      {
+        type: "addition",
+        amount: parseFloat(amountForOldDays.toFixed(2)),
+        description: `Aluguel - Valor Antigo (${daysPassed} dias)`
+      },
+      {
+        type: "addition",
+        amount: parseFloat(amountForNewDays.toFixed(2)),
+        description: `Aluguel - Valor Novo (${daysRemaining} dias)`
+      }
+    ];
+
+    // Adicionar garagem se houver
+    if (rental.has_garage && rental.garage_value) {
+      const garageAmount = rental.garage_value;
+      breakdown.push({
+        type: "addition",
+        amount: parseFloat(garageAmount.toFixed(2)),
+        description: "Garagem"
+      });
+    }
+
+    updates.push({
+      id: currentPeriodPayment.id,
+      changes: {
+        expected_amount: parseFloat(totalAmount.toFixed(2)),
+        breakdown: breakdown
+      }
+    });
+
+    console.log(`✅ Período atual atualizado: R$ ${totalAmount.toFixed(2)}`);
+  }
+
+  // 2. ATUALIZAR PERÍODOS FUTUROS (valor integral novo)
+  console.log(`📅 Processando ${futurePayments.length} períodos futuros...`);
+  
+  const garageAmount = (rental.has_garage && rental.garage_value) ? rental.garage_value : 0;
+  const totalNewValue = newValue + garageAmount;
+
+  for (const payment of futurePayments) {
+    const breakdown = [
+      {
+        type: "addition",
+        amount: parseFloat(newValue.toFixed(2)),
+        description: "Aluguel"
+      }
+    ];
+
+    if (garageAmount > 0) {
+      breakdown.push({
+        type: "addition",
+        amount: parseFloat(garageAmount.toFixed(2)),
+        description: "Garagem"
+      });
+    }
+
+    updates.push({
+      id: payment.id,
+      changes: {
+        expected_amount: parseFloat(totalNewValue.toFixed(2)),
+        breakdown: breakdown
+      }
+    });
+
+    console.log(`   ✅ ${payment.reference_month}/${payment.reference_year}: R$ ${totalNewValue.toFixed(2)}`);
+  }
+
+  // 3. EXECUTAR TODAS AS ATUALIZAÇÕES
+  console.log(`🔄 Aplicando ${updates.length} atualizações...`);
+  
+  for (const update of updates) {
+    const { error: updateError } = await supabase
+      .from("payments")
+      .update(update.changes)
+      .eq("id", update.id);
+
+    if (updateError) {
+      console.error(`❌ Erro ao atualizar recebimento ${update.id}:`, updateError);
+      throw updateError;
+    }
+  }
+
+  console.log("✅ Todos os recebimentos foram atualizados com sucesso!");
 }
 
 /**
@@ -83,6 +280,11 @@ function isEndOfMonth(date: Date, paymentDay: number): boolean {
 }
 
 export const rentalUpdateService = {
+  /**
+   * Ajusta o valor do aluguel e atualiza os recebimentos futuros
+   */
+  adjustRentalValue,
+
   /**
    * Analisa as mudanças e atualiza os recebimentos conforme necessário
    */

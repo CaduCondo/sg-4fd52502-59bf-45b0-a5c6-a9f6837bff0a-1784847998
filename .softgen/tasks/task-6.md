@@ -17,12 +17,12 @@ Simplificar o processo de aumento de aluguel através da edição do imóvel:
 - Calcula valor proporcional para o período atual (dias com valor antigo + dias com valor novo)
 
 ## Checklist:
-- [ ] Criar serviço `adjustRentalValue` em `src/services/rentalUpdateService.ts` para ajustar valores
-- [ ] Modificar `PropertyFormDialog` para detectar mudança de valor em imóvel ocupado
-- [ ] Criar `AlertDialog` de confirmação explicando o impacto da mudança
-- [ ] Implementar cálculo proporcional para o período atual
-- [ ] Atualizar recebimentos futuros com novo valor
-- [ ] Atualizar valor na tabela `rentals`
+- [x] Criar serviço `adjustRentalValue` em `src/services/rentalUpdateService.ts` para ajustar valores
+- [x] Modificar `PropertyFormDialog` para detectar mudança de valor em imóvel ocupado
+- [x] Criar `AlertDialog` de confirmação explicando o impacto da mudança
+- [x] Implementar cálculo proporcional para o período atual
+- [x] Atualizar recebimentos futuros com novo valor
+- [x] Atualizar valor na tabela `rentals`
 - [ ] Testar com cenário real (imóvel Acácias)
 
 ## Acceptance:

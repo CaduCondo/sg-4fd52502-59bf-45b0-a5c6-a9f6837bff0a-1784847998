@@ -3,6 +3,8 @@ import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { parseCurrencyToFloat } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { rentalUpdateService } from "@/services/rentalUpdateService";
 
 interface UsePropertiesReturn {
   properties: Property[];
@@ -22,8 +24,16 @@ interface UsePropertiesReturn {
   handleLocationToggle: (locationId: string) => void;
   loadData: () => Promise<void>;
   createProperty: (data: PropertyFormData) => Promise<void>;
-  updateProperty: (id: string, data: PropertyFormData) => Promise<void>;
+  updateProperty: (id: string, data: PropertyFormData) => Promise<boolean | void>;
   deleteProperty: (id: string) => Promise<void>;
+  pendingRentAdjustment: {
+    propertyId: string;
+    oldValue: number;
+    newValue: number;
+    rentalId: string;
+  } | null;
+  confirmRentAdjustment: () => Promise<void>;
+  cancelRentAdjustment: () => void;
 }
 
 export interface PropertyFormData {
@@ -59,6 +69,12 @@ export function useProperties(): UsePropertiesReturn {
   const [sortOrder, setSortOrder] = useState<"alphabetical" | "price-asc" | "price-desc">("alphabetical");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
+  const [pendingRentAdjustment, setPendingRentAdjustment] = useState<{
+    propertyId: string;
+    oldValue: number;
+    newValue: number;
+    rentalId: string;
+  } | null>(null);
 
   // Ref para prevenir carregamentos duplicados
   const loadingRef = useRef(false);
@@ -191,12 +207,50 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
+    // Buscar o imóvel atual para comparar valores
+    const currentProperty = properties.find(p => p.id === id);
+    const newValue = parseCurrencyToFloat(formData.monthly_rent);
+    const oldValue = currentProperty?.value || 0;
+
+    // 🔍 DETECTAR MUDANÇA DE VALOR EM IMÓVEL OCUPADO
+    if (formData.status === "occupied" && newValue !== oldValue && oldValue > 0) {
+      console.log("💰 Detectada mudança de valor em imóvel ocupado!");
+      console.log(`   - Valor antigo: R$ ${oldValue.toFixed(2)}`);
+      console.log(`   - Valor novo: R$ ${newValue.toFixed(2)}`);
+
+      // Buscar a locação ativa deste imóvel
+      const { data: activeRental, error: rentalError } = await supabase
+        .from("rentals")
+        .select("id, rent_value")
+        .eq("property_id", id)
+        .eq("status", "active")
+        .single();
+
+      if (rentalError || !activeRental) {
+        console.log("⚠️ Imóvel marcado como ocupado mas sem locação ativa encontrada");
+        // Continuar com update normal
+      } else {
+        console.log("✅ Locação ativa encontrada:", activeRental.id);
+        
+        // Guardar dados para confirmação e retornar false (não salvar ainda)
+        setPendingRentAdjustment({
+          propertyId: id,
+          oldValue,
+          newValue,
+          rentalId: activeRental.id,
+        });
+
+        return false; // Sinaliza que precisa de confirmação
+      }
+    }
+
+    // Continuar com update normal
     const propertyData: Partial<Property> = {
       locationId: formData.location_id,
       location: selectedLocation.name,
       propertyIdentifier: formData.property_identifier || "Apartamento",
       complement: formData.complement || undefined,
-      value: parseCurrencyToFloat(formData.monthly_rent),
+      value: newValue,
       status: formData.status as "available" | "occupied" | "unavailable",
       description: formData.description,
       rooms: formData.rooms ? parseInt(formData.rooms) : undefined,
@@ -214,7 +268,67 @@ export function useProperties(): UsePropertiesReturn {
     await loadData();
     
     console.log("✅ [useProperties] Imóvel atualizado:", id);
-  }, [locations, loadData]);
+    return true;
+  }, [locations, loadData, properties]);
+
+  const confirmRentAdjustment = useCallback(async () => {
+    if (!pendingRentAdjustment) return;
+
+    try {
+      const { propertyId, oldValue, newValue, rentalId } = pendingRentAdjustment;
+      
+      console.log("✅ Usuário confirmou o ajuste de valor");
+      
+      // 1. Atualizar o valor na tabela properties
+      const { error: propertyError } = await supabase
+        .from("properties")
+        .update({ value: newValue })
+        .eq("id", propertyId);
+
+      if (propertyError) throw propertyError;
+
+      // 2. Atualizar o valor na tabela rentals
+      const { error: rentalError } = await supabase
+        .from("rentals")
+        .update({ rent_value: newValue })
+        .eq("id", rentalId);
+
+      if (rentalError) throw rentalError;
+
+      // 3. Ajustar os recebimentos
+      const today = new Date();
+      await rentalUpdateService.adjustRentalValue({
+        rentalId,
+        oldValue,
+        newValue,
+        effectiveDate: today.toISOString().split('T')[0],
+      });
+
+      // 4. Recarregar dados
+      await loadData();
+
+      toast({
+        title: "Sucesso!",
+        description: "Valor do aluguel atualizado e recebimentos ajustados automaticamente.",
+      });
+
+      // Limpar estado pendente
+      setPendingRentAdjustment(null);
+    } catch (error: any) {
+      console.error("❌ Erro ao confirmar ajuste:", error);
+      toast({
+        title: "Erro",
+        description: error?.message || "Não foi possível atualizar o valor do aluguel.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [pendingRentAdjustment, loadData, toast]);
+
+  const cancelRentAdjustment = useCallback(() => {
+    console.log("❌ Usuário cancelou o ajuste de valor");
+    setPendingRentAdjustment(null);
+  }, []);
 
   const deleteProperty = useCallback(async (id: string) => {
     try {
@@ -267,5 +381,8 @@ export function useProperties(): UsePropertiesReturn {
     createProperty,
     updateProperty,
     deleteProperty,
+    pendingRentAdjustment,
+    confirmRentAdjustment,
+    cancelRentAdjustment,
   };
 }
