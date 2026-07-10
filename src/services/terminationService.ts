@@ -191,6 +191,7 @@ export async function processContractTermination(data: TerminationData): Promise
           reference_month: String(terminationMonth).padStart(2, "0"),
           reference_year: String(terminationYear),
           status: "pending",
+          installment: null, // ✅ CORREÇÃO: Definir como null para o primeiro recebimento
           breakdown: [{
             description: `Aluguel Mês ${terminationMonth}/${terminationYear}`,
             amount: fullMonthRent,
@@ -247,8 +248,12 @@ export async function processContractTermination(data: TerminationData): Promise
     });
     console.log(`    Total: R$ ${totalAmount2.toFixed(2)}`);
 
-    // Buscar se já existe recebimento com esse vencimento
-    const existingPayment2 = allMonthPayments?.find(p => p.due_date === dueDateStr2);
+    // Buscar se já existe recebimento com esse vencimento E MESMO MÊS/ANO
+    const existingPayment2 = allMonthPayments?.find(p => 
+      p.due_date === dueDateStr2 && 
+      p.reference_month === String(terminationMonth).padStart(2, "0") &&
+      p.reference_year === String(terminationYear)
+    );
 
     if (existingPayment2) {
       console.log(`    ⚙️ Atualizando recebimento de rescisão existente (ID: ${existingPayment2.id})...`);
@@ -273,6 +278,51 @@ export async function processContractTermination(data: TerminationData): Promise
     } else {
       console.log("    ⚙️ Criando recebimento 2...");
       
+      // ✅ CORREÇÃO CRÍTICA: Deletar qualquer recebimento conflitante ANTES de inserir
+      console.log("    🔍 Verificando recebimentos conflitantes antes de inserir...");
+      
+      const { data: conflictingPayments, error: conflictCheckError } = await supabase
+        .from("payments")
+        .select("id, due_date, installment")
+        .eq("rental_id", rentalId)
+        .eq("reference_month", String(terminationMonth).padStart(2, "0"))
+        .eq("reference_year", String(terminationYear))
+        .eq("status", "pending");
+
+      if (conflictCheckError) {
+        console.error("    ❌ Erro ao verificar conflitos:", conflictCheckError);
+        throw conflictCheckError;
+      }
+
+      if (conflictingPayments && conflictingPayments.length > 0) {
+        console.log(`    ⚠️ Encontrados ${conflictingPayments.length} recebimento(s) pendente(s) no mesmo mês`);
+        conflictingPayments.forEach((p, idx) => {
+          console.log(`      ${idx + 1}. ID: ${p.id} | Due: ${p.due_date} | Installment: ${p.installment}`);
+        });
+
+        // Deletar recebimentos conflitantes que não são o recebimento 1 que acabamos de criar/verificar
+        const idsToDelete = conflictingPayments
+          .filter(p => p.due_date !== dueDateStr1) // Manter o recebimento 1
+          .map(p => p.id);
+
+        if (idsToDelete.length > 0) {
+          console.log(`    🗑️ Deletando ${idsToDelete.length} recebimento(s) conflitante(s)...`);
+          
+          const { error: deleteConflictError } = await supabase
+            .from("payments")
+            .delete()
+            .in("id", idsToDelete);
+
+          if (deleteConflictError) {
+            console.error("    ❌ Erro ao deletar conflitos:", deleteConflictError);
+            throw deleteConflictError;
+          }
+          
+          console.log("    ✅ Recebimentos conflitantes deletados!");
+        }
+      }
+
+      // Agora inserir o recebimento 2 sem installment (será null)
       const { error: createError2 } = await supabase
         .from("payments")
         .insert({
@@ -282,6 +332,7 @@ export async function processContractTermination(data: TerminationData): Promise
           reference_month: String(terminationMonth).padStart(2, "0"),
           reference_year: String(terminationYear),
           status: "pending",
+          installment: null, // ✅ CORREÇÃO: null para não conflitar com o primeiro
           breakdown: breakdown2,
           notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`
         });
@@ -289,13 +340,8 @@ export async function processContractTermination(data: TerminationData): Promise
       if (createError2) {
         console.error("    ❌ Erro ao criar recebimento 2:", createError2);
         console.error("    📋 Detalhes do erro:", JSON.stringify(createError2, null, 2));
-        console.error("    📋 Dados enviados:", {
-          rental_id: rentalId,
-          due_date: dueDateStr2,
-          expected_amount: totalAmount2,
-          reference_month: String(terminationMonth).padStart(2, "0"),
-          reference_year: String(terminationYear),
-        });
+        console.error("    📋 Código do erro:", createError2.code);
+        console.error("    📋 Mensagem:", createError2.message);
         throw createError2;
       }
       
