@@ -52,23 +52,30 @@ export function SortableTable<T extends Record<string, any>>({
       <Table>
         <TableHeader>
           <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key} className={`${column.className || ""} ${column.headerClassName || ""}`}>
-                {column.sortable !== false ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="-ml-3 h-8 data-[state=open]:bg-accent"
-                    onClick={() => onSort(column.key)}
-                  >
-                    <span>{column.label}</span>
-                    {getSortIcon(column.key)}
-                  </Button>
-                ) : (
-                  column.label
-                )}
-              </TableHead>
-            ))}
+            {columns.map((column) => {
+              const isRightAligned = column.headerClassName?.includes("text-right");
+              const isCentered = column.headerClassName?.includes("text-center");
+              
+              return (
+                <TableHead key={column.key} className={`${column.className || ""} ${column.headerClassName || ""}`}>
+                  {column.sortable !== false ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`-ml-3 h-8 data-[state=open]:bg-accent ${
+                        isRightAligned ? "w-full justify-end" : isCentered ? "w-full justify-center" : ""
+                      }`}
+                      onClick={() => onSort(column.key)}
+                    >
+                      <span>{column.label}</span>
+                      {getSortIcon(column.key)}
+                    </Button>
+                  ) : (
+                    column.label
+                  )}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
