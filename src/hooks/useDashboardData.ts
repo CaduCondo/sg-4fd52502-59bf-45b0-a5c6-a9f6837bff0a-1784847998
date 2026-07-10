@@ -307,19 +307,18 @@ export function useDashboardData(
         const rentals = rentalsResult.data || [];
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
-        // 🔥 Contratos a vencer nos próximos 2 meses (apenas ATIVOS não vencidos)
-        // USA A MESMA FUNÇÃO que a página de locações para garantir sincronização 100%
+        // Contratos a vencer nos próximos 2 meses (status=active E end_date dentro de 60 dias)
         const expiringContracts = rentals.filter(r => {
           if (r.status !== "active" || !r.end_date) return false;
           
-          // ✅ Excluir contratos já vencidos
+          // Excluir contratos já vencidos
           const endDate = new Date(r.end_date);
           if (endDate < today) return false;
           
-          // ✅ USA calculateContractAlert - MESMA lógica da página de locações
+          // Usar calculateContractAlert - MESMA lógica da página de locações
           const alert = calculateContractAlert(r.end_date);
           
-          // Contar apenas contratos com alerta (amarelo OU vermelho) dentro de 60 dias
+          // Contar apenas contratos com alerta (amarelo=31-60 dias OU vermelho=≤30 dias)
           return alert.level === "warning" || alert.level === "critical";
         }).length;
 

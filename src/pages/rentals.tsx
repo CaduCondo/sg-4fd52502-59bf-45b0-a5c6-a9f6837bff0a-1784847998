@@ -214,12 +214,6 @@ export default function RentalsPage() {
 
   // Filtrar locações
   const filteredRentals = useMemo(() => {
-    console.log("🔍 [rentals.tsx] Iniciando filtro de locações:", {
-      total: rentals.length,
-      statusFilter,
-      searchTerm: debouncedSearchTerm
-    });
-
     const filtered = rentals.filter((rental) => {
       const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
@@ -230,36 +224,13 @@ export default function RentalsPage() {
 
       if (statusFilter === "all") return matchesSearch;
 
-      // ✅ CORRIGIDO: Contratos ATIVOS = status active E não vencidos
-      // Contratos vencidos são classificados como "terminated" mesmo com status active no banco
+      // Contratos ATIVOS = status active E não vencidos
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const isExpired = rental.endDate && new Date(rental.endDate) < today;
       const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
 
-      const matches = matchesSearch && statusFilter === effectiveStatus;
-      
-      if (!matches && rental.isActive) {
-        console.log("❌ [rentals.tsx] Contrato filtrado:", {
-          id: rental.id,
-          tenant: rental.tenant?.name,
-          endDate: rental.endDate,
-          isActive: rental.isActive,
-          isExpired,
-          effectiveStatus,
-          statusFilter,
-          matchesSearch,
-          reason: !matchesSearch ? "busca" : "status"
-        });
-      }
-
-      return matches;
-    });
-
-    console.log("✅ [rentals.tsx] Filtro concluído:", {
-      totalRentals: rentals.length,
-      filteredCount: filtered.length,
-      statusFilter
+      return matchesSearch && statusFilter === effectiveStatus;
     });
 
     return filtered;
@@ -611,33 +582,18 @@ export default function RentalsPage() {
                 </div>
               ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredRentals.map((rental, index) => {
+                  {filteredRentals.map((rental) => {
                     const alert = calculateContractAlert(rental.endDate);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const isExpired = rental.endDate && new Date(rental.endDate) < today;
                     const isVisuallyActive = rental.isActive && !isExpired;
                     
-                    // ✅ CORRIGIDO: Aplicar cores APENAS para contratos ativos dentro de 60 dias
+                    // Aplicar cores APENAS para contratos ativos dentro de 60 dias
                     // Vermelho: ≤30 dias | Amarelo: 31-60 dias
                     const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
                     const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
                     const badgeClasses = getAlertBadgeClasses(alert.level);
-
-                    // 🔍 DEBUG: Log contratos com alerta
-                    if (index === 0 || shouldShowAlert) {
-                      console.log(`${shouldShowAlert ? "🎨" : "⚪"} [rentals.tsx] Card ${index + 1}:`, {
-                        tenant: rental.tenant?.name,
-                        endDate: rental.endDate,
-                        isActive: rental.isActive,
-                        isExpired,
-                        isVisuallyActive,
-                        alertLevel: alert.level,
-                        daysRemaining: alert.daysRemaining,
-                        shouldShowAlert,
-                        alertClasses: alertClasses || "nenhuma"
-                      });
-                    }
 
                     return (
                       <Card
