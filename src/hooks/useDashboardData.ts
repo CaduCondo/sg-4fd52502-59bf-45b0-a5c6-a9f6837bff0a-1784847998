@@ -29,7 +29,7 @@ interface DashboardData {
 }
 
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 30 * 1000; // 30 segundos durante debug
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -47,6 +47,9 @@ function setCache(key: string, data: any): void {
 export function invalidateDashboardCache(): void {
   cache.clear();
 }
+
+// Limpar cache ao carregar o módulo (força reload)
+cache.clear();
 
 export function useDashboardData(
   month: number,
