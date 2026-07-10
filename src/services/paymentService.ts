@@ -461,20 +461,24 @@ export function generateExpectedPayments(params: {
     firstPaymentMonth = sMonth === 12 ? 1 : sMonth + 1;
     firstPaymentYear = sMonth === 12 ? sYear + 1 : sYear;
     
-    // ✅ CORREÇÃO: Incluir o dia de início na contagem
-    // Contar dias do início até fim do mês atual (INCLUINDO o dia de início)
-    // + dias do próximo mês até o vencimento (NÃO-INCLUSIVO do vencimento)
+    // ✅ CORREÇÃO CRÍTICA: Cálculo proporcional correto
+    // Exemplo: início dia 10/07, vencimento dia 5
+    // - Dias de 10/07 até 31/07 (incluindo dia 10) = 22 dias
+    // - Dias de 01/08 até 04/08 (NÃO-inclusivo do dia 5) = 4 dias
+    // - Total = 26 dias
     const daysInStartMonth = new Date(sYear, sMonth, 0).getDate();
     const daysUntilEndOfStartMonth = (daysInStartMonth - sDay) + 1; // +1 para incluir o dia de início
-    daysToChargeFirstPayment = daysUntilEndOfStartMonth + paymentDay;
+    const daysInNextMonthUntilDue = paymentDay - 1; // -1 porque o dia de vencimento não é inclusivo
+    daysToChargeFirstPayment = daysUntilEndOfStartMonth + daysInNextMonthUntilDue;
     
     console.log("✅ Primeiro recebimento no PRÓXIMO mês (PROPORCIONAL):", { 
       firstPaymentMonth, 
       firstPaymentYear, 
       daysToChargeFirstPayment,
       daysInCurrentMonth: daysUntilEndOfStartMonth,
-      daysInNextMonth: paymentDay,
-      calculation: `${daysUntilEndOfStartMonth} (mês atual) + ${paymentDay} (próximo mês) = ${daysToChargeFirstPayment}`
+      daysInNextMonth: daysInNextMonthUntilDue,
+      calculation: `${daysUntilEndOfStartMonth} (mês atual) + ${daysInNextMonthUntilDue} (próximo mês até venc-1) = ${daysToChargeFirstPayment}`,
+      example: `Exemplo: 10/07 até 31/07 (${daysUntilEndOfStartMonth} dias) + 01/08 até 04/08 (${daysInNextMonthUntilDue} dias) = ${daysToChargeFirstPayment} dias total`
     });
   }
 
