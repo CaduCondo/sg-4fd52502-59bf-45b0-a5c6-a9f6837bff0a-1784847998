@@ -152,6 +152,25 @@ export async function updateTenant(id: string, data: Partial<Tenant>): Promise<T
 export const update = updateTenant;
 
 export async function deleteTenant(id: string): Promise<void> {
+  // 🔒 GATILHO DE SEGURANÇA: Verificar se o inquilino tem locações ativas
+  const { data: activeRentals, error: rentalError } = await supabase
+    .from("rentals")
+    .select("id, status")
+    .eq("tenant_id", id)
+    .eq("status", "active");
+
+  if (rentalError) {
+    console.error("❌ Erro ao verificar locações:", rentalError);
+    throw rentalError;
+  }
+
+  if (activeRentals && activeRentals.length > 0) {
+    throw new Error(
+      "❌ Não é possível deletar este inquilino porque ele está como LOCATÁRIO em uma locação ativa. " +
+      "Encerre ou cancele a locação antes de deletar o inquilino."
+    );
+  }
+
   return deleteSingle(TABLE, id);
 }
 

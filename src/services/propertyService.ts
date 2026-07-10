@@ -381,6 +381,16 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
  * Deletar imóvel
  */
 export const remove = async (id: string): Promise<void> => {
+  // 🔒 GATILHO DE SEGURANÇA: Verificar status antes de deletar
+  const property = await getById(id);
+  
+  if (property && property.status === "occupied") {
+    throw new Error(
+      "❌ Não é possível deletar este imóvel porque ele está OCUPADO. " +
+      "Encerre ou cancele a locação antes de deletar o imóvel."
+    );
+  }
+
   const { error } = await supabase.from("properties").delete().eq("id", id);
   if (error) throw error;
 

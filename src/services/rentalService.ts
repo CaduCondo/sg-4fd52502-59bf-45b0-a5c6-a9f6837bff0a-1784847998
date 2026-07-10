@@ -505,6 +505,22 @@ export const rentalService = {
   },
 
   async remove(id: string): Promise<void> {
+    // 🔒 GATILHO DE SEGURANÇA: Verificar status antes de deletar
+    const { data: rental, error: fetchError } = await supabase
+      .from("rentals")
+      .select("status")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (rental && rental.status === "active") {
+      throw new Error(
+        "❌ Não é possível deletar esta locação porque ela está ATIVA. " +
+        "Use a opção 'Rescisão de Contrato' para encerrar a locação antes de deletá-la."
+      );
+    }
+
     const { error } = await supabase.from("rentals").delete().eq("id", id);
     if (error) throw error;
     
