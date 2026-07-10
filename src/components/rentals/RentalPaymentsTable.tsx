@@ -103,7 +103,7 @@ export function RentalPaymentsTable({ payments, onManagePayment }: RentalPayment
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                      {format(new Date(payment.dueDate + "T12:00:00"), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
                     <TableCell>

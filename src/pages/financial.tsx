@@ -552,12 +552,12 @@ export default function Financial() {
           bValue = b.status;
           break;
         case "dueDate":
-          aValue = new Date(a.dueDate + "T00:00:00").getTime();
-          bValue = new Date(b.dueDate + "T00:00:00").getTime();
+          aValue = new Date(a.dueDate + "T12:00:00").getTime();
+          bValue = new Date(b.dueDate + "T12:00:00").getTime();
           break;
         case "paymentDate":
-          aValue = a.paymentDate ? new Date(a.paymentDate + "T00:00:00").getTime() : 0;
-          bValue = b.paymentDate ? new Date(b.paymentDate + "T00:00:00").getTime() : 0;
+          aValue = a.paymentDate ? new Date(a.paymentDate + "T12:00:00").getTime() : 0;
+          bValue = b.paymentDate ? new Date(b.paymentDate + "T12:00:00").getTime() : 0;
           break;
         case "expectedAmount":
           aValue = a.expectedAmount;
@@ -1178,11 +1178,11 @@ export default function Financial() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-xs sm:text-sm">
-                                    {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                                    {format(new Date(payment.dueDate + "T12:00:00"), "dd/MM/yyyy")}
                                   </TableCell>
                                   <TableCell className="text-xs sm:text-sm">
                                     {payment.paymentDate
-                                      ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                                      ? format(new Date(payment.paymentDate + "T12:00:00"), "dd/MM/yyyy")
                                       : "-"}
                                   </TableCell>
                                   <TableCell className="text-xs sm:text-sm">

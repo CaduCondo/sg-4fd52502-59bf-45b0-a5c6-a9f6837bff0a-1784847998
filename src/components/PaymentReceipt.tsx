@@ -665,12 +665,12 @@ export function PaymentReceipt({
         <div className="grid grid-cols-2 gap-4 text-xs">
           <div>
             <span className="font-semibold">Vencimento:</span>{" "}
-            {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+            {format(new Date(payment.dueDate + "T12:00:00"), "dd/MM/yyyy")}
           </div>
           <div>
             <span className="font-semibold">Pagamento:</span>{" "}
             {payment.paymentDate 
-              ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+              ? format(new Date(payment.paymentDate + "T12:00:00"), "dd/MM/yyyy")
               : "-"}
           </div>
         </div>
