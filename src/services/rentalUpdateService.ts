@@ -293,9 +293,14 @@ export const rentalUpdateService = {
     oldRental: Rental,
     newChanges: RentalUpdateChanges
   ): Promise<void> {
-    console.log("🔄 [rentalUpdateService] Iniciando análise de mudanças...");
-    console.log("📋 Mudanças recebidas:", newChanges);
-    console.log("🔑 ID da locação:", rentalId);
+    console.log("🚀🚀🚀 [rentalUpdateService] FUNÇÃO CHAMADA - Iniciando análise de mudanças...");
+    console.log("🔑 Rental ID recebido:", rentalId);
+    console.log("📋 Old Rental recebido:", JSON.stringify(oldRental, null, 2));
+    console.log("🆕 New Changes recebido:", JSON.stringify(newChanges, null, 2));
+    console.log("📅 Comparação de datas de início:");
+    console.log("   - oldRental.startDate:", oldRental.startDate);
+    console.log("   - newChanges.startDate:", newChanges.startDate);
+    console.log("   - São diferentes?", newChanges.startDate !== oldRental.startDate);
     console.log("📅 Data final antiga:", oldRental.endDate);
     console.log("📅 Data final nova:", newChanges.endDate);
 
