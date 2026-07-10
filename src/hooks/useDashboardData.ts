@@ -305,12 +305,13 @@ export function useDashboardData(
 
         // Processar locações
         const rentals = rentalsResult.data || [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
         const activeContracts = rentals.filter(r => r.status === "active").length;
         
         // 🔥 Contratos a vencer nos próximos 2 meses (apenas ATIVOS não vencidos)
         // USA A MESMA FUNÇÃO que a página de locações para garantir sincronização 100%
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         
         console.log("🔍 [useDashboardData] Iniciando contagem de contratos a vencer...");
         console.log("📅 [useDashboardData] Data de hoje:", today.toISOString().split('T')[0]);
