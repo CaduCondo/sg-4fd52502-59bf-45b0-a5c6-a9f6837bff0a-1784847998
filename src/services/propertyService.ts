@@ -479,7 +479,8 @@ export const getPublicProperties = async (): Promise<Property[]> => {
 
     console.log("✅ [getPublicProperties] Imóveis encontrados:");
     data.forEach((prop, idx) => {
-      console.log(`  ${idx + 1}. ID: ${prop.id} | Location: ${prop.location_id} | Status: ${prop.status} | Images: ${prop.images?.length || 0}`);
+      const imageCount = Array.isArray(prop.images) ? prop.images.length : 0;
+      console.log(`  ${idx + 1}. ID: ${prop.id} | Location: ${prop.location_id} | Status: ${prop.status} | Images: ${imageCount}`);
     });
 
     // Buscar locations em query separada
