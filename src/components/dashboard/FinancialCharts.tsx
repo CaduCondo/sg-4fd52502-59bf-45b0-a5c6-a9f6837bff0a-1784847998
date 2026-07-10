@@ -54,10 +54,9 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
           if (permError) {
             console.error("❌ Erro ao buscar permissões:", permError);
             allowedLocations = [];
-          } else if (permData) {
-            allowedLocations = permData.map(p => p.location_id);
           } else {
-            allowedLocations = [];
+            // Type assertion necessária para bypass do erro de tipo complexo do Supabase
+            allowedLocations = (permData || []).map((p: any) => p.location_id);
           }
           
           console.log("📍 Localizações permitidas:", allowedLocations);
