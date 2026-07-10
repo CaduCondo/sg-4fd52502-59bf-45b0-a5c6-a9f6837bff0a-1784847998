@@ -3,7 +3,7 @@ import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTable } from "@/components/ui/sortable-table";
 import { Building, Plus, LayoutGrid, List, Bed, Bath, Trash2, Camera } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { formatCurrency } from "@/lib/masks";
@@ -76,10 +76,41 @@ export default function PropertiesPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
 
-  // ✅ Forçar modo lista ao montar
-  useEffect(() => {
-    setViewMode("table");
-  }, [setViewMode]);
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedAndFilteredProperties = useMemo(() => {
+    let result = [...filteredProperties];
+    if (sortKey) {
+      result.sort((a, b) => {
+        let aVal: any = "";
+        let bVal: any = "";
+        switch (sortKey) {
+          case "local": aVal = a.location || ""; bVal = b.location || ""; break;
+          case "complement": aVal = a.complement || ""; bVal = b.complement || ""; break;
+          case "value": aVal = a.value || 0; bVal = b.value || 0; break;
+          case "rooms": aVal = Number(a.rooms) || 0; bVal = Number(b.rooms) || 0; break;
+          case "bathrooms": aVal = Number(a.bathrooms) || 0; bVal = Number(b.bathrooms) || 0; break;
+          case "area": aVal = Number(a.area) || 0; bVal = Number(b.area) || 0; break;
+          case "status": aVal = a.status || ""; bVal = b.status || ""; break;
+          case "foto": aVal = a.images?.length || 0; bVal = b.images?.length || 0; break;
+        }
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [filteredProperties, sortKey, sortDirection]);
 
   const handleNumberChange = useCallback((field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/[^0-9]/g, "").slice(0, 2);
@@ -246,63 +277,27 @@ export default function PropertiesPage() {
     if (!open) resetForm();
   }, [resetForm]);
 
-  const tableRows = useMemo(() => 
-    filteredProperties.map((property) => (
-      <TableRow 
-        key={property.id}
-        className="cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => handleCardClick(property)}
+  const propertyColumns = useMemo(() => [
+    { key: "local", label: "Local", render: (p: Property) => <span className="font-medium text-blue-600">{p.location}</span> },
+    { key: "complement", label: "Complemento", render: (p: Property) => p.complement || "-" },
+    { key: "value", label: "Valor", render: (p: Property) => formatCurrency(p.value || 0) },
+    { key: "rooms", label: "Quartos", render: (p: Property) => p.rooms ? <div className="flex items-center gap-1"><Bed className="h-4 w-4" /><span>{p.rooms}</span></div> : "-" },
+    { key: "bathrooms", label: "Banheiros", render: (p: Property) => p.bathrooms ? <div className="flex items-center gap-1"><Bath className="h-4 w-4" /><span>{p.bathrooms}</span></div> : "-" },
+    { key: "area", label: "Área Útil", render: (p: Property) => p.area ? `${p.area} m²` : "-" },
+    { key: "status", label: "Status", render: (p: Property) => getStatusBadge(p.status) },
+    { key: "foto", label: "Foto", render: (p: Property) => p.images && p.images.length > 0 ? <div className="flex items-center gap-1 text-blue-600"><Camera className="h-4 w-4" /><span className="text-xs font-medium">{p.images.length}</span></div> : <span className="text-muted-foreground text-xs">-</span> },
+    { key: "actions", label: "Deletar", sortable: false, className: "text-right", render: (p: Property) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+        onClick={(e) => confirmDelete(e, p.id)}
+        title="Excluir"
       >
-        <TableCell className="font-medium text-blue-600">
-          {property.location}
-        </TableCell>
-        <TableCell>
-          {property.complement || "-"}
-        </TableCell>
-        <TableCell>{formatCurrency(property.value || 0)}</TableCell>
-        <TableCell>
-          {property.rooms ? (
-            <div className="flex items-center gap-1">
-              <Bed className="h-4 w-4" />
-              <span>{property.rooms}</span>
-            </div>
-          ) : "-"}
-        </TableCell>
-        <TableCell>
-          {property.bathrooms ? (
-            <div className="flex items-center gap-1">
-              <Bath className="h-4 w-4" />
-              <span>{property.bathrooms}</span>
-            </div>
-          ) : "-"}
-        </TableCell>
-        <TableCell>
-          {property.area ? `${property.area} m²` : "-"}
-        </TableCell>
-        <TableCell>{getStatusBadge(property.status)}</TableCell>
-        <TableCell>
-          {property.images && property.images.length > 0 ? (
-            <div className="flex items-center gap-1 text-blue-600">
-              <Camera className="h-4 w-4" />
-              <span className="text-xs font-medium">{property.images.length}</span>
-            </div>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          )}
-        </TableCell>
-        <TableCell className="text-right">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={(e) => confirmDelete(e, property.id)}
-            title="Excluir"
-          >
-            <Trash2 className="h-4 w-4" strokeWidth={2} />
-          </Button>
-        </TableCell>
-      </TableRow>
-    )), [filteredProperties, handleCardClick, getStatusBadge, confirmDelete]);
+        <Trash2 className="h-4 w-4" strokeWidth={2} />
+      </Button>
+    )}
+  ], [getStatusBadge, confirmDelete]);
 
   if (loading) {
     return (
@@ -391,26 +386,15 @@ export default function PropertiesPage() {
           <ScrollReveal>
             <div className="w-full overflow-x-auto -mx-3 sm:mx-0">
               <div className="inline-block min-w-full align-middle px-3 sm:px-0">
-                <div className="rounded-md border bg-white overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Local</TableHead>
-                        <TableHead>Endereço</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Quartos</TableHead>
-                        <TableHead>Banheiros</TableHead>
-                        <TableHead>Área Útil</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Foto</TableHead>
-                        <TableHead className="text-right">Deletar</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tableRows}
-                    </TableBody>
-                  </Table>
-                </div>
+                <SortableTable
+                  data={sortedAndFilteredProperties}
+                  columns={propertyColumns}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  onRowClick={handleCardClick}
+                  emptyMessage="Nenhum imóvel encontrado com os filtros aplicados."
+                />
               </div>
             </div>
           </ScrollReveal>

@@ -11,7 +11,7 @@ import { TenantDeleteAlert } from "@/components/tenants/TenantDeleteAlert";
 import { TenantFilters } from "@/components/tenants/TenantFilters";
 import { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTable } from "@/components/ui/sortable-table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,7 +43,18 @@ export default function TenantsPage() {
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]); // Não usar filtro de status
-  const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
+  
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
 
   const formatDocument = useCallback((tenant: Tenant) => {
     if (tenant.documentType === "cpf" && tenant.cpf) {
@@ -83,17 +94,20 @@ export default function TenantsPage() {
       filtered = filtered.filter((t) => statusFilter.includes(t.status));
     }
 
-    if (sortBy === "alphabetical") {
-      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortKey) {
+      filtered.sort((a, b) => {
+        let aVal = sortKey === "name" ? a.name.toLowerCase() : a.status;
+        let bVal = sortKey === "name" ? b.name.toLowerCase() : b.status;
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
     } else {
-      filtered.sort((a, b) => 
-        new Date(b.createdAt || 0).getTime() - 
-        new Date(a.createdAt || 0).getTime()
-      );
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return filtered;
-  }, [tenants, searchTerm, statusFilter, sortBy, formatDocument, formatPhone]);
+  }, [tenants, searchTerm, statusFilter, sortKey, sortDirection, formatDocument, formatPhone]);
 
   useEffect(() => {
     const viewId = router.query.view as string;
@@ -206,34 +220,26 @@ export default function TenantsPage() {
     return "cursor-pointer hover:bg-muted/50 transition-colors";
   }, []);
 
-  const tableRows = useMemo(() => (
-    filteredTenants.map((tenant) => (
-      <TableRow
-        key={tenant.id}
-        className={getRowClassName(tenant)}
-        onClick={() => handleViewTenant(tenant)}
-      >
-        <TableCell className="font-semibold text-blue-600">{tenant.name}</TableCell>
-        <TableCell className="text-slate-600">{formatDocument(tenant)}</TableCell>
-        <TableCell className="text-slate-600">{formatPhone(tenant.phone)}</TableCell>
-        <TableCell className="text-slate-600">{tenant.email || "-"}</TableCell>
-        <TableCell>{getStatusBadge(tenant.status)}</TableCell>
-        <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={(e) => handleDelete(tenant.id, e)}
-              title="Excluir"
-            >
-              <Trash2 className="h-4 w-4" strokeWidth={2} />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    ))
-  ), [filteredTenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleDelete]);
+  const tenantColumns = useMemo(() => [
+    { key: "name", label: "Nome", render: (t: Tenant) => <span className="font-semibold text-blue-600">{t.name}</span> },
+    { key: "document", label: "Documento", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{formatDocument(t)}</span> },
+    { key: "phone", label: "Telefone", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{formatPhone(t.phone)}</span> },
+    { key: "email", label: "Email", sortable: false, render: (t: Tenant) => <span className="text-slate-600">{t.email || "-"}</span> },
+    { key: "status", label: "Status", render: (t: Tenant) => getStatusBadge(t.status) },
+    { key: "actions", label: "Deletar", sortable: false, className: "text-right", render: (t: Tenant) => (
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+          onClick={(e) => handleDelete(t.id, e)}
+          title="Excluir"
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={2} />
+        </Button>
+      </div>
+    )}
+  ], [formatDocument, formatPhone, getStatusBadge, handleDelete]);
 
   if (isLoading) {
     return (
@@ -294,8 +300,8 @@ export default function TenantsPage() {
               onSearchChange={setSearchTerm}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
+              sortBy="alphabetical"
+              onSortChange={() => {}}
               totalCount={filteredTenants.length}
             />
           </CardContent>
@@ -328,23 +334,15 @@ export default function TenantsPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Deletar</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableRows}
-              </TableBody>
-            </Table>
-          </div>
+          <SortableTable
+            data={filteredTenants}
+            columns={tenantColumns}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onRowClick={handleViewTenant}
+            emptyMessage={searchTerm || statusFilter.length > 0 ? "Nenhum inquilino encontrado com os filtros aplicados." : "Nenhum inquilino encontrado."}
+          />
         )}
 
         <TenantFormDialog

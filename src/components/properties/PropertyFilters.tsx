@@ -111,7 +111,6 @@ export const PropertyFilters = memo(function PropertyFilters({
         <div className="hidden lg:flex gap-3">
           <div className="w-[160px] text-sm font-medium text-foreground">Locais:</div>
           <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
-          <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
         </div>
       </div>
 
@@ -128,8 +127,8 @@ export const PropertyFilters = memo(function PropertyFilters({
           </div>
         </div>
 
-        {/* Filtros Mobile - Grid de 3 colunas */}
-        <div className="grid grid-cols-3 gap-2 lg:hidden w-full">
+        {/* Filtros Mobile - Grid de 2 colunas */}
+        <div className="grid grid-cols-2 gap-2 lg:hidden w-full">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="justify-between h-10 text-xs px-2">
@@ -170,17 +169,6 @@ export const PropertyFilters = memo(function PropertyFilters({
               <SelectItem value="available">Disponível</SelectItem>
               <SelectItem value="occupied">Ocupado</SelectItem>
               <SelectItem value="unavailable">Indisponível</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-            <SelectTrigger className="h-10 text-xs px-2">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alphabetical">A-Z</SelectItem>
-              <SelectItem value="price-asc">Menor</SelectItem>
-              <SelectItem value="price-desc">Maior</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -227,17 +215,6 @@ export const PropertyFilters = memo(function PropertyFilters({
               <SelectItem value="available">Disponível</SelectItem>
               <SelectItem value="occupied">Ocupado</SelectItem>
               <SelectItem value="unavailable">Indisponível</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-            <SelectTrigger className="w-[140px] h-10">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alphabetical">A-Z</SelectItem>
-              <SelectItem value="price-asc">Menor Valor</SelectItem>
-              <SelectItem value="price-desc">Maior Valor</SelectItem>
             </SelectContent>
           </Select>
         </div>

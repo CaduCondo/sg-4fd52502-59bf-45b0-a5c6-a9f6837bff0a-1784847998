@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTable } from "@/components/ui/sortable-table";
 import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
 import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
 import { useContractExpiration } from "@/hooks/useContractExpiration";
@@ -75,6 +75,18 @@ export default function RentalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
 
   // Debounce search term
   useEffect(() => {
@@ -233,8 +245,50 @@ export default function RentalsPage() {
       return matchesSearch && statusFilter === effectiveStatus;
     });
 
+    if (sortKey) {
+      filtered.sort((a, b) => {
+        let aVal: any = "";
+        let bVal: any = "";
+        switch (sortKey) {
+          case "local":
+            aVal = locations.find(loc => loc.id === a.property?.locationId)?.name || a.property?.location || "";
+            bVal = locations.find(loc => loc.id === b.property?.locationId)?.name || b.property?.location || "";
+            break;
+          case "complement":
+            aVal = a.property?.complement || "";
+            bVal = b.property?.complement || "";
+            break;
+          case "tenant":
+            aVal = a.tenant?.name || "";
+            bVal = b.tenant?.name || "";
+            break;
+          case "value":
+            aVal = a.value || 0;
+            bVal = b.value || 0;
+            break;
+          case "startDate":
+            aVal = a.startDate || "";
+            bVal = b.startDate || "";
+            break;
+          case "endDate":
+            aVal = a.endDate || "";
+            bVal = b.endDate || "";
+            break;
+          case "status":
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            aVal = (a.isActive && (!a.endDate || new Date(a.endDate) >= today)) ? "active" : "terminated";
+            bVal = (b.isActive && (!b.endDate || new Date(b.endDate) >= today)) ? "active" : "terminated";
+            break;
+        }
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
     return filtered;
-  }, [rentals, debouncedSearchTerm, statusFilter]);
+  }, [rentals, debouncedSearchTerm, statusFilter, sortKey, sortDirection, locations]);
 
   const activeRentals = useMemo(() => rentals.filter((r) => r.isActive), [rentals]);
   const canCreateRental = useMemo(() => 
@@ -391,6 +445,75 @@ export default function RentalsPage() {
     await loadRentalsData();
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
+
+  const rentalColumns = useMemo(() => [
+    { 
+      key: "local", 
+      label: "Local", 
+      render: (r: Rental) => <span className="font-medium text-blue-600">{locations.find(loc => loc.id === r.property?.locationId)?.name || r.property?.location || "Local não encontrado"}</span> 
+    },
+    { key: "complement", label: "Complemento", render: (r: Rental) => r.property?.complement || "-" },
+    { key: "tenant", label: "Inquilino", render: (r: Rental) => <span className="whitespace-nowrap">{r.tenant?.name || "-"}</span> },
+    { key: "value", label: "Valor", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(r.value || 0)}</span> },
+    { key: "startDate", label: statusFilter === 'terminated' ? "Data Término" : "Data Início", render: (r: Rental) => formatDate(statusFilter === 'terminated' ? r.endDate : r.startDate) },
+    { key: "endDate", label: "Data Fim", render: (r: Rental) => formatDate(r.endDate) },
+    { 
+      key: "status", 
+      label: "Status", 
+      render: (r: Rental) => {
+        const alert = calculateContractAlert(r.endDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isExpired = r.endDate && new Date(r.endDate) < today;
+        const isVisuallyActive = r.isActive && !isExpired;
+        const shouldShowAlert = r.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
+        const badgeClasses = getAlertBadgeClasses(alert.level);
+        return (
+          <div className="flex flex-col gap-1">
+            {isVisuallyActive ? (
+              <>
+                <Badge className={badgeClasses}>Ativa</Badge>
+                {shouldShowAlert && (
+                  <Badge variant="outline" className={`text-xs ${alert.level === "critical" ? "border-red-500 text-red-700" : "border-yellow-500 text-yellow-700"}`}>
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {alert.message}
+                  </Badge>
+                )}
+                {rentalTerminations[r.id] && (
+                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs">Rescisão</Badge>
+                )}
+              </>
+            ) : (
+              <Badge className={isExpired && r.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
+                Encerrado
+              </Badge>
+            )}
+          </div>
+        );
+      }
+    },
+    { 
+      key: "actions", 
+      label: "Ações", 
+      sortable: false, 
+      className: "text-right", 
+      render: (r: Rental) => (
+        r.isActive && (
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500" onClick={(e) => { e.stopPropagation(); setRentalToRenew(r); }} title="Renovar Contrato">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500" onClick={(e) => { e.stopPropagation(); setRentalToEnd(r); }} title="Rescisão de Contrato">
+              <XCircle className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); setRentalToDelete(r); }} title="Excluir Locação">
+              <Trash2 className="h-4 w-4" strokeWidth={2} />
+            </Button>
+          </div>
+        )
+      ) 
+    }
+  ], [locations, statusFilter, rentalTerminations, formatDate]);
 
   return (
     <>
@@ -717,130 +840,25 @@ export default function RentalsPage() {
                   })}
                 </div>
               ) : (
-                <div className="rounded-md border bg-white">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Local</TableHead>
-                        <TableHead>Complemento</TableHead>
-                        <TableHead>Inquilino</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Data {statusFilter === 'terminated' ? 'Término' : 'Início'}</TableHead>
-                        <TableHead>Data Fim</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRentals.map((rental) => {
-                        const alert = calculateContractAlert(rental.endDate);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const isExpired = rental.endDate && new Date(rental.endDate) < today;
-                        const isVisuallyActive = rental.isActive && !isExpired;
-                        
-                        // ✅ CORRIGIDO: Aplicar cores APENAS para contratos ativos dentro de 60 dias
-                        // Vermelho: ≤30 dias | Amarelo: 31-60 dias
-                        const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
-                        const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
-                        const badgeClasses = getAlertBadgeClasses(alert.level);
-
-                        return (
-                          <TableRow
-                            key={rental.id}
-                            className={`cursor-pointer ${alertClasses} ${!isVisuallyActive ? "opacity-75" : ""}`}
-                            onClick={() => handleViewRental(rental)}
-                          >
-                            <TableCell className="font-medium text-blue-600">
-                              {locations.find(loc => loc.id === rental.property?.locationId)?.name || 
-                               rental.property?.location || 
-                               "Local não encontrado"}
-                            </TableCell>
-                            <TableCell>{rental.property?.complement || "-"}</TableCell>
-                            <TableCell className="whitespace-nowrap">{rental.tenant?.name || "-"}</TableCell>
-                            <TableCell className="font-bold text-emerald-600">
-                              {formatCurrency(rental.value || 0)}
-                            </TableCell>
-                            <TableCell>{formatDate(statusFilter === 'terminated' ? rental.endDate : rental.startDate)}</TableCell>
-                            <TableCell>{formatDate(rental.endDate)}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                {isVisuallyActive ? (
-                                  <>
-                                    <Badge className={badgeClasses}>
-                                      Ativa
-                                    </Badge>
-                                    {alert.level !== "normal" && (
-                                      <Badge variant="outline" className={`text-xs ${
-                                        alert.level === "critical" 
-                                          ? "border-red-500 text-red-700" 
-                                          : "border-yellow-500 text-yellow-700"
-                                      }`}>
-                                        <AlertTriangle className="h-3 w-3 mr-1" />
-                                        {alert.message}
-                                      </Badge>
-                                    )}
-                                    {rentalTerminations[rental.id] && (
-                                      <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs">
-                                        Rescisão
-                                      </Badge>
-                                    )}
-                                  </>
-                                ) : (
-                                  <Badge className={isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
-                                    Encerrado
-                                  </Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {rental.isActive && (
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToRenew(rental);
-                                    }}
-                                    title="Renovar Contrato"
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToEnd(rental);
-                                    }}
-                                    title="Rescisão de Contrato"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToDelete(rental);
-                                    }}
-                                    title="Excluir Locação"
-                                  >
-                                    <Trash2 className="h-4 w-4" strokeWidth={2} />
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                <SortableTable
+                  data={filteredRentals}
+                  columns={rentalColumns}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  onRowClick={handleViewRental}
+                  getRowClassName={(r) => {
+                    const alert = calculateContractAlert(r.endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isExpired = r.endDate && new Date(r.endDate) < today;
+                    const isVisuallyActive = r.isActive && !isExpired;
+                    const shouldShowAlert = r.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
+                    const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
+                    return `${alertClasses} ${!isVisuallyActive ? "opacity-75" : ""}`;
+                  }}
+                  emptyMessage="Nenhuma locação encontrada."
+                />
               )}
             </CardContent>
           </Card>

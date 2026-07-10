@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasPermission } from "@/lib/permissions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { SortableTable } from "@/components/ui/sortable-table";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
@@ -56,6 +57,29 @@ export default function Payments() {
     showReceiptDialog: false,
     selectedPayment: null as Payment | null,
   });
+
+  const [sortKeyPending, setSortKeyPending] = useState<string | null>(null);
+  const [sortDirectionPending, setSortDirectionPending] = useState<"asc" | "desc">("asc");
+  const [sortKeyPaid, setSortKeyPaid] = useState<string | null>(null);
+  const [sortDirectionPaid, setSortDirectionPaid] = useState<"asc" | "desc">("asc");
+
+  const handleSortPending = (key: string) => {
+    if (sortKeyPending === key) {
+      setSortDirectionPending(sortDirectionPending === "asc" ? "desc" : "asc");
+    } else {
+      setSortKeyPending(key);
+      setSortDirectionPending("asc");
+    }
+  };
+
+  const handleSortPaid = (key: string) => {
+    if (sortKeyPaid === key) {
+      setSortDirectionPaid(sortDirectionPaid === "asc" ? "desc" : "asc");
+    } else {
+      setSortKeyPaid(key);
+      setSortDirectionPaid("asc");
+    }
+  };
 
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
@@ -523,8 +547,96 @@ export default function Payments() {
       searchQuery: debouncedSearchQuery || "(vazio)"
     });
 
+    if (sortKeyPending) {
+      pending.sort((a, b) => {
+        let aVal: any = "";
+        let bVal: any = "";
+        const propA = getPropertyForPayment(a);
+        const propB = getPropertyForPayment(b);
+        const tenA = getTenantForPayment(a);
+        const tenB = getTenantForPayment(b);
+
+        switch (sortKeyPending) {
+          case "local": aVal = propA?.location || ""; bVal = propB?.location || ""; break;
+          case "complement": aVal = propA?.complement || ""; bVal = propB?.complement || ""; break;
+          case "installment": aVal = getPaymentInstallment(a); bVal = getPaymentInstallment(b); break;
+          case "status": aVal = a.status; bVal = b.status; break;
+          case "tenant": aVal = tenA?.name || ""; bVal = tenB?.name || ""; break;
+          case "dueDate": aVal = a.dueDate || ""; bVal = b.dueDate || ""; break;
+          case "amount": aVal = getExpectedAmount(a); bVal = getExpectedAmount(b); break;
+        }
+        if (aVal < bVal) return sortDirectionPending === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirectionPending === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    if (sortKeyPaid) {
+      paid.sort((a, b) => {
+        let aVal: any = "";
+        let bVal: any = "";
+        const propA = getPropertyForPayment(a);
+        const propB = getPropertyForPayment(b);
+        const tenA = getTenantForPayment(a);
+        const tenB = getTenantForPayment(b);
+
+        switch (sortKeyPaid) {
+          case "local": aVal = propA?.location || ""; bVal = propB?.location || ""; break;
+          case "complement": aVal = propA?.complement || ""; bVal = propB?.complement || ""; break;
+          case "installment": aVal = getPaymentInstallment(a); bVal = getPaymentInstallment(b); break;
+          case "status": aVal = a.status; bVal = b.status; break;
+          case "tenant": aVal = tenA?.name || ""; bVal = tenB?.name || ""; break;
+          case "paymentDate": aVal = a.paymentDate || ""; bVal = b.paymentDate || ""; break;
+          case "amount": aVal = a.paidAmount || 0; bVal = b.paidAmount || 0; break;
+        }
+        if (aVal < bVal) return sortDirectionPaid === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirectionPaid === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
     return { pendingPayments: pending, paidPayments: paid };
-  }, [payments, debouncedSearchQuery, rentals, properties, tenants]);
+  }, [payments, debouncedSearchQuery, rentals, properties, tenants, sortKeyPending, sortDirectionPending, sortKeyPaid, sortDirectionPaid, getPropertyForPayment, getTenantForPayment, getPaymentInstallment, getExpectedAmount]);
+
+  const pendingColumns = useMemo(() => [
+    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-blue-600">{getPropertyForPayment(p)?.location || "-"}</span> },
+    { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
+    { key: "period", label: "Período", sortable: false, render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
+    { key: "installment", label: "Parcela", render: (p: Payment) => getPaymentInstallment(p) },
+    { key: "status", label: "Status", render: (p: Payment) => {
+        const config = {
+          pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
+          overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
+          partial: { label: "Parcial", className: "bg-orange-100 text-orange-800" },
+        }[p.status] || { label: "Pendente", className: "bg-yellow-100 text-yellow-800" };
+        return <Badge className={config.className}>{config.label}</Badge>;
+    }},
+    { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
+    { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
+    { key: "dueDate", label: "Vencimento", render: (p: Payment) => p.dueDate ? format(new Date(p.dueDate), "dd/MM/yyyy") : "-" },
+    { key: "amount", label: "Valor Esperado", className: "text-right", render: (p: Payment) => <span className="font-bold text-emerald-600">{getExpectedAmount(p).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> }
+  ], [getPropertyForPayment, getMonthName, getPaymentInstallment, getTenantForPayment, getExpectedAmount]);
+
+  const paidColumns = useMemo(() => [
+    { key: "local", label: "Local", render: (p: Payment) => <span className="font-medium text-blue-600">{getPropertyForPayment(p)?.location || "-"}</span> },
+    { key: "complement", label: "Complemento", render: (p: Payment) => getPropertyForPayment(p)?.complement || "-" },
+    { key: "period", label: "Período", sortable: false, render: (p: Payment) => `${getMonthName(p.referenceMonth)}/${p.referenceYear}` },
+    { key: "attachments", label: "Anexo", sortable: false, render: (p: Payment) => (p.attachments && (Array.isArray(p.attachments) ? p.attachments.length > 0 : Object.keys(p.attachments).length > 0)) ? <Badge className="bg-blue-100 text-blue-800">Sim</Badge> : <Badge variant="outline">Não</Badge> },
+    { key: "installment", label: "Parcela", render: (p: Payment) => getPaymentInstallment(p) },
+    { key: "status", label: "Status", render: () => <Badge className="bg-green-100 text-green-800">Pago</Badge> },
+    { key: "tenant", label: "Inquilino", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
+    { key: "phone", label: "Celular", sortable: false, render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
+    { key: "paymentDate", label: "Pago em", render: (p: Payment) => p.paymentDate ? format(new Date(p.paymentDate), "dd/MM/yyyy") : "-" },
+    { key: "amount", label: "Valor Pago", className: "text-right", render: (p: Payment) => <span className="font-bold text-emerald-600">{(p.paidAmount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> },
+    { key: "actions", label: "Ações", sortable: false, className: "text-right", render: (p: Payment) => (
+      <div className="flex flex-col items-end gap-1">
+        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewReceipt(p); }} title="Ver Recibo">Recibo</Button>
+        {permissions.canDeletePayment && (
+          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => handleCancelPayment(p.id, e)} title="Cancelar Pagamento">Cancelar</Button>
+        )}
+      </div>
+    )}
+  ], [getPropertyForPayment, getMonthName, getPaymentInstallment, getTenantForPayment, permissions, handleViewReceipt, handleCancelPayment]);
 
   return (
     <Layout>
@@ -631,66 +743,15 @@ export default function Payments() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-md border bg-white">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Local</TableHead>
-                          <TableHead>Complemento</TableHead>
-                          <TableHead>Período</TableHead>
-                          <TableHead>Parcela</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Inquilino</TableHead>
-                          <TableHead>Celular</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead className="text-right">Valor Esperado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingPayments.map((payment) => {
-                          const property = getPropertyForPayment(payment);
-                          const tenant = getTenantForPayment(payment);
-                          const statusConfig = {
-                            pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
-                            overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
-                            partial: { label: "Parcial", className: "bg-orange-100 text-orange-800" },
-                          };
-                          const config = statusConfig[payment.status as keyof typeof statusConfig] || statusConfig.pending;
-                          
-                          return (
-                            <TableRow
-                              key={payment.id}
-                              className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
-                            >
-                              <TableCell className="font-medium text-blue-600">
-                                {property?.location || "-"}
-                              </TableCell>
-                              <TableCell>{property?.complement || "-"}</TableCell>
-                              <TableCell>
-                                {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                              </TableCell>
-                              <TableCell>{getPaymentInstallment(payment)}</TableCell>
-                              <TableCell>
-                                <Badge className={config.className}>{config.label}</Badge>
-                              </TableCell>
-                              <TableCell>{tenant?.name || "-"}</TableCell>
-                              <TableCell>{tenant?.phone || "-"}</TableCell>
-                              <TableCell>
-                                {payment.dueDate ? format(new Date(payment.dueDate), "dd/MM/yyyy") : "-"}
-                              </TableCell>
-                              <TableCell className="text-right font-bold text-emerald-600">
-                                {getExpectedAmount(payment).toLocaleString("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                })}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <SortableTable
+                    data={pendingPayments}
+                    columns={pendingColumns}
+                    sortKey={sortKeyPending}
+                    sortDirection={sortDirectionPending}
+                    onSort={handleSortPending}
+                    onRowClick={(p) => setUiState(prev => ({ ...prev, selectedPaymentId: p.id }))}
+                    emptyMessage="Nenhum recebimento pendente encontrado."
+                  />
                 )
               ) : (
                 <div className="text-center py-12">
@@ -726,96 +787,15 @@ export default function Payments() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-md border bg-white">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Local</TableHead>
-                          <TableHead>Complemento</TableHead>
-                          <TableHead>Período</TableHead>
-                          <TableHead>Anexo</TableHead>
-                          <TableHead>Parcela</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Inquilino</TableHead>
-                          <TableHead>Celular</TableHead>
-                          <TableHead>Pago em</TableHead>
-                          <TableHead className="text-right">Valor Pago</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paidPayments.map((payment) => {
-                          const property = getPropertyForPayment(payment);
-                          const tenant = getTenantForPayment(payment);
-                          const hasAttachments = payment.attachments && (Array.isArray(payment.attachments) ? payment.attachments.length > 0 : Object.keys(payment.attachments).length > 0);
-                          
-                          return (
-                            <TableRow
-                              key={payment.id}
-                              className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
-                            >
-                              <TableCell className="font-medium text-blue-600">
-                                {property?.location || "-"}
-                              </TableCell>
-                              <TableCell>{property?.complement || "-"}</TableCell>
-                              <TableCell>
-                                {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                              </TableCell>
-                              <TableCell>
-                                {hasAttachments ? (
-                                  <Badge className="bg-blue-100 text-blue-800">Sim</Badge>
-                                ) : (
-                                  <Badge variant="outline">Não</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>{getPaymentInstallment(payment)}</TableCell>
-                              <TableCell>
-                                <Badge className="bg-green-100 text-green-800">Pago</Badge>
-                              </TableCell>
-                              <TableCell>{tenant?.name || "-"}</TableCell>
-                              <TableCell>{tenant?.phone || "-"}</TableCell>
-                              <TableCell>
-                                {payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy") : "-"}
-                              </TableCell>
-                              <TableCell className="text-right font-bold text-emerald-600">
-                                {(payment.paidAmount || 0).toLocaleString("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                })}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col items-end gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewReceipt(payment);
-                                    }}
-                                    title="Ver Recibo"
-                                  >
-                                    Recibo
-                                  </Button>
-                                  {permissions.canDeletePayment && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      onClick={(e) => handleCancelPayment(payment.id, e)}
-                                      title="Cancelar Pagamento"
-                                    >
-                                      Cancelar
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <SortableTable
+                    data={paidPayments}
+                    columns={paidColumns}
+                    sortKey={sortKeyPaid}
+                    sortDirection={sortDirectionPaid}
+                    onSort={handleSortPaid}
+                    onRowClick={(p) => setUiState(prev => ({ ...prev, selectedPaymentId: p.id }))}
+                    emptyMessage="Nenhum recebimento pago encontrado."
+                  />
                 )
               ) : (
                 <div className="text-center py-12">
