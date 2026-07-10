@@ -203,7 +203,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         .eq("id", paymentId)
         .single();
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error("❌ Erro ao buscar pagamento:", paymentError);
+        throw paymentError;
+      }
+
+      if (!paymentData) {
+        throw new Error("Pagamento não encontrado");
+      }
 
       console.log("📦 Payment data loaded:", paymentData);
       console.log("🔍 TODOS OS CAMPOS DO PAYMENT:", {
