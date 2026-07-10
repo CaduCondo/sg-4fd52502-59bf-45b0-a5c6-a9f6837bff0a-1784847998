@@ -435,10 +435,10 @@ export async function getAvailable(): Promise<Property[]> {
  */
 export const getPublicProperties = async (): Promise<Property[]> => {
   try {
-    console.log("🔄 [getPublicProperties] Iniciando busca COM IMAGENS...");
+    console.log("🔄 [getPublicProperties] Iniciando busca de imóveis disponíveis...");
+    console.log("🔍 [getPublicProperties] Query: status = 'available'");
 
     // 🔥 Query COM IMAGES para página pública
-    // SEM limit - mostrar TODOS os imóveis disponíveis
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -462,22 +462,33 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("❌ Erro na query:", error);
+      console.error("❌ [getPublicProperties] Erro na query principal:", error);
+      console.error("❌ Código do erro:", error.code);
+      console.error("❌ Mensagem:", error.message);
+      console.error("❌ Detalhes:", error.details);
       throw error;
     }
 
+    console.log(`📊 [getPublicProperties] Query retornou ${data?.length || 0} imóveis`);
+
     if (!data || data.length === 0) {
-      console.log("⚠️ Nenhum imóvel disponível");
+      console.log("⚠️ [getPublicProperties] Nenhum imóvel com status 'available' encontrado no banco");
+      console.log("💡 Verifique se os imóveis estão realmente com status = 'available' no banco de dados");
       return [];
     }
 
-    console.log(`✅ ${data.length} imóveis carregados COM IMAGENS`);
+    console.log("✅ [getPublicProperties] Imóveis encontrados:");
+    data.forEach((prop, idx) => {
+      console.log(`  ${idx + 1}. ID: ${prop.id} | Location: ${prop.location_id} | Status: ${prop.status} | Images: ${prop.images?.length || 0}`);
+    });
 
     // Buscar locations em query separada
     const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
     
+    console.log(`🔍 [getPublicProperties] Buscando ${locationIds.length} localizações...`);
+
     if (locationIds.length === 0) {
-      console.log("⚠️ Nenhuma localização encontrada");
+      console.log("⚠️ [getPublicProperties] Nenhuma localização vinculada aos imóveis");
       return data.map(item => ({
         id: item.id,
         locationId: item.location_id,
@@ -503,11 +514,20 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       }));
     }
 
-    // Query de locations (sem timeout)
-    const { data: locationsData } = await supabase
+    // Query de locations
+    const { data: locationsData, error: locationsError } = await supabase
       .from("locations")
       .select("id, name, city, neighborhood, state, street, number")
       .in("id", locationIds);
+
+    if (locationsError) {
+      console.error("❌ [getPublicProperties] Erro ao buscar locations:", locationsError);
+      console.error("❌ Código do erro:", locationsError.code);
+      console.error("❌ Mensagem:", locationsError.message);
+      throw locationsError;
+    }
+
+    console.log(`✅ [getPublicProperties] ${locationsData?.length || 0} localizações carregadas`);
 
     const locationsMap = new Map(
       (locationsData || []).map(loc => [loc.id, loc])
@@ -547,15 +567,15 @@ export const getPublicProperties = async (): Promise<Property[]> => {
       } as Property;
     });
 
-    console.log(`✅ [getPublicProperties] ${properties.length} imóveis retornados COM IMAGENS`);
+    console.log(`✅ [getPublicProperties] SUCESSO! ${properties.length} imóveis processados e prontos para exibição`);
 
     return properties;
 
   } catch (error: any) {
-    console.error("❌ [getPublicProperties] Erro crítico:", error);
+    console.error("❌ [getPublicProperties] ERRO CRÍTICO:", error);
+    console.error("❌ Stack trace:", error.stack);
     
-    // 🔥 FALLBACK FINAL: retornar array vazio em vez de travar
-    console.log("⚠️ Retornando lista vazia como fallback");
-    return [];
+    // 🔥 IMPORTANTE: NÃO retornar array vazio - lançar o erro para o hook tratar
+    throw new Error(`Erro ao carregar imóveis: ${error.message || 'Erro desconhecido'}`);
   }
 };
