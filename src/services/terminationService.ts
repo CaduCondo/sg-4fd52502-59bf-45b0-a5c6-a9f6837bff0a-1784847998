@@ -179,11 +179,11 @@ export async function processContractTermination(data: TerminationData): Promise
           reference_month: String(terminationMonth).padStart(2, "0"),
           reference_year: String(terminationYear),
           status: "pending",
-          breakdown: JSON.stringify([{
+          breakdown: [{
             description: `Aluguel Mês ${terminationMonth}/${terminationYear}`,
             amount: fullMonthRent,
             type: "addition"
-          }])
+          }]
         });
 
       if (createError1) {
@@ -254,7 +254,7 @@ export async function processContractTermination(data: TerminationData): Promise
         .from("payments")
         .update({
           expected_amount: totalAmount2,
-          breakdown: JSON.stringify(breakdown2),
+          breakdown: breakdown2,
           notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`,
           updated_at: new Date().toISOString()
         })
@@ -278,7 +278,7 @@ export async function processContractTermination(data: TerminationData): Promise
           reference_month: String(terminationMonth).padStart(2, "0"),
           reference_year: String(terminationYear),
           status: "pending",
-          breakdown: JSON.stringify(breakdown2),
+          breakdown: breakdown2,
           notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`
         });
 
@@ -352,7 +352,7 @@ export async function processContractTermination(data: TerminationData): Promise
         .update({
           due_date: dueDateStr,
           expected_amount: totalAmount,
-          breakdown: JSON.stringify(breakdown),
+          breakdown: breakdown,
           notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`,
           updated_at: new Date().toISOString()
         })
@@ -376,7 +376,7 @@ export async function processContractTermination(data: TerminationData): Promise
           reference_month: String(terminationMonth).padStart(2, "0"),
           reference_year: String(terminationYear),
           status: "pending",
-          breakdown: JSON.stringify(breakdown),
+          breakdown: breakdown,
           notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`
         });
 
