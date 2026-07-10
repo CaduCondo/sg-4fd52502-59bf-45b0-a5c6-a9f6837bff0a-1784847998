@@ -135,9 +135,15 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // 🔥 APLICAR FILTRO DE STATUS APENAS AO EXIBIR, NÃO AO CARREGAR
+        // Validar e converter dados com segurança de tipo
         console.log("✅ Dados carregados, total:", installmentsData.length);
-        setData(installmentsData as DepositInstallment[]);
+        
+        // Type assertion segura: verificar se data existe antes de converter
+        const validatedData = installmentsData.filter(
+          (item): item is DepositInstallment => item !== null && typeof item === 'object'
+        );
+        
+        setData(validatedData);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
