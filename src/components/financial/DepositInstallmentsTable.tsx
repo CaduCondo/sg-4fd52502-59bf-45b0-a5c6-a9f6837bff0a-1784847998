@@ -135,15 +135,9 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // Validar e converter dados com segurança de tipo
+        // Type assertion direta - bypass do tipo complexo do Supabase
         console.log("✅ Dados carregados, total:", installmentsData.length);
-        
-        // Type assertion segura: verificar se data existe antes de converter
-        const validatedData = installmentsData.filter(
-          (item): item is DepositInstallment => item !== null && typeof item === 'object'
-        );
-        
-        setData(validatedData);
+        setData(installmentsData as DepositInstallment[]);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
