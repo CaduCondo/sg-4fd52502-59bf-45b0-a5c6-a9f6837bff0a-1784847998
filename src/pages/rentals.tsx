@@ -68,6 +68,7 @@ export default function RentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
+  const [deletePaymentsToo, setDeletePaymentsToo] = useState(false);
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
   
@@ -386,21 +387,28 @@ export default function RentalsPage() {
   }, [rentalToRenew, toast, formatDate, loadRentalsData]);
 
   // Handler para deletar locação
-  const handleDeleteRental = useCallback(async () => {
+  const handleDeleteRental = useCallback(async (shouldDeletePayments: boolean) => {
     if (!rentalToDelete) return;
 
     try {
-      const { deletePaymentsByRentalId } = await import("@/services/paymentService");
-      await deletePaymentsByRentalId(rentalToDelete.id);
+      // Deletar recebimentos APENAS se o usuário escolher
+      if (shouldDeletePayments) {
+        const { deletePaymentsByRentalId } = await import("@/services/paymentService");
+        await deletePaymentsByRentalId(rentalToDelete.id);
+      }
+      
       await deleteRental(rentalToDelete.id);
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
       // Status do tenant é calculado automaticamente em getAllTenants() baseado nas locações
 
       toast({
         title: "Sucesso!",
-        description: "Locação e todos os pagamentos associados foram removidos.",
+        description: shouldDeletePayments 
+          ? "Locação e todos os recebimentos foram removidos."
+          : "Locação removida. O histórico financeiro foi preservado.",
       });
       setRentalToDelete(null);
+      setDeletePaymentsToo(false);
       await loadRentalsData();
       await loadAvailableData();
     } catch (error) {
@@ -956,16 +964,32 @@ export default function RentalsPage() {
         <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir esta locação? Esta ação não pode ser desfeita.
+              <AlertDialogTitle>Confirmar exclusão da locação</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4">
+                <p>Tem certeza que deseja excluir esta locação?</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                  <p className="font-semibold text-amber-900">⚠️ Atenção: Histórico Financeiro</p>
+                  <p className="text-sm text-amber-800">
+                    Esta locação pode ter recebimentos pagos (histórico financeiro). 
+                    Deseja manter este histórico para fins contábeis?
+                  </p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Excluir
-              </AlertDialogAction>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
+              <Button
+                onClick={() => handleDeleteRental(false)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Não, manter histórico
+              </Button>
+              <Button
+                onClick={() => handleDeleteRental(true)}
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim, deletar tudo
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
