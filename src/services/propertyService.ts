@@ -437,8 +437,8 @@ export const getPublicProperties = async (): Promise<Property[]> => {
   try {
     console.log("🔄 [getPublicProperties] Iniciando busca COM IMAGENS...");
 
-    // 🔥 Query COM IMAGES mas limit MUITO pequeno (10) para máxima velocidade
-    // SEM timeout local - deixa Supabase gerenciar (15-20s)
+    // 🔥 Query COM IMAGES para página pública
+    // SEM limit - mostrar TODOS os imóveis disponíveis
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -459,8 +459,7 @@ export const getPublicProperties = async (): Promise<Property[]> => {
         created_at
       `)
       .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(10); // 🔥 Apenas 10 imóveis para máxima velocidade
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("❌ Erro na query:", error);

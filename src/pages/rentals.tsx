@@ -404,7 +404,10 @@ export default function RentalsPage() {
       }
       
       await deleteRental(rentalToDelete.id);
-      await updateProperty(rentalToDelete.propertyId, { status: "available" });
+      
+      // ✅ CORREÇÃO: Sincronizar status do imóvel após deletar locação
+      const { syncPropertyStatus } = await import("@/services/syncPropertyStatusService");
+      await syncPropertyStatus(rentalToDelete.propertyId);
 
       let message = "Locação removida.";
       if (deleteChoices.pending && deleteChoices.paid) {
