@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,11 @@ export default function PropertiesPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
+
+  // ✅ Forçar modo lista ao montar
+  useEffect(() => {
+    setViewMode("table");
+  }, [setViewMode]);
 
   const handleNumberChange = useCallback((field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/[^0-9]/g, "").slice(0, 2);

@@ -49,7 +49,7 @@ export default function Payments() {
 
   // Estados consolidados
   const [uiState, setUiState] = useState({
-    viewMode: "grid" as "grid" | "list",
+    viewMode: "list" as "grid" | "list",
     searchQuery: "",
     selectedPaymentId: null as string | null,
     paymentToCancel: null as string | null,
@@ -753,7 +753,7 @@ export default function Payments() {
                             <TableRow
                               key={payment.id}
                               className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => handleViewReceipt(payment)}
+                              onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                             >
                               <TableCell className="font-medium text-blue-600">
                                 {property?.location || "-"}

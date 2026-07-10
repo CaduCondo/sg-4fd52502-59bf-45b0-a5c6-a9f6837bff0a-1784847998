@@ -39,7 +39,7 @@ export default function TenantsPage() {
     isViewMode: false,
   });
   
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]); // Não usar filtro de status

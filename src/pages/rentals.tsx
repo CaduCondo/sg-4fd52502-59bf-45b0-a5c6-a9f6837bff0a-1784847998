@@ -70,7 +70,7 @@ export default function RentalsPage() {
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
   
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
@@ -509,60 +509,6 @@ export default function RentalsPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* 🔍 DEBUG: Contador de contratos por status */}
-          {!loading && (
-            <Card className="mb-6 border-2 border-blue-500">
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-slate-100 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Total de Contratos</p>
-                    <p className="text-3xl font-bold text-slate-700">{rentals.length}</p>
-                  </div>
-                  <div className="text-center p-4 bg-green-100 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Ativos (não vencidos)</p>
-                    <p className="text-3xl font-bold text-green-700">
-                      {rentals.filter(r => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const isExpired = r.endDate && new Date(r.endDate) < today;
-                        return r.isActive && !isExpired;
-                      }).length}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-red-100 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Encerrados/Vencidos</p>
-                    <p className="text-3xl font-bold text-red-700">
-                      {rentals.filter(r => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const isExpired = r.endDate && new Date(r.endDate) < today;
-                        return !r.isActive || isExpired;
-                      }).length}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Contador de contratos com alerta */}
-                <div className="mt-4 p-4 bg-yellow-100 rounded-lg text-center border-2 border-yellow-500">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    🔔 Contratos ativos que vencem em até 60 dias (amarelo + vermelho)
-                  </p>
-                  <p className="text-3xl font-bold text-yellow-700">
-                    {rentals.filter(r => {
-                      if (!r.isActive || !r.endDate) return false;
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const endDate = new Date(r.endDate);
-                      if (endDate < today) return false;
-                      const alert = calculateContractAlert(r.endDate);
-                      return alert.level === "warning" || alert.level === "critical";
-                    }).length}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Filtros de Busca e Status */}
           <Card className="mb-8">
