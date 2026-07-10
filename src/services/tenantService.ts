@@ -17,30 +17,36 @@ function toDatabase(data: Partial<Tenant>): any {
   if (data.email !== undefined) dbData.email = data.email;
   if (data.phone !== undefined) dbData.phone = data.phone;
   if (data.status !== undefined) dbData.status = data.status;
-  if (data.rg !== undefined) dbData.rg = data.rg;
+  if (data.rg !== undefined && data.rg !== "") dbData.rg = data.rg;
   
-  if (data.cep !== undefined) dbData.zip_code = data.cep;
-  if (data.street !== undefined) dbData.street = data.street;
-  if (data.number !== undefined) dbData.number = data.number;
-  if (data.complement !== undefined) dbData.complement = data.complement;
-  if (data.neighborhood !== undefined) dbData.neighborhood = data.neighborhood;
-  if (data.city !== undefined) dbData.city = data.city;
-  if (data.state !== undefined) dbData.state = data.state;
+  if (data.cep !== undefined && data.cep !== "") dbData.zip_code = data.cep;
+  if (data.street !== undefined && data.street !== "") dbData.street = data.street;
+  if (data.number !== undefined && data.number !== "") dbData.number = data.number;
+  if (data.complement !== undefined && data.complement !== "") dbData.complement = data.complement;
+  if (data.neighborhood !== undefined && data.neighborhood !== "") dbData.neighborhood = data.neighborhood;
+  if (data.city !== undefined && data.city !== "") dbData.city = data.city;
+  if (data.state !== undefined && data.state !== "") dbData.state = data.state;
   
-  if (data.documentType !== undefined) dbData.document_type = data.documentType;
-  if (data.document_type !== undefined) dbData.document_type = data.document_type;
+  // Determinar tipo de documento
+  const docType = data.documentType || data.document_type || "cpf";
+  dbData.document_type = docType;
   
-  const docType = data.documentType || data.document_type;
-  if (docType === "cpf" && data.cpf) {
+  // Definir o campo document baseado no tipo
+  if (docType === "cpf" && data.cpf && data.cpf !== "") {
     dbData.document = data.cpf;
-  } else if (docType === "cnpj" && data.cnpj) {
+    dbData.cpf = data.cpf; // Manter cpf para compatibilidade
+  } else if (docType === "cnpj" && data.cnpj && data.cnpj !== "") {
     dbData.document = data.cnpj;
-  } else if (data.document) {
+  } else if (data.document && data.document !== "") {
     dbData.document = data.document;
-  }
-  
-  if (docType === "cpf" && data.cpf) {
-    dbData.cpf = data.cpf;
+    // Se tiver document mas não tiver tipo explícito, inferir pelo tamanho
+    if (!data.documentType && !data.document_type) {
+      const cleanDoc = data.document.replace(/\D/g, "");
+      dbData.document_type = cleanDoc.length === 11 ? "cpf" : "cnpj";
+      if (cleanDoc.length === 11) {
+        dbData.cpf = data.document;
+      }
+    }
   }
   
   return dbData;
