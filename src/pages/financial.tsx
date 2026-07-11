@@ -671,157 +671,100 @@ export default function Financial() {
         return;
       }
 
-      const html2pdf = (await import('html2pdf.js')).default;
+      // Import jsPDF e autoTable
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
-      // Criar HTML completo com dados - VERSÃO ROBUSTA
-      const tableRows = getSortedPayments.map((payment, index) => {
+      // Criar PDF
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Título
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Relatório Financeiro - ${monthName}`, doc.internal.pageSize.width / 2, 15, { align: 'center' });
+
+      // Preparar dados da tabela
+      const tableData = getSortedPayments.map(payment => {
         const details = getPaymentDetails(payment);
         const paymentNumber = calculatePaymentNumber(payment, details.rental);
         const statusText = payment.status === "paid" ? "Pago" : 
                           payment.status === "pending" ? "Pend" : 
                           payment.status === "overdue" ? "Atras" : "Parc";
         
-        if (index === 0) {
-          console.log("📝 [handlePrint] Primeira linha:", {
-            parcela: paymentNumber,
-            local: details.local,
-            inquilino: details.tenantName
-          });
-        }
-        
-        return `
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${paymentNumber}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.local}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.complemento}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.tenantName}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${filterYear}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${statusText}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-"}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${details.paymentTime || "-"}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment))}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0)}</td>
-            <td style="border: 1px solid #ddd; padding: 4px; font-size: 7px; word-break: break-all; max-width: 120px;">${details.pixCode || "-"}</td>
-          </tr>
-        `;
-      }).join('');
+        return [
+          paymentNumber,
+          details.local,
+          details.complemento,
+          details.tenantName,
+          filterYear.toString(),
+          format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR }),
+          statusText,
+          format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy"),
+          payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-",
+          details.paymentTime || "-",
+          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment)),
+          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0),
+          (details.pixCode || "-").substring(0, 30)
+        ];
+      });
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }
-            h2 { font-size: 16px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #000; }
-            table { width: 100%; border-collapse: collapse; font-size: 8px; }
-            thead { background: #f0f0f0; }
-            th { border: 1px solid #999; padding: 5px; font-weight: bold; }
-            td { border: 1px solid #ddd; padding: 4px; }
-          </style>
-        </head>
-        <body>
-          <h2>Relatório Financeiro - ${monthName}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th style="text-align: left;">Parc</th>
-                <th style="text-align: left;">Local</th>
-                <th style="text-align: left;">Compl</th>
-                <th style="text-align: left;">Inquilino</th>
-                <th style="text-align: center;">Ano</th>
-                <th style="text-align: center;">Mês</th>
-                <th style="text-align: center;">Status</th>
-                <th style="text-align: center;">Venc</th>
-                <th style="text-align: center;">Rec</th>
-                <th style="text-align: center;">Hora</th>
-                <th style="text-align: right;">Val.Esp</th>
-                <th style="text-align: right;">Val.Pg</th>
-                <th style="text-align: left;">PIX</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `;
-
-      console.log("📄 [handlePrint] HTML gerado, comprimento:", htmlContent.length);
-
-      // Criar elemento temporário
-      const element = document.createElement('div');
-      element.innerHTML = htmlContent;
-      element.style.position = 'fixed';
-      element.style.left = '-9999px';
-      element.style.top = '0';
-      element.style.backgroundColor = 'white';
-      element.style.width = '1000px';
-      document.body.appendChild(element);
-
-      console.log("✅ [handlePrint] Elemento adicionado ao DOM");
-
-      // Aguardar um pouco para garantir que o DOM esteja pronto
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log("📏 [handlePrint] Dimensões:", element.offsetWidth, "x", element.offsetHeight);
-
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `relatorio-financeiro-${monthName.replace(/\s/g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          windowWidth: 1000
+      // Gerar tabela com autoTable
+      (doc as any).autoTable({
+        startY: 25,
+        head: [[
+          'Parc', 'Local', 'Compl', 'Inquilino', 'Ano', 'Mês', 
+          'Status', 'Venc', 'Rec', 'Hora', 'Val.Esp', 'Val.Pg', 'PIX'
+        ]],
+        body: tableData,
+        styles: { 
+          fontSize: 7,
+          cellPadding: 2
         },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'landscape'
-        }
-      };
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          halign: 'left'
+        },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'left' },    // Parcela
+          1: { cellWidth: 25, halign: 'left' },    // Local
+          2: { cellWidth: 20, halign: 'left' },    // Complemento
+          3: { cellWidth: 25, halign: 'left' },    // Inquilino
+          4: { cellWidth: 10, halign: 'center' },  // Ano
+          5: { cellWidth: 12, halign: 'center' },  // Mês
+          6: { cellWidth: 14, halign: 'center' },  // Status
+          7: { cellWidth: 16, halign: 'center' },  // Venc
+          8: { cellWidth: 16, halign: 'center' },  // Rec
+          9: { cellWidth: 12, halign: 'center' },  // Hora
+          10: { cellWidth: 20, halign: 'right' },  // Val.Esp
+          11: { cellWidth: 20, halign: 'right' },  // Val.Pg
+          12: { cellWidth: 'auto', halign: 'left', fontSize: 6 }  // PIX
+        },
+        margin: { top: 25, right: 10, bottom: 10, left: 10 }
+      });
 
-      console.log("🚀 [handlePrint] Gerando PDF...");
-
-      // Gerar PDF
-      await html2pdf()
-        .set(opt)
-        .from(element)
-        .save()
-        .then(() => {
-          console.log("✅ [handlePrint] PDF salvo!");
-          toast({
-            title: "Sucesso!",
-            description: "PDF gerado e baixado com sucesso.",
-          });
-        })
-        .catch((error: any) => {
-          console.error("❌ [handlePrint] Erro:", error);
-          toast({
-            title: "Erro",
-            description: "Erro ao gerar PDF. Veja o console.",
-            variant: "destructive",
-          });
-        })
-        .finally(() => {
-          if (document.body.contains(element)) {
-            document.body.removeChild(element);
-            console.log("🗑️ [handlePrint] Elemento removido");
-          }
-        });
+      // Salvar PDF
+      doc.save(`relatorio-financeiro-${monthName.replace(/\s/g, '-')}.pdf`);
+      
+      console.log("✅ [handlePrint] PDF gerado e salvo com sucesso!");
+      
+      toast({
+        title: "Sucesso!",
+        description: "PDF gerado e baixado com sucesso.",
+      });
 
     } catch (error) {
-      console.error("❌ [handlePrint] Erro geral:", error);
+      console.error("❌ [handlePrint] Erro ao gerar PDF:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível gerar o PDF.",
+        description: "Não foi possível gerar o PDF. Veja o console para detalhes.",
         variant: "destructive",
       });
     }
