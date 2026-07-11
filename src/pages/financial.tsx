@@ -659,102 +659,99 @@ export default function Financial() {
 
   const handlePrint = useCallback(async () => {
     try {
-      // Import dinâmico do html2pdf
       const html2pdf = (await import('html2pdf.js')).default;
-
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
-      // Criar cópia do conteúdo com estilos compactos para PDF
-      const pdfContent = document.createElement('div');
-      pdfContent.style.cssText = 'position: absolute; left: -9999px; background: white; padding: 5px; width: 1500px;';
-      
+      // Criar elemento temporário com todo o conteúdo
+      const printElement = document.createElement('div');
+      printElement.style.cssText = 'width: 297mm; padding: 10px; background: white; font-family: Arial, sans-serif;';
+
       // Título
-      const title = document.createElement('h1');
-      title.style.cssText = 'font-size: 10px; font-weight: bold; margin-bottom: 3px; color: #000;';
+      const title = document.createElement('h2');
+      title.style.cssText = 'font-size: 14px; margin-bottom: 10px; font-weight: bold;';
       title.textContent = `Relatório Financeiro - ${monthName}`;
-      pdfContent.appendChild(title);
+      printElement.appendChild(title);
 
       // Tabela
       const table = document.createElement('table');
-      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 6px;';
-      
-      // Copiar thead
+      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 7px;';
+
+      // Cabeçalho
       const thead = document.createElement('thead');
-      thead.style.cssText = 'background: #f0f0f0;';
       const headerRow = document.createElement('tr');
+      headerRow.style.cssText = 'background: #f0f0f0;';
       
-      const headers = ['Parc', 'Local', 'Compl', 'Inquilino', 'Ano', 'Mês', 'Status', 'Venc', 'Rec', 'Hora', 'Val.Esp', 'Val.Pg', 'PIX'];
-      headers.forEach((text) => {
+      ['Parc', 'Local', 'Compl', 'Inquilino', 'Ano', 'Mês', 'Status', 'Venc', 'Rec', 'Hora', 'Val.Esp', 'Val.Pg', 'PIX'].forEach(header => {
         const th = document.createElement('th');
-        th.style.cssText = 'padding: 2px; font-size: 6px; border: 1px solid #ccc; font-weight: bold; white-space: nowrap;';
-        th.textContent = text;
+        th.style.cssText = 'border: 1px solid #ddd; padding: 4px; text-align: left; font-weight: bold;';
+        th.textContent = header;
         headerRow.appendChild(th);
       });
       thead.appendChild(headerRow);
       table.appendChild(thead);
-      
-      // Copiar tbody
+
+      // Corpo
       const tbody = document.createElement('tbody');
       getSortedPayments.forEach(payment => {
         const details = getPaymentDetails(payment);
         const paymentNumber = calculatePaymentNumber(payment, details.rental);
         
-        const tr = document.createElement('tr');
+        const row = document.createElement('tr');
         
-        const values = [
+        const cellData = [
           paymentNumber,
           details.local,
           details.complemento,
           details.tenantName,
           filterYear.toString(),
           format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR }),
-          payment.status === "paid" ? "Pg" : payment.status === "pending" ? "Pd" : payment.status === "overdue" ? "At" : "Pc",
+          payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pend" : "Atras",
           format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy"),
           payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-",
           details.paymentTime || "-",
           new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment)),
           new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0),
-          (details.pixCode || "-").substring(0, 30)
+          details.pixCode || "-"
         ];
-        
-        values.forEach((text) => {
+
+        cellData.forEach(data => {
           const td = document.createElement('td');
-          td.style.cssText = 'padding: 2px; font-size: 6px; border: 1px solid #ddd; white-space: nowrap;';
-          td.textContent = text.toString();
-          tr.appendChild(td);
+          td.style.cssText = 'border: 1px solid #ddd; padding: 3px; font-size: 7px;';
+          td.textContent = data.toString();
+          row.appendChild(td);
         });
-        
-        tbody.appendChild(tr);
+
+        tbody.appendChild(row);
       });
       table.appendChild(tbody);
-      
-      pdfContent.appendChild(table);
-      document.body.appendChild(pdfContent);
+      printElement.appendChild(table);
+
+      // Adicionar temporariamente ao body (fora da tela)
+      printElement.style.position = 'absolute';
+      printElement.style.left = '-9999px';
+      document.body.appendChild(printElement);
 
       const opt = {
-        margin: [3, 3, 3, 3],
+        margin: [5, 5, 5, 5],
         filename: `relatorio-financeiro-${monthName}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          letterRendering: true,
-          logging: false,
-          width: 1500
+          logging: false
         },
         jsPDF: { 
-          unit: "mm", 
-          format: "a4", 
-          orientation: "landscape",
-          compress: true
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'landscape'
         }
       };
 
-      await html2pdf().set(opt).from(pdfContent).save();
+      await html2pdf().set(opt).from(printElement).save();
       
       // Remover elemento temporário
-      document.body.removeChild(pdfContent);
-      
+      document.body.removeChild(printElement);
+
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast({
@@ -1083,6 +1080,25 @@ export default function Financial() {
               )}
 
               {user?.role === "broker" && (
+                <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Contas do Mês</p>
+                        <h3 className="text-2xl font-bold">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(kpiCalculations.locationExpenses)}
+                        </h3>
+                      </div>
+                      <Receipt className="h-8 w-8 text-red-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {user?.role === "broker" && (
                 <Card className="border-l-4 border-l-blue-500">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
@@ -1273,8 +1289,45 @@ export default function Financial() {
                                   currency: "BRL",
                                 }).format(payment.paidAmount || 0)}
                               </TableCell>
-                              <TableCell className="text-xs sm:text-sm truncate max-w-[100px]">
-                                {details.pixCode || "-"}
+                              <TableCell className="text-xs sm:text-sm">
+                                {editingPixCode?.id === payment.id ? (
+                                  <div className="flex gap-1 items-center min-w-[200px]">
+                                    <Input
+                                      value={editingPixCode.value}
+                                      onChange={(e) => setEditingPixCode({ id: payment.id, value: e.target.value })}
+                                      className="h-7 text-xs"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
+                                    >
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setEditingPixCode(null)}
+                                    >
+                                      <X className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-1 items-center group min-w-[150px]">
+                                    <span className="text-xs break-all">{details.pixCode || "-"}</span>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => setEditingPixCode({ id: payment.id, value: details.pixCode || "" })}
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
                               </TableCell>
                             </TableRow>
                           );
