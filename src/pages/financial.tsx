@@ -10,6 +10,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -220,6 +221,7 @@ export default function Financial() {
           discount_amount,
           late_fee,
           interest,
+          breakdown,
           payment_method,
           installment,
           total_installments,
@@ -296,6 +298,7 @@ export default function Financial() {
           discount: payment.discount_amount,
           lateFee: payment.late_fee,
           interest: payment.interest,
+          breakdown: payment.breakdown,
           paymentMethod: payment.payment_method,
           installment: payment.installment,
           totalInstallments: payment.total_installments,
