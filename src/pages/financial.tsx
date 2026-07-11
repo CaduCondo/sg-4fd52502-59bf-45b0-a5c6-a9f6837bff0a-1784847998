@@ -662,73 +662,70 @@ export default function Financial() {
       const html2pdf = (await import('html2pdf.js')).default;
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
-      // Criar elemento temporário com todo o conteúdo
+      // Criar elemento temporário com conteúdo HTML completo
       const printElement = document.createElement('div');
-      printElement.style.cssText = 'width: 297mm; padding: 10px; background: white; font-family: Arial, sans-serif;';
+      printElement.style.cssText = 'position: absolute; left: 0; top: 0; width: 297mm; padding: 15px; background: white; font-family: Arial, sans-serif;';
 
-      // Título
-      const title = document.createElement('h2');
-      title.style.cssText = 'font-size: 14px; margin-bottom: 10px; font-weight: bold;';
-      title.textContent = `Relatório Financeiro - ${monthName}`;
-      printElement.appendChild(title);
+      // HTML completo com inline styles
+      let htmlContent = `
+        <h2 style="font-size: 16px; margin-bottom: 15px; font-weight: bold; text-align: center;">
+          Relatório Financeiro - ${monthName}
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; font-size: 8px; margin-top: 10px;">
+          <thead>
+            <tr style="background: #f0f0f0;">
+              <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Parc</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Local</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Compl</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Inquilino</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Ano</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Mês</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Status</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Venc</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Rec</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Hora</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Esp</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Pg</th>
+              <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">PIX</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
 
-      // Tabela
-      const table = document.createElement('table');
-      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 7px;';
-
-      // Cabeçalho
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      headerRow.style.cssText = 'background: #f0f0f0;';
-      
-      ['Parc', 'Local', 'Compl', 'Inquilino', 'Ano', 'Mês', 'Status', 'Venc', 'Rec', 'Hora', 'Val.Esp', 'Val.Pg', 'PIX'].forEach(header => {
-        const th = document.createElement('th');
-        th.style.cssText = 'border: 1px solid #ddd; padding: 4px; text-align: left; font-weight: bold;';
-        th.textContent = header;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      // Corpo
-      const tbody = document.createElement('tbody');
       getSortedPayments.forEach(payment => {
         const details = getPaymentDetails(payment);
         const paymentNumber = calculatePaymentNumber(payment, details.rental);
         
-        const row = document.createElement('tr');
-        
-        const cellData = [
-          paymentNumber,
-          details.local,
-          details.complemento,
-          details.tenantName,
-          filterYear.toString(),
-          format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR }),
-          payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pend" : "Atras",
-          format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy"),
-          payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-",
-          details.paymentTime || "-",
-          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment)),
-          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0),
-          details.pixCode || "-"
-        ];
-
-        cellData.forEach(data => {
-          const td = document.createElement('td');
-          td.style.cssText = 'border: 1px solid #ddd; padding: 3px; font-size: 7px;';
-          td.textContent = data.toString();
-          row.appendChild(td);
-        });
-
-        tbody.appendChild(row);
+        htmlContent += `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${paymentNumber}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.local}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.complemento}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.tenantName}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${filterYear}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pend" : "Atras"}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-"}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${details.paymentTime || "-"}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment))}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0)}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 7px; word-break: break-all;">${details.pixCode || "-"}</td>
+          </tr>
+        `;
       });
-      table.appendChild(tbody);
-      printElement.appendChild(table);
 
-      // Adicionar temporariamente ao body (fora da tela)
-      printElement.style.position = 'absolute';
+      htmlContent += `
+          </tbody>
+        </table>
+      `;
+
+      printElement.innerHTML = htmlContent;
+      
+      // Adicionar ao body fora da tela
+      printElement.style.position = 'fixed';
       printElement.style.left = '-9999px';
+      printElement.style.top = '0';
       document.body.appendChild(printElement);
 
       const opt = {
@@ -738,7 +735,9 @@ export default function Financial() {
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          logging: false
+          logging: false,
+          width: printElement.scrollWidth,
+          windowWidth: printElement.scrollWidth
         },
         jsPDF: { 
           unit: 'mm', 
@@ -747,10 +746,29 @@ export default function Financial() {
         }
       };
 
-      await html2pdf().set(opt).from(printElement).save();
-      
-      // Remover elemento temporário
-      document.body.removeChild(printElement);
+      // Usar promise para garantir que o elemento só seja removido DEPOIS do PDF ser gerado
+      html2pdf()
+        .set(opt)
+        .from(printElement)
+        .save()
+        .then(() => {
+          // Remover elemento apenas DEPOIS de salvar
+          if (document.body.contains(printElement)) {
+            document.body.removeChild(printElement);
+          }
+        })
+        .catch((error: any) => {
+          console.error("Erro ao gerar PDF:", error);
+          // Remover elemento mesmo em caso de erro
+          if (document.body.contains(printElement)) {
+            document.body.removeChild(printElement);
+          }
+          toast({
+            title: "Erro",
+            description: "Não foi possível gerar o PDF.",
+            variant: "destructive",
+          });
+        });
 
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
