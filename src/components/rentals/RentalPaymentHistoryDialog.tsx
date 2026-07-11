@@ -111,7 +111,7 @@ export function RentalPaymentHistoryDialog({
         paidAmount: p.paid_amount,
         status: p.status as "pending" | "paid" | "partial",
         installment: p.installment,
-        discount: p.discount,
+        discount: p.discount_amount,
         lateFee: p.late_fee,
         interest: p.interest,
         paymentMethod: p.payment_method || "pix",
