@@ -655,15 +655,45 @@ export default function Financial() {
     return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
   };
 
-  const handlePrint = useCallback(() => {
-    // Adicionar classe para controlar a impressão
-    document.body.classList.add('printing-financial');
-    window.print();
-    // Remover classe após impressão
-    setTimeout(() => {
-      document.body.classList.remove('printing-financial');
-    }, 100);
-  }, []);
+  const handlePrint = useCallback(async () => {
+    const printContent = document.getElementById('financial-print-content');
+    if (!printContent) return;
+
+    try {
+      // Import dinâmico do html2pdf
+      const html2pdf = (await import('html2pdf.js')).default;
+
+      const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
+
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `relatorio-financeiro-${monthName}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "landscape",
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(printContent).save();
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o PDF.",
+        variant: "destructive",
+      });
+    }
+  }, [filterMonth, filterYear, toast]);
 
   const handlePrintExpenses = useCallback(async () => {
     if (!expensesContentRef.current) return;
@@ -885,85 +915,6 @@ export default function Financial() {
 
   return (
     <Layout>
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: landscape;
-            margin: 1cm;
-          }
-          
-          /* Esconder tudo por padrão quando está imprimindo */
-          body.printing-financial * {
-            visibility: hidden;
-          }
-          
-          /* Mostrar apenas o conteúdo selecionado */
-          body.printing-financial #financial-print-content,
-          body.printing-financial #financial-print-content * {
-            visibility: visible;
-          }
-          
-          /* Posicionar o conteúdo no topo da página */
-          body.printing-financial #financial-print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          /* Mostrar título apenas na impressão */
-          body.printing-financial .print-only {
-            display: block !important;
-          }
-          
-          /* Esconder elementos que não devem aparecer na impressão */
-          body.printing-financial .no-print,
-          body.printing-financial button,
-          body.printing-financial nav,
-          body.printing-financial header,
-          body.printing-financial aside,
-          body.printing-financial .sidebar {
-            display: none !important;
-          }
-          
-          /* Ajustar tabelas para caber na página */
-          body.printing-financial table {
-            font-size: 7pt !important;
-            width: 100%;
-          }
-          
-          body.printing-financial th,
-          body.printing-financial td {
-            padding: 3px !important;
-            font-size: 7pt !important;
-          }
-          
-          /* Ajustar cards */
-          body.printing-financial .grid {
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
-            gap: 6px !important;
-            margin-bottom: 12px;
-            page-break-inside: avoid;
-          }
-          
-          body.printing-financial .grid > * {
-            font-size: 8pt !important;
-          }
-          
-          /* Garantir que bordas sejam visíveis */
-          body.printing-financial table,
-          body.printing-financial th,
-          body.printing-financial td {
-            border: 1px solid #999 !important;
-            border-collapse: collapse !important;
-          }
-          
-          /* Evitar quebra de página dentro de linhas */
-          body.printing-financial tr {
-            page-break-inside: avoid;
-          }
-        }
-      `}</style>
       <div className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
           <div className="flex flex-col gap-1 sm:gap-2">
@@ -1001,16 +952,16 @@ export default function Financial() {
           </div>
 
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-            <div id="financial-print-content">
+            <div id="financial-print-content" style={{ backgroundColor: 'white', padding: '10px' }}>
               {/* Título para impressão */}
-              <div className="mb-4 print-only" style={{display: 'none'}}>
-                <h1 className="text-2xl font-bold">
+              <div className="mb-2">
+                <h1 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
                   Relatório Financeiro - {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
                 </h1>
               </div>
               
               {/* Cards de Métricas - Locações */}
-              <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
+              <div className={`grid gap-2 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`} style={{ marginBottom: '10px' }}>
                 {isFinancial ? (
                   <>
                     <Card className="border-l-4 border-l-blue-500">
@@ -1347,33 +1298,21 @@ export default function Financial() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {filteredPayments.map((payment) => {
+                              {getSortedPayments.map((payment) => {
                                 const details = getPaymentDetails(payment);
-                                const monthName = format(new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1), "MMMM", { locale: ptBR });
+                                const paymentNumber = calculatePaymentNumber(payment, details.rental);
 
                                 return (
-                                  <TableRow key={payment.id}>
-                                    <TableCell className="text-xs sm:text-sm">
-                                      {calculatePaymentNumber(payment, details.rental)}
+                                  <TableRow key={payment.id} className="hover:bg-gray-50">
+                                    <TableCell className="font-medium text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>{paymentNumber}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.local}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.complemento}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.tenantName}</TableCell>
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>{filterYear}</TableCell>
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                      {format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}
                                     </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">
-                                      <div className="max-w-[200px]">
-                                        <div className="font-medium truncate">
-                                          {details.local}
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">
-                                      <div className="text-muted-foreground truncate">
-                                        {details.complemento}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap text-xs sm:text-sm">
-                                      {details.tenantName}
-                                    </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">{payment.referenceYear}</TableCell>
-                                    <TableCell className="capitalize text-xs sm:text-sm">{monthName}</TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>
                                       <Badge
                                         variant={
                                           payment.status === "paid"
@@ -1385,6 +1324,7 @@ export default function Financial() {
                                             : "outline"
                                         }
                                         className="text-xs"
+                                        style={{ fontSize: '6px', padding: '1px 4px' }}
                                       >
                                         {payment.status === "paid"
                                           ? "Pago"
@@ -1395,86 +1335,31 @@ export default function Financial() {
                                           : "Parcial"}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">
-                                      {format(new Date(payment.dueDate + "T12:00:00"), "dd/MM/yyyy")}
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                      {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                                     </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
                                       {payment.paymentDate
-                                        ? format(new Date(payment.paymentDate + "T12:00:00"), "dd/MM/yyyy")
+                                        ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                                         : "-"}
                                     </TableCell>
-                                    <TableCell className="text-xs sm:text-sm">
-                                      <span className="font-mono">
-                                        {details.paymentTime || "-"}
-                                      </span>
+                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>
+                                      {details.paymentTime || "-"}
                                     </TableCell>
-                                    <TableCell className="text-right text-xs sm:text-sm">
+                                    <TableCell className="text-right text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
                                       }).format(getExpectedAmount(payment))}
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-green-600 text-xs sm:text-sm">
+                                    <TableCell className="text-right text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
                                       }).format(payment.paidAmount || 0)}
                                     </TableCell>
-                                    <TableCell>
-                                      {editingPixCode?.id === payment.id ? (
-                                        <div className="flex items-center gap-2 sm:gap-3">
-                                          <Input
-                                            value={editingPixCode.value}
-                                            onChange={(e) => {
-                                              setEditingPixCode({
-                                                ...editingPixCode,
-                                                value: e.target.value
-                                              });
-                                            }}
-                                            placeholder="Digite o código PIX"
-                                            className="h-8 sm:h-9 text-xs sm:text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[180px] sm:min-w-[250px] bg-white"
-                                            autoFocus
-                                          />
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
-                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-green-100 transition-colors"
-                                            title="Salvar código PIX"
-                                          >
-                                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => setEditingPixCode(null)}
-                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-red-100 transition-colors"
-                                            title="Cancelar edição"
-                                          >
-                                            <X className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-2 sm:gap-3">
-                                          <span className="text-slate-600 max-w-xs truncate text-xs sm:text-sm font-mono">
-                                            {details.pixCode || "-"}
-                                          </span>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => {
-                                              setEditingPixCode({
-                                                id: payment.id,
-                                                value: details.pixCode || ""
-                                              });
-                                            }}
-                                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-slate-100 transition-colors"
-                                            title="Editar código PIX"
-                                          >
-                                            <Edit2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
-                                          </Button>
-                                        </div>
-                                      )}
+                                    <TableCell className="text-xs sm:text-sm truncate max-w-[100px]" style={{ padding: '3px', fontSize: '7px' }}>
+                                      {details.pixCode || "-"}
                                     </TableCell>
                                   </TableRow>
                                 );

@@ -194,11 +194,22 @@ export function RentalPaymentHistoryDialog({
       const html2pdf = (await import('html2pdf.js')).default;
 
       const opt = {
-        margin: [10, 10, 10, 10],
+        margin: [5, 5, 5, 5],
         filename: `historico-pagamentos-${rental?.property?.location}-${rental?.property?.complement}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "landscape",
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
       html2pdf().set(opt).from(contentRef.current).save();
@@ -261,106 +272,73 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-600" />
-                Histórico de Pagamentos
-              </DialogTitle>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrint}
-              className="flex items-center gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Imprimir
-            </Button>
-          </div>
+          <DialogTitle>Histórico de Pagamentos - {rental?.property?.location} {rental?.property?.complement}</DialogTitle>
         </DialogHeader>
 
-        <div ref={contentRef} className="space-y-4">
-          {/* Informações do Imóvel */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 rounded-lg border">
-            <div>
-              <span className="text-sm font-semibold text-slate-600">Local:</span>
-              <p className="text-base font-medium text-slate-900">{rental.property?.location || "-"}</p>
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-slate-600">Complemento:</span>
-              <p className="text-base font-medium text-slate-900">{rental.property?.complement || "-"}</p>
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-slate-600">Inquilino:</span>
-              <p className="text-base font-medium text-slate-900">{rental.tenant?.name || "-"}</p>
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-slate-600">Celular:</span>
-              <p className="text-base font-medium text-slate-900">{rental.tenant?.phone || "-"}</p>
-            </div>
+        <div ref={contentRef} style={{ backgroundColor: 'white', padding: '10px' }}>
+          <div className="mb-2">
+            <h2 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
+              Histórico de Pagamentos - {rental?.property?.location} {rental?.property?.complement}
+            </h2>
           </div>
 
-          {/* Tabela de Pagamentos */}
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Carregando histórico...
-            </div>
-          ) : sortedPayments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum pagamento encontrado
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("installment")}>
-                      <div className="flex items-center justify-center">
-                        Parcela
-                        <SortIcon field="installment" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center">Período</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("dueDate")}>
-                      <div className="flex items-center justify-center">
-                        Data Vencimento
-                        <SortIcon field="dueDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("paymentDate")}>
-                      <div className="flex items-center justify-center">
-                        Data Pagamento
-                        <SortIcon field="paymentDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-right">Valor Esperado</TableHead>
-                    <TableHead className="text-right">Valor Pago</TableHead>
+          <div className="overflow-x-auto">
+            <Table style={{ fontSize: '7px' }}>
+              <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
+                <TableRow>
+                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Parcela</TableHead>
+                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Vencimento</TableHead>
+                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Pagamento</TableHead>
+                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Status</TableHead>
+                  <TableHead className="text-right" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Valor Esperado</TableHead>
+                  <TableHead className="text-right" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Valor Pago</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedPayments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell style={{ padding: '3px', fontSize: '7px' }}>{payment.installment}</TableCell>
+                    <TableCell style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                      {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                    </TableCell>
+                    <TableCell style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                      {payment.paymentDate
+                        ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                        : "-"}
+                    </TableCell>
+                    <TableCell style={{ padding: '3px', fontSize: '7px' }}>
+                      <Badge
+                        variant={
+                          payment.status === "paid"
+                            ? "default"
+                            : payment.status === "pending"
+                            ? "secondary"
+                            : payment.status === "partial"
+                            ? "outline"
+                            : "destructive"
+                        }
+                        style={{ fontSize: '6px', padding: '1px 3px' }}
+                      >
+                        {payment.status === "paid"
+                          ? "Pago"
+                          : payment.status === "pending"
+                          ? "Pendente"
+                          : payment.status === "partial"
+                          ? "Parcial"
+                          : "Atrasado"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{formatCurrency(getExpectedAmount(payment))}</TableCell>
+                    <TableCell className="text-right font-semibold text-green-600" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                      {formatCurrency(payment.paidAmount || 0)}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedPayments.map((payment) => (
-                    <TableRow key={payment.id} className={getRowClassName(payment)}>
-                      <TableCell className="text-center font-medium">{payment.installment}</TableCell>
-                      <TableCell className="text-center">{getPeriod(payment.dueDate)}</TableCell>
-                      <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
-                      <TableCell className="text-center">{formatDate(payment.dueDate)}</TableCell>
-                      <TableCell className="text-center">
-                        {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(getExpectedAmount(payment))}</TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">
-                        {formatCurrency(payment.paidAmount || 0)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

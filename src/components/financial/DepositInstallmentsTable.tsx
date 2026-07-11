@@ -269,15 +269,40 @@ export function DepositInstallmentsTable({
     });
   }, [data, toast]);
 
-  const handlePrint = useCallback(() => {
-    // Adicionar classe para controlar a impressão
-    document.body.classList.add('printing-deposits');
-    window.print();
-    // Remover classe após impressão
-    setTimeout(() => {
-      document.body.classList.remove('printing-deposits');
-    }, 100);
-  }, []);
+  const handlePrint = useCallback(async () => {
+    const printContent = document.getElementById('deposits-print-content');
+    if (!printContent) return;
+
+    try {
+      // Import dinâmico do html2pdf
+      const html2pdf = (await import('html2pdf.js')).default;
+
+      const statusLabel = statusFilter === "active" ? "Locacoes-Ativas" : statusFilter === "inactive" ? "Locacoes-Inativas" : "Todas-Locacoes";
+
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `relatorio-caucoes-${statusLabel}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "landscape",
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(printContent).save();
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+    }
+  }, [statusFilter]);
 
   // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
   const groupedData = useMemo(() => {
@@ -428,95 +453,16 @@ export function DepositInstallmentsTable({
 
   return (
     <>
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: landscape;
-            margin: 1cm;
-          }
-          
-          /* Esconder tudo por padrão quando está imprimindo */
-          body.printing-deposits * {
-            visibility: hidden;
-          }
-          
-          /* Mostrar apenas o conteúdo selecionado */
-          body.printing-deposits #deposits-print-content,
-          body.printing-deposits #deposits-print-content * {
-            visibility: visible;
-          }
-          
-          /* Posicionar o conteúdo no topo da página */
-          body.printing-deposits #deposits-print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          /* Mostrar título apenas na impressão */
-          body.printing-deposits .print-only {
-            display: block !important;
-          }
-          
-          /* Esconder elementos que não devem aparecer na impressão */
-          body.printing-deposits .no-print,
-          body.printing-deposits button,
-          body.printing-deposits nav,
-          body.printing-deposits header,
-          body.printing-deposits aside,
-          body.printing-deposits .sidebar {
-            display: none !important;
-          }
-          
-          /* Ajustar tabelas para caber na página */
-          body.printing-deposits table {
-            font-size: 6pt !important;
-            width: 100%;
-          }
-          
-          body.printing-deposits th,
-          body.printing-deposits td {
-            padding: 2px !important;
-            font-size: 6pt !important;
-          }
-          
-          /* Ajustar cards */
-          body.printing-deposits .grid {
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
-            gap: 6px !important;
-            margin-bottom: 12px;
-            page-break-inside: avoid;
-          }
-          
-          body.printing-deposits .grid > * {
-            font-size: 7pt !important;
-          }
-          
-          /* Garantir que bordas sejam visíveis */
-          body.printing-deposits table,
-          body.printing-deposits th,
-          body.printing-deposits td {
-            border: 1px solid #999 !important;
-            border-collapse: collapse !important;
-          }
-          
-          /* Evitar quebra de página dentro de linhas */
-          body.printing-deposits tr {
-            page-break-inside: avoid;
-          }
-        }
-      `}</style>
-      <div id="deposits-print-content" className="space-y-6">
+      <div id="deposits-print-content" style={{ backgroundColor: 'white', padding: '10px' }}>
         {/* Título para impressão */}
-        <div className="mb-4 print-only" style={{display: 'none'}}>
-          <h1 className="text-2xl font-bold">
+        <div className="mb-2">
+          <h1 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
             Relatório de Cauções - {statusFilter === "active" ? "Locações Ativas" : statusFilter === "inactive" ? "Locações Inativas" : "Todas as Locações"}
           </h1>
         </div>
         
         {/* Cards de Resumo */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4" style={{ marginBottom: '10px' }}>
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -624,107 +570,33 @@ export function DepositInstallmentsTable({
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+              <Table style={{ fontSize: '6px' }}>
+                <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
                   <TableRow>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("location")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Local {getSortIcon("location")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("rental_property")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Imóvel {sortField === "rental_property" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("complement")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Complemento {getSortIcon("complement")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("tenant_name")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Inquilino {sortField === "tenant_name" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("tenant")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Inquilino {getSortIcon("tenant")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("installment_number")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Parcela {sortField === "installment_number" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("rent")}
-                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                      >
-                        Valor Aluguel {getSortIcon("rent")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("due_date")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Vencimento {sortField === "due_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("deposit")}
-                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                      >
-                        Valor Total Caução {getSortIcon("deposit")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("payment_date")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Data Pagamento {sortField === "payment_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("partner")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Corretor Parceiro {getSortIcon("partner")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("amount")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Valor {sortField === "amount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("partnerCommission")}
-                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                      >
-                        Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
-                      </button>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("status")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                      Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("internalCommission")}
-                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                      >
-                        Valor Pg Corretor Interno {getSortIcon("internalCommission")}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <button
-                        onClick={() => handleSort("installment")}
-                        className="flex items-center justify-center hover:text-primary cursor-pointer mx-auto"
-                      >
-                        Parcela {getSortIcon("installment")}
-                      </button>
-                    </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("date")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Data Pagamento {getSortIcon("date")}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("amount")}
-                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                      >
-                        Valor Parcela {getSortIcon("amount")}
-                      </button>
-                    </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("pix")}
-                        className="flex items-center hover:text-primary cursor-pointer"
-                      >
-                        Código PIX {getSortIcon("pix")}
-                      </button>
-                    </TableHead>
+                    <TableHead style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>Observações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
