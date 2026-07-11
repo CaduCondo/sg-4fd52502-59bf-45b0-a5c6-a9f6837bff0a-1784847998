@@ -1,18 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileText, Printer, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency } from "@/lib/masks";
-import type { Payment, Rental } from "@/types";
-import { FileText, Receipt } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { Rental, Payment } from "@/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rental: Rental | null;
 }
+
+type SortField = "installment" | "dueDate" | "paymentDate";
+type SortDirection = "asc" | "desc" | null;
 
 export function RentalPaymentHistoryDialog({
   open,
@@ -22,12 +27,14 @@ export function RentalPaymentHistoryDialog({
   const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   useEffect(() => {
-    if (open && rental?.id) {
+    if (open && rental) {
       loadPayments();
     }
-  }, [open, rental?.id]);
+  }, [open, rental]);
 
   const loadPayments = async () => {
     if (!rental?.id) return;
@@ -75,44 +82,104 @@ export function RentalPaymentHistoryDialog({
     }
   };
 
-  const pendingPayments = useMemo(() => {
-    return payments.filter((p) => p.status === "pending");
-  }, [payments]);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortDirection(null);
+        setSortField(null);
+      } else {
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
-  const paidPayments = useMemo(() => {
-    return payments.filter((p) => p.status === "paid" || p.status === "partial");
-  }, [payments]);
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    if (sortDirection === "asc") return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
+    return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
+  };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString + "T12:00:00").toLocaleDateString("pt-BR");
+  const sortedPayments = useMemo(() => {
+    if (!sortField || !sortDirection) return payments;
+
+    return [...payments].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case "installment":
+          aValue = a.installment;
+          bValue = b.installment;
+          break;
+        case "dueDate":
+          aValue = new Date(a.dueDate).getTime();
+          bValue = new Date(b.dueDate).getTime();
+          break;
+        case "paymentDate":
+          aValue = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
+          bValue = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [payments, sortField, sortDirection]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatDate = (date: string) => {
+    return format(new Date(date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR });
+  };
+
+  const getPeriod = (dueDate: string) => {
+    return format(new Date(dueDate + "T12:00:00"), "MMM/yyyy", { locale: ptBR });
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge className="bg-yellow-500 text-white">Pendente</Badge>;
-      case "paid":
-        return <Badge className="bg-green-500 text-white">Pago</Badge>;
-      case "partial":
-        return <Badge className="bg-blue-500 text-white">Parcial</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
+    const statusConfig = {
+      pending: { label: "Pendente", variant: "destructive" as const },
+      paid: { label: "Pago", variant: "default" as const },
+      partial: { label: "Parcial", variant: "secondary" as const },
+    };
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getRowClassName = (payment: Payment) => {
-    if (payment.status === "pending") {
-      const dueDate = new Date(payment.dueDate + "T12:00:00");
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (dueDate < today) {
-        return "bg-red-50 hover:bg-red-100";
-      } else if (dueDate.getTime() === today.getTime()) {
-        return "bg-yellow-50 hover:bg-yellow-100";
-      }
+    if (payment.status === "paid") {
+      return "bg-green-50 hover:bg-green-100";
     }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(payment.dueDate + "T12:00:00");
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate < today) {
+      return "bg-red-50 hover:bg-red-100";
+    }
+    if (dueDate.getTime() === today.getTime()) {
+      return "bg-yellow-50 hover:bg-yellow-100";
+    }
+    
     return "";
   };
 
@@ -122,111 +189,104 @@ export function RentalPaymentHistoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            <Receipt className="h-6 w-6 text-blue-600" />
-            Histórico de Pagamentos
-          </DialogTitle>
-          <p className="text-muted-foreground">
-            {rental.property?.location} {rental.property?.complement ? `- ${rental.property.complement}` : ""} • {rental.tenant?.name}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Histórico de Pagamentos
+              </DialogTitle>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="flex items-center gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-8">
-          {/* Recebimentos Pendentes */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-yellow-600" />
-              Recebimentos Pendentes ({pendingPayments.length})
-            </h3>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-            ) : pendingPayments.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/30">
-                Nenhum recebimento pendente
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">Nº</TableHead>
-                      <TableHead className="text-center">Local</TableHead>
-                      <TableHead className="text-center">Complemento</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-center">Vencimento</TableHead>
-                      <TableHead className="text-center">Pagamento</TableHead>
-                      <TableHead className="text-right">Valor Esperado</TableHead>
-                      <TableHead className="text-right">Valor Pago</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingPayments.map((payment) => (
-                      <TableRow key={payment.id} className={getRowClassName(payment)}>
-                        <TableCell className="text-center font-medium">{payment.installment}</TableCell>
-                        <TableCell className="text-center">{rental.property?.location || "-"}</TableCell>
-                        <TableCell className="text-center">{rental.property?.complement || "-"}</TableCell>
-                        <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-center">{formatDate(payment.dueDate)}</TableCell>
-                        <TableCell className="text-center">{payment.paymentDate ? formatDate(payment.paymentDate) : "-"}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(payment.expectedAmount)}</TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">
-                          {formatCurrency(payment.paidAmount || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+        <div className="space-y-4">
+          {/* Informações do Imóvel */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 rounded-lg border">
+            <div>
+              <span className="text-sm font-semibold text-slate-600">Local:</span>
+              <p className="text-base font-medium text-slate-900">{rental.property?.location || "-"}</p>
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-slate-600">Complemento:</span>
+              <p className="text-base font-medium text-slate-900">{rental.property?.complement || "-"}</p>
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-slate-600">Inquilino:</span>
+              <p className="text-base font-medium text-slate-900">{rental.tenant?.name || "-"}</p>
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-slate-600">Celular:</span>
+              <p className="text-base font-medium text-slate-900">{rental.tenant?.phone || "-"}</p>
+            </div>
           </div>
 
-          {/* Recebimentos Pagos */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-green-600" />
-              Recebimentos Pagos ({paidPayments.length})
-            </h3>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-            ) : paidPayments.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/30">
-                Nenhum recebimento pago
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">Nº</TableHead>
-                      <TableHead className="text-center">Local</TableHead>
-                      <TableHead className="text-center">Complemento</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-center">Vencimento</TableHead>
-                      <TableHead className="text-center">Pagamento</TableHead>
-                      <TableHead className="text-right">Valor Esperado</TableHead>
-                      <TableHead className="text-right">Valor Pago</TableHead>
+          {/* Tabela de Pagamentos */}
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando histórico...
+            </div>
+          ) : sortedPayments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum pagamento encontrado
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("installment")}>
+                      <div className="flex items-center justify-center">
+                        Parcela
+                        <SortIcon field="installment" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center">Período</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("dueDate")}>
+                      <div className="flex items-center justify-center">
+                        Data Vencimento
+                        <SortIcon field="dueDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center cursor-pointer" onClick={() => handleSort("paymentDate")}>
+                      <div className="flex items-center justify-center">
+                        Data Pagamento
+                        <SortIcon field="paymentDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">Valor Esperado</TableHead>
+                    <TableHead className="text-right">Valor Pago</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedPayments.map((payment) => (
+                    <TableRow key={payment.id} className={getRowClassName(payment)}>
+                      <TableCell className="text-center font-medium">{payment.installment}</TableCell>
+                      <TableCell className="text-center">{getPeriod(payment.dueDate)}</TableCell>
+                      <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
+                      <TableCell className="text-center">{formatDate(payment.dueDate)}</TableCell>
+                      <TableCell className="text-center">
+                        {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(payment.expectedAmount)}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">
+                        {formatCurrency(payment.paidAmount || 0)}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paidPayments.map((payment) => (
-                      <TableRow key={payment.id} className="bg-green-50 hover:bg-green-100">
-                        <TableCell className="text-center font-medium">{payment.installment}</TableCell>
-                        <TableCell className="text-center">{rental.property?.location || "-"}</TableCell>
-                        <TableCell className="text-center">{rental.property?.complement || "-"}</TableCell>
-                        <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-center">{formatDate(payment.dueDate)}</TableCell>
-                        <TableCell className="text-center">{payment.paymentDate ? formatDate(payment.paymentDate) : "-"}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(payment.expectedAmount)}</TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">
-                          {formatCurrency(payment.paidAmount || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
