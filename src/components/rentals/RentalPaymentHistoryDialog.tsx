@@ -31,6 +31,32 @@ export function RentalPaymentHistoryDialog({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Função para calcular valor esperado total (soma os items do breakdown)
+  const getExpectedAmount = (payment: Payment): number => {
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+
+        // Breakdown é um array de items
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          const total = breakdownData.reduce((sum: number, item: any) => {
+            const value = Number(item.value || item.amount || 0);
+            return sum + value;
+          }, 0);
+          
+          return total;
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
+      }
+    }
+    
+    // Fallback: usar expected_amount
+    return payment.expectedAmount;
+  };
+
   useEffect(() => {
     if (open && rental) {
       loadPayments();
@@ -301,7 +327,7 @@ export function RentalPaymentHistoryDialog({
                       <TableCell className="text-center">
                         {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(payment.expectedAmount)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(getExpectedAmount(payment))}</TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                         {formatCurrency(payment.paidAmount || 0)}
                       </TableCell>
