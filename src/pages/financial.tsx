@@ -667,25 +667,26 @@ export default function Financial() {
       if (!originalContent) return;
 
       const pdfContent = document.createElement('div');
-      pdfContent.style.cssText = 'position: absolute; left: -9999px; background: white; padding: 10px; width: 1200px;';
+      pdfContent.style.cssText = 'position: absolute; left: -9999px; background: white; padding: 8px; width: 1400px;';
       
       // Título
       const title = document.createElement('h1');
-      title.style.cssText = 'font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #000;';
+      title.style.cssText = 'font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #000;';
       title.textContent = `Relatório Financeiro - ${monthName}`;
       pdfContent.appendChild(title);
 
       // Cards (KPIs)
       const cardsContainer = document.createElement('div');
-      cardsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; font-size: 7px;';
+      cardsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-bottom: 6px; font-size: 6px;';
       const cards = document.querySelectorAll('.grid.gap-3 .border-l-4');
       cards.forEach(card => {
         const cardClone = card.cloneNode(true) as HTMLElement;
-        cardClone.style.cssText = 'padding: 4px; font-size: 7px;';
+        cardClone.style.cssText = 'padding: 3px; font-size: 6px; border: 1px solid #ddd;';
         // Reduzir fonte de todos os elementos internos
         cardClone.querySelectorAll('*').forEach((el: any) => {
-          el.style.fontSize = '7px';
-          el.style.padding = '2px';
+          el.style.fontSize = '6px';
+          el.style.padding = '1px';
+          el.style.margin = '0';
         });
         cardsContainer.appendChild(cardClone);
       });
@@ -696,18 +697,19 @@ export default function Financial() {
       tableContainer.style.cssText = 'width: 100%; overflow: visible;';
       
       const table = document.createElement('table');
-      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 5px; table-layout: fixed;';
+      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 4px; table-layout: fixed;';
       
       // Copiar thead
       const thead = document.createElement('thead');
-      thead.style.cssText = 'background: #f8f9fa;';
+      thead.style.cssText = 'background: #f0f0f0;';
       const headerRow = document.createElement('tr');
       
-      const headers = ['Parc.', 'Local', 'Compl.', 'Inq.', 'Ano', 'Mês', 'Status', 'Venc.', 'Rec.', 'Hora', 'Val.Esp.', 'Val.Pago', 'PIX'];
+      const headers = ['P', 'Local', 'Compl', 'Inquilino', 'A', 'M', 'St', 'Venc', 'Rec', 'H', 'Val.Esp', 'Val.Pg', 'PIX'];
       headers.forEach((text, index) => {
         const th = document.createElement('th');
-        const widths = ['3%', '9%', '8%', '9%', '3%', '3%', '5%', '7%', '7%', '4%', '8%', '8%', '12%'];
-        th.style.cssText = `padding: 2px; font-size: 5px; border: 1px solid #ddd; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; width: ${widths[index]}; white-space: nowrap; overflow: hidden;`;
+        // Otimizar larguras: dar mais espaço para colunas importantes
+        const widths = ['2%', '10%', '8%', '10%', '2%', '3%', '4%', '6%', '6%', '3%', '9%', '9%', '14%'];
+        th.style.cssText = `padding: 1px; font-size: 4px; border: 1px solid #ccc; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; width: ${widths[index]}; font-weight: bold; white-space: nowrap; overflow: hidden;`;
         th.textContent = text;
         headerRow.appendChild(th);
       });
@@ -730,18 +732,18 @@ export default function Financial() {
           details.tenantName,
           filterYear.toString(),
           format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR }),
-          payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pend" : payment.status === "overdue" ? "Atras" : "Parc",
+          payment.status === "paid" ? "Pg" : payment.status === "pending" ? "Pd" : payment.status === "overdue" ? "At" : "Pc",
           format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy"),
           payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-",
           details.paymentTime || "-",
           new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment)),
           new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0),
-          (details.pixCode || "-").substring(0, 20)
+          (details.pixCode || "-").substring(0, 25)
         ];
         
         values.forEach((text, index) => {
           const td = document.createElement('td');
-          td.style.cssText = `padding: 1px 2px; font-size: 5px; border: 1px solid #ddd; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+          td.style.cssText = `padding: 0.5px 1px; font-size: 4px; border: 1px solid #ddd; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
           td.textContent = text.toString();
           tr.appendChild(td);
         });
@@ -756,15 +758,15 @@ export default function Financial() {
       document.body.appendChild(pdfContent);
 
       const opt = {
-        margin: [3, 3, 3, 3],
+        margin: [2, 2, 2, 2],
         filename: `relatorio-financeiro-${monthName}.pdf`,
-        image: { type: "jpeg", quality: 0.95 },
+        image: { type: "jpeg", quality: 0.92 },
         html2canvas: { 
-          scale: 1.5,
+          scale: 1.8,
           useCORS: true,
           letterRendering: true,
           logging: false,
-          width: 1200
+          width: 1400
         },
         jsPDF: { 
           unit: "mm", 
