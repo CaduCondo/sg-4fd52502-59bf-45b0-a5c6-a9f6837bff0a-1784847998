@@ -662,77 +662,73 @@ export default function Financial() {
       const html2pdf = (await import('html2pdf.js')).default;
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
-      // Encontrar a tabela atual renderizada na página
-      const originalTable = document.querySelector('table');
-      if (!originalTable) {
-        toast({
-          title: "Erro",
-          description: "Tabela não encontrada.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Criar HTML completo com dados
+      let htmlContent = `
+        <div style="width: 100%; background: white; padding: 15px; font-family: Arial, sans-serif;">
+          <h2 style="font-size: 16px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #000;">
+            Relatório Financeiro - ${monthName}
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 8px;">
+            <thead>
+              <tr style="background: #f0f0f0;">
+                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Parc</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Local</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Compl</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Inquilino</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Ano</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Mês</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Status</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Venc</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Rec</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Hora</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Esp</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Pg</th>
+                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">PIX</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
 
-      // Criar wrapper para PDF
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'width: 100%; background: white; padding: 20px; font-family: Arial, sans-serif;';
-
-      // Adicionar título
-      const title = document.createElement('h2');
-      title.style.cssText = 'font-size: 18px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #000;';
-      title.textContent = `Relatório Financeiro - ${monthName}`;
-      wrapper.appendChild(title);
-
-      // Clonar a tabela
-      const tableClone = originalTable.cloneNode(true) as HTMLElement;
-      
-      // Aplicar estilos inline na tabela clonada
-      tableClone.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 9px;';
-      
-      // Aplicar estilos nos elementos da tabela
-      const ths = tableClone.querySelectorAll('th');
-      ths.forEach((th: any) => {
-        th.style.cssText = 'border: 1px solid #999; padding: 6px; background: #f0f0f0; font-weight: bold; font-size: 9px; text-align: left;';
+      getSortedPayments.forEach(payment => {
+        const details = getPaymentDetails(payment);
+        const paymentNumber = calculatePaymentNumber(payment, details.rental);
+        
+        const statusText = payment.status === "paid" ? "Pago" : 
+                          payment.status === "pending" ? "Pend" : 
+                          payment.status === "overdue" ? "Atras" : "Parc";
+        
+        htmlContent += `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${paymentNumber}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.local}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.complemento}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.tenantName}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${filterYear}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${statusText}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-"}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 8px;">${details.paymentTime || "-"}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment))}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; text-align: right; font-size: 8px;">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0)}</td>
+            <td style="border: 1px solid #ddd; padding: 4px; font-size: 7px; word-break: break-all; max-width: 120px;">${details.pixCode || "-"}</td>
+          </tr>
+        `;
       });
 
-      const tds = tableClone.querySelectorAll('td');
-      tds.forEach((td: any) => {
-        td.style.cssText = 'border: 1px solid #ddd; padding: 5px; font-size: 8px;';
-        // Remover classes do Tailwind
-        td.className = '';
-        // Preservar quebra de texto para PIX
-        if (td.textContent && td.textContent.length > 30) {
-          td.style.wordBreak = 'break-all';
-          td.style.maxWidth = '150px';
-        }
-      });
+      htmlContent += `
+            </tbody>
+          </table>
+        </div>
+      `;
 
-      // Remover botões e ícones de ações
-      const buttons = tableClone.querySelectorAll('button');
-      buttons.forEach(btn => btn.remove());
-      
-      const icons = tableClone.querySelectorAll('svg');
-      icons.forEach(icon => {
-        // Remover apenas ícones que não são de ordenação (ArrowUp/ArrowDown)
-        if (!icon.closest('th')) {
-          icon.remove();
-        }
-      });
-
-      // Remover badges e substituir por texto
-      const badges = tableClone.querySelectorAll('[class*="badge"]');
-      badges.forEach((badge: any) => {
-        const text = badge.textContent;
-        badge.outerHTML = text;
-      });
-
-      wrapper.appendChild(tableClone);
-
-      // Adicionar ao DOM temporariamente (fora da tela)
-      wrapper.style.position = 'fixed';
-      wrapper.style.left = '-9999px';
-      wrapper.style.top = '0';
-      document.body.appendChild(wrapper);
+      // Criar elemento temporário
+      const element = document.createElement('div');
+      element.innerHTML = htmlContent;
+      element.style.position = 'fixed';
+      element.style.left = '-9999px';
+      element.style.top = '0';
+      document.body.appendChild(element);
 
       const opt = {
         margin: [10, 10, 10, 10],
@@ -741,7 +737,7 @@ export default function Financial() {
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          logging: true,
+          logging: false,
           backgroundColor: '#ffffff'
         },
         jsPDF: { 
@@ -751,25 +747,32 @@ export default function Financial() {
         }
       };
 
-      // Gerar PDF e remover elemento depois
-      await html2pdf().set(opt).from(wrapper).save();
-      
-      // Aguardar um pouco antes de remover
-      setTimeout(() => {
-        if (document.body.contains(wrapper)) {
-          document.body.removeChild(wrapper);
-        }
-      }, 100);
+      // Gerar e baixar PDF
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .then(() => {
+          if (document.body.contains(element)) {
+            document.body.removeChild(element);
+          }
+        })
+        .catch((error: any) => {
+          console.error("Erro ao gerar PDF:", error);
+          if (document.body.contains(element)) {
+            document.body.removeChild(element);
+          }
+        });
 
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível gerar o PDF. Detalhes no console.",
+        description: "Não foi possível gerar o PDF.",
         variant: "destructive",
       });
     }
-  }, [filterMonth, filterYear, toast]);
+  }, [filterMonth, filterYear, getSortedPayments, getPaymentDetails, calculatePaymentNumber, getExpectedAmount, toast]);
 
   const handlePrintExpenses = useCallback(async () => {
     if (!expensesContentRef.current) return;
