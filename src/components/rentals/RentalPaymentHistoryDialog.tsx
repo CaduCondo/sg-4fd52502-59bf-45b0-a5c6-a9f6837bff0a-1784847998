@@ -31,55 +31,40 @@ export function RentalPaymentHistoryDialog({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Função para calcular valor esperado total (soma os items do breakdown)
+  // Função para calcular valor esperado total (breakdown + late_fee + interest - discount)
   const getExpectedAmount = (payment: Payment): number => {
-    console.log("\n=== getExpectedAmount ===");
-    console.log("Payment ID:", payment.id);
-    console.log("Installment:", payment.installment);
-    console.log("expected_amount:", payment.expectedAmount);
-    console.log("late_fee:", payment.lateFee);
-    console.log("interest:", payment.interest);
-    console.log("discount:", payment.discount);
-    console.log("breakdown:", payment.breakdown);
-    console.log("breakdown type:", typeof payment.breakdown);
+    let baseTotal = 0;
     
+    // Somar items do breakdown (aluguel, garagem, etc.)
     if (payment.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
 
-        console.log("Breakdown parseado:", breakdownData);
-        console.log("É array?", Array.isArray(breakdownData));
-
-        // Breakdown é um array de items
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-          console.log("Número de items:", breakdownData.length);
-          breakdownData.forEach((item: any, index: number) => {
-            console.log(`Item ${index}:`, item);
-            console.log(`  value:`, item.value);
-            console.log(`  amount:`, item.amount);
-            console.log(`  label:`, item.label);
-          });
-          
-          const total = breakdownData.reduce((sum: number, item: any) => {
+          baseTotal = breakdownData.reduce((sum: number, item: any) => {
             const value = Number(item.value || item.amount || 0);
             return sum + value;
           }, 0);
-          
-          console.log("Total calculado:", total);
-          console.log("=========================\n");
-          return total;
         }
       } catch (error) {
         console.error("Erro ao processar breakdown:", error);
+        baseTotal = payment.expectedAmount;
       }
+    } else {
+      // Se não houver breakdown, usar expected_amount como base
+      baseTotal = payment.expectedAmount;
     }
     
-    // Fallback: usar expected_amount
-    console.log("Usando expected_amount (fallback):", payment.expectedAmount);
-    console.log("=========================\n");
-    return payment.expectedAmount;
+    // Adicionar late_fee e interest (que estão em campos separados)
+    const lateFee = Number(payment.lateFee || 0);
+    const interest = Number(payment.interest || 0);
+    const discount = Number(payment.discount || 0);
+    
+    const total = baseTotal + lateFee + interest - discount;
+    
+    return total;
   };
 
   useEffect(() => {
