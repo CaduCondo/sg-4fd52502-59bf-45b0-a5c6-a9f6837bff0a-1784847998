@@ -28,6 +28,7 @@ import {
 import { SortableTable } from "@/components/ui/sortable-table";
 import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
 import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
+import { RentalPaymentHistoryDialog } from "@/components/rentals/RentalPaymentHistoryDialog";
 import { useContractExpiration } from "@/hooks/useContractExpiration";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ export default function RentalsPage() {
   const [deleteChoices, setDeleteChoices] = useState({ pending: false, paid: false });
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
+  const [rentalForPaymentHistory, setRentalForPaymentHistory] = useState<Rental | null>(null);
   
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
@@ -556,11 +558,11 @@ export default function RentalsPage() {
     { key: "complement", label: "Complemento", headerClassName: "text-center", render: (r: Rental) => getPropertyForRental(r)?.complement || "-" },
     { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.phone || "-" },
-    { key: "value", label: "Valor", headerClassName: "text-center", cellClassName: "px-0.5", className: "w-[110px]", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
-    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-0.5", className: "w-[95px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-0.5", className: "w-[95px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-0.5", className: "w-[90px]", render: (r: Rental) => getStatusBadge(r.status) },
-    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-0.5", className: "w-[170px]", render: (r: Rental) => {
+    { key: "value", label: "Valor", headerClassName: "text-center", cellClassName: "px-0", className: "w-[100px]", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
+    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-0", className: "w-[85px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-0", className: "w-[85px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-0", className: "w-[80px]", render: (r: Rental) => getStatusBadge(r.status) },
+    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-0", className: "w-[160px]", render: (r: Rental) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const isExpired = r.endDate && new Date(r.endDate) < today;
@@ -576,7 +578,7 @@ export default function RentalsPage() {
             className="h-7 w-7 bg-gray-500 hover:bg-gray-600 text-white border-gray-500"
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/payments?rental=${r.id}`);
+              setRentalForPaymentHistory(r);
             }}
             title="Histórico de Pagamentos"
           >
@@ -618,7 +620,7 @@ export default function RentalsPage() {
         </div>
       );
     }}
-  ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, handleOpenDeleteDialog, router]);
+  ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, handleOpenDeleteDialog]);
 
   return (
     <>
@@ -1001,6 +1003,12 @@ export default function RentalsPage() {
           onOpenChange={(open) => !open && setRentalToEnd(null)}
           rental={rentalToEnd}
           onConfirm={handleConfirmTermination}
+        />
+
+        <RentalPaymentHistoryDialog
+          open={!!rentalForPaymentHistory}
+          onOpenChange={(open) => !open && setRentalForPaymentHistory(null)}
+          rental={rentalForPaymentHistory}
         />
 
         {/* Dialog Step 1: Confirmar exclusão da locação */}
