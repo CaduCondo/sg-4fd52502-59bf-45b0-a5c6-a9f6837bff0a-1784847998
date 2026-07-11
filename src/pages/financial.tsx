@@ -58,6 +58,8 @@ import { Payment, Property, Rental, Tenant } from "@/types";
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
 
+type ExpenseSortField = "location_name" | "description" | "amount";
+
 // Cache em memória para financial data
 let financialCache: {
   data: {
@@ -116,6 +118,10 @@ export default function Financial() {
   // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  // Sorting state for expenses dialog
+  const [expenseSortField, setExpenseSortField] = useState<ExpenseSortField | null>(null);
+  const [expenseSortDirection, setExpenseSortDirection] = useState<SortDirection>(null);
 
   // Ref para controlar execuções simultâneas
   const loadingRef = useRef(false);
@@ -524,7 +530,29 @@ export default function Financial() {
     }
   }, [sortField, sortDirection]);
 
-  // Memoizar pagamentos ordenados COM FILTRO DE LOCALIZAÇÃO
+  const handleExpenseSort = useCallback((field: ExpenseSortField) => {
+    if (expenseSortField === field) {
+      if (expenseSortDirection === "asc") {
+        setExpenseSortDirection("desc");
+      } else if (expenseSortDirection === "desc") {
+        setExpenseSortDirection(null);
+        setExpenseSortField(null);
+      } else {
+        setExpenseSortDirection("asc");
+      }
+    } else {
+      setExpenseSortField(field);
+      setExpenseSortDirection("asc");
+    }
+  }, [expenseSortField, expenseSortDirection]);
+
+  const ExpenseSortIcon = ({ field }: { field: ExpenseSortField }) => {
+    if (expenseSortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    if (expenseSortDirection === "asc") return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
+    return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
+  };
+
+  const Memoizar pagamentos ordenados COM FILTRO DE LOCALIZAÇÃO
   const getSortedPayments = useMemo(() => {
     const paymentsToSort = locationFilteredPayments;
     
@@ -584,6 +612,10 @@ export default function Financial() {
   };
 
   const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handlePrintExpenses = useCallback(() => {
     window.print();
   }, []);
   
@@ -744,13 +776,43 @@ export default function Financial() {
   
   // Filtrar despesas detalhadas por localização
   const filteredExpensesDetails = useMemo(() => {
-    if (selectedLocationId === "all") {
-      return expensesDetails;
+    let filtered = selectedLocationId === "all" 
+      ? expensesDetails 
+      : expensesDetails.filter(expense => 
+          locationsMap.get(expense.location_id) === locationsMap.get(selectedLocationId)
+        );
+    
+    // Aplicar ordenação
+    if (expenseSortField && expenseSortDirection) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (expenseSortField) {
+          case "location_name":
+            aValue = a.location_name.toLowerCase();
+            bValue = b.location_name.toLowerCase();
+            break;
+          case "description":
+            aValue = (a.description || "").toLowerCase();
+            bValue = (b.description || "").toLowerCase();
+            break;
+          case "amount":
+            aValue = a.amount;
+            bValue = b.amount;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aValue < bValue) return expenseSortDirection === "asc" ? -1 : 1;
+        if (aValue > bValue) return expenseSortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
     }
-    return expensesDetails.filter(expense => 
-      locationsMap.get(expense.location_id) === locationsMap.get(selectedLocationId)
-    );
-  }, [expensesDetails, selectedLocationId, locationsMap]);
+    
+    return filtered;
+  }, [expensesDetails, selectedLocationId, locationsMap, expenseSortField, expenseSortDirection]);
 
   if (!mounted) return null;
 
@@ -1308,14 +1370,27 @@ export default function Financial() {
         <Dialog open={showExpensesDialog} onOpenChange={setShowExpensesDialog}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-orange-600" />
-                Detalhamento das Contas do Mês
-              </DialogTitle>
-              <DialogDescription>
-                {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
-                {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                    <Receipt className="h-5 w-5 text-orange-600" />
+                    Detalhamento das Contas do Mês
+                  </DialogTitle>
+                  <DialogDescription>
+                    {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
+                    {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
+                  </DialogDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintExpenses}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Imprimir
+                </Button>
+              </div>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -1329,9 +1404,24 @@ export default function Financial() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Local</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleExpenseSort("location_name")}>
+                          <div className="flex items-center">
+                            Local
+                            <ExpenseSortIcon field="location_name" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleExpenseSort("description")}>
+                          <div className="flex items-center">
+                            Descrição
+                            <ExpenseSortIcon field="description" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => handleExpenseSort("amount")}>
+                          <div className="flex items-center justify-end">
+                            Valor
+                            <ExpenseSortIcon field="amount" />
+                          </div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
