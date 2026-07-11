@@ -139,6 +139,8 @@ export default function Financial() {
   useEffect(() => {
     console.log("🔄 [Financial] Componente montando...");
     setMounted(true);
+    // Invalidar cache para garantir dados frescos com breakdown
+    financialCache = { data: null, key: "", timestamp: 0 };
     console.log("✅ [Financial] Componente montado (mounted = true)");
   }, []);
 
