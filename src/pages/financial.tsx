@@ -656,24 +656,115 @@ export default function Financial() {
   };
 
   const handlePrint = useCallback(async () => {
-    const printContent = document.getElementById('financial-print-content');
-    if (!printContent) return;
-
     try {
       // Import dinâmico do html2pdf
       const html2pdf = (await import('html2pdf.js')).default;
 
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
+      // Criar cópia do conteúdo com estilos compactos para PDF
+      const originalContent = document.querySelector('.container');
+      if (!originalContent) return;
+
+      const pdfContent = document.createElement('div');
+      pdfContent.style.cssText = 'position: absolute; left: -9999px; background: white; padding: 10px; width: 1200px;';
+      
+      // Título
+      const title = document.createElement('h1');
+      title.style.cssText = 'font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #000;';
+      title.textContent = `Relatório Financeiro - ${monthName}`;
+      pdfContent.appendChild(title);
+
+      // Cards (KPIs)
+      const cardsContainer = document.createElement('div');
+      cardsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; font-size: 7px;';
+      const cards = document.querySelectorAll('.grid.gap-3 .border-l-4');
+      cards.forEach(card => {
+        const cardClone = card.cloneNode(true) as HTMLElement;
+        cardClone.style.cssText = 'padding: 4px; font-size: 7px;';
+        // Reduzir fonte de todos os elementos internos
+        cardClone.querySelectorAll('*').forEach((el: any) => {
+          el.style.fontSize = '7px';
+          el.style.padding = '2px';
+        });
+        cardsContainer.appendChild(cardClone);
+      });
+      pdfContent.appendChild(cardsContainer);
+
+      // Tabela
+      const tableContainer = document.createElement('div');
+      tableContainer.style.cssText = 'width: 100%; overflow: visible;';
+      
+      const table = document.createElement('table');
+      table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 5px; table-layout: fixed;';
+      
+      // Copiar thead
+      const thead = document.createElement('thead');
+      thead.style.cssText = 'background: #f8f9fa;';
+      const headerRow = document.createElement('tr');
+      
+      const headers = ['Parc.', 'Local', 'Compl.', 'Inq.', 'Ano', 'Mês', 'Status', 'Venc.', 'Rec.', 'Hora', 'Val.Esp.', 'Val.Pago', 'PIX'];
+      headers.forEach((text, index) => {
+        const th = document.createElement('th');
+        const widths = ['3%', '9%', '8%', '9%', '3%', '3%', '5%', '7%', '7%', '4%', '8%', '8%', '12%'];
+        th.style.cssText = `padding: 2px; font-size: 5px; border: 1px solid #ddd; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; width: ${widths[index]}; white-space: nowrap; overflow: hidden;`;
+        th.textContent = text;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Copiar tbody
+      const tbody = document.createElement('tbody');
+      getSortedPayments.forEach(payment => {
+        const details = getPaymentDetails(payment);
+        const paymentNumber = calculatePaymentNumber(payment, details.rental);
+        
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'border: 1px solid #ddd;';
+        
+        const values = [
+          paymentNumber,
+          details.local,
+          details.complemento,
+          details.tenantName,
+          filterYear.toString(),
+          format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR }),
+          payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pend" : payment.status === "overdue" ? "Atras" : "Parc",
+          format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy"),
+          payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy") : "-",
+          details.paymentTime || "-",
+          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(getExpectedAmount(payment)),
+          new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payment.paidAmount || 0),
+          (details.pixCode || "-").substring(0, 20)
+        ];
+        
+        values.forEach((text, index) => {
+          const td = document.createElement('td');
+          td.style.cssText = `padding: 1px 2px; font-size: 5px; border: 1px solid #ddd; text-align: ${index >= 10 ? 'right' : index >= 4 ? 'center' : 'left'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+          td.textContent = text.toString();
+          tr.appendChild(td);
+        });
+        
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      
+      tableContainer.appendChild(table);
+      pdfContent.appendChild(tableContainer);
+      
+      document.body.appendChild(pdfContent);
+
       const opt = {
-        margin: [5, 5, 5, 5],
+        margin: [3, 3, 3, 3],
         filename: `relatorio-financeiro-${monthName}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: "jpeg", quality: 0.95 },
         html2canvas: { 
-          scale: 2, 
+          scale: 1.5,
           useCORS: true,
           letterRendering: true,
-          logging: false
+          logging: false,
+          width: 1200
         },
         jsPDF: { 
           unit: "mm", 
@@ -681,10 +772,14 @@ export default function Financial() {
           orientation: "landscape",
           compress: true
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['avoid-all'] }
       };
 
-      html2pdf().set(opt).from(printContent).save();
+      await html2pdf().set(opt).from(pdfContent).save();
+      
+      // Remover elemento temporário
+      document.body.removeChild(pdfContent);
+      
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast({
@@ -693,7 +788,7 @@ export default function Financial() {
         variant: "destructive",
       });
     }
-  }, [filterMonth, filterYear, toast]);
+  }, [filterMonth, filterYear, getSortedPayments, getPaymentDetails, calculatePaymentNumber, getExpectedAmount, toast]);
 
   const handlePrintExpenses = useCallback(async () => {
     if (!expensesContentRef.current) return;
@@ -952,7 +1047,8 @@ export default function Financial() {
           </div>
 
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-            <div id="financial-print-content" style={{ backgroundColor: 'white', padding: '10px' }}>
+            {/* Cards de Métricas - Locações */}
+            <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
               {/* Título para impressão */}
               <div className="mb-2">
                 <h1 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
@@ -960,218 +1056,6 @@ export default function Financial() {
                 </h1>
               </div>
               
-              {/* Cards de Métricas - Locações */}
-              <div className={`grid gap-2 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-5'}`} style={{ marginBottom: '10px' }}>
-                {isFinancial ? (
-                  <>
-                    <Card className="border-l-4 border-l-blue-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
-                              Receita Bruta Esperada
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.totalExpected)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Total de aluguéis esperados
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-green-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
-                              Receita Bruta
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-green-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.totalReceived)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Total recebido
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-orange-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Receipt className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
-                              Taxas e Contas
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-orange-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.adminFee + kpiCalculations.managementFee + kpiCalculations.locationExpenses)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Taxas e contas a pagar
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-purple-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
-                              Receita Líquida
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.netRevenue)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Após taxas e contas
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                ) : (
-                  <>
-                    <Card className="border-l-4 border-l-green-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
-                              Receita Bruta
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-green-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.totalReceived)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Total recebido
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-red-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Percent className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
-                              Taxa de Administração
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-red-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.adminFee)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {config ? config.admin_fee_percentage : 5}% sobre receita
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {user?.role !== "broker" && (
-                      <Card className="border-l-4 border-l-blue-500">
-                        <CardContent className="pt-4 sm:pt-6">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
-                                Taxa de Gerenciamento
-                              </p>
-                              <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(kpiCalculations.managementFee)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {config ? config.management_fee_percentage : 3}% sobre receita
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Receipt className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
-                              Contas do Mês
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-orange-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(user?.role === "broker" ? kpiCalculations.locationExpenses + kpiCalculations.managementFee : kpiCalculations.locationExpenses)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {user?.role === "broker" 
-                                ? "Despesas + taxa gerenciamento"
-                                : "Despesas dos locais"}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-purple-500">
-                      <CardContent className="pt-4 sm:pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
-                              Receita Líquida
-                            </p>
-                            <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              }).format(kpiCalculations.netRevenue)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Após taxas e contas
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </div>
-
-              {/* Tabela de Locações */}
               <Card>
                 <CardContent className="pt-4 sm:pt-6 px-2 sm:px-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4 px-2 sm:px-0">
@@ -1304,15 +1188,15 @@ export default function Financial() {
 
                                 return (
                                   <TableRow key={payment.id} className="hover:bg-gray-50">
-                                    <TableCell className="font-medium text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>{paymentNumber}</TableCell>
-                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.local}</TableCell>
-                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.complemento}</TableCell>
-                                    <TableCell className="text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{details.tenantName}</TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>{filterYear}</TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                    <TableCell className="font-medium text-xs sm:text-sm">{paymentNumber}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm">{details.local}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm">{details.complemento}</TableCell>
+                                    <TableCell className="text-xs sm:text-sm">{details.tenantName}</TableCell>
+                                    <TableCell className="text-center text-xs sm:text-sm">{filterYear}</TableCell>
+                                    <TableCell className="text-center text-xs sm:text-sm">
                                       {format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}
                                     </TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>
+                                    <TableCell className="text-center text-xs sm:text-sm">
                                       <Badge
                                         variant={
                                           payment.status === "paid"
@@ -1324,7 +1208,6 @@ export default function Financial() {
                                             : "outline"
                                         }
                                         className="text-xs"
-                                        style={{ fontSize: '6px', padding: '1px 4px' }}
                                       >
                                         {payment.status === "paid"
                                           ? "Pago"
@@ -1335,30 +1218,30 @@ export default function Financial() {
                                           : "Parcial"}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                    <TableCell className="text-center text-xs sm:text-sm">
                                       {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                                     </TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                    <TableCell className="text-center text-xs sm:text-sm">
                                       {payment.paymentDate
                                         ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                                         : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px' }}>
+                                    <TableCell className="text-center text-xs sm:text-sm">
                                       {details.paymentTime || "-"}
                                     </TableCell>
-                                    <TableCell className="text-right text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                    <TableCell className="text-right text-xs sm:text-sm">
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
                                       }).format(getExpectedAmount(payment))}
                                     </TableCell>
-                                    <TableCell className="text-right text-xs sm:text-sm" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
+                                    <TableCell className="text-right text-xs sm:text-sm">
                                       {new Intl.NumberFormat("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
                                       }).format(payment.paidAmount || 0)}
                                     </TableCell>
-                                    <TableCell className="text-xs sm:text-sm truncate max-w-[100px]" style={{ padding: '3px', fontSize: '7px' }}>
+                                    <TableCell className="text-xs sm:text-sm truncate max-w-[100px]">
                                       {details.pixCode || "-"}
                                     </TableCell>
                                   </TableRow>
