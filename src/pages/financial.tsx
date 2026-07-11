@@ -1408,7 +1408,7 @@ export default function Financial() {
               </div>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div ref={expensesContentRef} className="space-y-4">
               {/* Tabela de Despesas */}
               {filteredExpensesDetails.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
