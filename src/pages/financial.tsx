@@ -519,6 +519,30 @@ export default function Financial() {
     }
   }, []);
 
+  // Função para calcular valor esperado total (com juros/multas do breakdown)
+  const getExpectedAmount = useCallback((payment: Payment): number => {
+    if (payment.breakdown && typeof payment.breakdown === 'object') {
+      const breakdown = payment.breakdown as any;
+      // Prioridade 1: usar total ou totalWithFees do breakdown
+      if (breakdown.total !== undefined && breakdown.total !== null) {
+        return Number(breakdown.total);
+      }
+      if (breakdown.totalWithFees !== undefined && breakdown.totalWithFees !== null) {
+        return Number(breakdown.totalWithFees);
+      }
+      // Prioridade 2: calcular manualmente do breakdown
+      const rentalAmount = Number(breakdown.rentalAmount || 0);
+      const garageAmount = Number(breakdown.garageAmount || 0);
+      const interest = Number(breakdown.interest || 0);
+      const lateFee = Number(breakdown.lateFee || 0);
+      const discount = Number(breakdown.discount || 0);
+      
+      return rentalAmount + garageAmount + interest + lateFee - discount;
+    }
+    // Fallback: usar expected_amount
+    return payment.expectedAmount;
+  }, []);
+
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       if (sortDirection === "asc") {
@@ -593,8 +617,8 @@ export default function Financial() {
           bValue = b.paymentDate ? new Date(b.paymentDate + "T12:00:00").getTime() : 0;
           break;
         case "expectedAmount":
-          aValue = a.expectedAmount;
-          bValue = b.expectedAmount;
+          aValue = getExpectedAmount(a);
+          bValue = getExpectedAmount(b);
           break;
         case "paidAmount":
           aValue = a.paidAmount || 0;
@@ -698,7 +722,7 @@ export default function Financial() {
         "Data Vencimento": format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy"),
         "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-",
         "Horário Recebido": details.paymentTime || "-",
-        "Valor Esperado": payment.expectedAmount,
+        "Valor Esperado": getExpectedAmount(payment),
         "Valor Pago": payment.paidAmount || 0,
         "Código PIX": details.pixCode || "-",
       };
@@ -720,7 +744,7 @@ export default function Financial() {
       title: "Sucesso!",
       description: "Planilha exportada com sucesso.",
     });
-  }, [getSortedPayments, filterMonth, filterYear, getPaymentDetails, calculatePaymentNumber, toast]);
+  }, [getSortedPayments, filterMonth, filterYear, getPaymentDetails, calculatePaymentNumber, getExpectedAmount, toast]);
 
   // KPI Calculations (MEMOIZADOS COM FILTRO DE LOCALIZAÇÃO!)
   const kpiCalculations = useMemo(() => {
@@ -733,7 +757,10 @@ export default function Financial() {
     
     const totalLocationExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     
-    const totalExpected = paymentsToCalculate.reduce((sum, p) => sum + p.expectedAmount, 0);
+    const totalExpected = paymentsToCalculate.reduce((sum, p) => {
+      const expectedValue = getExpectedAmount(p);
+      return sum + expectedValue;
+    }, 0);
     
     const totalReceived = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
@@ -776,7 +803,7 @@ export default function Financial() {
       totalPaid,
       locationExpenses: totalLocationExpenses, // ✅ Retornar as despesas filtradas
     };
-  }, [locationFilteredPayments, config, exemptLocationIds, locationExpensesData, selectedLocationId]);
+  }, [locationFilteredPayments, config, exemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount]);
 
   const filteredPayments = getSortedPayments;
 
@@ -1273,7 +1300,7 @@ export default function Financial() {
                                     {new Intl.NumberFormat("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
-                                    }).format(payment.expectedAmount)}
+                                    }).format(getExpectedAmount(payment))}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-600 text-xs sm:text-sm">
                                     {new Intl.NumberFormat("pt-BR", {

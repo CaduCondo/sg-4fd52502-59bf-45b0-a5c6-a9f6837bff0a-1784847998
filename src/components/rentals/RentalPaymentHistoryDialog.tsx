@@ -32,6 +32,30 @@ export function RentalPaymentHistoryDialog({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Função para calcular valor esperado total (com juros/multas do breakdown)
+  const getExpectedAmount = (payment: Payment): number => {
+    if (payment.breakdown && typeof payment.breakdown === 'object') {
+      const breakdown = payment.breakdown as any;
+      // Prioridade 1: usar total ou totalWithFees do breakdown
+      if (breakdown.total !== undefined && breakdown.total !== null) {
+        return Number(breakdown.total);
+      }
+      if (breakdown.totalWithFees !== undefined && breakdown.totalWithFees !== null) {
+        return Number(breakdown.totalWithFees);
+      }
+      // Prioridade 2: calcular manualmente do breakdown
+      const rentalAmount = Number(breakdown.rentalAmount || 0);
+      const garageAmount = Number(breakdown.garageAmount || 0);
+      const interest = Number(breakdown.interest || 0);
+      const lateFee = Number(breakdown.lateFee || 0);
+      const discount = Number(breakdown.discount || 0);
+      
+      return rentalAmount + garageAmount + interest + lateFee - discount;
+    }
+    // Fallback: usar expected_amount
+    return payment.expectedAmount;
+  };
+
   useEffect(() => {
     if (open && rental) {
       loadPayments();
@@ -289,7 +313,7 @@ export function RentalPaymentHistoryDialog({
                       <TableCell className="text-center">
                         {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(payment.expectedAmount)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(getExpectedAmount(payment))}</TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                         {formatCurrency(payment.paidAmount || 0)}
                       </TableCell>
