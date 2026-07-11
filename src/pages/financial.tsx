@@ -50,6 +50,9 @@ import {
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import html2pdf from "html2pdf.js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -122,6 +125,8 @@ export default function Financial() {
   // Sorting state for expenses dialog
   const [expenseSortField, setExpenseSortField] = useState<ExpenseSortField | null>(null);
   const [expenseSortDirection, setExpenseSortDirection] = useState<SortDirection>(null);
+
+  const expensesContentRef = useRef<HTMLDivElement>(null);
 
   // Ref para controlar execuções simultâneas
   const loadingRef = useRef(false);
@@ -616,8 +621,18 @@ export default function Financial() {
   }, []);
 
   const handlePrintExpenses = useCallback(() => {
-    window.print();
-  }, []);
+    if (!expensesContentRef.current) return;
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `contas-do-mes-${format(new Date(filterYear, filterMonth - 1), "MMM-yyyy", { locale: ptBR })}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    };
+
+    html2pdf().set(opt).from(expensesContentRef.current).save();
+  }, [filterYear, filterMonth]);
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
     try {

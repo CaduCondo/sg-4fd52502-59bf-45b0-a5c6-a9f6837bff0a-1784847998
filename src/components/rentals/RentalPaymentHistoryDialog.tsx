@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Rental, Payment } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import html2pdf from "html2pdf.js";
 
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function RentalPaymentHistoryDialog({
   const [loading, setLoading] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && rental) {
@@ -135,7 +137,17 @@ export function RentalPaymentHistoryDialog({
   }, [payments, sortField, sortDirection]);
 
   const handlePrint = () => {
-    window.print();
+    if (!contentRef.current) return;
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `historico-pagamentos-${rental?.property?.location}-${rental?.property?.complement}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+    };
+
+    html2pdf().set(opt).from(contentRef.current).save();
   };
 
   const formatCurrency = (value: number) => {
@@ -208,7 +220,7 @@ export function RentalPaymentHistoryDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div ref={contentRef} className="space-y-4">
           {/* Informações do Imóvel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 rounded-lg border">
             <div>
