@@ -41,7 +41,27 @@ export function RentalPaymentHistoryDialog({
         .order("due_date", { ascending: true });
 
       if (error) throw error;
-      setPayments(data || []);
+      
+      const mappedPayments: Payment[] = (data || []).map((p) => ({
+        id: p.id,
+        rentalId: p.rental_id,
+        propertyId: p.property_id,
+        tenantId: p.tenant_id,
+        dueDate: p.due_date,
+        paymentDate: p.payment_date,
+        expectedAmount: p.expected_amount,
+        paidAmount: p.paid_amount,
+        status: p.status as "pending" | "paid" | "partial",
+        installment: p.installment,
+        discountAmount: p.discount_amount,
+        adminFee: p.admin_fee,
+        breakdown: p.breakdown,
+        attachments: p.attachments,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }));
+      
+      setPayments(mappedPayments);
     } catch (error) {
       console.error("Erro ao carregar pagamentos:", error);
       toast({
@@ -141,7 +161,7 @@ export function RentalPaymentHistoryDialog({
                   <TableBody>
                     {pendingPayments.map((payment) => (
                       <TableRow key={payment.id} className={getRowClassName(payment)}>
-                        <TableCell className="text-center font-medium">{payment.paymentNumber}</TableCell>
+                        <TableCell className="text-center font-medium">{payment.installment}</TableCell>
                         <TableCell className="text-center">{rental.property?.location || "-"}</TableCell>
                         <TableCell className="text-center">{rental.property?.complement || "-"}</TableCell>
                         <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
@@ -189,7 +209,7 @@ export function RentalPaymentHistoryDialog({
                   <TableBody>
                     {paidPayments.map((payment) => (
                       <TableRow key={payment.id} className="bg-green-50 hover:bg-green-100">
-                        <TableCell className="text-center font-medium">{payment.paymentNumber}</TableCell>
+                        <TableCell className="text-center font-medium">{payment.installment}</TableCell>
                         <TableCell className="text-center">{rental.property?.location || "-"}</TableCell>
                         <TableCell className="text-center">{rental.property?.complement || "-"}</TableCell>
                         <TableCell className="text-center">{getStatusBadge(payment.status)}</TableCell>
