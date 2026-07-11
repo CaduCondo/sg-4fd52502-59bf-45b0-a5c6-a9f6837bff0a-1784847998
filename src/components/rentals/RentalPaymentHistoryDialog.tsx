@@ -34,6 +34,15 @@ export function RentalPaymentHistoryDialog({
 
   // Função para calcular valor esperado total (com juros/multas do breakdown)
   const getExpectedAmount = (payment: Payment): number => {
+    console.log("=== INÍCIO getExpectedAmount ===");
+    console.log("Payment ID:", payment.id);
+    console.log("Expected Amount base:", payment.expectedAmount);
+    console.log("Late Fee:", payment.lateFee);
+    console.log("Interest:", payment.interest);
+    console.log("Discount:", payment.discount);
+    console.log("Breakdown raw:", payment.breakdown);
+    console.log("Breakdown type:", typeof payment.breakdown);
+    
     // Prioridade 1: Tentar usar breakdown se existir
     if (payment.breakdown && typeof payment.breakdown === 'object') {
       try {
@@ -41,24 +50,40 @@ export function RentalPaymentHistoryDialog({
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
 
+        console.log("Breakdown parseado:", breakdownData);
+        console.log("É array?", Array.isArray(breakdownData));
+        console.log("Tem items?", breakdownData.items);
+
         // Se for array direto, somar os valores
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          console.log("Processando como array direto");
           const total = breakdownData.reduce((sum: number, item: any) => {
             const itemValue = Number(item.value || item.amount || 0);
+            console.log("Item:", item, "Valor extraído:", itemValue);
             return sum + itemValue;
           }, 0);
           
-          if (total > 0) return total;
+          console.log("Total calculado do array:", total);
+          if (total > 0) {
+            console.log("Retornando total do array:", total);
+            return total;
+          }
         }
         
         // Se for objeto com items
         if (breakdownData.items && Array.isArray(breakdownData.items)) {
+          console.log("Processando items do objeto");
           const total = breakdownData.items.reduce((sum: number, item: any) => {
             const itemValue = Number(item.value || item.amount || 0);
+            console.log("Item:", item, "Valor extraído:", itemValue);
             return sum + itemValue;
           }, 0);
           
-          if (total > 0) return total;
+          console.log("Total calculado de items:", total);
+          if (total > 0) {
+            console.log("Retornando total de items:", total);
+            return total;
+          }
         }
       } catch (error) {
         console.error("Erro ao processar breakdown:", error);
@@ -73,11 +98,22 @@ export function RentalPaymentHistoryDialog({
     
     const calculated = base + lateFee + interest - discount;
     
+    console.log("Cálculo manual:");
+    console.log("  Base:", base);
+    console.log("  + Late Fee:", lateFee);
+    console.log("  + Interest:", interest);
+    console.log("  - Discount:", discount);
+    console.log("  = Total:", calculated);
+    
     if (calculated !== base && calculated > 0) {
+      console.log("Retornando cálculo manual:", calculated);
+      console.log("=== FIM getExpectedAmount ===\n");
       return calculated;
     }
     
     // Fallback final: usar expected_amount base
+    console.log("Retornando base (fallback):", base);
+    console.log("=== FIM getExpectedAmount ===\n");
     return base;
   };
 
