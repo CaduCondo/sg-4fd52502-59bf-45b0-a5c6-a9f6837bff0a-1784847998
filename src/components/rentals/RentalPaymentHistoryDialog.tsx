@@ -34,29 +34,20 @@ export function RentalPaymentHistoryDialog({
 
   // Função para calcular valor esperado total (com juros/multas do breakdown)
   const getExpectedAmount = (payment: Payment): number => {
-    // Debug: log do breakdown
-    if (payment.breakdown) {
-      console.log("Processando breakdown:", payment.breakdown);
-    }
-
     // Prioridade 1: Tentar usar breakdown se existir
     if (payment.breakdown && typeof payment.breakdown === 'object') {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
-        
-        console.log("Breakdown parseado:", breakdownData);
 
         // Se for array direto, somar os valores
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
           const total = breakdownData.reduce((sum: number, item: any) => {
             const itemValue = Number(item.value || item.amount || 0);
-            console.log("Item do array:", item, "Valor:", itemValue);
             return sum + itemValue;
           }, 0);
           
-          console.log("Total calculado do array:", total);
           if (total > 0) return total;
         }
         
@@ -64,11 +55,9 @@ export function RentalPaymentHistoryDialog({
         if (breakdownData.items && Array.isArray(breakdownData.items)) {
           const total = breakdownData.items.reduce((sum: number, item: any) => {
             const itemValue = Number(item.value || item.amount || 0);
-            console.log("Item do objeto.items:", item, "Valor:", itemValue);
             return sum + itemValue;
           }, 0);
           
-          console.log("Total calculado de items:", total);
           if (total > 0) return total;
         }
       } catch (error) {
@@ -78,19 +67,17 @@ export function RentalPaymentHistoryDialog({
     
     // Prioridade 2: Calcular manualmente com lateFee e interest se disponíveis
     const base = payment.expectedAmount || 0;
-    const lateFee = Number((payment as any).lateFee || 0);
-    const interest = Number((payment as any).interest || 0);
-    const discount = Number(payment.discountAmount || 0);
+    const lateFee = Number(payment.lateFee || 0);
+    const interest = Number(payment.interest || 0);
+    const discount = Number(payment.discount || 0);
     
     const calculated = base + lateFee + interest - discount;
-    console.log("Cálculo manual:", { base, lateFee, interest, discount, calculated });
     
     if (calculated !== base && calculated > 0) {
       return calculated;
     }
     
     // Fallback final: usar expected_amount base
-    console.log("Usando expected_amount base:", base);
     return base;
   };
 
@@ -124,12 +111,11 @@ export function RentalPaymentHistoryDialog({
         paidAmount: p.paid_amount,
         status: p.status as "pending" | "paid" | "partial",
         installment: p.installment,
-        discountAmount: p.discount_amount,
-        adminFee: p.admin_fee,
-        paymentMethod: p.payment_method || "pix",
-        breakdown: p.breakdown,
+        discount: p.discount,
         lateFee: p.late_fee,
         interest: p.interest,
+        paymentMethod: p.payment_method || "pix",
+        breakdown: p.breakdown,
         attachments: (Array.isArray(p.attachments) ? p.attachments : []) as string[],
         createdAt: p.created_at,
         updatedAt: p.updated_at,
