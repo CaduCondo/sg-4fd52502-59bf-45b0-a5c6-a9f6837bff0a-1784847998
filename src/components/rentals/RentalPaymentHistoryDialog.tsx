@@ -45,8 +45,8 @@ export function RentalPaymentHistoryDialog({
       const mappedPayments: Payment[] = (data || []).map((p) => ({
         id: p.id,
         rentalId: p.rental_id,
-        propertyId: p.rental?.property_id || rental.propertyId,
-        tenantId: p.rental?.tenant_id || rental.tenantId,
+        propertyId: rental.propertyId,
+        tenantId: rental.tenantId,
         dueDate: p.due_date,
         paymentDate: p.payment_date,
         expectedAmount: p.expected_amount,
@@ -57,7 +57,7 @@ export function RentalPaymentHistoryDialog({
         adminFee: p.admin_fee,
         paymentMethod: p.payment_method || "pix",
         breakdown: p.breakdown,
-        attachments: p.attachments,
+        attachments: (Array.isArray(p.attachments) ? p.attachments : []) as string[],
         createdAt: p.created_at,
         updatedAt: p.updated_at,
       }));
