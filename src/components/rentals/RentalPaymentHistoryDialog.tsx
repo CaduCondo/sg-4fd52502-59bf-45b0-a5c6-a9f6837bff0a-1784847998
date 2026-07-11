@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { Rental, Payment } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import html2pdf from "html2pdf.js";
 
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
@@ -222,18 +221,30 @@ export function RentalPaymentHistoryDialog({
     });
   }, [payments, sortField, sortDirection]);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!contentRef.current) return;
 
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `historico-pagamentos-${rental?.property?.location}-${rental?.property?.complement}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-    };
+    try {
+      // Import dinâmico apenas no client-side
+      const html2pdf = (await import('html2pdf.js')).default;
 
-    html2pdf().set(opt).from(contentRef.current).save();
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `historico-pagamentos-${rental?.property?.location}-${rental?.property?.complement}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      };
+
+      html2pdf().set(opt).from(contentRef.current).save();
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o PDF.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (value: number) => {

@@ -52,7 +52,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import html2pdf from "html2pdf.js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -669,18 +668,25 @@ export default function Financial() {
     window.print();
   }, []);
 
-  const handlePrintExpenses = useCallback(() => {
+  const handlePrintExpenses = useCallback(async () => {
     if (!expensesContentRef.current) return;
 
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `contas-do-mes-${format(new Date(filterYear, filterMonth - 1), "MMM-yyyy", { locale: ptBR })}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
+    try {
+      // Import dinâmico apenas no client-side
+      const html2pdf = (await import('html2pdf.js')).default;
 
-    html2pdf().set(opt).from(expensesContentRef.current).save();
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `contas-do-mes-${format(new Date(filterYear, filterMonth - 1), "MMM-yyyy", { locale: ptBR })}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+
+      html2pdf().set(opt).from(expensesContentRef.current).save();
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+    }
   }, [filterYear, filterMonth]);
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
