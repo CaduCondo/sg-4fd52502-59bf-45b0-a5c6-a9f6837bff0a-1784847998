@@ -521,55 +521,64 @@ export default function Financial() {
 
   // Função para calcular valor esperado total (com juros/multas do breakdown)
   const getExpectedAmount = useCallback((payment: Payment): number => {
+    // Debug: log do breakdown
+    if (payment.breakdown) {
+      console.log("Processando breakdown:", payment.breakdown);
+    }
+
+    // Prioridade 1: Tentar usar breakdown se existir
     if (payment.breakdown && typeof payment.breakdown === 'object') {
       try {
-        let breakdownData = typeof payment.breakdown === 'string' 
+        const breakdownData = typeof payment.breakdown === 'string' 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
         
-        // Se breakdown for um objeto, converter para array
-        if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
-          const itemsArray: any[] = [];
-          Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
-            if (value && typeof value === 'object') {
-              let itemAmount = value.value || value.amount || 0;
-              const itemType = value.type || "addition";
-              
-              // Se for dedução, garantir que o valor seja negativo
-              if (itemType === "deduction" && itemAmount > 0) {
-                itemAmount = -itemAmount;
-              }
-              // Se for adição, garantir que o valor seja positivo
-              if (itemType === "addition" && itemAmount < 0) {
-                itemAmount = Math.abs(itemAmount);
-              }
-              
-              itemsArray.push({
-                amount: itemAmount,
-                value: itemAmount,
-                type: itemType
-              });
-            }
-          });
-          breakdownData = itemsArray;
-        }
-        
-        // Se for array, somar todos os valores
+        console.log("Breakdown parseado:", breakdownData);
+
+        // Se for array direto, somar os valores
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
           const total = breakdownData.reduce((sum: number, item: any) => {
-            const itemValue = item.value || item.amount || 0;
+            const itemValue = Number(item.value || item.amount || 0);
+            console.log("Item do array:", item, "Valor:", itemValue);
             return sum + itemValue;
           }, 0);
           
-          return total;
+          console.log("Total calculado do array:", total);
+          if (total > 0) return total;
+        }
+        
+        // Se for objeto com items
+        if (breakdownData.items && Array.isArray(breakdownData.items)) {
+          const total = breakdownData.items.reduce((sum: number, item: any) => {
+            const itemValue = Number(item.value || item.amount || 0);
+            console.log("Item do objeto.items:", item, "Valor:", itemValue);
+            return sum + itemValue;
+          }, 0);
+          
+          console.log("Total calculado de items:", total);
+          if (total > 0) return total;
         }
       } catch (error) {
         console.error("Erro ao processar breakdown:", error);
       }
     }
     
-    // Fallback: usar expected_amount
-    return payment.expectedAmount;
+    // Prioridade 2: Calcular manualmente com lateFee e interest se disponíveis
+    const base = payment.expectedAmount || 0;
+    const lateFee = Number(payment.lateFee || 0);
+    const interest = Number(payment.interest || 0);
+    const discount = Number(payment.discountAmount || 0);
+    
+    const calculated = base + lateFee + interest - discount;
+    console.log("Cálculo manual:", { base, lateFee, interest, discount, calculated });
+    
+    if (calculated !== base && calculated > 0) {
+      return calculated;
+    }
+    
+    // Fallback final: usar expected_amount base
+    console.log("Usando expected_amount base:", base);
+    return base;
   }, []);
 
   const handleSort = useCallback((field: SortField) => {
