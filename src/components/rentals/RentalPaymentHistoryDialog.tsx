@@ -31,10 +31,30 @@ export function RentalPaymentHistoryDialog({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Função para obter valor esperado - usa o valor salvo no banco
+  // Função para obter valor esperado - calcula a partir do breakdown
   const getExpectedAmount = (payment: Payment): number => {
-    // O valor correto já foi calculado e salvo no banco quando o pagamento foi registrado
-    // Não precisamos recalcular - apenas usar o expected_amount
+    // Prioridade 1: Calcular a partir do breakdown se existir
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+
+        // Se for array de items, somar todos os valores
+        if (Array.isArray(breakdownData)) {
+          const total = breakdownData.reduce((sum: number, item: any) => {
+            const value = Number(item.value || item.amount || 0);
+            return sum + value;
+          }, 0);
+          
+          if (total > 0) return total;
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
+      }
+    }
+    
+    // Fallback: usar expected_amount
     return payment.expectedAmount;
   };
 
