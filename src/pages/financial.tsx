@@ -552,7 +552,7 @@ export default function Financial() {
     return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
   };
 
-  const Memoizar pagamentos ordenados COM FILTRO DE LOCALIZAÇÃO
+  // Memoizar pagamentos ordenados COM FILTRO DE LOCALIZAÇÃO
   const getSortedPayments = useMemo(() => {
     const paymentsToSort = locationFilteredPayments;
     
