@@ -674,53 +674,23 @@ export default function Financial() {
       const html2pdf = (await import('html2pdf.js')).default;
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
-      // Criar HTML completo com dados
-      let htmlContent = `
-        <div style="width: 100%; background: white; padding: 15px; font-family: Arial, sans-serif;">
-          <h2 style="font-size: 16px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #000;">
-            Relatório Financeiro - ${monthName}
-          </h2>
-          <table style="width: 100%; border-collapse: collapse; font-size: 8px;">
-            <thead>
-              <tr style="background: #f0f0f0;">
-                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Parc</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Local</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Compl</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">Inquilino</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Ano</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Mês</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Status</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Venc</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Rec</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: center; font-weight: bold;">Hora</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Esp</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">Val.Pg</th>
-                <th style="border: 1px solid #999; padding: 5px; text-align: left; font-weight: bold;">PIX</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      console.log("🔄 [handlePrint] Processando", getSortedPayments.length, "pagamentos...");
-
-      getSortedPayments.forEach((payment, index) => {
+      // Criar HTML completo com dados - VERSÃO ROBUSTA
+      const tableRows = getSortedPayments.map((payment, index) => {
         const details = getPaymentDetails(payment);
         const paymentNumber = calculatePaymentNumber(payment, details.rental);
-        
         const statusText = payment.status === "paid" ? "Pago" : 
                           payment.status === "pending" ? "Pend" : 
                           payment.status === "overdue" ? "Atras" : "Parc";
         
         if (index === 0) {
-          console.log("📝 [handlePrint] Exemplo de linha 1:", {
+          console.log("📝 [handlePrint] Primeira linha:", {
             parcela: paymentNumber,
             local: details.local,
-            inquilino: details.tenantName,
-            valorEsperado: getExpectedAmount(payment)
+            inquilino: details.tenantName
           });
         }
         
-        htmlContent += `
+        return `
           <tr>
             <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${paymentNumber}</td>
             <td style="border: 1px solid #ddd; padding: 4px; font-size: 8px;">${details.local}</td>
@@ -737,15 +707,51 @@ export default function Financial() {
             <td style="border: 1px solid #ddd; padding: 4px; font-size: 7px; word-break: break-all; max-width: 120px;">${details.pixCode || "-"}</td>
           </tr>
         `;
-      });
+      }).join('');
 
-      htmlContent += `
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }
+            h2 { font-size: 16px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #000; }
+            table { width: 100%; border-collapse: collapse; font-size: 8px; }
+            thead { background: #f0f0f0; }
+            th { border: 1px solid #999; padding: 5px; font-weight: bold; }
+            td { border: 1px solid #ddd; padding: 4px; }
+          </style>
+        </head>
+        <body>
+          <h2>Relatório Financeiro - ${monthName}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left;">Parc</th>
+                <th style="text-align: left;">Local</th>
+                <th style="text-align: left;">Compl</th>
+                <th style="text-align: left;">Inquilino</th>
+                <th style="text-align: center;">Ano</th>
+                <th style="text-align: center;">Mês</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Venc</th>
+                <th style="text-align: center;">Rec</th>
+                <th style="text-align: center;">Hora</th>
+                <th style="text-align: right;">Val.Esp</th>
+                <th style="text-align: right;">Val.Pg</th>
+                <th style="text-align: left;">PIX</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
             </tbody>
           </table>
-        </div>
+        </body>
+        </html>
       `;
 
-      console.log("📄 [handlePrint] HTML gerado com", htmlContent.length, "caracteres");
+      console.log("📄 [handlePrint] HTML gerado, comprimento:", htmlContent.length);
 
       // Criar elemento temporário
       const element = document.createElement('div');
@@ -754,20 +760,26 @@ export default function Financial() {
       element.style.left = '-9999px';
       element.style.top = '0';
       element.style.backgroundColor = 'white';
+      element.style.width = '1000px';
       document.body.appendChild(element);
 
       console.log("✅ [handlePrint] Elemento adicionado ao DOM");
-      console.log("📏 [handlePrint] Dimensões do elemento:", element.offsetWidth, "x", element.offsetHeight);
+
+      // Aguardar um pouco para garantir que o DOM esteja pronto
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log("📏 [handlePrint] Dimensões:", element.offsetWidth, "x", element.offsetHeight);
 
       const opt = {
         margin: [10, 10, 10, 10],
-        filename: `relatorio-financeiro-${monthName}.pdf`,
+        filename: `relatorio-financeiro-${monthName.replace(/\s/g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          logging: true,
-          backgroundColor: '#ffffff'
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 1000
         },
         jsPDF: { 
           unit: 'mm', 
@@ -776,38 +788,37 @@ export default function Financial() {
         }
       };
 
-      console.log("🚀 [handlePrint] Iniciando conversão para PDF...");
+      console.log("🚀 [handlePrint] Gerando PDF...");
 
-      // Gerar e baixar PDF
-      html2pdf()
+      // Gerar PDF
+      await html2pdf()
         .set(opt)
         .from(element)
         .save()
         .then(() => {
-          console.log("✅ [handlePrint] PDF salvo com sucesso!");
-          if (document.body.contains(element)) {
-            document.body.removeChild(element);
-            console.log("🗑️ [handlePrint] Elemento temporário removido");
-          }
+          console.log("✅ [handlePrint] PDF salvo!");
           toast({
             title: "Sucesso!",
             description: "PDF gerado e baixado com sucesso.",
           });
         })
         .catch((error: any) => {
-          console.error("❌ [handlePrint] Erro ao gerar PDF:", error);
-          if (document.body.contains(element)) {
-            document.body.removeChild(element);
-          }
+          console.error("❌ [handlePrint] Erro:", error);
           toast({
             title: "Erro",
-            description: "Não foi possível gerar o PDF. Veja o console para detalhes.",
+            description: "Erro ao gerar PDF. Veja o console.",
             variant: "destructive",
           });
+        })
+        .finally(() => {
+          if (document.body.contains(element)) {
+            document.body.removeChild(element);
+            console.log("🗑️ [handlePrint] Elemento removido");
+          }
         });
 
     } catch (error) {
-      console.error("❌ [handlePrint] Erro ao gerar PDF:", error);
+      console.error("❌ [handlePrint] Erro geral:", error);
       toast({
         title: "Erro",
         description: "Não foi possível gerar o PDF.",
