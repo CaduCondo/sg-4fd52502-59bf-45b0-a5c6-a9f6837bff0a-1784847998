@@ -33,19 +33,42 @@ export function RentalPaymentHistoryDialog({
 
   // Função para calcular valor esperado total (soma os items do breakdown)
   const getExpectedAmount = (payment: Payment): number => {
+    console.log("\n=== getExpectedAmount ===");
+    console.log("Payment ID:", payment.id);
+    console.log("Installment:", payment.installment);
+    console.log("expected_amount:", payment.expectedAmount);
+    console.log("late_fee:", payment.lateFee);
+    console.log("interest:", payment.interest);
+    console.log("discount:", payment.discount);
+    console.log("breakdown:", payment.breakdown);
+    console.log("breakdown type:", typeof payment.breakdown);
+    
     if (payment.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
 
+        console.log("Breakdown parseado:", breakdownData);
+        console.log("É array?", Array.isArray(breakdownData));
+
         // Breakdown é um array de items
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          console.log("Número de items:", breakdownData.length);
+          breakdownData.forEach((item: any, index: number) => {
+            console.log(`Item ${index}:`, item);
+            console.log(`  value:`, item.value);
+            console.log(`  amount:`, item.amount);
+            console.log(`  label:`, item.label);
+          });
+          
           const total = breakdownData.reduce((sum: number, item: any) => {
             const value = Number(item.value || item.amount || 0);
             return sum + value;
           }, 0);
           
+          console.log("Total calculado:", total);
+          console.log("=========================\n");
           return total;
         }
       } catch (error) {
@@ -54,6 +77,8 @@ export function RentalPaymentHistoryDialog({
     }
     
     // Fallback: usar expected_amount
+    console.log("Usando expected_amount (fallback):", payment.expectedAmount);
+    console.log("=========================\n");
     return payment.expectedAmount;
   };
 
@@ -75,6 +100,20 @@ export function RentalPaymentHistoryDialog({
         .order("due_date", { ascending: true });
 
       if (error) throw error;
+      
+      console.log("=== DADOS DO BANCO (payments) ===");
+      console.log("Total de payments:", data?.length);
+      if (data && data.length > 0) {
+        const firstPayment = data[0];
+        console.log("Primeiro payment (exemplo):");
+        console.log("  expected_amount:", firstPayment.expected_amount);
+        console.log("  paid_amount:", firstPayment.paid_amount);
+        console.log("  late_fee:", firstPayment.late_fee);
+        console.log("  interest:", firstPayment.interest);
+        console.log("  discount_amount:", firstPayment.discount_amount);
+        console.log("  breakdown:", firstPayment.breakdown);
+        console.log("  breakdown type:", typeof firstPayment.breakdown);
+      }
       
       const mappedPayments: Payment[] = (data || []).map((p) => ({
         id: p.id,
