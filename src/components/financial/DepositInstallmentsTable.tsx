@@ -270,7 +270,13 @@ export function DepositInstallmentsTable({
   }, [data, toast]);
 
   const handlePrint = useCallback(() => {
+    // Adicionar classe para controlar a impressão
+    document.body.classList.add('printing-deposits');
     window.print();
+    // Remover classe após impressão
+    setTimeout(() => {
+      document.body.classList.remove('printing-deposits');
+    }, 100);
   }, []);
 
   // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
@@ -421,451 +427,539 @@ export function DepositInstallmentsTable({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="pt-6">
+    <>
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 1cm;
+          }
+          
+          /* Esconder tudo por padrão quando está imprimindo */
+          body.printing-deposits * {
+            visibility: hidden;
+          }
+          
+          /* Mostrar apenas o conteúdo selecionado */
+          body.printing-deposits #deposits-print-content,
+          body.printing-deposits #deposits-print-content * {
+            visibility: visible;
+          }
+          
+          /* Posicionar o conteúdo no topo da página */
+          body.printing-deposits #deposits-print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          
+          /* Mostrar título apenas na impressão */
+          body.printing-deposits .print-only {
+            display: block !important;
+          }
+          
+          /* Esconder elementos que não devem aparecer na impressão */
+          body.printing-deposits .no-print,
+          body.printing-deposits button,
+          body.printing-deposits nav,
+          body.printing-deposits header,
+          body.printing-deposits aside,
+          body.printing-deposits .sidebar {
+            display: none !important;
+          }
+          
+          /* Ajustar tabelas para caber na página */
+          body.printing-deposits table {
+            font-size: 6pt !important;
+            width: 100%;
+          }
+          
+          body.printing-deposits th,
+          body.printing-deposits td {
+            padding: 2px !important;
+            font-size: 6pt !important;
+          }
+          
+          /* Ajustar cards */
+          body.printing-deposits .grid {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+            gap: 6px !important;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+          }
+          
+          body.printing-deposits .grid > * {
+            font-size: 7pt !important;
+          }
+          
+          /* Garantir que bordas sejam visíveis */
+          body.printing-deposits table,
+          body.printing-deposits th,
+          body.printing-deposits td {
+            border: 1px solid #999 !important;
+            border-collapse: collapse !important;
+          }
+          
+          /* Evitar quebra de página dentro de linhas */
+          body.printing-deposits tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+      <div id="deposits-print-content" className="space-y-6">
+        {/* Título para impressão */}
+        <div className="mb-4 print-only" style={{display: 'none'}}>
+          <h1 className="text-2xl font-bold">
+            Relatório de Cauções - {statusFilter === "active" ? "Locações Ativas" : statusFilter === "inactive" ? "Locações Inativas" : "Todas as Locações"}
+          </h1>
+        </div>
+        
+        {/* Cards de Resumo */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Valor Bruto Esperado
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(totalExpected)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Soma de todos os recebimentos
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Valor Bruto Recebido
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(totalReceived)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Todos os pagamentos recebidos
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-red-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Comissão
+                  </p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {formatCurrency(totalCommission)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Soma das comissões parceiro + interno
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Receita Líquida
+                  </p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatCurrency(netRevenue)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Receita após taxa administrativa
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Valor Bruto Esperado
-                </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(totalExpected)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Soma de todos os recebimentos
-                </p>
+              <CardTitle className="text-2xl">📋 Detalhamento dos Cauções</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Status Locação</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativas</SelectItem>
+                      <SelectItem value="inactive">Inativas</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="gap-2"
+                >
+                  <Printer className="h-4 w-4" /> Imprimir
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToExcel}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" /> Exportar Excel
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Valor Bruto Recebido
-                </p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalReceived)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Todos os pagamentos recebidos
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Comissão
-                </p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totalCommission)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Soma das comissões parceiro + interno
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Receita Líquida
-                </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {formatCurrency(netRevenue)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Receita após taxa administrativa
-                </p>
-              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("location")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Local {getSortIcon("location")}
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("complement")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Complemento {getSortIcon("complement")}
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("tenant")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Inquilino {getSortIcon("tenant")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => handleSort("rent")}
+                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                      >
+                        Valor Aluguel {getSortIcon("rent")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => handleSort("deposit")}
+                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                      >
+                        Valor Total Caução {getSortIcon("deposit")}
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("partner")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Corretor Parceiro {getSortIcon("partner")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => handleSort("partnerCommission")}
+                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                      >
+                        Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => handleSort("internalCommission")}
+                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                      >
+                        Valor Pg Corretor Interno {getSortIcon("internalCommission")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <button
+                        onClick={() => handleSort("installment")}
+                        className="flex items-center justify-center hover:text-primary cursor-pointer mx-auto"
+                      >
+                        Parcela {getSortIcon("installment")}
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("date")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Data Pagamento {getSortIcon("date")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => handleSort("amount")}
+                        className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                      >
+                        Valor Parcela {getSortIcon("amount")}
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("pix")}
+                        className="flex items-center hover:text-primary cursor-pointer"
+                      >
+                        Código PIX {getSortIcon("pix")}
+                      </button>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedGroups.map((group) =>
+                    group.map((inst, index) => {
+                      const bgColor = inst.pix_code && inst.pix_code.trim() !== "" ? "bg-green-50" : "bg-red-50";
+                      const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                      
+                      return (
+                      <TableRow
+                        key={inst.id}
+                      >
+                        {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
+                        {index === 0 && (
+                          <>
+                            <TableCell className="font-medium" rowSpan={group.length}>
+                              <div
+                                className="max-w-[150px] truncate"
+                                title={inst.rental?.property?.location?.name}
+                              >
+                                {inst.rental?.property?.location?.name || "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell rowSpan={group.length}>
+                              <div
+                                className="max-w-[100px] truncate"
+                                title={inst.rental?.property?.complement}
+                              >
+                                {inst.rental?.property?.complement || "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell rowSpan={group.length}>
+                              <div
+                                className="max-w-[120px] truncate"
+                                title={inst.rental?.tenant?.name}
+                              >
+                                {inst.rental?.tenant?.name || "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right" rowSpan={group.length}>
+                              {formatCurrency(inst.rental?.rent_value || 0)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold" rowSpan={group.length}>
+                              {formatCurrency(groupTotalDeposit)}
+                            </TableCell>
+                            <TableCell rowSpan={group.length}>
+                              {inst.rental?.has_partner_broker ? "Sim" : "Não"}
+                            </TableCell>
+                            <TableCell className="text-right" rowSpan={group.length}>
+                              {editingCell?.id === inst.id &&
+                              editingCell?.field === "partner_commission" ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  defaultValue={inst.partner_commission}
+                                  onBlur={(e) =>
+                                    handleUpdateField(
+                                      inst.id,
+                                      "partner_commission",
+                                      e.target.value
+                                    )
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleUpdateField(
+                                        inst.id,
+                                        "partner_commission",
+                                        (e.target as HTMLInputElement).value
+                                      );
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="w-24 h-8"
+                                />
+                              ) : (
+                                <div
+                                  className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                                  onClick={() =>
+                                    setEditingCell({
+                                      id: inst.id,
+                                      field: "partner_commission",
+                                    })
+                                  }
+                                >
+                                  <span>{formatCurrency(inst.partner_commission)}</span>
+                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right" rowSpan={group.length}>
+                              {editingCell?.id === inst.id &&
+                              editingCell?.field === "internal_commission" ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  defaultValue={inst.internal_commission}
+                                  onBlur={(e) =>
+                                    handleUpdateField(
+                                      inst.id,
+                                      "internal_commission",
+                                      e.target.value
+                                    )
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleUpdateField(
+                                        inst.id,
+                                        "internal_commission",
+                                        (e.target as HTMLInputElement).value
+                                      );
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="w-24 h-8"
+                                />
+                              ) : (
+                                <div
+                                  className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                                  onClick={() =>
+                                    setEditingCell({
+                                      id: inst.id,
+                                      field: "internal_commission",
+                                    })
+                                  }
+                                >
+                                  <span>{formatCurrency(inst.internal_commission)}</span>
+                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                          </>
+                        )}
+
+                        {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
+                        <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
+                          {inst.installment_number}/{inst.total_installments}
+                        </TableCell>
+                        <TableCell className={`${bgColor} whitespace-nowrap`}>
+                          {inst.payment_date
+                            ? inst.payment_date.split("T")[0].split("-").reverse().join("/")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className={`text-right ${bgColor}`}>
+                          {editingCell?.id === inst.id &&
+                          editingCell?.field === "amount" ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              defaultValue={inst.amount}
+                              onBlur={(e) =>
+                                handleUpdateField(inst.id, "amount", e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleUpdateField(
+                                    inst.id,
+                                    "amount",
+                                    (e.target as HTMLInputElement).value
+                                  );
+                                }
+                              }}
+                              autoFocus
+                              className="w-28 h-8"
+                            />
+                          ) : (
+                            <div
+                              className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() =>
+                                setEditingCell({ id: inst.id, field: "amount" })
+                              }
+                            >
+                              <span className="font-semibold text-green-600">
+                                {formatCurrency(inst.amount)}
+                              </span>
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className={bgColor}>
+                          {editingCell?.id === inst.id &&
+                          editingCell?.field === "pix_code" ? (
+                            <Input
+                              type="text"
+                              defaultValue={inst.pix_code || ""}
+                              onBlur={(e) =>
+                                handleUpdateField(inst.id, "pix_code", e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleUpdateField(
+                                    inst.id,
+                                    "pix_code",
+                                    (e.target as HTMLInputElement).value
+                                  );
+                                }
+                              }}
+                              autoFocus
+                              className="w-32 h-8"
+                            />
+                          ) : (
+                            <div
+                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() =>
+                                setEditingCell({ id: inst.id, field: "pix_code" })
+                              }
+                            >
+                              <span className="truncate max-w-[100px]">
+                                {inst.pix_code || "-"}
+                              </span>
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                  )}
+                  {/* ✅ LINHA DE TOTAIS */}
+                  <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
+                    <TableCell colSpan={4} className="text-right pr-4">TOTAIS</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{formatCurrency(totalPartnerCommission)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totalInternalCommission)}</TableCell>
+                    <TableCell className="border-l border-l-2 border-gray-300"></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">📋 Detalhamento dos Cauções</CardTitle>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Status Locação</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativas</SelectItem>
-                    <SelectItem value="inactive">Inativas</SelectItem>
-                    <SelectItem value="all">Todos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="gap-2"
-              >
-                <Printer className="h-4 w-4" /> Imprimir
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportToExcel}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" /> Exportar Excel
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("location")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Local {getSortIcon("location")}
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("complement")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Complemento {getSortIcon("complement")}
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("tenant")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Inquilino {getSortIcon("tenant")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <button
-                      onClick={() => handleSort("rent")}
-                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                    >
-                      Valor Aluguel {getSortIcon("rent")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <button
-                      onClick={() => handleSort("deposit")}
-                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                    >
-                      Valor Total Caução {getSortIcon("deposit")}
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("partner")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Corretor Parceiro {getSortIcon("partner")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <button
-                      onClick={() => handleSort("partnerCommission")}
-                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                    >
-                      Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <button
-                      onClick={() => handleSort("internalCommission")}
-                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                    >
-                      Valor Pg Corretor Interno {getSortIcon("internalCommission")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-center">
-                    <button
-                      onClick={() => handleSort("installment")}
-                      className="flex items-center justify-center hover:text-primary cursor-pointer mx-auto"
-                    >
-                      Parcela {getSortIcon("installment")}
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("date")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Data Pagamento {getSortIcon("date")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <button
-                      onClick={() => handleSort("amount")}
-                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
-                    >
-                      Valor Parcela {getSortIcon("amount")}
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={() => handleSort("pix")}
-                      className="flex items-center hover:text-primary cursor-pointer"
-                    >
-                      Código PIX {getSortIcon("pix")}
-                    </button>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedGroups.map((group) =>
-                  group.map((inst, index) => {
-                    const bgColor = inst.pix_code && inst.pix_code.trim() !== "" ? "bg-green-50" : "bg-red-50";
-                    const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-                    
-                    return (
-                    <TableRow
-                      key={inst.id}
-                    >
-                      {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
-                      {index === 0 && (
-                        <>
-                          <TableCell className="font-medium" rowSpan={group.length}>
-                            <div
-                              className="max-w-[150px] truncate"
-                              title={inst.rental?.property?.location?.name}
-                            >
-                              {inst.rental?.property?.location?.name || "-"}
-                            </div>
-                          </TableCell>
-                          <TableCell rowSpan={group.length}>
-                            <div
-                              className="max-w-[100px] truncate"
-                              title={inst.rental?.property?.complement}
-                            >
-                              {inst.rental?.property?.complement || "-"}
-                            </div>
-                          </TableCell>
-                          <TableCell rowSpan={group.length}>
-                            <div
-                              className="max-w-[120px] truncate"
-                              title={inst.rental?.tenant?.name}
-                            >
-                              {inst.rental?.tenant?.name || "-"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right" rowSpan={group.length}>
-                            {formatCurrency(inst.rental?.rent_value || 0)}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold" rowSpan={group.length}>
-                            {formatCurrency(groupTotalDeposit)}
-                          </TableCell>
-                          <TableCell rowSpan={group.length}>
-                            {inst.rental?.has_partner_broker ? "Sim" : "Não"}
-                          </TableCell>
-                          <TableCell className="text-right" rowSpan={group.length}>
-                            {editingCell?.id === inst.id &&
-                            editingCell?.field === "partner_commission" ? (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                defaultValue={inst.partner_commission}
-                                onBlur={(e) =>
-                                  handleUpdateField(
-                                    inst.id,
-                                    "partner_commission",
-                                    e.target.value
-                                  )
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleUpdateField(
-                                      inst.id,
-                                      "partner_commission",
-                                      (e.target as HTMLInputElement).value
-                                    );
-                                  }
-                                }}
-                                autoFocus
-                                className="w-24 h-8"
-                              />
-                            ) : (
-                              <div
-                                className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                                onClick={() =>
-                                  setEditingCell({
-                                    id: inst.id,
-                                    field: "partner_commission",
-                                  })
-                                }
-                              >
-                                <span>{formatCurrency(inst.partner_commission)}</span>
-                                <Pencil className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right" rowSpan={group.length}>
-                            {editingCell?.id === inst.id &&
-                            editingCell?.field === "internal_commission" ? (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                defaultValue={inst.internal_commission}
-                                onBlur={(e) =>
-                                  handleUpdateField(
-                                    inst.id,
-                                    "internal_commission",
-                                    e.target.value
-                                  )
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleUpdateField(
-                                      inst.id,
-                                      "internal_commission",
-                                      (e.target as HTMLInputElement).value
-                                    );
-                                  }
-                                }}
-                                autoFocus
-                                className="w-24 h-8"
-                              />
-                            ) : (
-                              <div
-                                className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                                onClick={() =>
-                                  setEditingCell({
-                                    id: inst.id,
-                                    field: "internal_commission",
-                                  })
-                                }
-                              >
-                                <span>{formatCurrency(inst.internal_commission)}</span>
-                                <Pencil className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            )}
-                          </TableCell>
-                        </>
-                      )}
-
-                      {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
-                      <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
-                        {inst.installment_number}/{inst.total_installments}
-                      </TableCell>
-                      <TableCell className={`${bgColor} whitespace-nowrap`}>
-                        {inst.payment_date
-                          ? inst.payment_date.split("T")[0].split("-").reverse().join("/")
-                          : "-"}
-                      </TableCell>
-                      <TableCell className={`text-right ${bgColor}`}>
-                        {editingCell?.id === inst.id &&
-                        editingCell?.field === "amount" ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            defaultValue={inst.amount}
-                            onBlur={(e) =>
-                              handleUpdateField(inst.id, "amount", e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleUpdateField(
-                                  inst.id,
-                                  "amount",
-                                  (e.target as HTMLInputElement).value
-                                );
-                              }
-                            }}
-                            autoFocus
-                            className="w-28 h-8"
-                          />
-                        ) : (
-                          <div
-                            className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                            onClick={() =>
-                              setEditingCell({ id: inst.id, field: "amount" })
-                            }
-                          >
-                            <span className="font-semibold text-green-600">
-                              {formatCurrency(inst.amount)}
-                            </span>
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className={bgColor}>
-                        {editingCell?.id === inst.id &&
-                        editingCell?.field === "pix_code" ? (
-                          <Input
-                            type="text"
-                            defaultValue={inst.pix_code || ""}
-                            onBlur={(e) =>
-                              handleUpdateField(inst.id, "pix_code", e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleUpdateField(
-                                  inst.id,
-                                  "pix_code",
-                                  (e.target as HTMLInputElement).value
-                                );
-                              }
-                            }}
-                            autoFocus
-                            className="w-32 h-8"
-                          />
-                        ) : (
-                          <div
-                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                            onClick={() =>
-                              setEditingCell({ id: inst.id, field: "pix_code" })
-                            }
-                          >
-                            <span className="truncate max-w-[100px]">
-                              {inst.pix_code || "-"}
-                            </span>
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-                )}
-                {/* ✅ LINHA DE TOTAIS */}
-                <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
-                  <TableCell colSpan={4} className="text-right pr-4">TOTAIS</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="text-right">{formatCurrency(totalPartnerCommission)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totalInternalCommission)}</TableCell>
-                  <TableCell className="border-l border-l-2 border-gray-300"></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </>
   );
 }
