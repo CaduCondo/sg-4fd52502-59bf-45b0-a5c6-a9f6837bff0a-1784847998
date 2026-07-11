@@ -518,23 +518,23 @@ export default function Financial() {
     }
   }, []);
 
-  // Função para obter valor esperado - calcula a partir do breakdown
+  // Função para obter valor esperado - soma os items do breakdown
   const getExpectedAmount = useCallback((payment: Payment): number => {
-    // Prioridade 1: Calcular a partir do breakdown se existir
     if (payment.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
 
-        // Se for array de items, somar todos os valores
-        if (Array.isArray(breakdownData)) {
+        // Breakdown é um array de items, cada um com amount ou value
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
           const total = breakdownData.reduce((sum: number, item: any) => {
             const value = Number(item.value || item.amount || 0);
             return sum + value;
           }, 0);
           
-          if (total > 0) return total;
+          // Retornar o total se for válido
+          if (total > 0 || total < 0) return total;
         }
       } catch (error) {
         console.error("Erro ao processar breakdown:", error);
