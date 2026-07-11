@@ -592,8 +592,8 @@ export default function Financial() {
           bValue = b.paymentDate ? new Date(b.paymentDate + "T12:00:00").getTime() : 0;
           break;
         case "expectedAmount":
-          aValue = a.expectedAmount;
-          bValue = b.expectedAmount;
+          aValue = getExpectedAmount(a);
+          bValue = getExpectedAmount(b);
           break;
         case "paidAmount":
           aValue = a.paidAmount || 0;
@@ -704,7 +704,7 @@ export default function Financial() {
         "Data Vencimento": format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy"),
         "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-",
         "Horário Recebido": details.paymentTime || "-",
-        "Valor Esperado": payment.expectedAmount,
+        "Valor Esperado": getExpectedAmount(payment),
         "Valor Pago": payment.paidAmount || 0,
         "Código PIX": details.pixCode || "-",
       };
@@ -728,6 +728,33 @@ export default function Financial() {
     });
   }, [getSortedPayments, filterMonth, filterYear, getPaymentDetails, calculatePaymentNumber, toast]);
 
+  // Função para calcular valor esperado total (soma os items do breakdown)
+  const getExpectedAmount = useCallback((payment: Payment): number => {
+    // Prioridade 1: Se houver breakdown, somar todos os items
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+
+        // Breakdown é um array de items
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          const total = breakdownData.reduce((sum: number, item: any) => {
+            const value = Number(item.value || item.amount || 0);
+            return sum + value;
+          }, 0);
+          
+          if (total !== 0) return total;
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
+      }
+    }
+    
+    // Fallback: usar expected_amount
+    return payment.expectedAmount;
+  }, []);
+
   // KPI Calculations (MEMOIZADOS COM FILTRO DE LOCALIZAÇÃO!)
   const kpiCalculations = useMemo(() => {
     const paymentsToCalculate = locationFilteredPayments;
@@ -739,7 +766,7 @@ export default function Financial() {
     
     const totalLocationExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     
-    const totalExpected = paymentsToCalculate.reduce((sum, p) => sum + p.expectedAmount, 0);
+    const totalExpected = paymentsToCalculate.reduce((sum, p) => sum + getExpectedAmount(p), 0);
     
     const totalReceived = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
@@ -1279,7 +1306,7 @@ export default function Financial() {
                                     {new Intl.NumberFormat("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
-                                    }).format(payment.expectedAmount)}
+                                    }).format(getExpectedAmount(payment))}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-600 text-xs sm:text-sm">
                                     {new Intl.NumberFormat("pt-BR", {
