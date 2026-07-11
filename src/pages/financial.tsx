@@ -522,23 +522,52 @@ export default function Financial() {
   // Função para calcular valor esperado total (com juros/multas do breakdown)
   const getExpectedAmount = useCallback((payment: Payment): number => {
     if (payment.breakdown && typeof payment.breakdown === 'object') {
-      const breakdown = payment.breakdown as any;
-      // Prioridade 1: usar total ou totalWithFees do breakdown
-      if (breakdown.total !== undefined && breakdown.total !== null) {
-        return Number(breakdown.total);
+      try {
+        let breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+        
+        // Se breakdown for um objeto, converter para array
+        if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
+          const itemsArray: any[] = [];
+          Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+            if (value && typeof value === 'object') {
+              let itemAmount = value.value || value.amount || 0;
+              const itemType = value.type || "addition";
+              
+              // Se for dedução, garantir que o valor seja negativo
+              if (itemType === "deduction" && itemAmount > 0) {
+                itemAmount = -itemAmount;
+              }
+              // Se for adição, garantir que o valor seja positivo
+              if (itemType === "addition" && itemAmount < 0) {
+                itemAmount = Math.abs(itemAmount);
+              }
+              
+              itemsArray.push({
+                amount: itemAmount,
+                value: itemAmount,
+                type: itemType
+              });
+            }
+          });
+          breakdownData = itemsArray;
+        }
+        
+        // Se for array, somar todos os valores
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+          const total = breakdownData.reduce((sum: number, item: any) => {
+            const itemValue = item.value || item.amount || 0;
+            return sum + itemValue;
+          }, 0);
+          
+          return total;
+        }
+      } catch (error) {
+        console.error("Erro ao processar breakdown:", error);
       }
-      if (breakdown.totalWithFees !== undefined && breakdown.totalWithFees !== null) {
-        return Number(breakdown.totalWithFees);
-      }
-      // Prioridade 2: calcular manualmente do breakdown
-      const rentalAmount = Number(breakdown.rentalAmount || 0);
-      const garageAmount = Number(breakdown.garageAmount || 0);
-      const interest = Number(breakdown.interest || 0);
-      const lateFee = Number(breakdown.lateFee || 0);
-      const discount = Number(breakdown.discount || 0);
-      
-      return rentalAmount + garageAmount + interest + lateFee - discount;
     }
+    
     // Fallback: usar expected_amount
     return payment.expectedAmount;
   }, []);
