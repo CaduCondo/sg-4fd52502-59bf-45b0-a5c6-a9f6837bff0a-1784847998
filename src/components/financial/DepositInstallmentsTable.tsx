@@ -58,7 +58,7 @@ interface DepositInstallmentsTableProps {
   allowedLocationIds?: string[];
 }
 
-type SortField = "location" | "complement" | "tenant" | "rent" | "deposit" | "partner" | "partnerCommission" | "internalCommission" | "installment" | "date" | "amount" | "pix";
+type SortField = "location" | "complement" | "tenant" | "rent" | "deposit" | "partner" | "partnerCommission" | "internalCommission" | "installment" | "date" | "amount" | "pix" | "rental_property" | "tenant_name" | "installment_number" | "due_date" | "payment_date" | "status";
 type SortDirection = "asc" | "desc" | null;
 
 export function DepositInstallmentsTable({
