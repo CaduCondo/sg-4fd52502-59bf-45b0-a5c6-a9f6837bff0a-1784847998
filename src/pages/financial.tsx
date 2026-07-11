@@ -659,6 +659,18 @@ export default function Financial() {
 
   const handlePrint = useCallback(async () => {
     try {
+      console.log("🖨️ [handlePrint] Iniciando geração de PDF...");
+      console.log("📊 [handlePrint] Total de pagamentos:", getSortedPayments.length);
+      
+      if (getSortedPayments.length === 0) {
+        toast({
+          title: "Aviso",
+          description: "Não há dados para imprimir.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const html2pdf = (await import('html2pdf.js')).default;
       const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR });
 
@@ -689,13 +701,24 @@ export default function Financial() {
             <tbody>
       `;
 
-      getSortedPayments.forEach(payment => {
+      console.log("🔄 [handlePrint] Processando", getSortedPayments.length, "pagamentos...");
+
+      getSortedPayments.forEach((payment, index) => {
         const details = getPaymentDetails(payment);
         const paymentNumber = calculatePaymentNumber(payment, details.rental);
         
         const statusText = payment.status === "paid" ? "Pago" : 
                           payment.status === "pending" ? "Pend" : 
                           payment.status === "overdue" ? "Atras" : "Parc";
+        
+        if (index === 0) {
+          console.log("📝 [handlePrint] Exemplo de linha 1:", {
+            parcela: paymentNumber,
+            local: details.local,
+            inquilino: details.tenantName,
+            valorEsperado: getExpectedAmount(payment)
+          });
+        }
         
         htmlContent += `
           <tr>
@@ -722,13 +745,19 @@ export default function Financial() {
         </div>
       `;
 
+      console.log("📄 [handlePrint] HTML gerado com", htmlContent.length, "caracteres");
+
       // Criar elemento temporário
       const element = document.createElement('div');
       element.innerHTML = htmlContent;
       element.style.position = 'fixed';
       element.style.left = '-9999px';
       element.style.top = '0';
+      element.style.backgroundColor = 'white';
       document.body.appendChild(element);
+
+      console.log("✅ [handlePrint] Elemento adicionado ao DOM");
+      console.log("📏 [handlePrint] Dimensões do elemento:", element.offsetWidth, "x", element.offsetHeight);
 
       const opt = {
         margin: [10, 10, 10, 10],
@@ -737,7 +766,7 @@ export default function Financial() {
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          logging: false,
+          logging: true,
           backgroundColor: '#ffffff'
         },
         jsPDF: { 
@@ -747,25 +776,38 @@ export default function Financial() {
         }
       };
 
+      console.log("🚀 [handlePrint] Iniciando conversão para PDF...");
+
       // Gerar e baixar PDF
       html2pdf()
         .set(opt)
         .from(element)
         .save()
         .then(() => {
+          console.log("✅ [handlePrint] PDF salvo com sucesso!");
           if (document.body.contains(element)) {
             document.body.removeChild(element);
+            console.log("🗑️ [handlePrint] Elemento temporário removido");
           }
+          toast({
+            title: "Sucesso!",
+            description: "PDF gerado e baixado com sucesso.",
+          });
         })
         .catch((error: any) => {
-          console.error("Erro ao gerar PDF:", error);
+          console.error("❌ [handlePrint] Erro ao gerar PDF:", error);
           if (document.body.contains(element)) {
             document.body.removeChild(element);
           }
+          toast({
+            title: "Erro",
+            description: "Não foi possível gerar o PDF. Veja o console para detalhes.",
+            variant: "destructive",
+          });
         });
 
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
+      console.error("❌ [handlePrint] Erro ao gerar PDF:", error);
       toast({
         title: "Erro",
         description: "Não foi possível gerar o PDF.",
