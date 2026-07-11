@@ -518,53 +518,11 @@ export default function Financial() {
     }
   }, []);
 
-  // Função para calcular valor esperado total (com juros/multas do breakdown)
+  // Função para obter valor esperado - usa o valor salvo no banco
   const getExpectedAmount = useCallback((payment: Payment): number => {
-    // Prioridade 1: Tentar usar breakdown se existir
-    if (payment.breakdown && typeof payment.breakdown === 'object') {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : payment.breakdown;
-
-        // Se for array direto, somar os valores
-        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-          const total = breakdownData.reduce((sum: number, item: any) => {
-            const itemValue = Number(item.value || item.amount || 0);
-            return sum + itemValue;
-          }, 0);
-          
-          if (total > 0) return total;
-        }
-        
-        // Se for objeto com items
-        if (breakdownData.items && Array.isArray(breakdownData.items)) {
-          const total = breakdownData.items.reduce((sum: number, item: any) => {
-            const itemValue = Number(item.value || item.amount || 0);
-            return sum + itemValue;
-          }, 0);
-          
-          if (total > 0) return total;
-        }
-      } catch (error) {
-        console.error("Erro ao processar breakdown:", error);
-      }
-    }
-    
-    // Prioridade 2: Calcular manualmente com lateFee e interest se disponíveis
-    const base = payment.expectedAmount || 0;
-    const lateFee = Number(payment.lateFee || 0);
-    const interest = Number(payment.interest || 0);
-    const discount = Number(payment.discount || 0);
-    
-    const calculated = base + lateFee + interest - discount;
-    
-    if (calculated !== base && calculated > 0) {
-      return calculated;
-    }
-    
-    // Fallback final: usar expected_amount base
-    return base;
+    // O valor correto já foi calculado e salvo no banco quando o pagamento foi registrado
+    // Não precisamos recalcular - apenas usar o expected_amount
+    return payment.expectedAmount;
   }, []);
 
   const handleSort = useCallback((field: SortField) => {
