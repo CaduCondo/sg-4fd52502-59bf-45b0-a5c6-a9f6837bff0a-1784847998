@@ -248,7 +248,7 @@ export function RentalPaymentHistoryDialog({
                         <TableCell className="text-base text-right">
                           {formatCurrency(payment.expected_amount)}
                         </TableCell>
-                        <TableCell className="text-base text-right">
+                        <TableCell className="text-base text-right text-green-600 font-semibold">
                           {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
                         </TableCell>
                       </TableRow>
@@ -257,7 +257,7 @@ export function RentalPaymentHistoryDialog({
                       <TableCell colSpan={5} className="text-base text-right">
                         Total Pago:
                       </TableCell>
-                      <TableCell className="text-base text-right">
+                      <TableCell className="text-base text-right text-green-600">
                         {formatCurrency(totalPaid)}
                       </TableCell>
                     </TableRow>
