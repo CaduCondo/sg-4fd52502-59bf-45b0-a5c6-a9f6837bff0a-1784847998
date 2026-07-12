@@ -269,40 +269,9 @@ export function DepositInstallmentsTable({
     });
   }, [data, toast]);
 
-  const handlePrint = useCallback(async () => {
-    const printContent = document.getElementById('deposits-print-content');
-    if (!printContent) return;
-
-    try {
-      // Import dinâmico do html2pdf
-      const html2pdf = (await import('html2pdf.js')).default;
-
-      const statusLabel = statusFilter === "active" ? "Locacoes-Ativas" : statusFilter === "inactive" ? "Locacoes-Inativas" : "Todas-Locacoes";
-
-      const opt = {
-        margin: [5, 5, 5, 5],
-        filename: `relatorio-caucoes-${statusLabel}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          letterRendering: true,
-          logging: false
-        },
-        jsPDF: { 
-          unit: "mm", 
-          format: "a4", 
-          orientation: "landscape",
-          compress: true
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      html2pdf().set(opt).from(printContent).save();
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-    }
-  }, [statusFilter]);
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
 
   // ✅ Agrupa parcelas por rental_id (MEMOIZADO)
   const groupedData = useMemo(() => {
@@ -572,31 +541,31 @@ export function DepositInstallmentsTable({
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table style={{ fontSize: '6px' }}>
+              <Table>
                 <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
                   <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("rental_property")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("rental_property")}>
                       Imóvel {sortField === "rental_property" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("tenant_name")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("tenant_name")}>
                       Inquilino {sortField === "tenant_name" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("installment_number")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("installment_number")}>
                       Parcela {sortField === "installment_number" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("due_date")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("due_date")}>
                       Vencimento {sortField === "due_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("payment_date")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("payment_date")}>
                       Data Pagamento {sortField === "payment_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("amount")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("amount")}>
                       Valor {sortField === "amount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("status")} style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-sm print:text-[10px]" onClick={() => handleSort("status")}>
                       Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                     </TableHead>
-                    <TableHead style={{ padding: '3px', fontSize: '6px', whiteSpace: 'nowrap' }}>Observações</TableHead>
+                    <TableHead className="text-sm print:text-[10px]">Observações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -612,7 +581,7 @@ export function DepositInstallmentsTable({
                         {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
                         {index === 0 && (
                           <>
-                            <TableCell className="font-medium" rowSpan={group.length}>
+                            <TableCell className="font-medium text-sm print:text-[10px]" rowSpan={group.length}>
                               <div
                                 className="max-w-[150px] truncate"
                                 title={inst.rental?.property?.location?.name}
@@ -620,7 +589,7 @@ export function DepositInstallmentsTable({
                                 {inst.rental?.property?.location?.name || "-"}
                               </div>
                             </TableCell>
-                            <TableCell rowSpan={group.length}>
+                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
                               <div
                                 className="max-w-[100px] truncate"
                                 title={inst.rental?.property?.complement}
@@ -628,7 +597,7 @@ export function DepositInstallmentsTable({
                                 {inst.rental?.property?.complement || "-"}
                               </div>
                             </TableCell>
-                            <TableCell rowSpan={group.length}>
+                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
                               <div
                                 className="max-w-[120px] truncate"
                                 title={inst.rental?.tenant?.name}
@@ -636,16 +605,16 @@ export function DepositInstallmentsTable({
                                 {inst.rental?.tenant?.name || "-"}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right" rowSpan={group.length}>
+                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
                               {formatCurrency(inst.rental?.rent_value || 0)}
                             </TableCell>
-                            <TableCell className="text-right font-semibold" rowSpan={group.length}>
+                            <TableCell className="text-right font-semibold text-sm print:text-[10px]" rowSpan={group.length}>
                               {formatCurrency(groupTotalDeposit)}
                             </TableCell>
-                            <TableCell rowSpan={group.length}>
+                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
                               {inst.rental?.has_partner_broker ? "Sim" : "Não"}
                             </TableCell>
-                            <TableCell className="text-right" rowSpan={group.length}>
+                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
                               {editingCell?.id === inst.id &&
                               editingCell?.field === "partner_commission" ? (
                                 <Input
@@ -686,7 +655,7 @@ export function DepositInstallmentsTable({
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-right" rowSpan={group.length}>
+                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
                               {editingCell?.id === inst.id &&
                               editingCell?.field === "internal_commission" ? (
                                 <Input
@@ -731,15 +700,15 @@ export function DepositInstallmentsTable({
                         )}
 
                         {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
-                        <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
+                        <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 text-sm print:text-[10px] ${bgColor}`}>
                           {inst.installment_number}/{inst.total_installments}
                         </TableCell>
-                        <TableCell className={`${bgColor} whitespace-nowrap`}>
+                        <TableCell className={`whitespace-nowrap text-sm print:text-[10px] ${bgColor}`}>
                           {inst.payment_date
                             ? inst.payment_date.split("T")[0].split("-").reverse().join("/")
                             : "-"}
                         </TableCell>
-                        <TableCell className={`text-right ${bgColor}`}>
+                        <TableCell className={`text-right text-sm print:text-[10px] ${bgColor}`}>
                           {editingCell?.id === inst.id &&
                           editingCell?.field === "amount" ? (
                             <Input
@@ -775,7 +744,7 @@ export function DepositInstallmentsTable({
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className={bgColor}>
+                        <TableCell className={`text-sm print:text-[10px] ${bgColor}`}>
                           {editingCell?.id === inst.id &&
                           editingCell?.field === "pix_code" ? (
                             <Input
@@ -816,15 +785,15 @@ export function DepositInstallmentsTable({
                   )}
                   {/* ✅ LINHA DE TOTAIS */}
                   <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
-                    <TableCell colSpan={4} className="text-right pr-4">TOTAIS</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalPartnerCommission)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalInternalCommission)}</TableCell>
-                    <TableCell className="border-l border-l-2 border-gray-300"></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell colSpan={4} className="text-right pr-4 text-sm print:text-[10px]">TOTAIS</TableCell>
+                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalExpected)}</TableCell>
+                    <TableCell className="text-sm print:text-[10px]"></TableCell>
+                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalPartnerCommission)}</TableCell>
+                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalInternalCommission)}</TableCell>
+                    <TableCell className="border-l border-l-2 border-gray-300 text-sm print:text-[10px]"></TableCell>
+                    <TableCell className="text-sm print:text-[10px]"></TableCell>
+                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalExpected)}</TableCell>
+                    <TableCell className="text-sm print:text-[10px]"></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
