@@ -45,22 +45,32 @@ const printStyles = `
       display: none !important;
     }
     
+    h1, h2, p, strong {
+      color: black !important;
+    }
+    
     table {
-      font-size: 10pt !important;
+      font-size: 11pt !important;
       width: 100%;
       border-collapse: collapse;
+      margin-top: 20px;
     }
     
     th, td {
-      padding: 4px 6px !important;
-      border: 1px solid #ddd !important;
+      padding: 6px 8px !important;
+      border: 1px solid #333 !important;
+      text-align: left;
     }
     
     th {
-      background-color: #f0f0f0 !important;
+      background-color: #e5e7eb !important;
       font-weight: bold !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+    }
+    
+    tr {
+      page-break-inside: avoid;
     }
   }
 `;
@@ -236,27 +246,26 @@ export function RentalPaymentHistoryDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="flex items-center gap-2 no-print"
-              >
-                <FileText className="h-4 w-4" />
-                Imprimir
-              </Button>
-            </div>
+            <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
           </DialogHeader>
 
           <div className="print-content">
-            <div className="mb-4 space-y-1">
-              <h2 className="text-lg font-bold">Histórico de Pagamentos</h2>
-              <div className="text-base space-y-0.5">
-                <p><strong>Local:</strong> {rental?.property?.location}</p>
-                <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-                <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+            <div className="mb-4 space-y-2">
+              <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="text-base space-y-1">
+                  <p><strong>Local:</strong> {rental?.property?.location}</p>
+                  <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
+                  <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 no-print"
+                >
+                  <FileText className="h-4 w-4" />
+                  Imprimir
+                </Button>
               </div>
             </div>
 
@@ -265,33 +274,33 @@ export function RentalPaymentHistoryDialog({
                 <TableHeader>
                   <TableRow>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
                       onClick={() => handleSort("installment")}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         Parcela
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
                       onClick={() => handleSort("dueDate")}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         Vencimento
                         <SortIcon field="dueDate" />
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
                       onClick={() => handleSort("paymentDate")}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         Pagamento
                         <SortIcon field="paymentDate" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base">Status</TableHead>
+                    <TableHead className="text-base text-center">Status</TableHead>
                     <TableHead className="text-right text-base">Valor Esperado</TableHead>
                     <TableHead className="text-right text-base">Valor Pago</TableHead>
                   </TableRow>
@@ -314,16 +323,16 @@ export function RentalPaymentHistoryDialog({
                   ) : (
                     sortedPayments.map((payment) => (
                       <TableRow key={payment.id} className="hover:bg-gray-50">
-                        <TableCell className="text-base">{payment.installment}</TableCell>
-                        <TableCell className="text-base">
+                        <TableCell className="text-base text-center">{payment.installment}</TableCell>
+                        <TableCell className="text-base text-center">
                           {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                         </TableCell>
-                        <TableCell className="text-base">
+                        <TableCell className="text-base text-center">
                           {payment.paymentDate
                             ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                             : "-"}
                         </TableCell>
-                        <TableCell className="text-base">
+                        <TableCell className="text-base text-center">
                           <Badge
                             variant={
                               payment.status === "paid"
