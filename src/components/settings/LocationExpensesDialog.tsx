@@ -22,7 +22,7 @@ interface LocationExpensesDialogProps {
 type SortField = "location_name" | "description" | "amount";
 type SortDirection = "asc" | "desc" | null;
 
-// Estilos para impressão - CORRIGIDOS para funcionar dentro do Dialog
+// Estilos para impressão - SIMPLIFICADOS para funcionar corretamente
 const printStyles = `
   @media print {
     @page {
@@ -30,83 +30,87 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Ocultar TODO o conteúdo da página de fundo */
-    body > *:not([data-radix-portal]) {
-      display: none !important;
-    }
-    
-    /* Mostrar apenas o portal do Dialog */
-    [data-radix-portal] {
-      display: block !important;
-      position: static !important;
-      inset: auto !important;
-    }
-    
-    /* Ocultar overlay do Dialog */
-    [data-radix-dialog-overlay] {
-      display: none !important;
-    }
-    
-    /* Resetar estilos do Dialog para impressão */
-    [data-radix-dialog-content],
-    [role="dialog"] {
-      position: static !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      transform: none !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
+    /* Forçar modo de impressão limpo */
+    html, body {
       overflow: visible !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
+      height: auto !important;
       background: white !important;
     }
     
-    /* Ocultar elementos não essenciais */
-    .no-print,
-    button:not(.print-keep) {
+    /* Ocultar TUDO primeiro */
+    body * {
+      visibility: hidden !important;
       display: none !important;
     }
     
-    /* Cabeçalho */
-    .print-header {
+    /* Mostrar APENAS o conteúdo de impressão */
+    .print-content,
+    .print-content * {
+      visibility: visible !important;
       display: block !important;
-      margin-bottom: 20px;
-      page-break-inside: avoid;
     }
     
-    .print-header h2 {
+    .print-content {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      padding: 20px !important;
+      background: white !important;
+    }
+    
+    /* Forçar display correto para elementos específicos */
+    .print-content table {
+      display: table !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    
+    .print-content thead {
+      display: table-header-group !important;
+    }
+    
+    .print-content tbody {
+      display: table-row-group !important;
+    }
+    
+    .print-content tr {
+      display: table-row !important;
+    }
+    
+    .print-content th,
+    .print-content td {
+      display: table-cell !important;
+    }
+    
+    .print-content .print-flex {
+      display: flex !important;
+    }
+    
+    /* Estilos visuais */
+    .print-title {
       font-size: 18pt !important;
       font-weight: bold !important;
       margin-bottom: 6px !important;
       color: #000 !important;
     }
     
-    .print-header .print-subtitle {
+    .print-subtitle {
       font-size: 11pt !important;
       color: #666 !important;
       margin-bottom: 12px !important;
     }
     
-    .print-header .print-period {
-      display: block !important;
+    .print-period {
       font-size: 12pt !important;
       font-weight: 600 !important;
       color: #000 !important;
-      margin-top: 8px !important;
+      margin-bottom: 20px !important;
     }
     
-    /* Tabela */
     table {
       font-size: 10pt !important;
-      width: 100% !important;
-      border-collapse: collapse !important;
+      margin-top: 10px !important;
     }
     
     th, td {
@@ -122,27 +126,19 @@ const printStyles = `
       print-color-adjust: exact;
     }
     
-    /* Ocultar coluna de ações */
-    th:last-child,
-    td:last-child {
-      display: none !important;
-    }
-    
-    /* Total */
-    .print-total {
+    .print-total-wrapper {
       margin-top: 20px !important;
       padding: 12px !important;
       background-color: #f5f5f5 !important;
       border-radius: 4px !important;
-      display: flex !important;
-      justify-content: space-between !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
     
-    .print-total .total-value {
+    .print-total-value {
       color: #dc2626 !important;
       font-weight: bold !important;
+      font-size: 14pt !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -383,6 +379,65 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      
+      {/* Conteúdo para impressão - FORA do Dialog */}
+      <div className="print-content hidden">
+        <div>
+          <h1 className="print-title">
+            Detalhamento das Contas do Mês - {location.name}
+          </h1>
+          <p className="print-subtitle">
+            Controle de despesas mensais por localização
+          </p>
+          <div className="print-period">
+            Período: {getMonthName(filterMonth)}/{filterYear}
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: '100px' }}>Tipo</th>
+              <th>Descrição</th>
+              <th style={{ width: '120px' }}>Período</th>
+              <th style={{ width: '150px', textAlign: 'right' }}>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedExpenses.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>
+                  Nenhuma conta cadastrada para {getMonthName(filterMonth)}/{filterYear}
+                </td>
+              </tr>
+            ) : (
+              sortedExpenses.map((expense) => (
+                <tr key={expense.id}>
+                  <td>{getExpenseTypeLabel(expense.expenseType)}</td>
+                  <td>{expense.description || "-"}</td>
+                  <td>
+                    {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                    {formatCurrency(expense.amount)}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {sortedExpenses.length > 0 && (
+          <div className="print-total-wrapper print-flex" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: '600', fontSize: '12pt' }}>
+              Total de Contas ({getMonthName(filterMonth)}/{filterYear}):
+            </span>
+            <span className="print-total-value">
+              {formatCurrency(sortedExpenses.reduce((sum, e) => sum + e.amount, 0))}
+            </span>
+          </div>
+        )}
+      </div>
       
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
