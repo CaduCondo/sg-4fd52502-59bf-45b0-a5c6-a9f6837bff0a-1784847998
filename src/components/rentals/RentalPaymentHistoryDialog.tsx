@@ -128,34 +128,23 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        /* Esconde o conteúdo de impressão na tela usando visibility */
-        .print-only {
-          visibility: hidden;
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 0;
-          overflow: hidden;
+        /* Esconde o conteúdo de impressão APENAS em telas */
+        @media screen {
+          .print-only {
+            display: none;
+          }
         }
         
+        /* Na impressão, esconde o Dialog e mostra apenas o conteúdo de impressão */
         @media print {
-          body * {
-            visibility: hidden;
+          /* Esconde o Dialog */
+          [role="dialog"] {
+            display: none !important;
           }
           
-          .print-only,
-          .print-only * {
-            visibility: visible;
-          }
-          
+          /* Mostra o conteúdo de impressão */
           .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: auto;
-            overflow: visible;
+            display: block !important;
           }
           
           @page {
