@@ -22,6 +22,91 @@ interface LocationExpensesDialogProps {
 type SortField = "location_name" | "description" | "amount";
 type SortDirection = "asc" | "desc" | null;
 
+// Estilos para impressão
+const printStyles = `
+  @media print {
+    @page {
+      size: portrait;
+      margin: 10mm;
+    }
+    
+    body * {
+      visibility: hidden;
+    }
+    
+    .print-area, .print-area *,
+    .print-header, .print-header * {
+      visibility: visible;
+    }
+    
+    .print-header {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    
+    .print-area {
+      position: absolute;
+      left: 0;
+      top: 80px;
+      width: 100%;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+    
+    /* Estilos para o cabeçalho de impressão */
+    .print-header h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #000 !important;
+    }
+    
+    .print-header p {
+      font-size: 10pt;
+      color: #666 !important;
+      margin-bottom: 10px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    table {
+      font-size: 9pt !important;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 4px 6px !important;
+      border: 1px solid #ddd !important;
+      word-wrap: break-word;
+    }
+    
+    th {
+      background-color: #f0f0f0 !important;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .print-total {
+      font-size: 11pt;
+      font-weight: bold;
+      margin-top: 10px;
+      padding: 8px;
+      background-color: #f5f5f5 !important;
+      border-radius: 4px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+`;
+
 export function LocationExpensesDialog({ open, onOpenChange, location }: LocationExpensesDialogProps) {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<LocationExpense[]>([]);
@@ -255,16 +340,23 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="print-header">
             <div className="flex items-center justify-between">
-              <DialogTitle>Detalhamento das Contas do Mês - {location.name}</DialogTitle>
+              <div>
+                <DialogTitle>Detalhamento das Contas do Mês - {location.name}</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Controle de despesas mensais por localização
+                </p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 no-print"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir
@@ -272,9 +364,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             </div>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 print-area">
             {/* Filtros */}
-            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border no-print">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Label className="text-sm font-medium">Filtrar por:</Label>
               <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(Number(v))}>
@@ -303,13 +395,20 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               </Select>
             </div>
 
+            {/* Título para impressão */}
+            <div className="hidden print:block mb-4">
+              <p className="text-sm font-medium">
+                Período: {getMonthName(filterMonth)}/{filterYear}
+              </p>
+            </div>
+
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tipo</TableHead>
                     <TableHead 
-                      className="cursor-pointer select-none" 
+                      className="cursor-pointer select-none no-print" 
                       onClick={() => handleSort("description")}
                     >
                       <div className="flex items-center">
@@ -317,9 +416,10 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                         <SortIcon field="description" />
                       </div>
                     </TableHead>
+                    <TableHead className="hidden print:table-cell">Descrição</TableHead>
                     <TableHead>Período</TableHead>
                     <TableHead 
-                      className="text-right cursor-pointer select-none" 
+                      className="text-right cursor-pointer select-none no-print" 
                       onClick={() => handleSort("amount")}
                     >
                       <div className="flex items-center justify-end">
@@ -327,7 +427,8 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                         <SortIcon field="amount" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-center w-24">Ações</TableHead>
+                    <TableHead className="text-right hidden print:table-cell">Valor</TableHead>
+                    <TableHead className="text-center w-24 no-print">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -347,11 +448,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                     sortedExpenses.map((expense) => (
                       <TableRow 
                         key={expense.id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 no-print"
                         onClick={() => handleView(expense)}
                       >
                         <TableCell>
-                          <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                          <Badge variant="outline" className="no-print">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                          <span className="hidden print:inline">{getExpenseTypeLabel(expense.expenseType)}</span>
                         </TableCell>
                         <TableCell>{expense.description || "-"}</TableCell>
                         <TableCell>
@@ -360,7 +462,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                         <TableCell className="text-right font-semibold">
                           {formatCurrency(expense.amount)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="no-print">
                           <div className="flex justify-center">
                             <Button
                               variant="ghost"
@@ -378,12 +480,30 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                       </TableRow>
                     ))
                   )}
+                  {/* Linha adicional para impressão sem hover */}
+                  {sortedExpenses.map((expense) => (
+                    <TableRow 
+                      key={`print-${expense.id}`}
+                      className="hidden print:table-row"
+                    >
+                      <TableCell>
+                        <span>{getExpenseTypeLabel(expense.expenseType)}</span>
+                      </TableCell>
+                      <TableCell>{expense.description || "-"}</TableCell>
+                      <TableCell>
+                        {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(expense.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
 
             {sortedExpenses.length > 0 && (
-              <div className="p-4 bg-muted rounded-lg">
+              <div className="p-4 bg-muted rounded-lg print-total">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total de Contas ({getMonthName(filterMonth)}/{filterYear}):</span>
                   <span className="text-xl font-bold text-red-600">
@@ -394,7 +514,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             )}
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 no-print">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
