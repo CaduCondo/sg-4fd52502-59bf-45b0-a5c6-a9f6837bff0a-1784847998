@@ -30,103 +30,172 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Ocultar tudo que não deve ser impresso */
-    .no-print,
-    button,
-    [data-radix-dialog-overlay],
-    .cursor-pointer {
-      display: none !important;
+    /* Resetar TUDO para impressão */
+    * {
+      position: static !important;
+      transform: none !important;
+      filter: none !important;
     }
     
-    /* Resetar Dialog para impressão */
-    [role="dialog"] {
+    /* Ocultar overlay e elementos desnecessários */
+    body > div:not([role="dialog"]),
+    [data-radix-dialog-overlay],
+    .no-print,
+    button {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    
+    /* Forçar Dialog a se comportar como página normal */
+    body,
+    html {
+      overflow: visible !important;
+      height: auto !important;
       position: static !important;
+    }
+    
+    [role="dialog"],
+    [data-radix-portal],
+    [data-radix-dialog-content] {
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: none !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
+      max-height: none !important;
       overflow: visible !important;
-      transform: none !important;
       border: none !important;
       box-shadow: none !important;
-      padding: 0 !important;
+      padding: 20px !important;
       margin: 0 !important;
+      background: white !important;
     }
     
-    /* Título e subtítulo */
+    /* Forçar visibilidade do título e subtítulo */
+    .print-title-section,
+    .print-title-section *,
+    .print-title-section h2,
+    .print-title-section p,
+    .print-title-section div {
+      display: block !important;
+      visibility: visible !important;
+      position: static !important;
+      opacity: 1 !important;
+    }
+    
     .print-title-section {
-      margin-bottom: 25px;
-      page-break-inside: avoid;
+      margin-bottom: 25px !important;
+      page-break-inside: avoid !important;
     }
     
     .print-title-section h2 {
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #000;
+      font-size: 18pt !important;
+      font-weight: bold !important;
+      margin-bottom: 8px !important;
+      color: #000 !important;
+      line-height: 1.3 !important;
     }
     
     .print-title-section .print-subtitle {
-      font-size: 11pt;
-      color: #666;
-      margin-bottom: 15px;
+      font-size: 11pt !important;
+      color: #666 !important;
+      margin-bottom: 15px !important;
+      line-height: 1.4 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     .print-title-section .print-period-info {
-      font-size: 12pt;
-      font-weight: 600;
-      color: #000;
+      display: block !important;
+      visibility: visible !important;
+      font-size: 12pt !important;
+      font-weight: 600 !important;
+      color: #000 !important;
+      margin-top: 10px !important;
     }
     
     /* Tabela */
     table {
-      font-size: 10pt;
-      width: 100%;
-      border-collapse: collapse;
+      display: table !important;
+      font-size: 10pt !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    
+    thead {
+      display: table-header-group !important;
+    }
+    
+    tbody {
+      display: table-row-group !important;
+    }
+    
+    tr {
+      display: table-row !important;
+      page-break-inside: avoid !important;
     }
     
     th, td {
-      padding: 8px;
-      border: 1px solid #ddd;
-      text-align: left;
+      display: table-cell !important;
+      padding: 8px !important;
+      border: 1px solid #ddd !important;
+      text-align: left !important;
+      vertical-align: middle !important;
     }
     
     th {
       background-color: #f5f5f5 !important;
-      font-weight: bold;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     /* Ocultar coluna de ações */
     th:last-child,
     td:last-child {
-      display: none;
+      display: none !important;
     }
     
     /* Total */
     .print-total-section {
-      margin-top: 20px;
-      padding: 12px;
+      display: flex !important;
+      visibility: visible !important;
+      margin-top: 20px !important;
+      padding: 12px !important;
       background-color: #f5f5f5 !important;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      border-radius: 4px !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      page-break-inside: avoid !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-total-section .total-label {
-      font-size: 12pt;
-      font-weight: 600;
+      font-size: 12pt !important;
+      font-weight: 600 !important;
+      color: #000 !important;
     }
     
     .print-total-section .total-value {
-      font-size: 14pt;
-      font-weight: bold;
+      font-size: 14pt !important;
+      font-weight: bold !important;
       color: #dc2626 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Garantir que Badges apareçam como texto */
+    .badge,
+    [data-badge] {
+      border: none !important;
+      background: none !important;
+      padding: 0 !important;
+      color: #000 !important;
     }
   }
 `;
