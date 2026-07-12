@@ -19,6 +19,8 @@ interface FeeExemptionDialogProps {
   locations: Location[];
   onSave: (locationIds: string[]) => Promise<boolean>;
   getExemptions: () => Promise<string[]>;
+  title?: string;
+  description?: string;
 }
 
 export function FeeExemptionDialog({
@@ -27,6 +29,8 @@ export function FeeExemptionDialog({
   locations,
   onSave,
   getExemptions,
+  title = "Configurar Isenção de Taxa de Administração",
+  description = "Selecione os locais que estão isentos da taxa de administração",
 }: FeeExemptionDialogProps) {
   const { toast } = useToast();
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
@@ -78,7 +82,7 @@ export function FeeExemptionDialog({
       if (success) {
         toast({
           title: "Sucesso",
-          description: "Isenções de taxa de administração salvas com sucesso!",
+          description: "Isenções salvas com sucesso!",
         });
         onOpenChange(false);
       } else {
@@ -92,7 +96,7 @@ export function FeeExemptionDialog({
       console.error("Erro ao salvar isenções:", error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar as isenções de taxa.",
+        description: "Erro ao salvar as isenções.",
         variant: "destructive",
       });
     } finally {
@@ -104,12 +108,12 @@ export function FeeExemptionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Configurar Isenção de Taxa de Administração</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Selecione os locais que estão <strong>isentos da taxa de administração</strong>.
+            {description}
             <br />
             <span className="text-amber-600 font-medium mt-2 block">
-              ⚠️ Quando um local está isento, a taxa de administração NÃO será cobrada dele, independente de quem recebeu o pagamento.
+              ⚠️ Quando um local está isento, a taxa NÃO será cobrada dele, independente de quem recebeu o pagamento.
             </span>
           </DialogDescription>
         </DialogHeader>
