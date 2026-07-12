@@ -30,15 +30,39 @@ const printStyles = `
       margin: 10mm;
     }
     
+    /* Ocultar tudo por padrão */
     body * {
       visibility: hidden;
     }
     
+    /* Mostrar apenas os elementos de impressão */
     .print-area, .print-area *,
-    .print-header, .print-header * {
+    .print-header, .print-header *,
+    .print-total, .print-total * {
       visibility: visible;
     }
     
+    /* Garantir que o Dialog e overlay não atrapalhem */
+    [role="dialog"],
+    [data-radix-dialog-overlay],
+    [data-radix-dialog-content] {
+      position: static !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+    
+    /* Ocultar overlay do Dialog */
+    [data-radix-dialog-overlay] {
+      display: none !important;
+    }
+    
+    /* Posicionar elementos de impressão */
     .print-header {
       position: absolute;
       left: 0;
@@ -46,45 +70,69 @@ const printStyles = `
       width: 100%;
       margin-bottom: 20px;
       page-break-inside: avoid;
+      padding: 10px;
     }
     
     .print-area {
       position: absolute;
       left: 0;
-      top: 80px;
+      top: 90px;
       width: 100%;
+      padding: 10px;
     }
     
-    .no-print {
+    .no-print,
+    button,
+    .cursor-pointer {
       display: none !important;
     }
     
     /* Estilos para o cabeçalho de impressão */
+    .print-header h2,
     .print-header h1 {
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 4px;
+      font-size: 16pt !important;
+      font-weight: bold !important;
+      margin-bottom: 4px !important;
       color: #000 !important;
+      visibility: visible !important;
     }
     
     .print-header p {
-      font-size: 10pt;
+      font-size: 9pt !important;
       color: #666 !important;
-      margin-bottom: 10px;
+      margin-bottom: 10px !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      visibility: visible !important;
+    }
+    
+    /* Período de filtro */
+    .print-period {
+      font-size: 10pt !important;
+      font-weight: 600 !important;
+      margin-bottom: 8px !important;
+      color: #000 !important;
     }
     
     table {
       font-size: 9pt !important;
-      width: 100%;
-      border-collapse: collapse;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      page-break-inside: auto !important;
+    }
+    
+    thead {
+      display: table-header-group !important;
+    }
+    
+    tr {
+      page-break-inside: avoid !important;
     }
     
     th, td {
       padding: 4px 6px !important;
       border: 1px solid #ddd !important;
-      word-wrap: break-word;
+      word-wrap: break-word !important;
     }
     
     th {
@@ -95,12 +143,23 @@ const printStyles = `
     }
     
     .print-total {
-      font-size: 11pt;
-      font-weight: bold;
-      margin-top: 10px;
-      padding: 8px;
+      font-size: 11pt !important;
+      font-weight: bold !important;
+      margin-top: 10px !important;
+      padding: 8px !important;
       background-color: #f5f5f5 !important;
-      border-radius: 4px;
+      border-radius: 4px !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      page-break-inside: avoid !important;
+    }
+    
+    .print-total span {
+      color: #000 !important;
+    }
+    
+    .print-total .text-red-600 {
+      color: #dc2626 !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -347,7 +406,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           <DialogHeader className="print-header">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle>Detalhamento das Contas do Mês - {location.name}</DialogTitle>
+                <DialogTitle className="text-lg font-bold">
+                  Detalhamento das Contas do Mês - {location.name}
+                </DialogTitle>
                 <p className="text-sm text-muted-foreground mt-1">
                   Controle de despesas mensais por localização
                 </p>
@@ -395,18 +456,16 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               </Select>
             </div>
 
-            {/* Título para impressão */}
-            <div className="hidden print:block mb-4">
-              <p className="text-sm font-medium">
-                Período: {getMonthName(filterMonth)}/{filterYear}
-              </p>
+            {/* Período para impressão */}
+            <div className="hidden print:block print-period">
+              Período: {getMonthName(filterMonth)}/{filterYear}
             </div>
 
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tipo</TableHead>
+                    <TableHead className="w-24">Tipo</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none no-print" 
                       onClick={() => handleSort("description")}
@@ -417,9 +476,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                       </div>
                     </TableHead>
                     <TableHead className="hidden print:table-cell">Descrição</TableHead>
-                    <TableHead>Período</TableHead>
+                    <TableHead className="w-28">Período</TableHead>
                     <TableHead 
-                      className="text-right cursor-pointer select-none no-print" 
+                      className="text-right cursor-pointer select-none no-print w-32" 
                       onClick={() => handleSort("amount")}
                     >
                       <div className="flex items-center justify-end">
@@ -427,7 +486,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                         <SortIcon field="amount" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right hidden print:table-cell">Valor</TableHead>
+                    <TableHead className="text-right hidden print:table-cell w-32">Valor</TableHead>
                     <TableHead className="text-center w-24 no-print">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -445,59 +504,60 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedExpenses.map((expense) => (
-                      <TableRow 
-                        key={expense.id}
-                        className="cursor-pointer hover:bg-muted/50 no-print"
-                        onClick={() => handleView(expense)}
-                      >
-                        <TableCell>
-                          <Badge variant="outline" className="no-print">{getExpenseTypeLabel(expense.expenseType)}</Badge>
-                          <span className="hidden print:inline">{getExpenseTypeLabel(expense.expenseType)}</span>
-                        </TableCell>
-                        <TableCell>{expense.description || "-"}</TableCell>
-                        <TableCell>
-                          {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatCurrency(expense.amount)}
-                        </TableCell>
-                        <TableCell className="no-print">
-                          <div className="flex justify-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmDelete(expense);
-                              }}
-                              className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    <>
+                      {/* Linhas para tela (com hover e ações) */}
+                      {sortedExpenses.map((expense) => (
+                        <TableRow 
+                          key={expense.id}
+                          className="cursor-pointer hover:bg-muted/50 no-print"
+                          onClick={() => handleView(expense)}
+                        >
+                          <TableCell>
+                            <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                          </TableCell>
+                          <TableCell>{expense.description || "-"}</TableCell>
+                          <TableCell>
+                            {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(expense.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDelete(expense);
+                                }}
+                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Linhas para impressão (sem hover e ações) */}
+                      {sortedExpenses.map((expense) => (
+                        <TableRow 
+                          key={`print-${expense.id}`}
+                          className="hidden print:table-row"
+                        >
+                          <TableCell>{getExpenseTypeLabel(expense.expenseType)}</TableCell>
+                          <TableCell>{expense.description || "-"}</TableCell>
+                          <TableCell>
+                            {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(expense.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
                   )}
-                  {/* Linha adicional para impressão sem hover */}
-                  {sortedExpenses.map((expense) => (
-                    <TableRow 
-                      key={`print-${expense.id}`}
-                      className="hidden print:table-row"
-                    >
-                      <TableCell>
-                        <span>{getExpenseTypeLabel(expense.expenseType)}</span>
-                      </TableCell>
-                      <TableCell>{expense.description || "-"}</TableCell>
-                      <TableCell>
-                        {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(expense.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             </div>
