@@ -143,7 +143,8 @@ export function RentalPaymentHistoryDialog({
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
           }
           
           @page {
@@ -160,9 +161,9 @@ export function RentalPaymentHistoryDialog({
         
         /* Mantém o elemento renderizado mas invisível na tela */
         .print-only {
-          position: absolute;
-          left: -9999px;
-          width: 100%;
+          visibility: hidden;
+          height: 0;
+          overflow: hidden;
         }
       `}</style>
 
