@@ -1,7 +1,4 @@
 import { useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
-import * as managementFeeExemptionService from "@/services/managementFeeExemptionService";
 
 interface UsePaymentBreakdownParams {
   payment: any;
@@ -9,90 +6,63 @@ interface UsePaymentBreakdownParams {
   garageValue: number;
 }
 
-interface PaymentBreakdownItem {
+interface BreakdownItem {
   description: string;
-  value: number;
-}
-
-interface PaymentBreakdownResult {
-  items: PaymentBreakdownItem[];
-  adminFee: number;
-  managementFee: number;
-  total: number;
-  isAdminFeeExempt: boolean;
-  isManagementFeeExempt: boolean;
-  isLoading: boolean;
+  amount: number;
+  value?: number;
 }
 
 export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePaymentBreakdownParams) {
-  const [adminFee, setAdminFee] = useState(0);
-  const [managementFee, setManagementFee] = useState(0);
-  const [isAdminFeeExempt, setIsAdminFeeExempt] = useState(false);
-  const [isManagementFeeExempt, setIsManagementFeeExempt] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  return useMemo(() => {
+    if (!payment) {
+      return {
+        items: [],
+        total: 0,
+      };
+    }
 
-  useEffect(() => {
-    const calculateBreakdown = async () => {
-      setIsLoading(true);
+    let items: BreakdownItem[] = [];
+
+    // Tentar extrair do breakdown existente
+    if (payment.breakdown) {
       try {
-        // Buscar configurações
-        const { data: config } = await supabase
-          .from("configs")
-          .select("admin_fee_percentage, management_fee_percentage")
-          .maybeSingle();
-
-        const adminFeePercent = config?.admin_fee_percentage || 5;
-        const managementFeePercent = config?.management_fee_percentage || 3;
-
-        // Verificar isenções
-        const adminExempt = locationId 
-          ? await adminFeeExemptionService.isLocationExempt(locationId)
-          : false;
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
         
-        const managementExempt = locationId
-          ? await managementFeeExemptionService.isLocationExempt(locationId)
-          : false;
-
-        setIsAdminFeeExempt(adminExempt);
-        setIsManagementFeeExempt(managementExempt);
-
-        // Calcular valor base (aluguel + garagem se houver)
-        const totalBaseValue = baseValue + (includeGarage && garageValue ? garageValue : 0);
-
-        // Calcular taxas (aplicar isenção se necessário)
-        const calculatedAdminFee = adminExempt ? 0 : (totalBaseValue * (adminFeePercent / 100));
-        const calculatedManagementFee = managementExempt ? 0 : (totalBaseValue * (managementFeePercent / 100));
-
-        setAdminFee(calculatedAdminFee);
-        setManagementFee(calculatedManagementFee);
+        if (Array.isArray(breakdownData)) {
+          items = breakdownData.map((item: any) => ({
+            description: item.description || '',
+            amount: item.amount || item.value || 0,
+          }));
+        }
       } catch (error) {
-        console.error("Erro ao calcular breakdown:", error);
-      } finally {
-        setIsLoading(false);
+        console.error("Erro ao fazer parse do breakdown:", error);
       }
+    }
+
+    // Se não houver breakdown válido, criar um básico
+    if (items.length === 0) {
+      items = [
+        {
+          description: "Aluguel",
+          amount: rentalValue,
+        }
+      ];
+
+      if (garageValue > 0) {
+        items.push({
+          description: "Garagem",
+          amount: garageValue,
+        });
+      }
+    }
+
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+
+    return {
+      items,
+      total: Math.round(total * 100) / 100,
     };
-
-    calculateBreakdown();
-  }, [baseValue, locationId, includeGarage, garageValue]);
-
-  // Montar items do breakdown
-  const items: PaymentBreakdownItem[] = [
-    { description: "Aluguel", value: baseValue }
-  ];
-
-  if (includeGarage && garageValue) {
-    items.push({ description: "Garagem", value: garageValue });
-  }
-
-  const total = baseValue + (includeGarage && garageValue ? garageValue : 0);
-
-  return {
-    items,
-    adminFee,
-    managementFee,
-    total,
-    isAdminFeeExempt,
-    isManagementFeeExempt,
-    isLoading,
-  };
+  }, [payment, rentalValue, garageValue]);
 }
