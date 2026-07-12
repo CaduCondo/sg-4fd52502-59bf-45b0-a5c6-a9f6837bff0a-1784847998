@@ -129,55 +129,30 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde a página de fundo, layout, header, sidebar */
-          body > div:not(#payment-history-print-wrapper),
-          header,
-          nav,
-          aside,
-          .sidebar,
-          [role="dialog"],
-          [data-state="open"],
-          .no-print {
-            display: none !important;
+          /* Esconde absolutamente tudo */
+          body * {
+            visibility: hidden !important;
           }
           
-          /* Mostra apenas o conteúdo de impressão */
-          #payment-history-print-wrapper {
-            display: block !important;
-            position: static !important;
+          /* Mostra apenas o conteúdo de impressão e seus descendentes */
+          #payment-history-print-area,
+          #payment-history-print-area * {
             visibility: visible !important;
           }
           
-          #payment-history-print-content {
-            display: block !important;
-            position: static !important;
-            visibility: visible !important;
+          /* Posiciona o conteúdo de impressão no topo da página */
+          #payment-history-print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
           }
           
-          #payment-history-print-content * {
-            visibility: visible !important;
-          }
-          
-          /* Tabela e seus elementos precisam de display específico */
-          #payment-history-print-content table {
-            display: table !important;
-          }
-          
-          #payment-history-print-content thead {
-            display: table-header-group !important;
-          }
-          
-          #payment-history-print-content tbody {
-            display: table-row-group !important;
-          }
-          
-          #payment-history-print-content tr {
-            display: table-row !important;
-          }
-          
-          #payment-history-print-content th,
-          #payment-history-print-content td {
-            display: table-cell !important;
+          /* Remove margens e fundos */
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
           }
           
           /* Configurações da página */
@@ -185,26 +160,11 @@ export function RentalPaymentHistoryDialog({
             size: landscape;
             margin: 1cm;
           }
-          
-          /* Remove margens e padding do body */
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          
-          /* Remove overlay escuro */
-          [data-radix-portal],
-          [data-overlay],
-          .backdrop,
-          .overlay {
-            display: none !important;
-          }
         }
       `}</style>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto no-print">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-2xl">Histórico de Pagamentos</DialogTitle>
             <DialogClose asChild>
@@ -324,14 +284,14 @@ export function RentalPaymentHistoryDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Conteúdo para impressão - Renderizado mas escondido na tela */}
-      <div id="payment-history-print-wrapper" style={{ display: 'none' }}>
-        <div id="payment-history-print-content" style={{ padding: '20px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
+      {/* Conteúdo exclusivo para impressão */}
+      <div id="payment-history-print-area" style={{ display: 'none' }}>
+        <div style={{ padding: '20px', backgroundColor: 'white' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
             Histórico de Pagamentos
           </h1>
 
-          <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', color: '#000' }}>
             <div>
               <strong>Local:</strong> {location}
             </div>
@@ -343,25 +303,25 @@ export function RentalPaymentHistoryDialog({
             </div>
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
             <thead>
               <tr>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Parcela
                 </th>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Vencimento
                 </th>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Pagamento
                 </th>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Status
                 </th>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Valor Esperado
                 </th>
-                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5' }}>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
                   Valor Pago
                 </th>
               </tr>
@@ -369,33 +329,33 @@ export function RentalPaymentHistoryDialog({
             <tbody>
               {sortedPayments.map((payment) => (
                 <tr key={payment.id}>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
                     {payment.installment_number}
                   </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
                     {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
                   </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
                     {payment.payment_date
                       ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
                       : "-"}
                   </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
                     {payment.status === "pago" ? "Pago" : "Pendente"}
                   </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
                     {formatCurrency(payment.expected_amount)}
                   </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
                     {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
                   </td>
                 </tr>
               ))}
               <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-                <td colSpan={5} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
                   Total Pago:
                 </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
                   {formatCurrency(totalPaid)}
                 </td>
               </tr>
