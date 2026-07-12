@@ -115,26 +115,29 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
+      {/* CSS DE IMPRESSÃO SIMPLIFICADO */}
       <style>{`
         @media print {
-          /* Esconde elementos de navegação e layout */
-          main,
-          header,
-          nav,
-          aside,
-          footer,
-          .sidebar,
-          [data-sidebar] {
-            display: none !important;
-          }
-          
-          /* Remove overlay escuro do Dialog */
+          /* Esconde o overlay escuro */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* Dialog: remove posicionamento fixo e centralização */
+          /* Esconde a página principal (Locações) */
+          body > div > main {
+            display: none !important;
+          }
+          
+          /* Esconde elementos de navegação */
+          header,
+          nav,
+          aside,
+          footer,
+          [data-sidebar] {
+            display: none !important;
+          }
+          
+          /* Dialog: posiciona normalmente sem overlay */
           [role="dialog"] {
             position: static !important;
             transform: none !important;
@@ -146,22 +149,19 @@ export function RentalPaymentHistoryDialog({
             box-shadow: none !important;
           }
           
-          /* Esconde botão Imprimir durante impressão */
+          /* Esconde botão Imprimir */
           .print\\:hidden {
             display: none !important;
           }
           
-          /* Configurações da página */
+          /* Configuração de página paisagem */
           @page {
             size: landscape;
             margin: 1cm;
           }
           
           /* Garante fundo branco */
-          body {
-            background: white !important;
-          }
-          
+          body,
           html {
             background: white !important;
           }
