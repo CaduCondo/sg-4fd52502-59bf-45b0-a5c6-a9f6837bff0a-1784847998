@@ -129,23 +129,25 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          body * {
-            visibility: hidden !important;
+          /* Esconde apenas o Dialog e elementos de navegação/layout */
+          [role="dialog"],
+          [data-radix-dialog-overlay],
+          [data-radix-dialog-content],
+          header,
+          nav,
+          aside,
+          .sidebar,
+          footer {
+            display: none !important;
           }
           
-          .print-only,
-          .print-only * {
-            visibility: visible !important;
-          }
-          
+          /* Garante que o conteúdo de impressão seja visível */
           .print-only {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
+            display: block !important;
+            position: static !important;
             opacity: 1 !important;
             pointer-events: auto !important;
-            z-index: 9999 !important;
+            z-index: 1 !important;
           }
           
           @page {
