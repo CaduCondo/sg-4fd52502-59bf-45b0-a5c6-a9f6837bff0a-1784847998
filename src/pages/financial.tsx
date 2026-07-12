@@ -1138,7 +1138,7 @@ export default function Financial() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Bruta</p>
-                      <h3 className="text-2xl font-bold card-value">
+                      <h3 className="text-2xl font-bold text-green-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1157,7 +1157,7 @@ export default function Financial() {
                       <p className="text-sm font-medium text-muted-foreground card-title">
                         Taxa Adm ({config?.admin_fee_percentage || 5}%)
                       </p>
-                      <h3 className="text-2xl font-bold card-value">
+                      <h3 className="text-2xl font-bold text-orange-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1176,7 +1176,7 @@ export default function Financial() {
                       <p className="text-sm font-medium text-muted-foreground card-title">
                         Taxa Ger ({config?.management_fee_percentage || 3}%)
                       </p>
-                      <h3 className="text-2xl font-bold card-value">
+                      <h3 className="text-2xl font-bold text-blue-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1193,7 +1193,7 @@ export default function Financial() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground card-title">Contas do Mês</p>
-                      <h3 className="text-2xl font-bold card-value">
+                      <h3 className="text-2xl font-bold text-red-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1210,7 +1210,7 @@ export default function Financial() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Líquida</p>
-                      <h3 className="text-2xl font-bold card-value">
+                      <h3 className="text-2xl font-bold text-purple-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1289,36 +1289,36 @@ export default function Financial() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs sm:text-sm col-parcela" onClick={() => handleSort("installment")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-parcela" onClick={() => handleSort("installment")}>
                             Parc {sortField === "installment" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs sm:text-sm col-local" onClick={() => handleSort("location")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-local" onClick={() => handleSort("location")}>
                             Local {sortField === "location" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs sm:text-sm col-compl" onClick={() => handleSort("complement")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-compl" onClick={() => handleSort("complement")}>
                             Compl {sortField === "complement" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs sm:text-sm col-inquilino" onClick={() => handleSort("tenant")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-inquilino" onClick={() => handleSort("tenant")}>
                             Inquilino {sortField === "tenant" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm col-mes">Período</TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs sm:text-sm col-status" onClick={() => handleSort("status")}>
+                          <TableHead className="text-center text-xs col-mes">Período</TableHead>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-status" onClick={() => handleSort("status")}>
                             Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs sm:text-sm col-venc" onClick={() => handleSort("dueDate")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-venc" onClick={() => handleSort("dueDate")}>
                             Venc {sortField === "dueDate" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs sm:text-sm col-rec" onClick={() => handleSort("paymentDate")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-rec" onClick={() => handleSort("paymentDate")}>
                             Rec {sortField === "paymentDate" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm col-hora">Hora</TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs sm:text-sm col-val-esp" onClick={() => handleSort("expectedAmount")}>
+                          <TableHead className="text-center text-xs col-hora">Hora</TableHead>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs col-val-esp" onClick={() => handleSort("expectedAmount")}>
                             Val.Esp {sortField === "expectedAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs sm:text-sm col-val-pg" onClick={() => handleSort("paidAmount")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs col-val-pg" onClick={() => handleSort("paidAmount")}>
                             Val.Pg {sortField === "paidAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-xs sm:text-sm col-pix">Código PIX</TableHead>
+                          <TableHead className="text-xs col-pix">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1332,54 +1332,52 @@ export default function Financial() {
 
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
-                              <TableCell className="font-medium text-xs sm:text-sm col-parcela">{paymentNumber}</TableCell>
-                              <TableCell className="text-xs sm:text-sm col-local">{details.local}</TableCell>
-                              <TableCell className="text-xs sm:text-sm col-compl">{details.complemento}</TableCell>
-                              <TableCell className="text-xs sm:text-sm col-inquilino">{details.tenantName}</TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-mes">
+                              <TableCell className="font-medium text-xs col-parcela">{paymentNumber}</TableCell>
+                              <TableCell className="text-xs col-local">{details.local}</TableCell>
+                              <TableCell className="text-xs col-compl">{details.complemento}</TableCell>
+                              <TableCell className="text-xs col-inquilino">{details.tenantName}</TableCell>
+                              <TableCell className="text-center text-xs col-mes">
                                 {format(new Date(filterYear, filterMonth - 1), "MMM/yyyy", { locale: ptBR })}
                               </TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-status">
+                              <TableCell className="text-center text-xs col-status">
                                 <Badge
-                                  variant={
+                                  variant="outline"
+                                  className={`text-xs no-print ${
                                     payment.status === "paid"
-                                      ? "default"
-                                      : payment.status === "pending"
-                                      ? "secondary"
-                                      : payment.status === "overdue"
-                                      ? "destructive"
-                                      : "outline"
-                                  }
-                                  className="text-xs no-print"
+                                      ? "bg-green-100 text-green-700 border-green-300"
+                                      : payment.status === "partial"
+                                      ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                      : "bg-red-100 text-red-700 border-red-300"
+                                  }`}
                                 >
                                   {statusText}
                                 </Badge>
                                 <span className="hidden print:inline">{statusText}</span>
                               </TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-venc">
+                              <TableCell className="text-center text-xs col-venc">
                                 {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}
                               </TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-rec">
+                              <TableCell className="text-center text-xs col-rec">
                                 {payment.paymentDate
                                   ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy")
                                   : "-"}
                               </TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-hora">
+                              <TableCell className="text-center text-xs col-hora">
                                 {details.paymentTime || "-"}
                               </TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm col-val-esp">
+                              <TableCell className="text-right text-xs col-val-esp">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
                                 }).format(getExpectedAmount(payment))}
                               </TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm text-green-600 font-semibold col-val-pg">
+                              <TableCell className="text-right text-xs text-green-600 font-semibold col-val-pg">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
                                 }).format(payment.paidAmount || 0)}
                               </TableCell>
-                              <TableCell className="text-xs sm:text-sm col-pix">
+                              <TableCell className="text-xs col-pix">
                                 {editingPixCode?.id === payment.id ? (
                                   <div className="flex gap-1 items-center min-w-[200px] no-print">
                                     <Input
@@ -1506,7 +1504,7 @@ export default function Financial() {
                           <TableCell className="font-medium">
                             {expense.location_name}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-black">
                             {expense.description}
                           </TableCell>
                           <TableCell className="text-right font-semibold text-orange-600">
