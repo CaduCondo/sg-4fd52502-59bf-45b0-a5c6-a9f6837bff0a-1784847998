@@ -25,55 +25,75 @@ const printStyles = `
       margin: 15mm;
     }
     
-    body * {
-      visibility: hidden;
-    }
-    
-    .print-area,
-    .print-area * {
-      visibility: visible !important;
-    }
-    
-    .print-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    
     .no-print {
       display: none !important;
     }
     
-    h2, h3, p, strong, span {
-      color: black !important;
+    .print-only {
+      display: table-cell !important;
+    }
+    
+    body {
+      background: white;
+    }
+    
+    .print-area {
+      width: 100%;
+      max-width: none;
+    }
+    
+    h2 {
+      font-size: 18pt;
+      margin-bottom: 10pt;
+      color: black;
+    }
+    
+    p, strong, span {
+      color: black;
+      font-size: 11pt;
     }
     
     table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      margin-top: 20px !important;
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15pt;
+      page-break-inside: auto;
+    }
+    
+    thead {
+      display: table-header-group;
+    }
+    
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
     }
     
     th, td {
-      border: 1px solid #000 !important;
-      padding: 8px !important;
-      font-size: 10pt !important;
+      border: 1px solid #000;
+      padding: 6pt 8pt;
+      font-size: 10pt;
+      color: black;
     }
     
     th {
-      background-color: #f0f0f0 !important;
-      font-weight: bold !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      background-color: #e5e7eb;
+      font-weight: bold;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     .text-center {
-      text-align: center !important;
+      text-align: center;
     }
     
     .text-right {
-      text-align: right !important;
+      text-align: right;
+    }
+    
+    .font-semibold {
+      font-weight: 600;
     }
   }
 `;
@@ -285,7 +305,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
+                    <TableHead className="text-base text-center print-only hidden">
                       Parcela
                     </TableHead>
                     <TableHead 
@@ -297,7 +317,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="dueDate" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
+                    <TableHead className="text-base text-center print-only hidden">
                       Vencimento
                     </TableHead>
                     <TableHead 
@@ -309,7 +329,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="paymentDate" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
+                    <TableHead className="text-base text-center print-only hidden">
                       Pagamento
                     </TableHead>
                     <TableHead className="text-base text-center">Status</TableHead>
@@ -357,7 +377,7 @@ export function RentalPaymentHistoryDialog({
                           >
                             {getStatusText(payment.status)}
                           </Badge>
-                          <span className="hidden print:inline">
+                          <span className="hidden print-only">
                             {getStatusText(payment.status)}
                           </span>
                         </TableCell>
