@@ -139,14 +139,11 @@ export function RentalPaymentHistoryDialog({
           }
           
           .print-only {
-            position: absolute !important;
+            position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
             height: auto !important;
-            overflow: visible !important;
-            clip: auto !important;
-            white-space: normal !important;
           }
           
           @page {
@@ -277,8 +274,8 @@ export function RentalPaymentHistoryDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Conteúdo exclusivo para impressão - sempre renderizado mas escondido na tela */}
-      <div className="print-only" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap' }}>
+      {/* Conteúdo exclusivo para impressão - sempre renderizado mas fora da viewport */}
+      <div className="print-only" style={{ position: 'fixed', top: '-9999px', left: '0', width: '100%' }}>
         <div style={{ padding: '20px', backgroundColor: 'white' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
             Histórico de Pagamentos
