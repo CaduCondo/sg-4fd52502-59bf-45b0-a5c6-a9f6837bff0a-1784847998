@@ -1,397 +1,333 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import type { Rental, Payment } from "@/types";
-import { format } from "date-fns";
+import { X, Printer } from "lucide-react";
+import { formatCurrency } from "@/lib/masks";
+
+interface Payment {
+  id: string;
+  due_date: string;
+  payment_date: string | null;
+  amount_paid: number;
+  expected_amount: number;
+  status: "pago" | "pendente";
+  installment_number: number;
+}
 
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  rental: Rental | null;
+  payments: Payment[];
+  location: string;
+  complement: string;
+  tenantName: string;
 }
-
-type SortField = "installment" | "dueDate" | "paymentDate";
-type SortDirection = "asc" | "desc" | null;
 
 export function RentalPaymentHistoryDialog({
   open,
   onOpenChange,
-  rental,
+  payments,
+  location,
+  complement,
+  tenantName,
 }: RentalPaymentHistoryDialogProps) {
-  const { toast } = useToast();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-
-  const getExpectedAmount = (payment: Payment): number => {
-    let baseTotal = 0;
-    
-    if (payment.breakdown) {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : payment.breakdown;
-
-        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-          baseTotal = breakdownData.reduce((sum: number, item: any) => {
-            const value = Number(item.value || item.amount || 0);
-            return sum + value;
-          }, 0);
-        }
-      } catch (error) {
-        console.error("Erro ao processar breakdown:", error);
-        baseTotal = payment.expectedAmount;
-      }
-    } else {
-      baseTotal = payment.expectedAmount;
-    }
-    
-    const lateFee = Number(payment.lateFee || 0);
-    const interest = Number(payment.interest || 0);
-    const discount = Number(payment.discount || 0);
-    
-    return baseTotal + lateFee + interest - discount;
-  };
-
-  useEffect(() => {
-    if (open && rental) {
-      loadPayments();
-    }
-  }, [open, rental]);
-
-  const loadPayments = async () => {
-    if (!rental?.id) return;
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("rental_id", rental.id)
-        .order("due_date", { ascending: true });
-
-      if (error) throw error;
-      
-      const mappedPayments: Payment[] = (data || []).map((p) => ({
-        id: p.id,
-        rentalId: p.rental_id,
-        propertyId: rental.propertyId,
-        tenantId: rental.tenantId,
-        dueDate: p.due_date,
-        paymentDate: p.payment_date,
-        expectedAmount: p.expected_amount,
-        paidAmount: p.paid_amount,
-        status: p.status as "pending" | "paid" | "partial",
-        installment: p.installment,
-        discount: p.discount_amount,
-        lateFee: p.late_fee,
-        interest: p.interest,
-        paymentMethod: p.payment_method || "pix",
-        breakdown: p.breakdown,
-        attachments: (Array.isArray(p.attachments) ? p.attachments : []) as string[],
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }));
-      
-      setPayments(mappedPayments);
-    } catch (error) {
-      console.error("Erro ao carregar pagamentos:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar o histórico de pagamentos.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      if (sortDirection === "asc") {
-        setSortDirection("desc");
-      } else if (sortDirection === "desc") {
-        setSortDirection(null);
-        setSortField(null);
-      } else {
-        setSortDirection("asc");
-      }
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
-    if (sortDirection === "asc") return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
-    return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
-  };
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Payment;
+    direction: "asc" | "desc";
+  } | null>(null);
 
   const sortedPayments = useMemo(() => {
-    if (!sortField || !sortDirection) return payments;
+    const sorted = [...payments];
+    if (sortConfig) {
+      sorted.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
 
-    return [...payments].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+        if (aValue === null || bValue === null) return 0;
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sorted;
+  }, [payments, sortConfig]);
 
-      switch (sortField) {
-        case "installment":
-          aValue = a.installment;
-          bValue = b.installment;
-          break;
-        case "dueDate":
-          aValue = new Date(a.dueDate).getTime();
-          bValue = new Date(b.dueDate).getTime();
-          break;
-        case "paymentDate":
-          aValue = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
-          bValue = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
-          break;
-        default:
-          return 0;
+  const handleSort = (key: keyof Payment) => {
+    setSortConfig((current) => {
+      if (current?.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc",
+        };
       }
-
-      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-      return 0;
+      return { key, direction: "asc" };
     });
-  }, [payments, sortField, sortDirection]);
+  };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
+  const getStatusBadgeClass = (status: string) => {
+    return status === "pago"
+      ? "bg-green-100 text-green-800"
+      : "bg-yellow-100 text-yellow-800";
   };
 
-  const getStatusText = (status: string) => {
-    if (status === "paid") return "Pago";
-    if (status === "pending") return "Pendente";
-    return "Parcial";
-  };
+  const totalPaid = sortedPayments.reduce((sum, payment) => {
+    return payment.status === "pago" ? sum + payment.amount_paid : sum;
+  }, 0);
 
-  if (!rental) return null;
+  useEffect(() => {
+    if (!open) {
+      setSortConfig(null);
+    }
+  }, [open]);
 
   return (
     <>
       <style>{`
         @media print {
-          @page {
-            size: landscape;
-            margin: 15mm;
+          /* Esconde TUDO exceto o conteúdo de impressão */
+          body * {
+            visibility: hidden !important;
           }
           
-          .no-print {
+          /* Mostra apenas o conteúdo de impressão */
+          .print-content,
+          .print-content * {
+            visibility: visible !important;
+          }
+          
+          /* Posiciona o conteúdo de impressão no topo da página */
+          .print-content {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: white !important;
+          }
+          
+          /* Remove bordas do Dialog, backdrop e overlays */
+          [role="dialog"],
+          [data-radix-dialog-overlay],
+          .fixed,
+          .inset-0,
+          .z-50 {
             display: none !important;
           }
           
-          .print-content {
-            display: block !important;
+          /* Configurações da página */
+          @page {
+            size: landscape;
+            margin: 1cm;
           }
           
-          .print-content table {
-            border-collapse: collapse;
-            width: 100%;
-            page-break-inside: auto;
+          /* Remove margens do body */
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
           }
-          
-          .print-content th,
-          .print-content td {
-            border: 1px solid #000;
-            padding: 8px;
-          }
-          
-          .print-content th {
-            background-color: #f3f4f6;
-          }
-          
-          .print-content tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-        }
-        
-        .print-content {
-          display: none;
         }
       `}</style>
 
-      {/* Conteúdo para impressão */}
-      <div className="print-content" style={{ padding: '20px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
-          Histórico de Pagamentos
-        </h1>
-        
-        <div style={{ marginBottom: '20px', fontSize: '16px' }}>
-          <p><strong>Local:</strong> {rental?.property?.location}</p>
-          <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-          <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'center' }}>Parcela</th>
-              <th style={{ textAlign: 'center' }}>Vencimento</th>
-              <th style={{ textAlign: 'center' }}>Pagamento</th>
-              <th style={{ textAlign: 'center' }}>Status</th>
-              <th style={{ textAlign: 'right' }}>Valor Esperado</th>
-              <th style={{ textAlign: 'right' }}>Valor Pago</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedPayments.map((payment) => (
-              <tr key={payment.id}>
-                <td style={{ textAlign: 'center' }}>{payment.installment}</td>
-                <td style={{ textAlign: 'center' }}>
-                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {payment.paymentDate
-                    ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                    : "-"}
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {getStatusText(payment.status)}
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                  {formatCurrency(getExpectedAmount(payment))}
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#059669' }}>
-                  {formatCurrency(payment.paidAmount || 0)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto no-print">
-          <DialogHeader className="mb-4">
-            <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto no-print">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle className="text-2xl">Histórico de Pagamentos</DialogTitle>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
           </DialogHeader>
 
-          <div className="mb-4 space-y-2">
-            <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-              <div className="text-base space-y-1">
-                <p><strong>Local:</strong> {rental?.property?.location}</p>
-                <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-                <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-4 text-base">
+                <div>
+                  <span className="font-semibold">Local:</span> {location}
+                </div>
+                <div>
+                  <span className="font-semibold">Complemento:</span> {complement}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold">Nome Inquilino:</span> {tenantName}
+                  </div>
+                  <Button
+                    onClick={handlePrint}
+                    variant="outline"
+                    size="sm"
+                    className="ml-4"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Imprimir
-              </Button>
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
-                    onClick={() => handleSort("installment")}
+                  <TableHead
+                    className="cursor-pointer text-base text-center"
+                    onClick={() => handleSort("installment_number")}
                   >
-                    <div className="flex items-center justify-center">
-                      Parcela
-                      <SortIcon field="installment" />
-                    </div>
+                    Parcela
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
-                    onClick={() => handleSort("dueDate")}
+                  <TableHead
+                    className="cursor-pointer text-base text-center"
+                    onClick={() => handleSort("due_date")}
                   >
-                    <div className="flex items-center justify-center">
-                      Vencimento
-                      <SortIcon field="dueDate" />
-                    </div>
+                    Vencimento
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
-                    onClick={() => handleSort("paymentDate")}
+                  <TableHead
+                    className="cursor-pointer text-base text-center"
+                    onClick={() => handleSort("payment_date")}
                   >
-                    <div className="flex items-center justify-center">
-                      Pagamento
-                      <SortIcon field="paymentDate" />
-                    </div>
+                    Pagamento
                   </TableHead>
-                  <TableHead className="text-base text-center">Status</TableHead>
-                  <TableHead className="text-right text-base">Valor Esperado</TableHead>
-                  <TableHead className="text-right text-base">Valor Pago</TableHead>
+                  <TableHead
+                    className="cursor-pointer text-base text-center"
+                    onClick={() => handleSort("status")}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead className="text-base text-right">
+                    Valor Esperado
+                  </TableHead>
+                  <TableHead className="text-base text-right">Valor Pago</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      <div className="flex justify-center items-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
+                {sortedPayments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell className="text-base text-center">
+                      {payment.installment_number}
+                    </TableCell>
+                    <TableCell className="text-base text-center">
+                      {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell className="text-base text-center">
+                      {payment.payment_date
+                        ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(
+                          payment.status
+                        )}`}
+                      >
+                        {payment.status === "pago" ? "Pago" : "Pendente"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-base text-right">
+                      {formatCurrency(payment.expected_amount)}
+                    </TableCell>
+                    <TableCell className="text-base text-right">
+                      {payment.status === "pago"
+                        ? formatCurrency(payment.amount_paid)
+                        : "-"}
                     </TableCell>
                   </TableRow>
-                ) : sortedPayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      Nenhum pagamento encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedPayments.map((payment) => (
-                    <TableRow key={payment.id} className="hover:bg-gray-50">
-                      <TableCell className="text-base text-center">{payment.installment}</TableCell>
-                      <TableCell className="text-base text-center">
-                        {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell className="text-base text-center">
-                        {payment.paymentDate
-                          ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-base text-center">
-                        <Badge
-                          variant={
-                            payment.status === "paid"
-                              ? "default"
-                              : payment.status === "pending"
-                              ? "secondary"
-                              : "outline"
-                          }
-                        >
-                          {getStatusText(payment.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-base">
-                        {formatCurrency(getExpectedAmount(payment))}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-green-600 text-base">
-                        {formatCurrency(payment.paidAmount || 0)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
+                <TableRow className="font-bold bg-muted/50">
+                  <TableCell colSpan={5} className="text-base text-right">
+                    Total Pago:
+                  </TableCell>
+                  <TableCell className="text-base text-right">
+                    {formatCurrency(totalPaid)}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Conteúdo para impressão */}
+      <div className="print-content" style={{ display: 'none' }}>
+        <div style={{ padding: '20px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
+            Histórico de Pagamentos
+          </h1>
+
+          <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div>
+              <strong>Local:</strong> {location}
+            </div>
+            <div>
+              <strong>Complemento:</strong> {complement}
+            </div>
+            <div>
+              <strong>Nome Inquilino:</strong> {tenantName}
+            </div>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                  Parcela
+                </th>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                  Vencimento
+                </th>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                  Pagamento
+                </th>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                  Status
+                </th>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5' }}>
+                  Valor Esperado
+                </th>
+                <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5' }}>
+                  Valor Pago
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPayments.map((payment) => (
+                <tr key={payment.id}>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                    {payment.installment_number}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                    {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                    {payment.payment_date
+                      ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                      : "-"}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                    {payment.status === "pago" ? "Pago" : "Pendente"}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                    {formatCurrency(payment.expected_amount)}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                    {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
+                <td colSpan={5} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                  Total Pago:
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>
+                  {formatCurrency(totalPaid)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </>
   );
 }
