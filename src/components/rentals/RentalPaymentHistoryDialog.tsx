@@ -187,8 +187,12 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media screen {
-          .print-only {
-            display: none;
+          .print-content {
+            position: fixed;
+            left: -9999px;
+            top: -9999px;
+            opacity: 0;
+            pointer-events: none;
           }
         }
         
@@ -198,39 +202,25 @@ export function RentalPaymentHistoryDialog({
             margin: 15mm;
           }
           
-          body * {
+          .no-print,
+          [role="dialog"],
+          .fixed,
+          .absolute {
             display: none !important;
           }
           
-          .print-only,
-          .print-only * {
+          .print-content {
+            position: static !important;
+            left: auto !important;
+            top: auto !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
             display: block !important;
-          }
-          
-          .print-only table {
-            display: table !important;
-          }
-          
-          .print-only thead {
-            display: table-header-group !important;
-          }
-          
-          .print-only tbody {
-            display: table-row-group !important;
-          }
-          
-          .print-only tr {
-            display: table-row !important;
-          }
-          
-          .print-only th,
-          .print-only td {
-            display: table-cell !important;
           }
         }
       `}</style>
       
-      <div className="print-only">
+      <div className="print-content" style={{ width: '100%', padding: '20px', backgroundColor: 'white' }}>
         <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
           Histórico de Pagamentos
         </h2>
@@ -250,7 +240,8 @@ export function RentalPaymentHistoryDialog({
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
-          fontSize: '10pt'
+          fontSize: '10pt',
+          border: '1px solid #000'
         }}>
           <thead>
             <tr>
@@ -365,7 +356,7 @@ export function RentalPaymentHistoryDialog({
       </div>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto no-print">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
           </DialogHeader>
