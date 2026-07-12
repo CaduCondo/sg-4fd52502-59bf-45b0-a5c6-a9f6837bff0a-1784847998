@@ -25,21 +25,71 @@ const printStyles = `
       margin: 15mm;
     }
     
-    .no-print {
+    /* Ocultar elementos desnecessários */
+    .no-print,
+    button[aria-label="Close"],
+    [data-radix-collection-item] button {
       display: none !important;
+      visibility: hidden !important;
     }
     
-    .print-only {
+    /* Forçar visibilidade do dialog e conteúdo */
+    [role="dialog"],
+    [data-state],
+    .print-area,
+    .print-area * {
+      position: static !important;
+      transform: none !important;
+      max-width: none !important;
+      max-height: none !important;
+      overflow: visible !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: block !important;
+    }
+    
+    /* Forçar visibilidade da tabela */
+    table,
+    thead,
+    tbody,
+    tr,
+    th,
+    td {
+      display: table !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    thead {
+      display: table-header-group !important;
+    }
+    
+    tbody {
+      display: table-row-group !important;
+    }
+    
+    tr {
+      display: table-row !important;
+    }
+    
+    th,
+    td {
       display: table-cell !important;
     }
     
-    body {
-      background: white;
+    /* Remover overlay do dialog */
+    [data-radix-dialog-overlay] {
+      display: none !important;
     }
     
-    .print-area {
-      width: 100%;
-      max-width: none;
+    /* Estilos gerais de impressão */
+    body {
+      background: white !important;
+    }
+    
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     h2 {
@@ -54,14 +104,10 @@ const printStyles = `
     }
     
     table {
-      width: 100%;
-      border-collapse: collapse;
+      width: 100% !important;
+      border-collapse: collapse !important;
       margin-top: 15pt;
       page-break-inside: auto;
-    }
-    
-    thead {
-      display: table-header-group;
     }
     
     tr {
@@ -70,30 +116,37 @@ const printStyles = `
     }
     
     th, td {
-      border: 1px solid #000;
-      padding: 6pt 8pt;
+      border: 1px solid #000 !important;
+      padding: 6pt 8pt !important;
       font-size: 10pt;
-      color: black;
+      color: black !important;
     }
     
     th {
-      background-color: #e5e7eb;
+      background-color: #e5e7eb !important;
       font-weight: bold;
       text-align: center;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
     
     .text-center {
-      text-align: center;
+      text-align: center !important;
     }
     
     .text-right {
-      text-align: right;
+      text-align: right !important;
     }
     
     .font-semibold {
-      font-weight: 600;
+      font-weight: 600 !important;
+    }
+    
+    .text-green-600 {
+      color: #16a34a !important;
+    }
+    
+    .print-only {
+      display: table-cell !important;
+      visibility: visible !important;
     }
   }
 `;
