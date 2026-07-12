@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { roleMenuPermissionService } from "@/services/roleMenuPermissionService";
 import { locationPermissionService } from "@/services/locationPermissionService";
 import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
+import * as managementFeeExemptionService from "@/services/managementFeeExemptionService";
 import { RoleMenuPermission } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,22 +78,42 @@ export function usePermissions() {
     }
   };
 
-  // Funções de Isenção de Taxa (AGORA GLOBAIS)
-  const saveFeeExemptions = async (locationIds: string[]) => {
+  // Funções de Isenção de Taxa Admin (GLOBAIS)
+  const saveAdminFeeExemptions = async (locationIds: string[]) => {
     try {
       await adminFeeExemptionService.setExemptLocations(locationIds);
       return true;
     } catch (error) {
-      console.error("Erro ao salvar isenções:", error);
+      console.error("Erro ao salvar isenções de taxa admin:", error);
       return false;
     }
   };
 
-  const getFeeExemptions = async () => {
+  const getAdminFeeExemptions = async () => {
     try {
       return await adminFeeExemptionService.getExemptLocations();
     } catch (error) {
-      console.error("Erro ao buscar isenções:", error);
+      console.error("Erro ao buscar isenções de taxa admin:", error);
+      return [];
+    }
+  };
+
+  // Funções de Isenção de Taxa de Gerenciamento (GLOBAIS)
+  const saveManagementFeeExemptions = async (locationIds: string[]) => {
+    try {
+      await managementFeeExemptionService.setExemptLocations(locationIds);
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar isenções de taxa de gerenciamento:", error);
+      return false;
+    }
+  };
+
+  const getManagementFeeExemptions = async () => {
+    try {
+      return await managementFeeExemptionService.getExemptLocations();
+    } catch (error) {
+      console.error("Erro ao buscar isenções de taxa de gerenciamento:", error);
       return [];
     }
   };
@@ -124,8 +145,10 @@ export function usePermissions() {
     refresh: loadPermissions,
     updateRoleMenuPermission,
     saveLocationPermissions,
-    saveFeeExemptions,
-    getFeeExemptions,
+    saveAdminFeeExemptions,
+    getAdminFeeExemptions,
+    saveManagementFeeExemptions,
+    getManagementFeeExemptions,
     getUserLocationPermissions,
     hasPermission,
   };

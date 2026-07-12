@@ -38,9 +38,11 @@ interface PermissionsTabProps {
   isLoading: boolean;
   onUpdateRoleMenuPermission: (role: string, menuItem: string, hasAccess: boolean) => Promise<boolean>;
   onSaveLocationPermissions: (userId: string, locationIds: string[]) => Promise<boolean>;
-  onSaveFeeExemptions: (locationIds: string[]) => Promise<boolean>;
+  onSaveAdminFeeExemptions: (locationIds: string[]) => Promise<boolean>;
+  onSaveManagementFeeExemptions: (locationIds: string[]) => Promise<boolean>;
   getUserLocationPermissions: (userId: string) => Promise<string[]>;
-  getFeeExemptions: () => Promise<string[]>;
+  getAdminFeeExemptions: () => Promise<string[]>;
+  getManagementFeeExemptions: () => Promise<string[]>;
 }
 
 const roleLabels: Record<string, string> = {
@@ -69,13 +71,16 @@ export function PermissionsTab({
   isLoading,
   onUpdateRoleMenuPermission,
   onSaveLocationPermissions,
-  onSaveFeeExemptions,
+  onSaveAdminFeeExemptions,
+  onSaveManagementFeeExemptions,
   getUserLocationPermissions,
-  getFeeExemptions,
+  getAdminFeeExemptions,
+  getManagementFeeExemptions,
 }: PermissionsTabProps) {
   const { toast } = useToast();
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
-  const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
+  const [isAdminFeeExemptionDialogOpen, setIsAdminFeeExemptionDialogOpen] = useState(false);
+  const [isManagementFeeExemptionDialogOpen, setIsManagementFeeExemptionDialogOpen] = useState(false);
   const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
@@ -175,12 +180,20 @@ export function PermissionsTab({
     }
   };
 
-  const openFeeExemptionDialog = () => {
-    setIsFeeExemptionDialogOpen(true);
+  const openAdminFeeExemptionDialog = () => {
+    setIsAdminFeeExemptionDialogOpen(true);
   };
 
-  const handleSaveFeeExemptions = async (locationIds: string[]) => {
-    return await onSaveFeeExemptions(locationIds);
+  const openManagementFeeExemptionDialog = () => {
+    setIsManagementFeeExemptionDialogOpen(true);
+  };
+
+  const handleSaveAdminFeeExemptions = async (locationIds: string[]) => {
+    return await onSaveAdminFeeExemptions(locationIds);
+  };
+
+  const handleSaveManagementFeeExemptions = async (locationIds: string[]) => {
+    return await onSaveManagementFeeExemptions(locationIds);
   };
 
   return (
@@ -237,54 +250,36 @@ export function PermissionsTab({
         </CardContent>
       </Card>
 
-      {/* Permissões de Locais por Usuário */}
+      {/* Isenções de Taxa - Lado a Lado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Permissões de Local (Financeiros) */}
+        {/* Isenção de Taxa de Gerenciamento */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4" />
-              Permissões de Locais
+              <DollarSign className="h-4 w-4" />
+              Isenção de Taxa Gerenciamento
             </CardTitle>
-            <CardDescription className="text-xs">Usuários Financeiros</CardDescription>
+            <CardDescription className="text-xs">
+              Configure quais locais são isentos de taxa de gerenciamento.
+              Esta configuração se aplica a todos os corretores.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pb-3">
-            {users.filter((u) => u.role === "financial").length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-xs">
-                Nenhum usuário financeiro
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {users
-                  .filter((u) => u.role === "financial")
-                  .map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-medium text-xs truncate">{user.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
-                        onClick={() => openLocationPermissionsDialog(user)}
-                      >
-                        Gerenciar
-                      </Button>
-                    </div>
-                  ))}
-              </div>
-            )}
+          <CardContent className="pb-3 flex flex-col justify-center items-center h-[120px]">
+            <Button 
+              variant="outline" 
+              className="w-full max-w-xs gap-2"
+              onClick={openManagementFeeExemptionDialog}
+            >
+              <SettingsIcon className="h-4 w-4" />
+              Gerenciar Locais Isentos
+            </Button>
+            <p className="text-[10px] text-muted-foreground mt-2 text-center max-w-xs">
+              Locais selecionados não gerarão cobrança de taxa de gerenciamento no sistema.
+            </p>
           </CardContent>
         </Card>
 
-        {/* Isenção de Taxa (Configuração Global) */}
+        {/* Isenção de Taxa Admin */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -300,7 +295,7 @@ export function PermissionsTab({
             <Button 
               variant="outline" 
               className="w-full max-w-xs gap-2"
-              onClick={openFeeExemptionDialog}
+              onClick={openAdminFeeExemptionDialog}
             >
               <SettingsIcon className="h-4 w-4" />
               Gerenciar Locais Isentos
@@ -311,6 +306,51 @@ export function PermissionsTab({
           </CardContent>
         </Card>
       </div>
+
+      {/* Permissões de Locais por Usuário */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4" />
+            Permissões de Locais
+          </CardTitle>
+          <CardDescription className="text-xs">Usuários Financeiros</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-3">
+          {users.filter((u) => u.role === "financial").length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground text-xs">
+              Nenhum usuário financeiro
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {users
+                .filter((u) => u.role === "financial")
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs truncate">{user.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
+                      onClick={() => openLocationPermissionsDialog(user)}
+                    >
+                      Gerenciar
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Dialog de Permissões de Local */}
       <Dialog open={isLocationPermissionsDialogOpen} onOpenChange={setIsLocationPermissionsDialogOpen}>
@@ -353,14 +393,29 @@ export function PermissionsTab({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Isenção de Taxa */}
-      {isFeeExemptionDialogOpen && (
+      {/* Dialog de Isenção de Taxa Admin */}
+      {isAdminFeeExemptionDialogOpen && (
         <FeeExemptionDialog
-          open={isFeeExemptionDialogOpen}
-          onOpenChange={setIsFeeExemptionDialogOpen}
+          open={isAdminFeeExemptionDialogOpen}
+          onOpenChange={setIsAdminFeeExemptionDialogOpen}
           locations={locations}
-          onSave={handleSaveFeeExemptions}
-          getExemptions={getFeeExemptions}
+          onSave={handleSaveAdminFeeExemptions}
+          getExemptions={getAdminFeeExemptions}
+          title="Isenção de Taxa Admin"
+          description="Selecione os locais que não terão cobrança de taxa de administração"
+        />
+      )}
+
+      {/* Dialog de Isenção de Taxa de Gerenciamento */}
+      {isManagementFeeExemptionDialogOpen && (
+        <FeeExemptionDialog
+          open={isManagementFeeExemptionDialogOpen}
+          onOpenChange={setIsManagementFeeExemptionDialogOpen}
+          locations={locations}
+          onSave={handleSaveManagementFeeExemptions}
+          getExemptions={getManagementFeeExemptions}
+          title="Isenção de Taxa Gerenciamento"
+          description="Selecione os locais que não terão cobrança de taxa de gerenciamento"
         />
       )}
     </div>
