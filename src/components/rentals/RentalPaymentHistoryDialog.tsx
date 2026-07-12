@@ -26,51 +26,83 @@ const printStyles = `
       margin: 10mm;
     }
     
-    body * {
-      visibility: hidden;
-    }
-    
-    .print-content, .print-content * {
-      visibility: visible;
-    }
-    
-    .print-content {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    
-    .no-print {
+    /* Esconder elementos que não devem ser impressos */
+    .no-print,
+    button:not(.print-visible),
+    [role="dialog"] > div:first-child,
+    .fixed.inset-0 {
       display: none !important;
     }
     
-    h1, h2, p, strong {
-      color: black !important;
+    /* Resetar estilos do dialog para impressão */
+    [role="dialog"] {
+      position: static !important;
+      transform: none !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: white !important;
     }
     
+    /* Garantir que o conteúdo seja visível */
+    .print-content {
+      display: block !important;
+      visibility: visible !important;
+      position: static !important;
+      width: 100% !important;
+    }
+    
+    /* Estilos de texto */
+    h1, h2, h3, p, strong, span, td, th {
+      color: black !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Estilos da tabela */
     table {
+      display: table !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin-top: 15px !important;
       font-size: 11pt !important;
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
+    }
+    
+    thead {
+      display: table-header-group !important;
+    }
+    
+    tbody {
+      display: table-row-group !important;
+    }
+    
+    tr {
+      display: table-row !important;
+      page-break-inside: avoid !important;
     }
     
     th, td {
-      padding: 6px 8px !important;
+      display: table-cell !important;
+      padding: 8px !important;
       border: 1px solid #333 !important;
-      text-align: left;
+      text-align: left !important;
     }
     
     th {
       background-color: #e5e7eb !important;
       font-weight: bold !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
-    tr {
-      page-break-inside: avoid;
+    /* Badge em impressão */
+    .print-badge {
+      display: inline !important;
+      color: black !important;
+      font-weight: normal !important;
     }
   }
 `;
@@ -245,11 +277,11 @@ export function RentalPaymentHistoryDialog({
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
-          </DialogHeader>
-
           <div className="print-content">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
+            </DialogHeader>
+
             <div className="mb-4 space-y-2">
               <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
                 <div className="text-base space-y-1">
@@ -274,7 +306,7 @@ export function RentalPaymentHistoryDialog({
                 <TableHeader>
                   <TableRow>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
                       onClick={() => handleSort("installment")}
                     >
                       <div className="flex items-center justify-center">
@@ -282,8 +314,11 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                      Parcela
+                    </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
                       onClick={() => handleSort("dueDate")}
                     >
                       <div className="flex items-center justify-center">
@@ -291,14 +326,20 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="dueDate" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                      Vencimento
+                    </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
                       onClick={() => handleSort("paymentDate")}
                     >
                       <div className="flex items-center justify-center">
                         Pagamento
                         <SortIcon field="paymentDate" />
                       </div>
+                    </TableHead>
+                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                      Pagamento
                     </TableHead>
                     <TableHead className="text-base text-center">Status</TableHead>
                     <TableHead className="text-right text-base">Valor Esperado</TableHead>
@@ -349,7 +390,7 @@ export function RentalPaymentHistoryDialog({
                               ? "Pendente"
                               : "Parcial"}
                           </Badge>
-                          <span className="hidden print:inline">
+                          <span className="hidden print:inline print-badge">
                             {payment.status === "paid"
                               ? "Pago"
                               : payment.status === "pending"
