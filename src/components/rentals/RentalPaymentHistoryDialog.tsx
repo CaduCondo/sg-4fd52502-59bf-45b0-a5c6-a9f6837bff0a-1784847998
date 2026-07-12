@@ -115,47 +115,29 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO SIMPLIFICADO */}
+      {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
       <style>{`
         @media print {
-          /* Esconde TUDO primeiro */
-          body * {
-            visibility: hidden;
-          }
-          
-          /* Mostra APENAS o Dialog e tudo dentro dele */
-          [role="dialog"],
-          [role="dialog"] * {
-            visibility: visible;
-          }
-          
           /* Remove overlay escuro */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* Dialog: posicionamento para impressão */
+          /* Dialog: remove posicionamento fixo para aparecer naturalmente */
           [role="dialog"] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          /* Esconde botão Imprimir */
-          .print\\:hidden {
-            visibility: hidden !important;
+            position: static !important;
+            transform: none !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 20px !important;
           }
           
           /* Configurações da página */
           @page {
             size: landscape;
             margin: 1cm;
-          }
-          
-          /* Body: fundo branco */
-          body {
-            background: white;
           }
         }
       `}</style>
