@@ -118,6 +118,17 @@ export function RentalPaymentHistoryDialog({
       {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
       <style>{`
         @media print {
+          /* Esconde a página principal e elementos de layout */
+          main,
+          header,
+          nav,
+          aside,
+          footer,
+          [data-sidebar],
+          .sidebar {
+            display: none !important;
+          }
+          
           /* Remove overlay escuro */
           [data-radix-dialog-overlay] {
             display: none !important;
@@ -131,6 +142,8 @@ export function RentalPaymentHistoryDialog({
             max-height: none !important;
             margin: 0 !important;
             padding: 20px !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           
           /* Esconde botão Imprimir */
@@ -142,6 +155,12 @@ export function RentalPaymentHistoryDialog({
           @page {
             size: landscape;
             margin: 1cm;
+          }
+          
+          /* Garante fundo branco */
+          body,
+          html {
+            background: white !important;
           }
         }
       `}</style>
