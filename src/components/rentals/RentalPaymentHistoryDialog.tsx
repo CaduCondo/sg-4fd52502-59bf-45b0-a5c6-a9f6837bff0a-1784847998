@@ -192,27 +192,33 @@ export function RentalPaymentHistoryDialog({
             margin: 15mm;
           }
           
-          body > *:not(#print-area) {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
           
-          #print-area {
-            display: block !important;
+          #print-content,
+          #print-content * {
+            visibility: visible;
+          }
+          
+          #print-content {
             position: absolute;
-            top: 0;
             left: 0;
+            top: 0;
             width: 100%;
           }
         }
         
         @media screen {
-          #print-area {
-            display: none;
+          #print-content {
+            position: absolute;
+            left: -9999px;
+            top: 0;
           }
         }
       `}</style>
       
-      <div id="print-area">
+      <div id="print-content">
         <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
           Histórico de Pagamentos
         </h2>
