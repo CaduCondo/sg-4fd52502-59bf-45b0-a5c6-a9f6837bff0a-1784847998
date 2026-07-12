@@ -129,30 +129,24 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde absolutamente tudo */
-          body * {
-            visibility: hidden !important;
+          /* Esconde a página de Locações por trás */
+          body > div:first-child {
+            display: none !important;
           }
           
-          /* Mostra apenas o conteúdo de impressão e seus descendentes */
-          #payment-history-print-area,
-          #payment-history-print-area * {
-            visibility: visible !important;
+          /* Mostra apenas o conteúdo de impressão */
+          .print-only {
+            display: block !important;
           }
           
-          /* Posiciona o conteúdo de impressão no topo da página */
-          #payment-history-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
+          /* Esconde o Dialog */
+          [role="dialog"] {
+            display: none !important;
           }
           
-          /* Remove margens e fundos */
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
+          /* Remove overlay/backdrop */
+          [data-radix-portal] > div:first-child {
+            display: none !important;
           }
           
           /* Configurações da página */
@@ -160,6 +154,16 @@ export function RentalPaymentHistoryDialog({
             size: landscape;
             margin: 1cm;
           }
+          
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+        }
+        
+        .print-only {
+          display: none;
         }
       `}</style>
 
@@ -285,83 +289,81 @@ export function RentalPaymentHistoryDialog({
       </Dialog>
 
       {/* Conteúdo exclusivo para impressão */}
-      <div id="payment-history-print-area" style={{ display: 'none' }}>
-        <div style={{ padding: '20px', backgroundColor: 'white' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
-            Histórico de Pagamentos
-          </h1>
+      <div className="print-only" style={{ padding: '20px', backgroundColor: 'white' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
+          Histórico de Pagamentos
+        </h1>
 
-          <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', color: '#000' }}>
-            <div>
-              <strong>Local:</strong> {location}
-            </div>
-            <div>
-              <strong>Complemento:</strong> {complement}
-            </div>
-            <div>
-              <strong>Nome Inquilino:</strong> {tenantName}
-            </div>
+        <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', color: '#000' }}>
+          <div>
+            <strong>Local:</strong> {location}
           </div>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
-            <thead>
-              <tr>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Parcela
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Vencimento
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Pagamento
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Status
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Valor Esperado
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Valor Pago
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.installment_number}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.payment_date
-                      ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
-                      : "-"}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.status === "pago" ? "Pago" : "Pendente"}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                    {formatCurrency(payment.expected_amount)}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                    {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
-                  </td>
-                </tr>
-              ))}
-              <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-                <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                  Total Pago:
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                  {formatCurrency(totalPaid)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div>
+            <strong>Complemento:</strong> {complement}
+          </div>
+          <div>
+            <strong>Nome Inquilino:</strong> {tenantName}
+          </div>
         </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Parcela
+              </th>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Vencimento
+              </th>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Pagamento
+              </th>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Status
+              </th>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Valor Esperado
+              </th>
+              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
+                Valor Pago
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedPayments.map((payment) => (
+              <tr key={payment.id}>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                  {payment.installment_number}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                  {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                  {payment.payment_date
+                    ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                    : "-"}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                  {payment.status === "pago" ? "Pago" : "Pendente"}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
+                  {formatCurrency(payment.expected_amount)}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
+                  {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                </td>
+              </tr>
+            ))}
+            <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
+              <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
+                Total Pago:
+              </td>
+              <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
+                {formatCurrency(totalPaid)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </>
   );
