@@ -115,34 +115,36 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
+      {/* CSS DE IMPRESSÃO SIMPLIFICADO */}
       <style>{`
         @media print {
-          /* Esconde TODO o conteúdo da página principal */
-          body > #__next > main,
-          body > #__next > header,
-          body > #__next > nav,
-          body > #__next > aside,
-          body > #__next > div:not([role="dialog"]):not([data-radix-portal]),
-          [data-sidebar],
-          .sidebar {
-            display: none !important;
+          /* Esconde TUDO primeiro */
+          body * {
+            visibility: hidden;
           }
           
-          /* Esconde overlay escuro do Dialog */
+          /* Mostra APENAS o Dialog e tudo dentro dele */
+          [role="dialog"],
+          [role="dialog"] * {
+            visibility: visible;
+          }
+          
+          /* Remove overlay escuro */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* Dialog: remove posicionamento fixo e mostra em posição normal */
+          /* Dialog: posicionamento para impressão */
           [role="dialog"] {
-            position: static !important;
-            transform: none !important;
-            max-width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            border: none !important;
-            box-shadow: none !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          
+          /* Esconde botão Imprimir */
+          .print\\:hidden {
+            visibility: hidden !important;
           }
           
           /* Configurações da página */
@@ -153,7 +155,7 @@ export function RentalPaymentHistoryDialog({
           
           /* Body: fundo branco */
           body {
-            background: white !important;
+            background: white;
           }
         }
       `}</style>
