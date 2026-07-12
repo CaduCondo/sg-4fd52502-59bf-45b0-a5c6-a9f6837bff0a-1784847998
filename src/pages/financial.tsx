@@ -1035,7 +1035,7 @@ export default function Financial() {
 
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
             {/* Cards de Métricas - Locações */}
-            <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${isFinancial ? 'sm:grid-cols-2 lg:grid-cols-4' : user?.role === "broker" ? 'sm:grid-cols-2 lg:grid-cols-5' : 'sm:grid-cols-2 lg:grid-cols-5'}`}>
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
               <Card className="border-l-4 border-l-green-500">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -1053,67 +1053,60 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              {!isFinancial && (
-                <Card className="border-l-4 border-l-orange-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Taxa Adm
-                          {user?.role === "broker" && ` (${config?.admin_fee_percentage || 5}%)`}
-                        </p>
-                        <h3 className="text-2xl font-bold">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(kpiCalculations.adminFee)}
-                        </h3>
-                      </div>
-                      <Percent className="h-8 w-8 text-orange-500" />
+              <Card className="border-l-4 border-l-orange-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Taxa Adm ({config?.admin_fee_percentage || 5}%)
+                      </p>
+                      <h3 className="text-2xl font-bold">
+                        {new Intl.NumberFormat("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        }).format(kpiCalculations.adminFee)}
+                      </h3>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <Percent className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
 
-              {user?.role === "broker" && (
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Taxa Ger ({config?.management_fee_percentage || 3}%)
-                        </p>
-                        <h3 className="text-2xl font-bold">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(kpiCalculations.managementFee)}
-                        </h3>
-                      </div>
-                      <Settings className="h-8 w-8 text-blue-500" />
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Taxa Ger ({config?.management_fee_percentage || 3}%)
+                      </p>
+                      <h3 className="text-2xl font-bold">
+                        {new Intl.NumberFormat("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        }).format(kpiCalculations.managementFee)}
+                      </h3>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <Settings className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
 
-              {user?.role === "broker" && (
-                <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Contas do Mês</p>
-                        <h3 className="text-2xl font-bold">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(kpiCalculations.locationExpenses)}
-                        </h3>
-                      </div>
-                      <Receipt className="h-8 w-8 text-red-500" />
+              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Contas do Mês</p>
+                      <h3 className="text-2xl font-bold">
+                        {new Intl.NumberFormat("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        }).format(kpiCalculations.locationExpenses)}
+                      </h3>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <Receipt className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card className="border-l-4 border-l-purple-500">
                 <CardContent className="pt-6">
@@ -1279,7 +1272,7 @@ export default function Financial() {
                                   currency: "BRL",
                                 }).format(getExpectedAmount(payment))}
                               </TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm">
+                              <TableCell className="text-right text-xs sm:text-sm text-green-600 font-semibold">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
