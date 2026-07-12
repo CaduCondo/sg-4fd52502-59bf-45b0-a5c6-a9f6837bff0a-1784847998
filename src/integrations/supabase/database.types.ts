@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -388,6 +388,42 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: []
+      }
+      management_fee_exempt_locations: {
+        Row: {
+          created_at: string | null
+          id: string
+          location_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          location_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "management_fee_exempt_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "management_fee_exempt_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
+          },
+        ]
       }
       payments: {
         Row: {

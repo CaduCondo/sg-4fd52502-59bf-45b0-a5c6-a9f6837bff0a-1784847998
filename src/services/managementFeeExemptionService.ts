@@ -1,0 +1,90 @@
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Serviço para gerenciar locais isentos de taxa de gerenciamento
+ * Um local isento = taxa de gerenciamento NÃO é cobrada dele
+ */
+
+/**
+ * Busca todos os locais isentos de taxa de gerenciamento
+ */
+export async function getExemptLocations(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("management_fee_exempt_locations")
+    .select("location_id");
+
+  if (error) {
+    console.error("Erro ao buscar locais isentos de taxa de gerenciamento:", error);
+    throw error;
+  }
+
+  return (data || []).map((row) => row.location_id);
+}
+
+/**
+ * Adiciona um local à lista de isentos
+ */
+export async function addExemptLocation(locationId: string): Promise<void> {
+  const { error } = await supabase
+    .from("management_fee_exempt_locations")
+    .insert({ location_id: locationId });
+
+  if (error) {
+    console.error("Erro ao adicionar local isento de taxa de gerenciamento:", error);
+    throw error;
+  }
+}
+
+/**
+ * Remove um local da lista de isentos
+ */
+export async function removeExemptLocation(locationId: string): Promise<void> {
+  const { error } = await supabase
+    .from("management_fee_exempt_locations")
+    .delete()
+    .eq("location_id", locationId);
+
+  if (error) {
+    console.error("Erro ao remover local isento de taxa de gerenciamento:", error);
+    throw error;
+  }
+}
+
+/**
+ * Define a lista completa de locais isentos
+ * (remove os que não estão na lista e adiciona os novos)
+ */
+export async function setExemptLocations(locationIds: string[]): Promise<void> {
+  // 1. Buscar locais isentos atuais
+  const currentExempt = await getExemptLocations();
+
+  // 2. Remover locais que não estão mais na lista
+  const toRemove = currentExempt.filter((id) => !locationIds.includes(id));
+  for (const locationId of toRemove) {
+    await removeExemptLocation(locationId);
+  }
+
+  // 3. Adicionar novos locais
+  const toAdd = locationIds.filter((id) => !currentExempt.includes(id));
+  for (const locationId of toAdd) {
+    await addExemptLocation(locationId);
+  }
+}
+
+/**
+ * Verifica se um local é isento de taxa de gerenciamento
+ */
+export async function isLocationExempt(locationId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("management_fee_exempt_locations")
+    .select("location_id")
+    .eq("location_id", locationId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erro ao verificar isenção de taxa de gerenciamento:", error);
+    return false;
+  }
+
+  return !!data;
+}
