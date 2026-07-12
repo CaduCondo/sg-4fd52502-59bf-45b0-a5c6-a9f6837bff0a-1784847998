@@ -158,8 +158,11 @@ export function RentalPaymentHistoryDialog({
           }
         }
         
+        /* Mantém o elemento renderizado mas invisível na tela */
         .print-only {
-          display: none;
+          position: absolute;
+          left: -9999px;
+          width: 100%;
         }
       `}</style>
 
