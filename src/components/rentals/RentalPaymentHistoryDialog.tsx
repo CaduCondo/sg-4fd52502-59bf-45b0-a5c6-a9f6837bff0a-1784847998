@@ -30,6 +30,7 @@ export function RentalPaymentHistoryDialog({
 }: RentalPaymentHistoryDialogProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Payment;
     direction: "asc" | "desc";
@@ -106,7 +107,11 @@ export function RentalPaymentHistoryDialog({
   };
 
   const handlePrint = () => {
-    window.print();
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 100);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -128,12 +133,6 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        @media screen {
-          .print-only {
-            display: none;
-          }
-        }
-        
         @media print {
           body * {
             visibility: hidden !important;
@@ -149,7 +148,6 @@ export function RentalPaymentHistoryDialog({
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
-            display: block !important;
           }
           
           @page {
@@ -280,83 +278,85 @@ export function RentalPaymentHistoryDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Conteúdo exclusivo para impressão */}
-      <div className="print-only" style={{ padding: '20px', backgroundColor: 'white' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
-          Histórico de Pagamentos
-        </h1>
+      {/* Conteúdo exclusivo para impressão - renderizado apenas quando isPrinting é true */}
+      {isPrinting && (
+        <div className="print-only" style={{ padding: '20px', backgroundColor: 'white' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
+            Histórico de Pagamentos
+          </h1>
 
-        <div style={{ marginBottom: '30px', color: '#000' }}>
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Local:</strong> {location}
+          <div style={{ marginBottom: '30px', color: '#000' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <strong>Local:</strong> {location}
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <strong>Complemento:</strong> {complement}
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <strong>Nome Inquilino:</strong> {tenantName}
+            </div>
           </div>
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Complemento:</strong> {complement}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Nome Inquilino:</strong> {tenantName}
-          </div>
-        </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Parcela
-              </th>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Vencimento
-              </th>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Pagamento
-              </th>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Status
-              </th>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Valor Esperado
-              </th>
-              <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                Valor Pago
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedPayments.map((payment) => (
-              <tr key={payment.id}>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                  {payment.installment_number}
+          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Parcela
+                </th>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Vencimento
+                </th>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Pagamento
+                </th>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Status
+                </th>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Valor Esperado
+                </th>
+                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
+                  Valor Pago
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPayments.map((payment) => (
+                <tr key={payment.id}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                    {payment.installment_number}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                    {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                    {payment.payment_date
+                      ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                      : "-"}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
+                    {payment.status === "pago" ? "Pago" : "Pendente"}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
+                    {formatCurrency(payment.expected_amount)}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
+                    {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
+                <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
+                  Total Pago:
                 </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                  {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                  {payment.payment_date
-                    ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
-                    : "-"}
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                  {payment.status === "pago" ? "Pago" : "Pendente"}
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                  {formatCurrency(payment.expected_amount)}
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                  {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
+                  {formatCurrency(totalPaid)}
                 </td>
               </tr>
-            ))}
-            <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-              <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                Total Pago:
-              </td>
-              <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                {formatCurrency(totalPaid)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
