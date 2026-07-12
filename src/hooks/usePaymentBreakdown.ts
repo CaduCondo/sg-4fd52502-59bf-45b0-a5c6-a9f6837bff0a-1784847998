@@ -1,4 +1,7 @@
 import { useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
+import * as managementFeeExemptionService from "@/services/managementFeeExemptionService";
 
 interface UsePaymentBreakdownParams {
   payment: any;
@@ -6,370 +9,90 @@ interface UsePaymentBreakdownParams {
   garageValue: number;
 }
 
+interface PaymentBreakdownItem {
+  description: string;
+  value: number;
+}
+
+interface PaymentBreakdownResult {
+  items: PaymentBreakdownItem[];
+  adminFee: number;
+  managementFee: number;
+  total: number;
+  isAdminFeeExempt: boolean;
+  isManagementFeeExempt: boolean;
+  isLoading: boolean;
+}
+
 export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePaymentBreakdownParams) {
-  return useMemo(() => {
-    console.log("🔍 [usePaymentBreakdown] Input values:", { 
-      rentalValue, 
-      garageValue,
-      paymentBreakdown: payment?.breakdown,
-      expectedAmount: payment?.expected_amount,
-      installment: payment?.installment,
-      totalInstallments: payment?.total_installments
-    });
+  const [adminFee, setAdminFee] = useState(0);
+  const [managementFee, setManagementFee] = useState(0);
+  const [isAdminFeeExempt, setIsAdminFeeExempt] = useState(false);
+  const [isManagementFeeExempt, setIsManagementFeeExempt] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-    if (!payment || !payment.breakdown) {
-      const hasGarage = garageValue > 0;
-      
-      const isProportional = payment?.installment === 1 || 
-                            payment?.installment === payment?.total_installments;
-      
-      let finalRentalValue = rentalValue;
-      let finalGarageValue = garageValue;
-      
-      if (isProportional && payment?.expected_amount) {
-        const totalExpected = payment.expected_amount;
-        
-        if (hasGarage) {
-          const totalOriginal = rentalValue + garageValue;
-          const proportionRental = rentalValue / totalOriginal;
-          const proportionGarage = garageValue / totalOriginal;
-          
-          finalRentalValue = totalExpected * proportionRental;
-          finalGarageValue = totalExpected * proportionGarage;
-        } else {
-          finalRentalValue = totalExpected;
-          finalGarageValue = 0;
-        }
-      }
-      
-      const total = finalRentalValue + finalGarageValue;
-      
-      let rentalDescription = "Aluguel";
-      let garageDescription = "Garagem";
-      
-      if (payment?.installment && payment?.total_installments) {
-        if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
-          const startDate = new Date(payment.rentals.start_date);
-          const dueDate = new Date(payment.due_date);
-          const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
-          
-          let proportionalDays = 0;
-          
-          if (payment.installment === 1) {
-            const diffTime = dueDate.getTime() - startDate.getTime();
-            proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          } else if (endDate && payment.installment === payment.total_installments) {
-            proportionalDays = endDate.getDate();
-          }
-          
-          if (proportionalDays > 0 && proportionalDays < 31) {
-            rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments} (${proportionalDays} ${proportionalDays === 1 ? 'dia' : 'dias'})`;
-            if (hasGarage) {
-              garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          } else {
-            rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-            if (hasGarage) {
-              garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          }
-        } else {
-          rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-          if (hasGarage) {
-            garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-          }
-        }
-      }
-      
-      const result = {
-        items: [
-          { description: rentalDescription, amount: finalRentalValue },
-          ...(hasGarage ? [{ description: garageDescription, amount: finalGarageValue }] : [])
-        ],
-        total: total,
-        hasMultipleItems: hasGarage
-      };
-      
-      console.log("✅ [usePaymentBreakdown] NO BREAKDOWN - Returning:", result);
-      return result;
-    }
+  useEffect(() => {
+    const calculateBreakdown = async () => {
+      setIsLoading(true);
+      try {
+        // Buscar configurações
+        const { data: config } = await supabase
+          .from("configs")
+          .select("admin_fee_percentage, management_fee_percentage")
+          .maybeSingle();
 
-    try {
-      let breakdownData = typeof payment.breakdown === 'string' 
-        ? JSON.parse(payment.breakdown) 
-        : (payment.breakdown || {});
-      
-      if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
-        const itemsArray: any[] = [];
-        
-        Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
-          if (value && typeof value === 'object') {
-            let description = key;
-            
-            if (payment?.installment && payment?.total_installments) {
-              if (value.label === "PROPORCIONAL") {
-                const dueDate = payment.due_date ? new Date(payment.due_date) : null;
-                const startDate = payment.rentals?.start_date ? new Date(payment.rentals.start_date) : null;
-                const endDate = payment.rentals?.end_date ? new Date(payment.rentals.end_date) : null;
-                
-                let proportionalDays = 0;
-                
-                if (payment.installment === 1 && dueDate && startDate) {
-                  const diffTime = dueDate.getTime() - startDate.getTime();
-                  proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                } else if (endDate && payment.installment === payment.total_installments) {
-                  proportionalDays = endDate.getDate();
-                }
-                
-                if (proportionalDays > 0) {
-                  description = `${key} - Parcela ${payment.installment}/${payment.total_installments} (${proportionalDays} ${proportionalDays === 1 ? 'dia' : 'dias'})`;
-                } else {
-                  description = `${key} - Parcela ${payment.installment}/${payment.total_installments}`;
-                }
-              } else if (value.label) {
-                description = `${key} - Parcela ${payment.installment}/${payment.total_installments} (${value.label})`;
-              } else {
-                description = `${key} - Parcela ${payment.installment}/${payment.total_installments}`;
-              }
-            }
-            
-            // 🔥 CORREÇÃO: Garantir que o valor seja sempre numérico e tenha o sinal correto
-            let itemAmount = value.value || value.amount || 0;
-            const itemType = value.type || "addition";
-            
-            // Se for dedução, garantir que o valor seja negativo
-            if (itemType === "deduction" && itemAmount > 0) {
-              itemAmount = -itemAmount;
-            }
-            // Se for adição, garantir que o valor seja positivo
-            if (itemType === "addition" && itemAmount < 0) {
-              itemAmount = Math.abs(itemAmount);
-            }
-            
-            itemsArray.push({
-              description: description,
-              amount: itemAmount,
-              value: itemAmount,
-              type: itemType
-            });
-          }
-        });
-        
-        breakdownData = itemsArray;
-      }
-      
-      if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-        breakdownData = breakdownData.map(item => {
-          let description = item.description || item.label || "";
-          
-          if (payment?.installment && payment?.total_installments && !description.includes("Parcela")) {
-            const isProportional = payment.installment === 1 || 
-                                  payment.installment === payment.total_installments;
-            
-            if (isProportional) {
-              const daysMatch = description.match(/\((\d+)\s*dias?\)/i);
-              if (daysMatch) {
-                const days = daysMatch[1];
-                const baseDesc = description.replace(/\s*\(\d+\s*dias?\)/i, '').trim();
-                description = `${baseDesc} - Parcela ${payment.installment}/${payment.total_installments} (${days} ${days === '1' ? 'dia' : 'dias'})`;
-              } else {
-                description = `${description} - Parcela ${payment.installment}/${payment.total_installments}`;
-              }
-            } else {
-              description = `${description} - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          }
-          
-          // 🔥 CORREÇÃO: Garantir que o valor tenha o sinal correto baseado no tipo
-          let itemAmount = item.extraValue || item.value || item.amount || 0;
-          const itemType = item.type || "addition";
-          
-          // Se for dedução, garantir que o valor seja negativo
-          if (itemType === "deduction" && itemAmount > 0) {
-            itemAmount = -itemAmount;
-          }
-          // Se for adição, garantir que o valor seja positivo
-          if (itemType === "addition" && itemAmount < 0) {
-            itemAmount = Math.abs(itemAmount);
-          }
-          
-          return {
-            label: item.label || description,
-            description: description,
-            amount: itemAmount,
-            value: itemAmount,
-            extraValue: item.extraValue,
-            type: itemType
-          };
-        });
-      }
-      
-      if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
-        const hasGarage = garageValue > 0;
-        
-        const isProportional = payment?.installment === 1 || 
-                              payment?.installment === payment?.total_installments;
-        
-        let finalRentalValue = rentalValue;
-        let finalGarageValue = garageValue;
-        
-        if (isProportional && payment?.expected_amount) {
-          const totalExpected = payment.expected_amount;
-          
-          if (hasGarage) {
-            const totalOriginal = rentalValue + garageValue;
-            const proportionRental = rentalValue / totalOriginal;
-            const proportionGarage = garageValue / totalOriginal;
-            
-            finalRentalValue = totalExpected * proportionRental;
-            finalGarageValue = totalExpected * proportionGarage;
-          } else {
-            finalRentalValue = totalExpected;
-            finalGarageValue = 0;
-          }
-        }
-        
-        const total = finalRentalValue + finalGarageValue;
-        
-        let rentalDescription = "Aluguel";
-        let garageDescription = "Garagem";
-        
-        if (payment?.installment && payment?.total_installments) {
-          if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
-            const startDate = new Date(payment.rentals.start_date);
-            const dueDate = new Date(payment.due_date);
-            const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
-            
-            let proportionalDays = 0;
-            
-            if (payment.installment === 1) {
-              const diffTime = dueDate.getTime() - startDate.getTime();
-              proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            } else if (endDate && payment.installment === payment.total_installments) {
-              proportionalDays = endDate.getDate();
-            }
-            
-            if (proportionalDays > 0 && proportionalDays < 31) {
-              rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments} (${proportionalDays} ${proportionalDays === 1 ? 'dia' : 'dias'})`;
-              if (hasGarage) {
-                garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-              }
-            } else {
-              rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-              if (hasGarage) {
-                garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-              }
-            }
-          } else {
-            rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-            if (hasGarage) {
-              garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          }
-        }
-        
-        const result = {
-          items: [
-            { description: rentalDescription, amount: finalRentalValue },
-            ...(hasGarage ? [{ description: garageDescription, amount: finalGarageValue }] : [])
-          ],
-          total: total,
-          hasMultipleItems: hasGarage
-        };
-        
-        console.log("✅ [usePaymentBreakdown] EMPTY BREAKDOWN ARRAY - Returning:", result);
-        return result;
-      }
+        const adminFeePercent = config?.admin_fee_percentage || 5;
+        const managementFeePercent = config?.management_fee_percentage || 3;
 
-      const hasMultipleItems = breakdownData.length > 1;
-      
-      // 🔥 CORREÇÃO CRÍTICA: Calcular o total somando valores com seus sinais corretos
-      const total = breakdownData.reduce((sum: number, item: any) => {
-        const itemValue = item.value || item.amount || 0;
-        return sum + itemValue;
-      }, 0);
-
-      const result = {
-        items: breakdownData,
-        total: total,
-        hasMultipleItems: hasMultipleItems
-      };
-      
-      console.log("✅ [usePaymentBreakdown] WITH BREAKDOWN - Returning:", result);
-      return result;
-    } catch (error) {
-      console.error("❌ [usePaymentBreakdown] Error processing breakdown:", error);
-      const hasGarage = garageValue > 0;
-      
-      const isProportional = payment?.installment === 1 || 
-                            payment?.installment === payment?.total_installments;
-      
-      let finalRentalValue = rentalValue;
-      let finalGarageValue = garageValue;
-      
-      if (isProportional && payment?.expected_amount) {
-        const totalExpected = payment.expected_amount;
+        // Verificar isenções
+        const adminExempt = locationId 
+          ? await adminFeeExemptionService.isLocationExempt(locationId)
+          : false;
         
-        if (hasGarage) {
-          const totalOriginal = rentalValue + garageValue;
-          const proportionRental = rentalValue / totalOriginal;
-          const proportionGarage = garageValue / totalOriginal;
-          
-          finalRentalValue = totalExpected * proportionRental;
-          finalGarageValue = totalExpected * proportionGarage;
-        } else {
-          finalRentalValue = totalExpected;
-          finalGarageValue = 0;
-        }
+        const managementExempt = locationId
+          ? await managementFeeExemptionService.isLocationExempt(locationId)
+          : false;
+
+        setIsAdminFeeExempt(adminExempt);
+        setIsManagementFeeExempt(managementExempt);
+
+        // Calcular valor base (aluguel + garagem se houver)
+        const totalBaseValue = baseValue + (includeGarage && garageValue ? garageValue : 0);
+
+        // Calcular taxas (aplicar isenção se necessário)
+        const calculatedAdminFee = adminExempt ? 0 : (totalBaseValue * (adminFeePercent / 100));
+        const calculatedManagementFee = managementExempt ? 0 : (totalBaseValue * (managementFeePercent / 100));
+
+        setAdminFee(calculatedAdminFee);
+        setManagementFee(calculatedManagementFee);
+      } catch (error) {
+        console.error("Erro ao calcular breakdown:", error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      const total = finalRentalValue + finalGarageValue;
-      
-      let rentalDescription = "Aluguel";
-      let garageDescription = "Garagem";
-      
-      if (payment?.installment && payment?.total_installments) {
-        if (isProportional && payment?.rentals?.start_date && payment?.due_date) {
-          const startDate = new Date(payment.rentals.start_date);
-          const dueDate = new Date(payment.due_date);
-          const endDate = payment.rentals.end_date ? new Date(payment.rentals.end_date) : null;
-          
-          let proportionalDays = 0;
-          
-          if (payment.installment === 1) {
-            const diffTime = dueDate.getTime() - startDate.getTime();
-            proportionalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          } else if (endDate && payment.installment === payment.total_installments) {
-            proportionalDays = endDate.getDate();
-          }
-          
-          if (proportionalDays > 0 && proportionalDays < 31) {
-            rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments} (${proportionalDays} ${proportionalDays === 1 ? 'dia' : 'dias'})`;
-            if (hasGarage) {
-              garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          } else {
-            rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-            if (hasGarage) {
-              garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-            }
-          }
-        } else {
-          rentalDescription = `Aluguel - Parcela ${payment.installment}/${payment.total_installments}`;
-          if (hasGarage) {
-            garageDescription = `Garagem - Parcela ${payment.installment}/${payment.total_installments}`;
-          }
-        }
-      }
-      
-      return {
-        items: [
-          { description: rentalDescription, amount: finalRentalValue },
-          ...(hasGarage ? [{ description: garageDescription, amount: finalGarageValue }] : [])
-        ],
-        total: total,
-        hasMultipleItems: hasGarage
-      };
-    }
-  }, [payment, rentalValue, garageValue]);
+    };
+
+    calculateBreakdown();
+  }, [baseValue, locationId, includeGarage, garageValue]);
+
+  // Montar items do breakdown
+  const items: PaymentBreakdownItem[] = [
+    { description: "Aluguel", value: baseValue }
+  ];
+
+  if (includeGarage && garageValue) {
+    items.push({ description: "Garagem", value: garageValue });
+  }
+
+  const total = baseValue + (includeGarage && garageValue ? garageValue : 0);
+
+  return {
+    items,
+    adminFee,
+    managementFee,
+    total,
+    isAdminFeeExempt,
+    isManagementFeeExempt,
+    isLoading,
+  };
 }

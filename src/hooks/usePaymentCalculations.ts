@@ -1,4 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import * as managementFeeExemptionService from "@/services/managementFeeExemptionService";
+import * as adminFeeExemptionService from "@/services/adminFeeExemptionService";
 
 interface PaymentFormData {
   payment_date: string;
@@ -42,6 +45,53 @@ export function usePaymentCalculations({
   lateFeePercentage,
   interestRatePercentage,
 }: UsePaymentCalculationsProps) {
+  const [adminFeeAmount, setAdminFeeAmount] = useState(0);
+  const [managementFeeAmount, setManagementFeeAmount] = useState(0);
+  const [isAdminFeeExempt, setIsAdminFeeExempt] = useState(false);
+  const [isManagementFeeExempt, setIsManagementFeeExempt] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const calculateFees = async () => {
+      setIsLoading(true);
+      try {
+        // Buscar configurações
+        const { data: config } = await supabase
+          .from("configs")
+          .select("admin_fee_percentage, management_fee_percentage")
+          .maybeSingle();
+
+        const adminFeePercent = config?.admin_fee_percentage || 5;
+        const managementFeePercent = config?.management_fee_percentage || 3;
+
+        // Verificar isenções
+        const adminExempt = locationId 
+          ? await adminFeeExemptionService.isLocationExempt(locationId)
+          : false;
+        
+        const managementExempt = locationId
+          ? await managementFeeExemptionService.isLocationExempt(locationId)
+          : false;
+
+        setIsAdminFeeExempt(adminExempt);
+        setIsManagementFeeExempt(managementExempt);
+
+        // Calcular taxas (aplicar isenção se necessário)
+        const adminFee = adminExempt ? 0 : (paidAmount * (adminFeePercent / 100));
+        const managementFee = managementExempt ? 0 : (paidAmount * (managementFeePercent / 100));
+
+        setAdminFeeAmount(adminFee);
+        setManagementFeeAmount(managementFee);
+      } catch (error) {
+        console.error("Erro ao calcular taxas:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    calculateFees();
+  }, [paidAmount, locationId, receiverId]);
+
   return useMemo(() => {
     // CORREÇÃO: Usar sempre os valores separados de aluguel e garagem
     // rentalValue = valor do aluguel do imóvel
