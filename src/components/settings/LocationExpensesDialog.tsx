@@ -30,146 +30,103 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Forçar visibilidade global */
-    * {
-      color-adjust: exact !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    /* Ocultar elementos não essenciais */
+    /* Ocultar tudo que não deve ser impresso */
     .no-print,
-    button:not(.keep-print),
-    [data-radix-dialog-overlay] {
+    button,
+    [data-radix-dialog-overlay],
+    .cursor-pointer {
       display: none !important;
-      visibility: hidden !important;
     }
     
-    /* Remover estilos do Dialog que podem interferir */
-    [role="dialog"],
-    [data-radix-portal] {
+    /* Resetar Dialog para impressão */
+    [role="dialog"] {
       position: static !important;
-      inset: auto !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
-      max-height: none !important;
       overflow: visible !important;
       transform: none !important;
       border: none !important;
       box-shadow: none !important;
-      background: white !important;
       padding: 0 !important;
       margin: 0 !important;
     }
     
-    body, html {
-      overflow: visible !important;
-      height: auto !important;
-    }
-    
-    /* Cabeçalho - forçar visibilidade total */
-    .print-header,
-    .print-header * {
-      display: block !important;
-      visibility: visible !important;
-      position: static !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    
-    .print-header {
-      margin-bottom: 20px !important;
+    /* Título e subtítulo */
+    .print-title-section {
+      margin-bottom: 25px;
       page-break-inside: avoid;
     }
     
-    .print-header h2 {
-      font-size: 16pt !important;
-      font-weight: bold !important;
-      margin-bottom: 6px !important;
-      color: #000 !important;
-      line-height: 1.3 !important;
+    .print-title-section h2 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #000;
     }
     
-    .print-header p {
-      font-size: 10pt !important;
-      color: #666 !important;
-      margin-bottom: 12px !important;
-      line-height: 1.4 !important;
+    .print-title-section .print-subtitle {
+      font-size: 11pt;
+      color: #666;
+      margin-bottom: 15px;
     }
     
-    /* Período */
-    .print-period {
-      display: block !important;
-      visibility: visible !important;
-      font-size: 11pt !important;
-      font-weight: 600 !important;
-      margin-bottom: 10px !important;
-      color: #000 !important;
-    }
-    
-    /* Área de conteúdo */
-    .print-area {
-      display: block !important;
-      visibility: visible !important;
-      position: static !important;
+    .print-title-section .print-period-info {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #000;
     }
     
     /* Tabela */
     table {
-      font-size: 9pt !important;
-      width: 100% !important;
-      border-collapse: collapse !important;
-      display: table !important;
-    }
-    
-    thead {
-      display: table-header-group !important;
-    }
-    
-    tbody {
-      display: table-row-group !important;
-    }
-    
-    tr {
-      display: table-row !important;
-      page-break-inside: avoid !important;
+      font-size: 10pt;
+      width: 100%;
+      border-collapse: collapse;
     }
     
     th, td {
-      display: table-cell !important;
-      padding: 6px 8px !important;
-      border: 1px solid #ddd !important;
-      text-align: left !important;
-      vertical-align: middle !important;
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: left;
     }
     
     th {
-      background-color: #f0f0f0 !important;
-      font-weight: bold !important;
+      background-color: #f5f5f5 !important;
+      font-weight: bold;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     /* Ocultar coluna de ações */
     th:last-child,
     td:last-child {
-      display: none !important;
+      display: none;
     }
     
     /* Total */
-    .print-total {
-      display: flex !important;
-      visibility: visible !important;
-      font-size: 11pt !important;
-      font-weight: bold !important;
-      margin-top: 15px !important;
-      padding: 10px !important;
+    .print-total-section {
+      margin-top: 20px;
+      padding: 12px;
       background-color: #f5f5f5 !important;
-      justify-content: space-between !important;
-      page-break-inside: avoid !important;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
-    .print-total .text-red-600 {
+    .print-total-section .total-label {
+      font-size: 12pt;
+      font-weight: 600;
+    }
+    
+    .print-total-section .total-value {
+      font-size: 14pt;
+      font-weight: bold;
       color: #dc2626 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
   }
 `;
@@ -411,15 +368,19 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
       
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="print-header">
-            <div className="flex items-center justify-between">
+          {/* Cabeçalho visível na tela e na impressão */}
+          <div className="print-title-section">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <DialogTitle className="text-lg font-bold">
+                <h2 className="text-lg font-bold">
                   Detalhamento das Contas do Mês - {location.name}
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1 print-subtitle">
                   Controle de despesas mensais por localização
                 </p>
+                <div className="hidden print:block print-period-info mt-3">
+                  Período: {getMonthName(filterMonth)}/{filterYear}
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -431,9 +392,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 Imprimir
               </Button>
             </div>
-          </DialogHeader>
+          </div>
 
-          <div className="space-y-4 print-area">
+          <div className="space-y-4">
             {/* Filtros */}
             <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border no-print">
               <Filter className="h-4 w-4 text-muted-foreground" />
@@ -462,11 +423,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Período para impressão */}
-            <div className="hidden print:block print-period">
-              Período: {getMonthName(filterMonth)}/{filterYear}
             </div>
 
             <div className="border rounded-lg">
@@ -512,60 +468,58 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                       </TableCell>
                     </TableRow>
                   ) : (
-                    <>
-                      {sortedExpenses.map((expense) => (
-                        <TableRow 
-                          key={expense.id}
-                          className="cursor-pointer hover:bg-muted/50 print-row"
-                          onClick={() => handleView(expense)}
-                        >
-                          <TableCell>
-                            <Badge variant="outline" className="no-print">{getExpenseTypeLabel(expense.expenseType)}</Badge>
-                            <span className="hidden print:inline">{getExpenseTypeLabel(expense.expenseType)}</span>
-                          </TableCell>
-                          <TableCell>{expense.description || "-"}</TableCell>
-                          <TableCell>
-                            {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(expense.amount)}
-                          </TableCell>
-                          <TableCell className="no-print">
-                            <div className="flex justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmDelete(expense);
-                                }}
-                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </>
+                    sortedExpenses.map((expense) => (
+                      <TableRow 
+                        key={expense.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleView(expense)}
+                      >
+                        <TableCell>
+                          <Badge variant="outline" className="no-print">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                          <span className="hidden print:inline">{getExpenseTypeLabel(expense.expenseType)}</span>
+                        </TableCell>
+                        <TableCell>{expense.description || "-"}</TableCell>
+                        <TableCell>
+                          {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(expense.amount)}
+                        </TableCell>
+                        <TableCell className="no-print">
+                          <div className="flex justify-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDelete(expense);
+                              }}
+                              className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
             </div>
 
             {sortedExpenses.length > 0 && (
-              <div className="p-4 bg-muted rounded-lg print-total">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total de Contas ({getMonthName(filterMonth)}/{filterYear}):</span>
-                  <span className="text-xl font-bold text-red-600">
-                    {formatCurrency(sortedExpenses.reduce((sum, e) => sum + e.amount, 0))}
-                  </span>
-                </div>
+              <div className="p-4 bg-muted rounded-lg print-total-section">
+                <span className="font-semibold total-label">
+                  Total de Contas ({getMonthName(filterMonth)}/{filterYear}):
+                </span>
+                <span className="text-xl font-bold text-red-600 total-value">
+                  {formatCurrency(sortedExpenses.reduce((sum, e) => sum + e.amount, 0))}
+                </span>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-2 no-print">
+          <DialogFooter className="gap-2 no-print mt-6">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
