@@ -128,32 +128,21 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        /* Esconde o conteúdo de impressão APENAS na tela (screen) */
-        @media screen {
-          .print-only {
-            position: absolute;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-          }
-        }
-        
-        /* Na impressão, mostra o conteúdo normalmente */
         @media print {
-          /* Esconde o Dialog e elementos de navegação */
-          body > div:not(.print-only) {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
           
-          /* Reseta estilos do .print-only para aparecer normalmente */
+          .print-only,
+          .print-only * {
+            visibility: visible;
+          }
+          
           .print-only {
-            position: static !important;
-            left: auto !important;
-            width: auto !important;
-            height: auto !important;
-            overflow: visible !important;
-            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
           
           @page {
@@ -162,10 +151,14 @@ export function RentalPaymentHistoryDialog({
           }
           
           body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
+            margin: 0;
+            padding: 0;
+            background: white;
           }
+        }
+        
+        .print-only {
+          display: none;
         }
       `}</style>
 
