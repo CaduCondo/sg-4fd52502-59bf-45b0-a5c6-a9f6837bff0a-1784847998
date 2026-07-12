@@ -115,86 +115,25 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
+      {/* CSS DE IMPRESSÃO MÍNIMO */}
       <style>{`
         @media print {
-          /* ESCONDE TUDO PRIMEIRO */
-          body * {
-            visibility: hidden !important;
-          }
-          
-          /* MOSTRA APENAS O DIALOG E TUDO DENTRO DELE */
-          [role="dialog"],
-          [role="dialog"] * {
-            visibility: visible !important;
-          }
-          
-          /* REMOVE OVERLAY ESCURO COMPLETAMENTE */
+          /* Esconde overlay escuro do Dialog */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* DIALOG: POSICIONAMENTO E ESTILOS */
+          /* Remove posicionamento fixo do Dialog */
           [role="dialog"] {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            transform: none !important;
+            position: static !important;
             max-width: 100% !important;
             max-height: none !important;
-            overflow: visible !important;
-            padding: 20px !important;
-            margin: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: white !important;
           }
           
-          /* ESCONDE BOTÃO IMPRIMIR */
-          .no-print {
-            visibility: hidden !important;
-          }
-          
-          /* CONFIGURAÇÕES DA PÁGINA */
+          /* Configurações da página */
           @page {
             size: landscape;
             margin: 1cm;
-          }
-          
-          /* BODY E HTML: FUNDO BRANCO */
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          
-          html {
-            background: white !important;
-          }
-          
-          /* GARANTE TABELA VISÍVEL */
-          table {
-            page-break-inside: auto !important;
-            background: white !important;
-          }
-          
-          tr {
-            page-break-inside: avoid !important;
-            page-break-after: auto !important;
-          }
-          
-          /* GARANTE TEXTO PRETO EM FUNDO BRANCO */
-          th {
-            background-color: #f5f5f5 !important;
-            color: black !important;
-          }
-          
-          td, th {
-            color: black !important;
-          }
-          
-          .bg-muted\/50 {
-            background-color: #f9f9f9 !important;
           }
         }
       `}</style>
@@ -206,23 +145,24 @@ export function RentalPaymentHistoryDialog({
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="space-y-2 text-base">
-                <div>
+            {/* Informações do Imóvel e Inquilino */}
+            <div className="border rounded-lg p-4 bg-muted/50">
+              <div className="grid gap-3">
+                <div className="text-base">
                   <span className="font-semibold">Local:</span> {location}
                 </div>
-                <div>
+                <div className="text-base">
                   <span className="font-semibold">Complemento:</span> {complement}
                 </div>
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="text-base">
                     <span className="font-semibold">Nome Inquilino:</span> {tenantName}
                   </div>
                   <Button
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
-                    className="no-print"
+                    className="print:hidden"
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
@@ -234,82 +174,84 @@ export function RentalPaymentHistoryDialog({
             {loading ? (
               <div className="text-center py-8">Carregando pagamentos...</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead
-                      className="cursor-pointer text-base text-center"
-                      onClick={() => handleSort("installment_number")}
-                    >
-                      Parcela
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer text-base text-center"
-                      onClick={() => handleSort("due_date")}
-                    >
-                      Vencimento
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer text-base text-center"
-                      onClick={() => handleSort("payment_date")}
-                    >
-                      Pagamento
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer text-base text-center"
-                      onClick={() => handleSort("status")}
-                    >
-                      Status
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer text-base text-right"
-                      onClick={() => handleSort("expected_amount")}
-                    >
-                      Valor Esperado
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer text-base text-right"
-                      onClick={() => handleSort("amount_paid")}
-                    >
-                      Valor Pago
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="text-base text-center">
-                        {payment.installment_number}
-                      </TableCell>
-                      <TableCell className="text-base text-center">
-                        {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                      </TableCell>
-                      <TableCell className="text-base text-center">
-                        {payment.payment_date
-                          ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-base text-center">
-                        {payment.status === "pago" ? "Pago" : "Pendente"}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="cursor-pointer text-base text-center"
+                        onClick={() => handleSort("installment_number")}
+                      >
+                        Parcela
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer text-base text-center"
+                        onClick={() => handleSort("due_date")}
+                      >
+                        Vencimento
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer text-base text-center"
+                        onClick={() => handleSort("payment_date")}
+                      >
+                        Pagamento
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer text-base text-center"
+                        onClick={() => handleSort("status")}
+                      >
+                        Status
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer text-base text-right"
+                        onClick={() => handleSort("expected_amount")}
+                      >
+                        Valor Esperado
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer text-base text-right"
+                        onClick={() => handleSort("amount_paid")}
+                      >
+                        Valor Pago
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedPayments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell className="text-base text-center">
+                          {payment.installment_number}
+                        </TableCell>
+                        <TableCell className="text-base text-center">
+                          {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-base text-center">
+                          {payment.payment_date
+                            ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-base text-center">
+                          {payment.status === "pago" ? "Pago" : "Pendente"}
+                        </TableCell>
+                        <TableCell className="text-base text-right">
+                          {formatCurrency(payment.expected_amount)}
+                        </TableCell>
+                        <TableCell className="text-base text-right">
+                          {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-bold bg-muted/50">
+                      <TableCell colSpan={5} className="text-base text-right">
+                        Total Pago:
                       </TableCell>
                       <TableCell className="text-base text-right">
-                        {formatCurrency(payment.expected_amount)}
-                      </TableCell>
-                      <TableCell className="text-base text-right">
-                        {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                        {formatCurrency(totalPaid)}
                       </TableCell>
                     </TableRow>
-                  ))}
-                  <TableRow className="font-bold bg-muted/50">
-                    <TableCell colSpan={5} className="text-base text-right">
-                      Total Pago:
-                    </TableCell>
-                    <TableCell className="text-base text-right">
-                      {formatCurrency(totalPaid)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </DialogContent>
