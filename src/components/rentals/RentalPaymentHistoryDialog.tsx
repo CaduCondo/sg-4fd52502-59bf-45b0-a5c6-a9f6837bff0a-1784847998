@@ -129,15 +129,33 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde TUDO */
-          body * {
+          /* Esconde a página de fundo, layout, header, sidebar */
+          body > div:not(#payment-history-print-wrapper),
+          header,
+          nav,
+          aside,
+          .sidebar,
+          [role="dialog"],
+          [data-state="open"],
+          .no-print {
             display: none !important;
           }
           
-          /* Mostra apenas o conteúdo de impressão e seus filhos */
-          #payment-history-print-content,
-          #payment-history-print-content * {
+          /* Mostra apenas o conteúdo de impressão */
+          #payment-history-print-wrapper {
             display: block !important;
+            position: static !important;
+            visibility: visible !important;
+          }
+          
+          #payment-history-print-content {
+            display: block !important;
+            position: static !important;
+            visibility: visible !important;
+          }
+          
+          #payment-history-print-content * {
+            visibility: visible !important;
           }
           
           /* Tabela e seus elementos precisam de display específico */
@@ -162,31 +180,31 @@ export function RentalPaymentHistoryDialog({
             display: table-cell !important;
           }
           
-          /* Posiciona no topo */
-          #payment-history-print-content {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            background: white !important;
-          }
-          
           /* Configurações da página */
           @page {
             size: landscape;
             margin: 1cm;
           }
           
-          /* Remove margens do body */
+          /* Remove margens e padding do body */
           body {
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+          }
+          
+          /* Remove overlay escuro */
+          [data-radix-portal],
+          [data-overlay],
+          .backdrop,
+          .overlay {
+            display: none !important;
           }
         }
       `}</style>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto no-print">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-2xl">Histórico de Pagamentos</DialogTitle>
             <DialogClose asChild>
@@ -307,8 +325,8 @@ export function RentalPaymentHistoryDialog({
       </Dialog>
 
       {/* Conteúdo para impressão - Renderizado mas escondido na tela */}
-      <div id="payment-history-print-content" style={{ display: 'none' }}>
-        <div style={{ padding: '20px' }}>
+      <div id="payment-history-print-wrapper" style={{ display: 'none' }}>
+        <div id="payment-history-print-content" style={{ padding: '20px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
             Histórico de Pagamentos
           </h1>
