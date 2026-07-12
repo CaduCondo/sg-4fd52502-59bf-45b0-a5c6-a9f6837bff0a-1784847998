@@ -129,37 +129,34 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde todos os filhos diretos do body */
-          body > * {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
           
-          /* Mostra apenas o conteúdo de impressão */
+          .print-only,
+          .print-only * {
+            visibility: visible;
+          }
+          
           .print-only {
-            display: block !important;
-            position: static !important;
-            width: 100% !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
           
-          /* Configurações da página */
           @page {
             size: landscape;
             margin: 1cm;
           }
           
-          /* Remove margens e garante fundo branco */
           body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          
-          html {
-            background: white !important;
+            margin: 0;
+            padding: 0;
+            background: white;
           }
         }
         
-        /* Esconde o conteúdo de impressão na tela */
         .print-only {
           display: none;
         }
@@ -167,18 +164,13 @@ export function RentalPaymentHistoryDialog({
 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogHeader>
             <DialogTitle className="text-2xl">Histórico de Pagamentos</DialogTitle>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogClose>
           </DialogHeader>
 
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-4 text-base">
+              <div className="space-y-2 text-base">
                 <div>
                   <span className="font-semibold">Local:</span> {location}
                 </div>
@@ -193,7 +185,6 @@ export function RentalPaymentHistoryDialog({
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
-                    className="ml-4"
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
