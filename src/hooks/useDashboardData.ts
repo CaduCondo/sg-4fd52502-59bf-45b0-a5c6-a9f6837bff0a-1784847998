@@ -78,6 +78,7 @@ export function useDashboardData(
     managementFees: 0,
   });
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
+  const [managementFeeExemptLocationIds, setManagementFeeExemptLocationIds] = useState<string[]>([]);
 
   const isFinancialUser = useMemo(() => userRole === "financial", [userRole]);
   const cacheKey = useMemo(
@@ -163,6 +164,7 @@ export function useDashboardData(
         // Buscar dados em paralelo
         const [
           exemptLocationsResult,
+          managementFeeExemptLocationsResult,
           propertiesResult,
           tenantsResult,
           rentalsResult,
@@ -170,9 +172,14 @@ export function useDashboardData(
           expensesResult,
           configResult,
         ] = await Promise.all([
-          // Locais isentos
+          // Locais isentos de taxa admin
           supabase
             .from("admin_fee_exempt_locations")
+            .select("location_id"),
+
+          // Locais isentos de taxa de gerenciamento
+          supabase
+            .from("management_fee_exempt_locations")
             .select("location_id"),
 
           // Propriedades (com filtro de localização para financeiro)
@@ -281,6 +288,9 @@ export function useDashboardData(
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
+        const managementFeeExemptIds = managementFeeExemptLocationsResult.data?.map(e => e.location_id) || [];
+        setManagementFeeExemptLocationIds(managementFeeExemptIds);
+
         const config = configResult.data;
         const adminFeePercent = config?.admin_fee_percentage || 0;
         const managementFeePercent = config?.management_fee_percentage || 0;
@@ -343,15 +353,20 @@ export function useDashboardData(
             grossRevenue += paidAmount;
             
             if (paidAmount > 0) {
-              const isExempt = locationId && exemptIds.includes(locationId);
+              const isAdminFeeExempt = locationId && exemptIds.includes(locationId);
+              const isManagementFeeExempt = locationId && managementFeeExemptIds.includes(locationId);
               
-              if (!isExempt) {
+              // Taxa Admin - apenas se NÃO isento
+              if (!isAdminFeeExempt) {
                 const adminFee = paidAmount * (adminFeePercent / 100);
                 adminFees += adminFee;
               }
               
-              const mgmtFee = paidAmount * (managementFeePercent / 100);
-              managementFees += mgmtFee;
+              // Taxa de Gerenciamento - apenas se NÃO isento
+              if (!isManagementFeeExempt) {
+                const mgmtFee = paidAmount * (managementFeePercent / 100);
+                managementFees += mgmtFee;
+              }
             }
           }
           
