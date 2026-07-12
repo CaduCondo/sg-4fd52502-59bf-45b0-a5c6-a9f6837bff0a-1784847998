@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Printer, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Rental, Payment } from "@/types";
@@ -19,6 +19,52 @@ interface RentalPaymentHistoryDialogProps {
 type SortField = "installment" | "dueDate" | "paymentDate";
 type SortDirection = "asc" | "desc" | null;
 
+const printStyles = `
+  @media print {
+    @page {
+      size: landscape;
+      margin: 10mm;
+    }
+    
+    body * {
+      visibility: hidden;
+    }
+    
+    .print-content, .print-content * {
+      visibility: visible;
+    }
+    
+    .print-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+    
+    table {
+      font-size: 10pt !important;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 4px 6px !important;
+      border: 1px solid #ddd !important;
+    }
+    
+    th {
+      background-color: #f0f0f0 !important;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+`;
+
 export function RentalPaymentHistoryDialog({
   open,
   onOpenChange,
@@ -29,7 +75,6 @@ export function RentalPaymentHistoryDialog({
   const [loading, setLoading] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   // Função para calcular valor esperado total (breakdown + late_fee + interest - discount)
   const getExpectedAmount = (payment: Payment): number => {
@@ -85,20 +130,6 @@ export function RentalPaymentHistoryDialog({
         .order("due_date", { ascending: true });
 
       if (error) throw error;
-      
-      console.log("=== DADOS DO BANCO (payments) ===");
-      console.log("Total de payments:", data?.length);
-      if (data && data.length > 0) {
-        const firstPayment = data[0];
-        console.log("Primeiro payment (exemplo):");
-        console.log("  expected_amount:", firstPayment.expected_amount);
-        console.log("  paid_amount:", firstPayment.paid_amount);
-        console.log("  late_fee:", firstPayment.late_fee);
-        console.log("  interest:", firstPayment.interest);
-        console.log("  discount_amount:", firstPayment.discount_amount);
-        console.log("  breakdown:", firstPayment.breakdown);
-        console.log("  breakdown type:", typeof firstPayment.breakdown);
-      }
       
       const mappedPayments: Payment[] = (data || []).map((p) => ({
         id: p.id,
@@ -186,41 +217,8 @@ export function RentalPaymentHistoryDialog({
     });
   }, [payments, sortField, sortDirection]);
 
-  const handlePrint = async () => {
-    if (!contentRef.current) return;
-
-    try {
-      // Import dinâmico apenas no client-side
-      const html2pdf = (await import('html2pdf.js')).default;
-
-      const opt = {
-        margin: [5, 5, 5, 5],
-        filename: `historico-pagamentos-${rental?.property?.location}-${rental?.property?.complement}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          letterRendering: true,
-          logging: false
-        },
-        jsPDF: { 
-          unit: "mm", 
-          format: "a4", 
-          orientation: "landscape",
-          compress: true
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      html2pdf().set(opt).from(contentRef.current).save();
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar o PDF.",
-        variant: "destructive",
-      });
-    }
+  const handlePrint = () => {
+    window.print();
   };
 
   const formatCurrency = (value: number) => {
@@ -230,117 +228,141 @@ export function RentalPaymentHistoryDialog({
     }).format(value);
   };
 
-  const formatDate = (date: string) => {
-    return format(new Date(date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR });
-  };
-
-  const getPeriod = (dueDate: string) => {
-    return format(new Date(dueDate + "T12:00:00"), "MMM/yyyy", { locale: ptBR });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: "Pendente", variant: "destructive" as const },
-      paid: { label: "Pago", variant: "default" as const },
-      partial: { label: "Parcial", variant: "secondary" as const },
-    };
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getRowClassName = (payment: Payment) => {
-    if (payment.status === "paid") {
-      return "bg-green-50 hover:bg-green-100";
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(payment.dueDate + "T12:00:00");
-    dueDate.setHours(0, 0, 0, 0);
-
-    if (dueDate < today) {
-      return "bg-red-50 hover:bg-red-100";
-    }
-    if (dueDate.getTime() === today.getTime()) {
-      return "bg-yellow-50 hover:bg-yellow-100";
-    }
-    
-    return "";
-  };
-
   if (!rental) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle>Histórico de Pagamentos - {rental?.property?.location} {rental?.property?.complement}</DialogTitle>
-        </DialogHeader>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="flex items-center gap-2 no-print"
+              >
+                <FileText className="h-4 w-4" />
+                Imprimir
+              </Button>
+            </div>
+          </DialogHeader>
 
-        <div ref={contentRef} style={{ backgroundColor: 'white', padding: '10px' }}>
-          <div className="mb-2">
-            <h2 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
-              Histórico de Pagamentos - {rental?.property?.location} {rental?.property?.complement}
-            </h2>
-          </div>
+          <div className="print-content">
+            <div className="mb-4 space-y-1">
+              <h2 className="text-lg font-bold">Histórico de Pagamentos</h2>
+              <div className="text-base space-y-0.5">
+                <p><strong>Local:</strong> {rental?.property?.location}</p>
+                <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
+                <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+              </div>
+            </div>
 
-          <div className="overflow-x-auto">
-            <Table style={{ fontSize: '7px' }}>
-              <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
-                <TableRow>
-                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Parcela</TableHead>
-                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Vencimento</TableHead>
-                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Pagamento</TableHead>
-                  <TableHead style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Status</TableHead>
-                  <TableHead className="text-right" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Valor Esperado</TableHead>
-                  <TableHead className="text-right" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>Valor Pago</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell style={{ padding: '3px', fontSize: '7px' }}>{payment.installment}</TableCell>
-                    <TableCell style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
-                      {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                    </TableCell>
-                    <TableCell style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
-                      {payment.paymentDate
-                        ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                        : "-"}
-                    </TableCell>
-                    <TableCell style={{ padding: '3px', fontSize: '7px' }}>
-                      <Badge
-                        variant={
-                          payment.status === "paid"
-                            ? "default"
-                            : payment.status === "pending"
-                            ? "secondary"
-                            : payment.status === "partial"
-                            ? "outline"
-                            : "destructive"
-                        }
-                        style={{ fontSize: '6px', padding: '1px 3px' }}
-                      >
-                        {payment.status === "paid"
-                          ? "Pago"
-                          : payment.status === "pending"
-                          ? "Pendente"
-                          : payment.status === "partial"
-                          ? "Parcial"
-                          : "Atrasado"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>{formatCurrency(getExpectedAmount(payment))}</TableCell>
-                    <TableCell className="text-right font-semibold text-green-600" style={{ padding: '3px', fontSize: '7px', whiteSpace: 'nowrap' }}>
-                      {formatCurrency(payment.paidAmount || 0)}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      onClick={() => handleSort("installment")}
+                    >
+                      <div className="flex items-center">
+                        Parcela
+                        <SortIcon field="installment" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      onClick={() => handleSort("dueDate")}
+                    >
+                      <div className="flex items-center">
+                        Vencimento
+                        <SortIcon field="dueDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-100 text-base"
+                      onClick={() => handleSort("paymentDate")}
+                    >
+                      <div className="flex items-center">
+                        Pagamento
+                        <SortIcon field="paymentDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-base">Status</TableHead>
+                    <TableHead className="text-right text-base">Valor Esperado</TableHead>
+                    <TableHead className="text-right text-base">Valor Pago</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : sortedPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Nenhum pagamento encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedPayments.map((payment) => (
+                      <TableRow key={payment.id} className="hover:bg-gray-50">
+                        <TableCell className="text-base">{payment.installment}</TableCell>
+                        <TableCell className="text-base">
+                          {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                        </TableCell>
+                        <TableCell className="text-base">
+                          {payment.paymentDate
+                            ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-base">
+                          <Badge
+                            variant={
+                              payment.status === "paid"
+                                ? "default"
+                                : payment.status === "pending"
+                                ? "secondary"
+                                : "outline"
+                            }
+                            className="no-print"
+                          >
+                            {payment.status === "paid"
+                              ? "Pago"
+                              : payment.status === "pending"
+                              ? "Pendente"
+                              : "Parcial"}
+                          </Badge>
+                          <span className="hidden print:inline">
+                            {payment.status === "paid"
+                              ? "Pago"
+                              : payment.status === "pending"
+                              ? "Pendente"
+                              : "Parcial"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-base">
+                          {formatCurrency(getExpectedAmount(payment))}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-green-600 text-base">
+                          {formatCurrency(payment.paidAmount || 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
