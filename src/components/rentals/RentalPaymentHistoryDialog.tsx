@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Rental, Payment } from "@/types";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
@@ -23,86 +22,58 @@ const printStyles = `
   @media print {
     @page {
       size: landscape;
-      margin: 10mm;
+      margin: 15mm;
     }
     
-    /* Esconder elementos que não devem ser impressos */
-    .no-print,
-    button:not(.print-visible),
-    [role="dialog"] > div:first-child,
-    .fixed.inset-0 {
+    body * {
+      visibility: hidden;
+    }
+    
+    .print-area,
+    .print-area * {
+      visibility: visible !important;
+    }
+    
+    .print-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    
+    .no-print {
       display: none !important;
     }
     
-    /* Resetar estilos do dialog para impressão */
-    [role="dialog"] {
-      position: static !important;
-      transform: none !important;
-      max-width: none !important;
-      max-height: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      box-shadow: none !important;
-      background: white !important;
-    }
-    
-    /* Garantir que o conteúdo seja visível */
-    .print-content {
-      display: block !important;
-      visibility: visible !important;
-      position: static !important;
-      width: 100% !important;
-    }
-    
-    /* Estilos de texto */
-    h1, h2, h3, p, strong, span, td, th {
+    h2, h3, p, strong, span {
       color: black !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
     }
     
-    /* Estilos da tabela */
     table {
-      display: table !important;
       width: 100% !important;
       border-collapse: collapse !important;
-      margin-top: 15px !important;
-      font-size: 11pt !important;
-    }
-    
-    thead {
-      display: table-header-group !important;
-    }
-    
-    tbody {
-      display: table-row-group !important;
-    }
-    
-    tr {
-      display: table-row !important;
-      page-break-inside: avoid !important;
+      margin-top: 20px !important;
     }
     
     th, td {
-      display: table-cell !important;
+      border: 1px solid #000 !important;
       padding: 8px !important;
-      border: 1px solid #333 !important;
-      text-align: left !important;
+      font-size: 10pt !important;
     }
     
     th {
-      background-color: #e5e7eb !important;
+      background-color: #f0f0f0 !important;
       font-weight: bold !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
     
-    /* Badge em impressão */
-    .print-badge {
-      display: inline !important;
-      color: black !important;
-      font-weight: normal !important;
+    .text-center {
+      text-align: center !important;
+    }
+    
+    .text-right {
+      text-align: right !important;
     }
   }
 `;
@@ -118,11 +89,9 @@ export function RentalPaymentHistoryDialog({
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
-  // Função para calcular valor esperado total (breakdown + late_fee + interest - discount)
   const getExpectedAmount = (payment: Payment): number => {
     let baseTotal = 0;
     
-    // Somar items do breakdown (aluguel, garagem, etc.)
     if (payment.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
@@ -140,18 +109,14 @@ export function RentalPaymentHistoryDialog({
         baseTotal = payment.expectedAmount;
       }
     } else {
-      // Se não houver breakdown, usar expected_amount como base
       baseTotal = payment.expectedAmount;
     }
     
-    // Adicionar late_fee e interest (que estão em campos separados)
     const lateFee = Number(payment.lateFee || 0);
     const interest = Number(payment.interest || 0);
     const discount = Number(payment.discount || 0);
     
-    const total = baseTotal + lateFee + interest - discount;
-    
-    return total;
+    return baseTotal + lateFee + interest - discount;
   };
 
   useEffect(() => {
@@ -270,6 +235,12 @@ export function RentalPaymentHistoryDialog({
     }).format(value);
   };
 
+  const getStatusText = (status: string) => {
+    if (status === "paid") return "Pago";
+    if (status === "pending") return "Pendente";
+    return "Parcial";
+  };
+
   if (!rental) return null;
 
   return (
@@ -277,7 +248,7 @@ export function RentalPaymentHistoryDialog({
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
-          <div className="print-content">
+          <div className="print-area">
             <DialogHeader className="mb-4">
               <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
             </DialogHeader>
@@ -314,7 +285,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
                       Parcela
                     </TableHead>
                     <TableHead 
@@ -326,7 +297,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="dueDate" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
                       Vencimento
                     </TableHead>
                     <TableHead 
@@ -338,7 +309,7 @@ export function RentalPaymentHistoryDialog({
                         <SortIcon field="paymentDate" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-base text-center print:table-cell hidden print:block">
+                    <TableHead className="text-base text-center print:table-cell hidden print:inline">
                       Pagamento
                     </TableHead>
                     <TableHead className="text-base text-center">Status</TableHead>
@@ -384,18 +355,10 @@ export function RentalPaymentHistoryDialog({
                             }
                             className="no-print"
                           >
-                            {payment.status === "paid"
-                              ? "Pago"
-                              : payment.status === "pending"
-                              ? "Pendente"
-                              : "Parcial"}
+                            {getStatusText(payment.status)}
                           </Badge>
-                          <span className="hidden print:inline print-badge">
-                            {payment.status === "paid"
-                              ? "Pago"
-                              : payment.status === "pending"
-                              ? "Pendente"
-                              : "Parcial"}
+                          <span className="hidden print:inline">
+                            {getStatusText(payment.status)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right font-semibold text-base">
