@@ -76,7 +76,8 @@ const printStyles = `
     
     .print-area, .print-area *,
     .print-header, .print-header *,
-    .print-cards, .print-cards * {
+    .print-cards, .print-cards *,
+    .print-expenses-content, .print-expenses-content * {
       visibility: visible;
     }
     
@@ -105,6 +106,13 @@ const printStyles = `
       width: 100%;
     }
     
+    .print-expenses-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    
     .no-print {
       display: none !important;
     }
@@ -121,6 +129,24 @@ const printStyles = `
       font-size: 10pt;
       color: #666 !important;
       margin-bottom: 10px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    /* Estilos para título do dialog de despesas */
+    .print-expenses-title {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #000 !important;
+      text-align: center;
+    }
+    
+    .print-expenses-subtitle {
+      font-size: 12pt;
+      color: #666 !important;
+      margin-bottom: 15px;
+      text-align: center;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -890,26 +916,9 @@ export default function Financial() {
     }
   }, [getSortedPayments, toast]);
 
-  const handlePrintExpenses = useCallback(async () => {
-    if (!expensesContentRef.current) return;
-
-    try {
-      // Import dinâmico apenas no client-side
-      const html2pdf = (await import('html2pdf.js')).default;
-
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `contas-do-mes-${format(new Date(filterYear, filterMonth - 1), "MMM-yyyy", { locale: ptBR })}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      };
-
-      html2pdf().set(opt).from(expensesContentRef.current).save();
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-    }
-  }, [filterYear, filterMonth]);
+  const handlePrintExpenses = useCallback(() => {
+    window.print();
+  }, []);
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
     try {
@@ -1488,11 +1497,11 @@ export default function Financial() {
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
-                    <Receipt className="h-5 w-5 text-orange-600" />
+                  <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2 print-expenses-title">
+                    <Receipt className="h-5 w-5 text-orange-600 no-print" />
                     Detalhamento das Contas do Mês
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="print-expenses-subtitle">
                     {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
                     {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
                   </DialogDescription>
@@ -1501,7 +1510,7 @@ export default function Financial() {
                   variant="outline"
                   size="sm"
                   onClick={handlePrintExpenses}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 no-print"
                 >
                   <FileText className="h-4 w-4" />
                   Imprimir
@@ -1509,7 +1518,7 @@ export default function Financial() {
               </div>
             </DialogHeader>
             
-            <div ref={expensesContentRef} className="space-y-4">
+            <div ref={expensesContentRef} className="space-y-4 print-expenses-content">
               {/* Tabela de Despesas */}
               {filteredExpensesDetails.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
