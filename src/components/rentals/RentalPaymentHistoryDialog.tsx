@@ -30,7 +30,6 @@ export function RentalPaymentHistoryDialog({
 }: RentalPaymentHistoryDialogProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Payment;
     direction: "asc" | "desc";
@@ -107,11 +106,7 @@ export function RentalPaymentHistoryDialog({
   };
 
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 100);
+    window.print();
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -278,9 +273,9 @@ export function RentalPaymentHistoryDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Conteúdo exclusivo para impressão - renderizado apenas quando isPrinting é true */}
-      {isPrinting && (
-        <div className="print-only" style={{ padding: '20px', backgroundColor: 'white' }}>
+      {/* Conteúdo exclusivo para impressão - sempre renderizado mas escondido na tela */}
+      <div className="print-only" style={{ position: 'absolute', left: '-9999px', width: '100%' }}>
+        <div style={{ padding: '20px', backgroundColor: 'white' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
             Histórico de Pagamentos
           </h1>
@@ -356,7 +351,7 @@ export function RentalPaymentHistoryDialog({
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </>
   );
 }
