@@ -223,8 +223,7 @@ const printStyles = `
     .col-local { width: 80px; }
     .col-compl { width: 70px; }
     .col-inquilino { width: 80px; }
-    .col-ano { width: 35px; }
-    .col-mes { width: 40px; }
+    .col-mes { width: 70px; }
     .col-status { width: 50px; }
     .col-venc { width: 60px; }
     .col-rec { width: 60px; }
@@ -946,8 +945,7 @@ export default function Financial() {
         "Local": details.local,
         "Complemento": details.complemento,
         "Inquilino": details.tenantName,
-        "Ano": filterYear,
-        "Mês": monthName,
+        "Período": format(new Date(filterYear, filterMonth - 1), "MMM/yyyy", { locale: ptBR }),
         "Status": payment.status === "paid" ? "Pago" : 
                  payment.status === "pending" ? "Pendente" :
                  payment.status === "overdue" ? "Atrasado" : "Parcial",
@@ -963,9 +961,9 @@ export default function Financial() {
     const ws = XLSX.utils.json_to_sheet(excelData);
     
     ws["!cols"] = [
-      { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, 
-      { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
-      { wch: 15 }, { wch: 15 }, { wch: 20 }
+      { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, 
+      { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
+      { wch: 15 }, { wch: 20 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -1303,8 +1301,7 @@ export default function Financial() {
                           <TableHead className="cursor-pointer hover:bg-gray-100 text-xs sm:text-sm col-inquilino" onClick={() => handleSort("tenant")}>
                             Inquilino {sortField === "tenant" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm col-ano">Ano</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm col-mes">Mês</TableHead>
+                          <TableHead className="text-center text-xs sm:text-sm col-mes">Período</TableHead>
                           <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs sm:text-sm col-status" onClick={() => handleSort("status")}>
                             Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
@@ -1339,9 +1336,8 @@ export default function Financial() {
                               <TableCell className="text-xs sm:text-sm col-local">{details.local}</TableCell>
                               <TableCell className="text-xs sm:text-sm col-compl">{details.complemento}</TableCell>
                               <TableCell className="text-xs sm:text-sm col-inquilino">{details.tenantName}</TableCell>
-                              <TableCell className="text-center text-xs sm:text-sm col-ano">{filterYear}</TableCell>
                               <TableCell className="text-center text-xs sm:text-sm col-mes">
-                                {format(new Date(filterYear, filterMonth - 1), "MMM", { locale: ptBR })}
+                                {format(new Date(filterYear, filterMonth - 1), "MMM/yyyy", { locale: ptBR })}
                               </TableCell>
                               <TableCell className="text-center text-xs sm:text-sm col-status">
                                 <Badge
