@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { X, Printer } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
+import { supabase } from "@/integrations/supabase/client";
+import type { Rental } from "@/types";
 
 interface Payment {
   id: string;
@@ -18,24 +20,62 @@ interface Payment {
 interface RentalPaymentHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  payments: Payment[];
-  location: string;
-  complement: string;
-  tenantName: string;
+  rental: Rental | null;
 }
 
 export function RentalPaymentHistoryDialog({
   open,
   onOpenChange,
-  payments,
-  location,
-  complement,
-  tenantName,
+  rental,
 }: RentalPaymentHistoryDialogProps) {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Payment;
     direction: "asc" | "desc";
   } | null>(null);
+
+  const location = rental?.property?.location || "-";
+  const complement = rental?.property?.complement || "-";
+  const tenantName = rental?.tenant?.name || "-";
+
+  useEffect(() => {
+    if (open && rental) {
+      loadPayments();
+    }
+  }, [open, rental?.id]);
+
+  const loadPayments = async () => {
+    if (!rental) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("rental_id", rental.id)
+        .order("installment_number", { ascending: true });
+
+      if (error) throw error;
+
+      const mappedPayments: Payment[] = (data || []).map((p) => ({
+        id: p.id,
+        due_date: p.due_date,
+        payment_date: p.payment_date,
+        amount_paid: p.amount_paid || 0,
+        expected_amount: p.expected_amount || 0,
+        status: p.status === "paid" || p.status === "partial" ? "pago" : "pendente",
+        installment_number: p.installment_number || 0,
+      }));
+
+      setPayments(mappedPayments);
+    } catch (error) {
+      console.error("Erro ao carregar pagamentos:", error);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sortedPayments = useMemo(() => {
     const sorted = [...payments];
@@ -89,33 +129,46 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde TUDO exceto o conteúdo de impressão */
+          /* Esconde TUDO */
           body * {
-            visibility: hidden !important;
+            display: none !important;
           }
           
-          /* Mostra apenas o conteúdo de impressão */
-          .print-content,
-          .print-content * {
-            visibility: visible !important;
+          /* Mostra apenas o conteúdo de impressão e seus filhos */
+          #payment-history-print-content,
+          #payment-history-print-content * {
+            display: block !important;
           }
           
-          /* Posiciona o conteúdo de impressão no topo da página */
-          .print-content {
+          /* Tabela e seus elementos precisam de display específico */
+          #payment-history-print-content table {
+            display: table !important;
+          }
+          
+          #payment-history-print-content thead {
+            display: table-header-group !important;
+          }
+          
+          #payment-history-print-content tbody {
+            display: table-row-group !important;
+          }
+          
+          #payment-history-print-content tr {
+            display: table-row !important;
+          }
+          
+          #payment-history-print-content th,
+          #payment-history-print-content td {
+            display: table-cell !important;
+          }
+          
+          /* Posiciona no topo */
+          #payment-history-print-content {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
             background: white !important;
-          }
-          
-          /* Remove bordas do Dialog, backdrop e overlays */
-          [role="dialog"],
-          [data-radix-dialog-overlay],
-          .fixed,
-          .inset-0,
-          .z-50 {
-            display: none !important;
           }
           
           /* Configurações da página */
@@ -133,7 +186,7 @@ export function RentalPaymentHistoryDialog({
       `}</style>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto no-print">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-2xl">Histórico de Pagamentos</DialogTitle>
             <DialogClose asChild>
@@ -169,88 +222,92 @@ export function RentalPaymentHistoryDialog({
               </div>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="cursor-pointer text-base text-center"
-                    onClick={() => handleSort("installment_number")}
-                  >
-                    Parcela
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer text-base text-center"
-                    onClick={() => handleSort("due_date")}
-                  >
-                    Vencimento
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer text-base text-center"
-                    onClick={() => handleSort("payment_date")}
-                  >
-                    Pagamento
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer text-base text-center"
-                    onClick={() => handleSort("status")}
-                  >
-                    Status
-                  </TableHead>
-                  <TableHead className="text-base text-right">
-                    Valor Esperado
-                  </TableHead>
-                  <TableHead className="text-base text-right">Valor Pago</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell className="text-base text-center">
-                      {payment.installment_number}
-                    </TableCell>
-                    <TableCell className="text-base text-center">
-                      {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                    </TableCell>
-                    <TableCell className="text-base text-center">
-                      {payment.payment_date
-                        ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(
-                          payment.status
-                        )}`}
-                      >
-                        {payment.status === "pago" ? "Pago" : "Pendente"}
-                      </span>
+            {loading ? (
+              <div className="text-center py-8">Carregando...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead
+                      className="cursor-pointer text-base text-center"
+                      onClick={() => handleSort("installment_number")}
+                    >
+                      Parcela
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer text-base text-center"
+                      onClick={() => handleSort("due_date")}
+                    >
+                      Vencimento
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer text-base text-center"
+                      onClick={() => handleSort("payment_date")}
+                    >
+                      Pagamento
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer text-base text-center"
+                      onClick={() => handleSort("status")}
+                    >
+                      Status
+                    </TableHead>
+                    <TableHead className="text-base text-right">
+                      Valor Esperado
+                    </TableHead>
+                    <TableHead className="text-base text-right">Valor Pago</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedPayments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell className="text-base text-center">
+                        {payment.installment_number}
+                      </TableCell>
+                      <TableCell className="text-base text-center">
+                        {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell className="text-base text-center">
+                        {payment.payment_date
+                          ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(
+                            payment.status
+                          )}`}
+                        >
+                          {payment.status === "pago" ? "Pago" : "Pendente"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-base text-right">
+                        {formatCurrency(payment.expected_amount)}
+                      </TableCell>
+                      <TableCell className="text-base text-right">
+                        {payment.status === "pago"
+                          ? formatCurrency(payment.amount_paid)
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="font-bold bg-muted/50">
+                    <TableCell colSpan={5} className="text-base text-right">
+                      Total Pago:
                     </TableCell>
                     <TableCell className="text-base text-right">
-                      {formatCurrency(payment.expected_amount)}
-                    </TableCell>
-                    <TableCell className="text-base text-right">
-                      {payment.status === "pago"
-                        ? formatCurrency(payment.amount_paid)
-                        : "-"}
+                      {formatCurrency(totalPaid)}
                     </TableCell>
                   </TableRow>
-                ))}
-                <TableRow className="font-bold bg-muted/50">
-                  <TableCell colSpan={5} className="text-base text-right">
-                    Total Pago:
-                  </TableCell>
-                  <TableCell className="text-base text-right">
-                    {formatCurrency(totalPaid)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+                </TableBody>
+              </Table>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Conteúdo para impressão */}
-      <div className="print-content" style={{ display: 'none' }}>
+      {/* Conteúdo para impressão - Renderizado mas escondido na tela */}
+      <div id="payment-history-print-content" style={{ display: 'none' }}>
         <div style={{ padding: '20px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
             Histórico de Pagamentos
