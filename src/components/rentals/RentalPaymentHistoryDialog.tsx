@@ -186,6 +186,12 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
+        @media screen {
+          .print-only {
+            display: none;
+          }
+        }
+        
         @media print {
           @page {
             size: landscape;
@@ -193,32 +199,38 @@ export function RentalPaymentHistoryDialog({
           }
           
           body * {
-            visibility: hidden;
+            display: none !important;
           }
           
-          #print-content,
-          #print-content * {
-            visibility: visible;
+          .print-only,
+          .print-only * {
+            display: block !important;
           }
           
-          #print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+          .print-only table {
+            display: table !important;
           }
-        }
-        
-        @media screen {
-          #print-content {
-            position: absolute;
-            left: -9999px;
-            top: 0;
+          
+          .print-only thead {
+            display: table-header-group !important;
+          }
+          
+          .print-only tbody {
+            display: table-row-group !important;
+          }
+          
+          .print-only tr {
+            display: table-row !important;
+          }
+          
+          .print-only th,
+          .print-only td {
+            display: table-cell !important;
           }
         }
       `}</style>
       
-      <div id="print-content">
+      <div className="print-only">
         <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
           Histórico de Pagamentos
         </h2>
