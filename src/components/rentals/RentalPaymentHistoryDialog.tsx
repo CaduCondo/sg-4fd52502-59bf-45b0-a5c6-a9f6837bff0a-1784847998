@@ -118,26 +118,17 @@ export function RentalPaymentHistoryDialog({
       {/* CSS DE IMPRESSÃO SIMPLIFICADO */}
       <style>{`
         @media print {
-          /* Esconde o overlay escuro */
+          /* Esconde TODOS os filhos diretos do body (página Next.js inteira) */
+          body > #__next {
+            display: none !important;
+          }
+          
+          /* Esconde overlay escuro do Dialog */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* Esconde a página principal (Locações) */
-          body > div > main {
-            display: none !important;
-          }
-          
-          /* Esconde elementos de navegação */
-          header,
-          nav,
-          aside,
-          footer,
-          [data-sidebar] {
-            display: none !important;
-          }
-          
-          /* Dialog: posiciona normalmente sem overlay */
+          /* Dialog: remove posicionamento fixo para aparecer normalmente */
           [role="dialog"] {
             position: static !important;
             transform: none !important;
@@ -164,6 +155,8 @@ export function RentalPaymentHistoryDialog({
           body,
           html {
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
         }
       `}</style>
