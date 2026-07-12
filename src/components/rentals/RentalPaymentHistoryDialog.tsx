@@ -18,87 +18,6 @@ interface RentalPaymentHistoryDialogProps {
 type SortField = "installment" | "dueDate" | "paymentDate";
 type SortDirection = "asc" | "desc" | null;
 
-const printStyles = `
-  @media print {
-    @page {
-      size: landscape;
-      margin: 15mm;
-    }
-    
-    body * {
-      visibility: hidden;
-    }
-    
-    #print-content,
-    #print-content * {
-      visibility: visible;
-    }
-    
-    #print-content {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    
-    .no-print {
-      display: none !important;
-    }
-    
-    h2 {
-      font-size: 18pt;
-      margin-bottom: 10pt;
-      color: black;
-    }
-    
-    p, strong {
-      color: black;
-      font-size: 11pt;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15pt;
-    }
-    
-    th, td {
-      border: 1px solid #000;
-      padding: 6pt 8pt;
-      font-size: 10pt;
-      color: black;
-    }
-    
-    th {
-      background-color: #e5e7eb;
-      font-weight: bold;
-      text-align: center;
-    }
-    
-    .text-center {
-      text-align: center;
-    }
-    
-    .text-right {
-      text-align: right;
-    }
-    
-    .font-semibold {
-      font-weight: 600;
-    }
-    
-    .text-green-600 {
-      color: #16a34a;
-    }
-  }
-  
-  @media screen {
-    #print-content {
-      display: none;
-    }
-  }
-`;
-
 export function RentalPaymentHistoryDialog({
   open,
   onOpenChange,
@@ -266,47 +185,159 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: printStyles }} />
-      
-      <div id="print-content">
-        <h2 style={{ fontSize: '18pt', marginBottom: '10pt' }}>Histórico de Pagamentos</h2>
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 15mm;
+          }
+          
+          body > *:not(#print-area) {
+            display: none !important;
+          }
+          
+          #print-area {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+          }
+        }
         
-        <div style={{ marginBottom: '15pt' }}>
-          <p><strong>Local:</strong> {rental?.property?.location}</p>
-          <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-          <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+        @media screen {
+          #print-area {
+            display: none;
+          }
+        }
+      `}</style>
+      
+      <div id="print-area">
+        <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
+          Histórico de Pagamentos
+        </h2>
+        
+        <div style={{ marginBottom: '16pt', fontSize: '11pt' }}>
+          <p style={{ margin: '4pt 0' }}>
+            <strong>Local:</strong> {rental?.property?.location}
+          </p>
+          <p style={{ margin: '4pt 0' }}>
+            <strong>Complemento:</strong> {rental?.property?.complement}
+          </p>
+          <p style={{ margin: '4pt 0' }}>
+            <strong>Nome Inquilino:</strong> {rental?.tenant?.name}
+          </p>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '10pt'
+        }}>
           <thead>
             <tr>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Parcela</th>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Vencimento</th>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Pagamento</th>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Status</th>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right' }}>Valor Esperado</th>
-              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right' }}>Valor Pago</th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                Parcela
+              </th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                Vencimento
+              </th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                Pagamento
+              </th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                Status
+              </th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'right'
+              }}>
+                Valor Esperado
+              </th>
+              <th style={{
+                border: '1px solid #000',
+                padding: '8pt',
+                backgroundColor: '#e5e7eb',
+                fontWeight: 'bold',
+                textAlign: 'right'
+              }}>
+                Valor Pago
+              </th>
             </tr>
           </thead>
           <tbody>
             {sortedPayments.map((payment) => (
               <tr key={payment.id}>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'center'
+                }}>
                   {payment.installment}
                 </td>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'center'
+                }}>
                   {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                 </td>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'center'
+                }}>
                   {payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-"}
                 </td>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'center'
+                }}>
                   {getStatusText(payment.status)}
                 </td>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right', fontWeight: 600 }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'right',
+                  fontWeight: 600
+                }}>
                   {formatCurrency(getExpectedAmount(payment))}
                 </td>
-                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>
+                <td style={{
+                  border: '1px solid #000',
+                  padding: '6pt 8pt',
+                  textAlign: 'right',
+                  fontWeight: 600,
+                  color: '#16a34a'
+                }}>
                   {formatCurrency(payment.paidAmount || 0)}
                 </td>
               </tr>
