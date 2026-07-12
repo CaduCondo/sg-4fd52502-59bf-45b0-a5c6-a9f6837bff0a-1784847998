@@ -22,7 +22,7 @@ interface LocationExpensesDialogProps {
 type SortField = "location_name" | "description" | "amount";
 type SortDirection = "asc" | "desc" | null;
 
-// Estilos para impressão
+// Estilos para impressão - SIMPLIFICADOS
 const printStyles = `
   @media print {
     @page {
@@ -30,172 +30,80 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Resetar TUDO para impressão */
-    * {
-      position: static !important;
-      transform: none !important;
-      filter: none !important;
-    }
-    
-    /* Ocultar overlay e elementos desnecessários */
-    body > div:not([role="dialog"]),
-    [data-radix-dialog-overlay],
-    .no-print,
-    button {
+    /* Ocultar elementos não essenciais */
+    .no-print {
       display: none !important;
-      visibility: hidden !important;
     }
     
-    /* Forçar Dialog a se comportar como página normal */
-    body,
-    html {
-      overflow: visible !important;
-      height: auto !important;
-      position: static !important;
-    }
-    
-    [role="dialog"],
-    [data-radix-portal],
-    [data-radix-dialog-content] {
-      position: static !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      transform: none !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
-      overflow: visible !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding: 20px !important;
-      margin: 0 !important;
-      background: white !important;
-    }
-    
-    /* Forçar visibilidade do título e subtítulo */
-    .print-title-section,
-    .print-title-section *,
-    .print-title-section h2,
-    .print-title-section p,
-    .print-title-section div {
+    /* Garantir visibilidade do cabeçalho */
+    .print-header {
       display: block !important;
-      visibility: visible !important;
-      position: static !important;
-      opacity: 1 !important;
+      margin-bottom: 20px;
     }
     
-    .print-title-section {
-      margin-bottom: 25px !important;
-      page-break-inside: avoid !important;
+    .print-header h2 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #000;
     }
     
-    .print-title-section h2 {
-      font-size: 18pt !important;
-      font-weight: bold !important;
-      margin-bottom: 8px !important;
-      color: #000 !important;
-      line-height: 1.3 !important;
+    .print-header .print-subtitle {
+      font-size: 11pt;
+      color: #666;
+      margin-bottom: 12px;
     }
     
-    .print-title-section .print-subtitle {
-      font-size: 11pt !important;
-      color: #666 !important;
-      margin-bottom: 15px !important;
-      line-height: 1.4 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    .print-title-section .print-period-info {
-      display: block !important;
-      visibility: visible !important;
-      font-size: 12pt !important;
-      font-weight: 600 !important;
-      color: #000 !important;
-      margin-top: 10px !important;
+    .print-header .print-period {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #000;
+      margin-top: 8px;
     }
     
     /* Tabela */
     table {
-      display: table !important;
-      font-size: 10pt !important;
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-    
-    thead {
-      display: table-header-group !important;
-    }
-    
-    tbody {
-      display: table-row-group !important;
-    }
-    
-    tr {
-      display: table-row !important;
-      page-break-inside: avoid !important;
+      font-size: 10pt;
+      width: 100%;
+      border-collapse: collapse;
     }
     
     th, td {
-      display: table-cell !important;
-      padding: 8px !important;
-      border: 1px solid #ddd !important;
-      text-align: left !important;
-      vertical-align: middle !important;
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: left;
     }
     
     th {
       background-color: #f5f5f5 !important;
-      font-weight: bold !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      font-weight: bold;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     /* Ocultar coluna de ações */
     th:last-child,
     td:last-child {
-      display: none !important;
+      display: none;
     }
     
     /* Total */
-    .print-total-section {
-      display: flex !important;
-      visibility: visible !important;
-      margin-top: 20px !important;
-      padding: 12px !important;
+    .print-total {
+      margin-top: 20px;
+      padding: 12px;
       background-color: #f5f5f5 !important;
-      border-radius: 4px !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      page-break-inside: avoid !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
-    .print-total-section .total-label {
-      font-size: 12pt !important;
-      font-weight: 600 !important;
-      color: #000 !important;
-    }
-    
-    .print-total-section .total-value {
-      font-size: 14pt !important;
-      font-weight: bold !important;
+    .print-total .total-value {
       color: #dc2626 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    /* Garantir que Badges apareçam como texto */
-    .badge,
-    [data-badge] {
-      border: none !important;
-      background: none !important;
-      padding: 0 !important;
-      color: #000 !important;
+      font-weight: bold;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
   }
 `;
@@ -437,8 +345,8 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
       
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {/* Cabeçalho visível na tela e na impressão */}
-          <div className="print-title-section">
+          {/* Cabeçalho */}
+          <div className="print-header">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-bold">
@@ -447,7 +355,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <p className="text-sm text-muted-foreground mt-1 print-subtitle">
                   Controle de despesas mensais por localização
                 </p>
-                <div className="hidden print:block print-period-info mt-3">
+                <div className="hidden print:block print-period mt-2">
                   Período: {getMonthName(filterMonth)}/{filterYear}
                 </div>
               </div>
@@ -577,8 +485,8 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             </div>
 
             {sortedExpenses.length > 0 && (
-              <div className="p-4 bg-muted rounded-lg print-total-section">
-                <span className="font-semibold total-label">
+              <div className="p-4 bg-muted rounded-lg print-total">
+                <span className="font-semibold">
                   Total de Contas ({getMonthName(filterMonth)}/{filterYear}):
                 </span>
                 <span className="text-xl font-bold text-red-600 total-value">
