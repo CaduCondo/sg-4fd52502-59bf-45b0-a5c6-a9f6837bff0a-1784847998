@@ -129,23 +129,17 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde absolutamente TUDO do body */
-          body * {
-            visibility: hidden !important;
+          /* Esconde absolutamente TUDO */
+          body > *:not(.print-only) {
+            display: none !important;
           }
           
           /* Mostra apenas o conteúdo de impressão */
-          .print-only,
-          .print-only * {
-            visibility: visible !important;
-          }
-          
-          /* Posiciona o conteúdo de impressão no topo da página */
           .print-only {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            display: block !important;
+            position: static !important;
             width: 100% !important;
+            visibility: visible !important;
           }
           
           /* Configurações da página */
