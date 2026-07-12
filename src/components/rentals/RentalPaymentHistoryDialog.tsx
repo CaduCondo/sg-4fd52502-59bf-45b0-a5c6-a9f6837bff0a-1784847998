@@ -135,6 +135,9 @@ export function RentalPaymentHistoryDialog({
             left: 0;
             top: 0;
             width: 100%;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 20px !important;
           }
           
           /* Esconde botão Imprimir */
@@ -142,10 +145,26 @@ export function RentalPaymentHistoryDialog({
             visibility: hidden !important;
           }
           
+          /* Remove overlay escuro */
+          [data-radix-dialog-overlay] {
+            display: none !important;
+          }
+          
           /* Configuração de página paisagem */
           @page {
             size: landscape;
             margin: 1cm;
+          }
+          
+          /* Garante fundo branco e remove margens */
+          body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          html {
+            background: white !important;
           }
         }
       `}</style>
