@@ -186,172 +186,66 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        @media screen {
-          .print-only {
-            display: none !important;
-          }
-        }
-        
         @media print {
           @page {
             size: landscape;
             margin: 15mm;
           }
           
-          body * {
-            visibility: hidden;
+          /* Esconder tudo primeiro */
+          body > *:not(#__next) {
+            display: none !important;
           }
           
-          .print-only,
-          .print-only * {
-            visibility: visible !important;
+          /* Esconder elementos do Dialog que não queremos */
+          [role="dialog"] > button,
+          .no-print {
+            display: none !important;
           }
           
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            display: block !important;
+          /* Garantir que o Dialog ocupe toda a página */
+          [role="dialog"] {
+            position: static !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+          }
+          
+          /* Garantir visibilidade da tabela */
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+          }
+          
+          thead {
+            display: table-header-group !important;
+          }
+          
+          tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+          
+          td, th {
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+          }
+          
+          /* Estilo para o badge na impressão */
+          [data-badge] {
+            border: 1px solid #000 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            display: inline-block !important;
           }
         }
       `}</style>
       
-      <div className="print-only">
-        <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
-          Histórico de Pagamentos
-        </h2>
-        
-        <div style={{ marginBottom: '16pt', fontSize: '11pt' }}>
-          <p style={{ margin: '4pt 0' }}>
-            <strong>Local:</strong> {rental?.property?.location}
-          </p>
-          <p style={{ margin: '4pt 0' }}>
-            <strong>Complemento:</strong> {rental?.property?.complement}
-          </p>
-          <p style={{ margin: '4pt 0' }}>
-            <strong>Nome Inquilino:</strong> {rental?.tenant?.name}
-          </p>
-        </div>
-
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '10pt',
-          border: '1px solid #000'
-        }}>
-          <thead>
-            <tr>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'center'
-              }}>
-                Parcela
-              </th>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'center'
-              }}>
-                Vencimento
-              </th>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'center'
-              }}>
-                Pagamento
-              </th>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'center'
-              }}>
-                Status
-              </th>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'right'
-              }}>
-                Valor Esperado
-              </th>
-              <th style={{
-                border: '1px solid #000',
-                padding: '8pt',
-                backgroundColor: '#e5e7eb',
-                fontWeight: 'bold',
-                textAlign: 'right'
-              }}>
-                Valor Pago
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedPayments.map((payment) => (
-              <tr key={payment.id}>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'center'
-                }}>
-                  {payment.installment}
-                </td>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'center'
-                }}>
-                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                </td>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'center'
-                }}>
-                  {payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-"}
-                </td>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'center'
-                }}>
-                  {getStatusText(payment.status)}
-                </td>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'right',
-                  fontWeight: 600
-                }}>
-                  {formatCurrency(getExpectedAmount(payment))}
-                </td>
-                <td style={{
-                  border: '1px solid #000',
-                  padding: '6pt 8pt',
-                  textAlign: 'right',
-                  fontWeight: 600,
-                  color: '#16a34a'
-                }}>
-                  {formatCurrency(payment.paidAmount || 0)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
           <DialogHeader className="mb-4">
@@ -369,7 +263,7 @@ export function RentalPaymentHistoryDialog({
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 no-print"
               >
                 <FileText className="h-4 w-4" />
                 Imprimir
@@ -387,7 +281,7 @@ export function RentalPaymentHistoryDialog({
                   >
                     <div className="flex items-center justify-center">
                       Parcela
-                      <SortIcon field="installment" />
+                      <span className="no-print"><SortIcon field="installment" /></span>
                     </div>
                   </TableHead>
                   <TableHead 
@@ -396,7 +290,7 @@ export function RentalPaymentHistoryDialog({
                   >
                     <div className="flex items-center justify-center">
                       Vencimento
-                      <SortIcon field="dueDate" />
+                      <span className="no-print"><SortIcon field="dueDate" /></span>
                     </div>
                   </TableHead>
                   <TableHead 
@@ -405,7 +299,7 @@ export function RentalPaymentHistoryDialog({
                   >
                     <div className="flex items-center justify-center">
                       Pagamento
-                      <SortIcon field="paymentDate" />
+                      <span className="no-print"><SortIcon field="paymentDate" /></span>
                     </div>
                   </TableHead>
                   <TableHead className="text-base text-center">Status</TableHead>
@@ -442,6 +336,7 @@ export function RentalPaymentHistoryDialog({
                       </TableCell>
                       <TableCell className="text-base text-center">
                         <Badge
+                          data-badge
                           variant={
                             payment.status === "paid"
                               ? "default"
