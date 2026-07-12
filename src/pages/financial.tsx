@@ -74,19 +74,79 @@ const printStyles = `
       visibility: hidden;
     }
     
-    .print-area, .print-area * {
+    .print-area, .print-area *,
+    .print-header, .print-header *,
+    .print-cards, .print-cards * {
       visibility: visible;
+    }
+    
+    .print-header {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    
+    .print-cards {
+      position: absolute;
+      left: 0;
+      top: 60px;
+      width: 100%;
+      margin-bottom: 15px;
     }
     
     .print-area {
       position: absolute;
       left: 0;
-      top: 0;
+      top: 140px;
       width: 100%;
     }
     
     .no-print {
       display: none !important;
+    }
+    
+    /* Estilos para o cabeçalho de impressão */
+    .print-header h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    
+    .print-header p {
+      font-size: 10pt;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    
+    /* Estilos para os cards na impressão */
+    .print-cards {
+      display: grid !important;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      font-size: 8pt;
+    }
+    
+    .print-cards .card {
+      border: 1px solid #ddd !important;
+      padding: 8px !important;
+      break-inside: avoid;
+    }
+    
+    .print-cards .card-title {
+      font-size: 7pt;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    
+    .print-cards .card-value {
+      font-size: 11pt;
+      font-weight: bold;
+    }
+    
+    .print-cards .card-icon {
+      display: none;
     }
     
     table {
@@ -988,7 +1048,7 @@ export default function Financial() {
       
       <div className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
-          <div className="flex flex-col gap-1 sm:gap-2">
+          <div className="flex flex-col gap-1 sm:gap-2 print-header">
             <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
               Acompanhe suas receitas, despesas e fluxo de caixa
@@ -998,7 +1058,7 @@ export default function Financial() {
 
         <Tabs defaultValue="rentals" className="w-full">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-            <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1">
+            <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1 no-print">
               <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
                 Locações
               </TabsTrigger>
@@ -1009,7 +1069,7 @@ export default function Financial() {
               )}
             </TabsList>
 
-            <div className="w-full sm:w-auto">
+            <div className="w-full sm:w-auto no-print">
               <PeriodSelector 
                 selectedMonth={selectedMonth} 
                 selectedYear={selectedYear}
@@ -1024,92 +1084,92 @@ export default function Financial() {
 
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
             {/* Cards de Métricas - Locações */}
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-              <Card className="border-l-4 border-l-green-500">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 print-cards">
+              <Card className="border-l-4 border-l-green-500 card">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Receita Bruta</p>
-                      <h3 className="text-2xl font-bold">
+                      <p className="text-sm font-medium text-muted-foreground card-title">Receita Bruta</p>
+                      <h3 className="text-2xl font-bold card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         }).format(kpiCalculations.totalReceived)}
                       </h3>
                     </div>
-                    <Wallet className="h-8 w-8 text-green-500" />
+                    <Wallet className="h-8 w-8 text-green-500 card-icon" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-orange-500">
+              <Card className="border-l-4 border-l-orange-500 card">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground card-title">
                         Taxa Adm ({config?.admin_fee_percentage || 5}%)
                       </p>
-                      <h3 className="text-2xl font-bold">
+                      <h3 className="text-2xl font-bold card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         }).format(kpiCalculations.adminFee)}
                       </h3>
                     </div>
-                    <Percent className="h-8 w-8 text-orange-500" />
+                    <Percent className="h-8 w-8 text-orange-500 card-icon" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-blue-500">
+              <Card className="border-l-4 border-l-blue-500 card">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground card-title">
                         Taxa Ger ({config?.management_fee_percentage || 3}%)
                       </p>
-                      <h3 className="text-2xl font-bold">
+                      <h3 className="text-2xl font-bold card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         }).format(kpiCalculations.managementFee)}
                       </h3>
                     </div>
-                    <Settings className="h-8 w-8 text-blue-500" />
+                    <Settings className="h-8 w-8 text-blue-500 card-icon" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowExpensesDialog(true)}>
+              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => setShowExpensesDialog(true)}>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Contas do Mês</p>
-                      <h3 className="text-2xl font-bold">
+                      <p className="text-sm font-medium text-muted-foreground card-title">Contas do Mês</p>
+                      <h3 className="text-2xl font-bold card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         }).format(kpiCalculations.locationExpenses)}
                       </h3>
                     </div>
-                    <Receipt className="h-8 w-8 text-red-500" />
+                    <Receipt className="h-8 w-8 text-red-500 card-icon" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-purple-500">
+              <Card className="border-l-4 border-l-purple-500 card">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Receita Líquida</p>
-                      <h3 className="text-2xl font-bold">
+                      <p className="text-sm font-medium text-muted-foreground card-title">Receita Líquida</p>
+                      <h3 className="text-2xl font-bold card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         }).format(kpiCalculations.netRevenue)}
                       </h3>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-purple-500" />
+                    <TrendingUp className="h-8 w-8 text-purple-500 card-icon" />
                   </div>
                 </CardContent>
               </Card>
