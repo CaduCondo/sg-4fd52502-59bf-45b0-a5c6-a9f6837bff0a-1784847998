@@ -25,71 +25,24 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Ocultar elementos desnecessários */
-    .no-print,
-    button[aria-label="Close"],
-    [data-radix-collection-item] button {
+    body * {
+      visibility: hidden;
+    }
+    
+    #print-content,
+    #print-content * {
+      visibility: visible;
+    }
+    
+    #print-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    
+    .no-print {
       display: none !important;
-      visibility: hidden !important;
-    }
-    
-    /* Forçar visibilidade do dialog e conteúdo */
-    [role="dialog"],
-    [data-state],
-    .print-area,
-    .print-area * {
-      position: static !important;
-      transform: none !important;
-      max-width: none !important;
-      max-height: none !important;
-      overflow: visible !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-      display: block !important;
-    }
-    
-    /* Forçar visibilidade da tabela */
-    table,
-    thead,
-    tbody,
-    tr,
-    th,
-    td {
-      display: table !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-    
-    thead {
-      display: table-header-group !important;
-    }
-    
-    tbody {
-      display: table-row-group !important;
-    }
-    
-    tr {
-      display: table-row !important;
-    }
-    
-    th,
-    td {
-      display: table-cell !important;
-    }
-    
-    /* Remover overlay do dialog */
-    [data-radix-dialog-overlay] {
-      display: none !important;
-    }
-    
-    /* Estilos gerais de impressão */
-    body {
-      background: white !important;
-    }
-    
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
     }
     
     h2 {
@@ -98,55 +51,50 @@ const printStyles = `
       color: black;
     }
     
-    p, strong, span {
+    p, strong {
       color: black;
       font-size: 11pt;
     }
     
     table {
-      width: 100% !important;
-      border-collapse: collapse !important;
+      width: 100%;
+      border-collapse: collapse;
       margin-top: 15pt;
-      page-break-inside: auto;
-    }
-    
-    tr {
-      page-break-inside: avoid;
-      page-break-after: auto;
     }
     
     th, td {
-      border: 1px solid #000 !important;
-      padding: 6pt 8pt !important;
+      border: 1px solid #000;
+      padding: 6pt 8pt;
       font-size: 10pt;
-      color: black !important;
+      color: black;
     }
     
     th {
-      background-color: #e5e7eb !important;
+      background-color: #e5e7eb;
       font-weight: bold;
       text-align: center;
     }
     
     .text-center {
-      text-align: center !important;
+      text-align: center;
     }
     
     .text-right {
-      text-align: right !important;
+      text-align: right;
     }
     
     .font-semibold {
-      font-weight: 600 !important;
+      font-weight: 600;
     }
     
     .text-green-600 {
-      color: #16a34a !important;
+      color: #16a34a;
     }
-    
-    .print-only {
-      display: table-cell !important;
-      visibility: visible !important;
+  }
+  
+  @media screen {
+    #print-content {
+      display: none;
     }
   }
 `;
@@ -319,133 +267,166 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      
+      <div id="print-content">
+        <h2 style={{ fontSize: '18pt', marginBottom: '10pt' }}>Histórico de Pagamentos</h2>
+        
+        <div style={{ marginBottom: '15pt' }}>
+          <p><strong>Local:</strong> {rental?.property?.location}</p>
+          <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
+          <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Parcela</th>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Vencimento</th>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Pagamento</th>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>Status</th>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right' }}>Valor Esperado</th>
+              <th style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right' }}>Valor Pago</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedPayments.map((payment) => (
+              <tr key={payment.id}>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                  {payment.installment}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                  {payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-"}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'center' }}>
+                  {getStatusText(payment.status)}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right', fontWeight: 600 }}>
+                  {formatCurrency(getExpectedAmount(payment))}
+                </td>
+                <td style={{ border: '1px solid #000', padding: '6pt 8pt', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>
+                  {formatCurrency(payment.paidAmount || 0)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
-          <div className="print-area">
-            <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
-            </DialogHeader>
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
+          </DialogHeader>
 
-            <div className="mb-4 space-y-2">
-              <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-                <div className="text-base space-y-1">
-                  <p><strong>Local:</strong> {rental?.property?.location}</p>
-                  <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-                  <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrint}
-                  className="flex items-center gap-2 no-print"
-                >
-                  <FileText className="h-4 w-4" />
-                  Imprimir
-                </Button>
+          <div className="mb-4 space-y-2">
+            <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+              <div className="text-base space-y-1">
+                <p><strong>Local:</strong> {rental?.property?.location}</p>
+                <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
+                <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Imprimir
+              </Button>
             </div>
+          </div>
 
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
-                      onClick={() => handleSort("installment")}
-                    >
-                      <div className="flex items-center justify-center">
-                        Parcela
-                        <SortIcon field="installment" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-base text-center print-only hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                    onClick={() => handleSort("installment")}
+                  >
+                    <div className="flex items-center justify-center">
                       Parcela
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
-                      onClick={() => handleSort("dueDate")}
-                    >
-                      <div className="flex items-center justify-center">
-                        Vencimento
-                        <SortIcon field="dueDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-base text-center print-only hidden">
+                      <SortIcon field="installment" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                    onClick={() => handleSort("dueDate")}
+                  >
+                    <div className="flex items-center justify-center">
                       Vencimento
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer hover:bg-gray-100 text-base text-center no-print"
-                      onClick={() => handleSort("paymentDate")}
-                    >
-                      <div className="flex items-center justify-center">
-                        Pagamento
-                        <SortIcon field="paymentDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-base text-center print-only hidden">
+                      <SortIcon field="dueDate" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100 text-base text-center"
+                    onClick={() => handleSort("paymentDate")}
+                  >
+                    <div className="flex items-center justify-center">
                       Pagamento
-                    </TableHead>
-                    <TableHead className="text-base text-center">Status</TableHead>
-                    <TableHead className="text-right text-base">Valor Esperado</TableHead>
-                    <TableHead className="text-right text-base">Valor Pago</TableHead>
+                      <SortIcon field="paymentDate" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-base text-center">Status</TableHead>
+                  <TableHead className="text-right text-base">Valor Esperado</TableHead>
+                  <TableHead className="text-right text-base">Valor Pago</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <div className="flex justify-center items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <div className="flex justify-center items-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
+                ) : sortedPayments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhum pagamento encontrado
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedPayments.map((payment) => (
+                    <TableRow key={payment.id} className="hover:bg-gray-50">
+                      <TableCell className="text-base text-center">{payment.installment}</TableCell>
+                      <TableCell className="text-base text-center">
+                        {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                      </TableCell>
+                      <TableCell className="text-base text-center">
+                        {payment.paymentDate
+                          ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-base text-center">
+                        <Badge
+                          variant={
+                            payment.status === "paid"
+                              ? "default"
+                              : payment.status === "pending"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {getStatusText(payment.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-base">
+                        {formatCurrency(getExpectedAmount(payment))}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-green-600 text-base">
+                        {formatCurrency(payment.paidAmount || 0)}
                       </TableCell>
                     </TableRow>
-                  ) : sortedPayments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        Nenhum pagamento encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sortedPayments.map((payment) => (
-                      <TableRow key={payment.id} className="hover:bg-gray-50">
-                        <TableCell className="text-base text-center">{payment.installment}</TableCell>
-                        <TableCell className="text-base text-center">
-                          {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                        </TableCell>
-                        <TableCell className="text-base text-center">
-                          {payment.paymentDate
-                            ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-base text-center">
-                          <Badge
-                            variant={
-                              payment.status === "paid"
-                                ? "default"
-                                : payment.status === "pending"
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className="no-print"
-                          >
-                            {getStatusText(payment.status)}
-                          </Badge>
-                          <span className="hidden print-only">
-                            {getStatusText(payment.status)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-base">
-                          {formatCurrency(getExpectedAmount(payment))}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-green-600 text-base">
-                          {formatCurrency(payment.paidAmount || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </DialogContent>
       </Dialog>
