@@ -1289,36 +1289,36 @@ export default function Financial() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-parcela" onClick={() => handleSort("installment")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-[11px] col-parcela" onClick={() => handleSort("installment")}>
                             Parc {sortField === "installment" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-local" onClick={() => handleSort("location")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-[11px] col-local" onClick={() => handleSort("location")}>
                             Local {sortField === "location" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-compl" onClick={() => handleSort("complement")}>
-                            Compl {sortField === "complement" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-[11px] col-compl" onClick={() => handleSort("complement")}>
+                            Complemento {sortField === "complement" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-xs col-inquilino" onClick={() => handleSort("tenant")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-[11px] col-inquilino" onClick={() => handleSort("tenant")}>
                             Inquilino {sortField === "tenant" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-xs col-mes">Período</TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-status" onClick={() => handleSort("status")}>
+                          <TableHead className="text-center text-[11px] col-mes">Período</TableHead>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-[11px] col-status" onClick={() => handleSort("status")}>
                             Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-venc" onClick={() => handleSort("dueDate")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-[11px] col-venc" onClick={() => handleSort("dueDate")}>
                             Venc {sortField === "dueDate" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-xs col-rec" onClick={() => handleSort("paymentDate")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-[11px] col-rec" onClick={() => handleSort("paymentDate")}>
                             Rec {sortField === "paymentDate" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-xs col-hora">Hora</TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs col-val-esp" onClick={() => handleSort("expectedAmount")}>
+                          <TableHead className="text-center text-[11px] col-hora">Hora</TableHead>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-[11px] col-val-esp" onClick={() => handleSort("expectedAmount")}>
                             Val.Esp {sortField === "expectedAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-xs col-val-pg" onClick={() => handleSort("paidAmount")}>
+                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-[11px] col-val-pg" onClick={() => handleSort("paidAmount")}>
                             Val.Pg {sortField === "paidAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-xs col-pix">Código PIX</TableHead>
+                          <TableHead className="text-[11px] col-pix">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1332,17 +1332,17 @@ export default function Financial() {
 
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
-                              <TableCell className="font-medium text-xs col-parcela">{paymentNumber}</TableCell>
-                              <TableCell className="text-xs col-local">{details.local}</TableCell>
-                              <TableCell className="text-xs col-compl">{details.complemento}</TableCell>
-                              <TableCell className="text-xs col-inquilino">{details.tenantName}</TableCell>
-                              <TableCell className="text-center text-xs col-mes">
+                              <TableCell className="font-medium text-center text-[11px] col-parcela">{paymentNumber}</TableCell>
+                              <TableCell className="text-[11px] col-local">{details.local}</TableCell>
+                              <TableCell className="text-[11px] col-compl">{details.complemento}</TableCell>
+                              <TableCell className="text-[11px] col-inquilino">{details.tenantName}</TableCell>
+                              <TableCell className="text-center text-[11px] col-mes">
                                 {format(new Date(filterYear, filterMonth - 1), "MMM/yyyy", { locale: ptBR })}
                               </TableCell>
-                              <TableCell className="text-center text-xs col-status">
+                              <TableCell className="text-center text-[11px] col-status">
                                 <Badge
                                   variant="outline"
-                                  className={`text-xs no-print ${
+                                  className={`text-[11px] no-print ${
                                     payment.status === "paid"
                                       ? "bg-green-100 text-green-700 border-green-300"
                                       : payment.status === "partial"
@@ -1354,36 +1354,36 @@ export default function Financial() {
                                 </Badge>
                                 <span className="hidden print:inline">{statusText}</span>
                               </TableCell>
-                              <TableCell className="text-center text-xs col-venc">
+                              <TableCell className="text-center text-[11px] col-venc">
                                 {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}
                               </TableCell>
-                              <TableCell className="text-center text-xs col-rec">
+                              <TableCell className="text-center text-[11px] col-rec">
                                 {payment.paymentDate
                                   ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy")
                                   : "-"}
                               </TableCell>
-                              <TableCell className="text-center text-xs col-hora">
+                              <TableCell className="text-center text-[11px] col-hora">
                                 {details.paymentTime || "-"}
                               </TableCell>
-                              <TableCell className="text-right text-xs col-val-esp">
+                              <TableCell className="text-right text-[11px] col-val-esp">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
                                 }).format(getExpectedAmount(payment))}
                               </TableCell>
-                              <TableCell className="text-right text-xs text-green-600 font-semibold col-val-pg">
+                              <TableCell className="text-right text-[11px] text-green-600 font-semibold col-val-pg">
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
                                 }).format(payment.paidAmount || 0)}
                               </TableCell>
-                              <TableCell className="text-xs col-pix">
+                              <TableCell className="text-[11px] col-pix">
                                 {editingPixCode?.id === payment.id ? (
                                   <div className="flex gap-1 items-center min-w-[200px] no-print">
                                     <Input
                                       value={editingPixCode.value}
                                       onChange={(e) => setEditingPixCode({ id: payment.id, value: e.target.value })}
-                                      className="h-7 text-xs"
+                                      className="h-7 text-[11px]"
                                       autoFocus
                                     />
                                     <Button
@@ -1405,7 +1405,7 @@ export default function Financial() {
                                   </div>
                                 ) : (
                                   <div className="flex gap-1 items-center group min-w-[150px]">
-                                    <span className="text-xs break-all">{details.pixCode || "-"}</span>
+                                    <span className="text-[11px] break-all">{details.pixCode || "-"}</span>
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -1420,6 +1420,26 @@ export default function Financial() {
                             </TableRow>
                           );
                         })}
+                        
+                        {/* Linha de Totais */}
+                        <TableRow className="bg-muted font-bold border-t-2 border-primary">
+                          <TableCell colSpan={9} className="text-right text-[11px]">
+                            TOTAIS:
+                          </TableCell>
+                          <TableCell className="text-right text-[11px] text-blue-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(getSortedPayments.reduce((sum, p) => sum + getExpectedAmount(p), 0))}
+                          </TableCell>
+                          <TableCell className="text-right text-[11px] text-green-600 font-semibold">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(getSortedPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
+                          </TableCell>
+                          <TableCell className="text-[11px]"></TableCell>
+                        </TableRow>
                       </TableBody>
                     </Table>
                   </div>
