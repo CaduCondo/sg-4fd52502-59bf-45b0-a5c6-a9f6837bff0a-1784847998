@@ -22,7 +22,7 @@ interface LocationExpensesDialogProps {
 type SortField = "location_name" | "description" | "amount";
 type SortDirection = "asc" | "desc" | null;
 
-// Estilos para impressão - SIMPLIFICADOS
+// Estilos para impressão - CORRIGIDOS para funcionar dentro do Dialog
 const printStyles = `
   @media print {
     @page {
@@ -30,53 +30,94 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Ocultar elementos não essenciais */
-    .no-print {
+    /* Ocultar TODO o conteúdo da página de fundo */
+    body > *:not([data-radix-portal]) {
       display: none !important;
     }
     
-    /* Garantir visibilidade do cabeçalho */
+    /* Mostrar apenas o portal do Dialog */
+    [data-radix-portal] {
+      display: block !important;
+      position: static !important;
+      inset: auto !important;
+    }
+    
+    /* Ocultar overlay do Dialog */
+    [data-radix-dialog-overlay] {
+      display: none !important;
+    }
+    
+    /* Resetar estilos do Dialog para impressão */
+    [data-radix-dialog-content],
+    [role="dialog"] {
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: none !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: white !important;
+    }
+    
+    /* Ocultar elementos não essenciais */
+    .no-print,
+    button:not(.print-keep) {
+      display: none !important;
+    }
+    
+    /* Cabeçalho */
     .print-header {
       display: block !important;
       margin-bottom: 20px;
+      page-break-inside: avoid;
     }
     
     .print-header h2 {
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 6px;
-      color: #000;
+      font-size: 18pt !important;
+      font-weight: bold !important;
+      margin-bottom: 6px !important;
+      color: #000 !important;
     }
     
     .print-header .print-subtitle {
-      font-size: 11pt;
-      color: #666;
-      margin-bottom: 12px;
+      font-size: 11pt !important;
+      color: #666 !important;
+      margin-bottom: 12px !important;
     }
     
     .print-header .print-period {
-      font-size: 12pt;
-      font-weight: 600;
-      color: #000;
-      margin-top: 8px;
+      display: block !important;
+      font-size: 12pt !important;
+      font-weight: 600 !important;
+      color: #000 !important;
+      margin-top: 8px !important;
     }
     
     /* Tabela */
     table {
-      font-size: 10pt;
-      width: 100%;
-      border-collapse: collapse;
+      font-size: 10pt !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
     }
     
     th, td {
-      padding: 8px;
-      border: 1px solid #ddd;
-      text-align: left;
+      padding: 8px !important;
+      border: 1px solid #ddd !important;
+      text-align: left !important;
     }
     
     th {
       background-color: #f5f5f5 !important;
-      font-weight: bold;
+      font-weight: bold !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -84,24 +125,24 @@ const printStyles = `
     /* Ocultar coluna de ações */
     th:last-child,
     td:last-child {
-      display: none;
+      display: none !important;
     }
     
     /* Total */
     .print-total {
-      margin-top: 20px;
-      padding: 12px;
+      margin-top: 20px !important;
+      padding: 12px !important;
       background-color: #f5f5f5 !important;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      border-radius: 4px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-total .total-value {
       color: #dc2626 !important;
-      font-weight: bold;
+      font-weight: bold !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
