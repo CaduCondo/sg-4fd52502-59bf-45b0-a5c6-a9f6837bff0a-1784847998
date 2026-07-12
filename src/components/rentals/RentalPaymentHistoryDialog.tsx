@@ -192,98 +192,93 @@ export function RentalPaymentHistoryDialog({
             margin: 15mm;
           }
           
-          body * {
-            visibility: hidden;
+          .no-print {
+            display: none !important;
           }
           
-          #print-content,
-          #print-content * {
-            visibility: visible;
+          .print-content {
+            display: block !important;
           }
           
-          #print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          #print-content table {
+          .print-content table {
             border-collapse: collapse;
             width: 100%;
+            page-break-inside: auto;
           }
           
-          #print-content th,
-          #print-content td {
+          .print-content th,
+          .print-content td {
             border: 1px solid #000;
             padding: 8px;
-            text-align: left;
           }
           
-          #print-content th {
+          .print-content th {
             background-color: #f3f4f6;
+          }
+          
+          .print-content tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
         }
         
-        #print-content {
+        .print-content {
           display: none;
         }
       `}</style>
 
-      {/* Conteúdo para impressão - renderizado fora do Dialog */}
-      <div id="print-content" style={{ display: 'none' }}>
-        <div style={{ padding: '20px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
-            Histórico de Pagamentos
-          </h1>
-          
-          <div style={{ marginBottom: '20px', fontSize: '16px' }}>
-            <p><strong>Local:</strong> {rental?.property?.location}</p>
-            <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
-            <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'center' }}>Parcela</th>
-                <th style={{ textAlign: 'center' }}>Vencimento</th>
-                <th style={{ textAlign: 'center' }}>Pagamento</th>
-                <th style={{ textAlign: 'center' }}>Status</th>
-                <th style={{ textAlign: 'right' }}>Valor Esperado</th>
-                <th style={{ textAlign: 'right' }}>Valor Pago</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td style={{ textAlign: 'center' }}>{payment.installment}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {payment.paymentDate
-                      ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
-                      : "-"}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {getStatusText(payment.status)}
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {formatCurrency(getExpectedAmount(payment))}
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#059669' }}>
-                    {formatCurrency(payment.paidAmount || 0)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Conteúdo para impressão */}
+      <div className="print-content" style={{ padding: '20px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+          Histórico de Pagamentos
+        </h1>
+        
+        <div style={{ marginBottom: '20px', fontSize: '16px' }}>
+          <p><strong>Local:</strong> {rental?.property?.location}</p>
+          <p><strong>Complemento:</strong> {rental?.property?.complement}</p>
+          <p><strong>Nome Inquilino:</strong> {rental?.tenant?.name}</p>
         </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'center' }}>Parcela</th>
+              <th style={{ textAlign: 'center' }}>Vencimento</th>
+              <th style={{ textAlign: 'center' }}>Pagamento</th>
+              <th style={{ textAlign: 'center' }}>Status</th>
+              <th style={{ textAlign: 'right' }}>Valor Esperado</th>
+              <th style={{ textAlign: 'right' }}>Valor Pago</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedPayments.map((payment) => (
+              <tr key={payment.id}>
+                <td style={{ textAlign: 'center' }}>{payment.installment}</td>
+                <td style={{ textAlign: 'center' }}>
+                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  {payment.paymentDate
+                    ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+                    : "-"}
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  {getStatusText(payment.status)}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  {formatCurrency(getExpectedAmount(payment))}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#059669' }}>
+                  {formatCurrency(payment.paidAmount || 0)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto no-print">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
           </DialogHeader>
