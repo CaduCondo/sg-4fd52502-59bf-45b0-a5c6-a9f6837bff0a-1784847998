@@ -544,28 +544,42 @@ export function DepositInstallmentsTable({
               <Table>
                 <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
                   <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("rental_property")}>
-                      Imóvel {sortField === "rental_property" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("location")}>
+                      Local {getSortIcon("location")}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("tenant_name")}>
-                      Inquilino {sortField === "tenant_name" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("complement")}>
+                      Complemento {getSortIcon("complement")}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("installment_number")}>
-                      Parcela {sortField === "installment_number" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("tenant")}>
+                      Inquilino {getSortIcon("tenant")}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("due_date")}>
-                      Vencimento {sortField === "due_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("rent")}>
+                      Valor Aluguel {getSortIcon("rent")}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("payment_date")}>
-                      Data Pagamento {sortField === "payment_date" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("deposit")}>
+                      Valor Total Caução {getSortIcon("deposit")}
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("partner")}>
+                      Corretor Parceiro {getSortIcon("partner")}
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("partnerCommission")}>
+                      Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("internalCommission")}>
+                      Valor Pg Corretor Interno {getSortIcon("internalCommission")}
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-sm print:text-[10px]" onClick={() => handleSort("installment")}>
+                      Parcela {getSortIcon("installment")}
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("date")}>
+                      Data Pagamento {getSortIcon("date")}
                     </TableHead>
                     <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("amount")}>
-                      Valor {sortField === "amount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                      Valor Parcela {getSortIcon("amount")}
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-sm print:text-[10px]" onClick={() => handleSort("status")}>
-                      Status {sortField === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("pix")}>
+                      Código PIX {getSortIcon("pix")}
                     </TableHead>
-                    <TableHead className="text-sm print:text-[10px]">Observações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

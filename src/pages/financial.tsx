@@ -182,7 +182,7 @@ const printStyles = `
     }
     
     .print-cards .card-value {
-      font-size: 14pt !important;
+      font-size: 18pt !important;
       font-weight: bold !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
