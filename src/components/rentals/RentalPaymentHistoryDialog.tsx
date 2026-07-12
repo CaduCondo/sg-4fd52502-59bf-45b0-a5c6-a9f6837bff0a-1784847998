@@ -54,7 +54,7 @@ export function RentalPaymentHistoryDialog({
         .from("payments")
         .select("*")
         .eq("rental_id", rental.id)
-        .order("installment_number", { ascending: true });
+        .order("installment", { ascending: true });
 
       if (error) throw error;
 
@@ -62,10 +62,10 @@ export function RentalPaymentHistoryDialog({
         id: p.id,
         due_date: p.due_date,
         payment_date: p.payment_date,
-        amount_paid: p.amount_paid || 0,
+        amount_paid: p.paid_amount || 0,
         expected_amount: p.expected_amount || 0,
         status: p.status === "paid" || p.status === "partial" ? "pago" : "pendente",
-        installment_number: p.installment_number || 0,
+        installment_number: p.installment || 0,
       }));
 
       setPayments(mappedPayments);
