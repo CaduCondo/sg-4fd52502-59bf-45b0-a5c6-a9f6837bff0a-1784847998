@@ -30,44 +30,22 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Forçar visibilidade de tudo primeiro */
-    * {
-      visibility: visible !important;
-    }
-    
     /* Ocultar elementos específicos */
-    .no-print,
-    button:not(.print-keep),
-    [role="dialog"] > div:first-child,
-    .cursor-pointer .hover\\:bg-muted\\/50 {
+    .no-print {
       display: none !important;
-      visibility: hidden !important;
     }
     
-    /* Remover estilos de dialog */
-    [role="dialog"] {
-      position: static !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
+    /* Resetar estilos do Dialog para impressão */
+    body, html {
       overflow: visible !important;
-      border: none !important;
-      box-shadow: none !important;
-      background: white !important;
-      padding: 0 !important;
-      margin: 0 !important;
+      height: auto !important;
     }
     
-    /* Ocultar overlay */
-    [data-radix-dialog-overlay] {
-      display: none !important;
-    }
-    
-    /* Cabeçalho de impressão */
+    /* Título e subtítulo sempre visíveis */
     .print-header {
+      display: block !important;
+      visibility: visible !important;
       margin-bottom: 20px;
-      page-break-inside: avoid;
     }
     
     .print-header h2 {
@@ -75,12 +53,14 @@ const printStyles = `
       font-weight: bold !important;
       margin-bottom: 6px !important;
       color: #000 !important;
+      display: block !important;
     }
     
     .print-header p {
       font-size: 10pt !important;
       color: #666 !important;
       margin-bottom: 12px !important;
+      display: block !important;
     }
     
     /* Período */
@@ -92,30 +72,37 @@ const printStyles = `
       color: #000 !important;
     }
     
-    /* Tabela */
+    /* Área de impressão */
     .print-area {
-      margin-top: 10px;
+      display: block !important;
+      visibility: visible !important;
     }
     
+    /* Tabela */
     table {
       font-size: 9pt !important;
       width: 100% !important;
       border-collapse: collapse !important;
-      page-break-inside: auto !important;
     }
     
     thead {
       display: table-header-group !important;
     }
     
+    tbody {
+      display: table-row-group !important;
+    }
+    
     tr {
       page-break-inside: avoid !important;
+      display: table-row !important;
     }
     
     th, td {
       padding: 6px 8px !important;
       border: 1px solid #ddd !important;
       text-align: left !important;
+      display: table-cell !important;
     }
     
     th {
@@ -125,19 +112,17 @@ const printStyles = `
       print-color-adjust: exact;
     }
     
-    /* Ocultar colunas de ação na impressão */
+    /* Ocultar última coluna (Ações) */
     th:last-child,
     td:last-child {
       display: none !important;
     }
     
-    /* Mostrar apenas linhas de print */
-    tbody tr:not(.print-row) {
-      display: none !important;
-    }
-    
-    tbody tr.print-row {
-      display: table-row !important;
+    /* Badges como texto */
+    .badge {
+      border: none !important;
+      background: none !important;
+      padding: 0 !important;
     }
     
     /* Total */
@@ -147,12 +132,10 @@ const printStyles = `
       margin-top: 15px !important;
       padding: 10px !important;
       background-color: #f5f5f5 !important;
-      border-radius: 4px !important;
       display: flex !important;
       justify-content: space-between !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
-      page-break-inside: avoid !important;
     }
     
     .print-total .text-red-600 {
