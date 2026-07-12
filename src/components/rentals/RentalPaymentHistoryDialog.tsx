@@ -187,12 +187,8 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media screen {
-          .print-content {
-            position: fixed;
-            left: -9999px;
-            top: -9999px;
-            opacity: 0;
-            pointer-events: none;
+          .print-only {
+            display: none !important;
           }
         }
         
@@ -202,25 +198,26 @@ export function RentalPaymentHistoryDialog({
             margin: 15mm;
           }
           
-          .no-print,
-          [role="dialog"],
-          .fixed,
-          .absolute {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
           
-          .print-content {
-            position: static !important;
-            left: auto !important;
-            top: auto !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
+          .print-only,
+          .print-only * {
+            visibility: visible !important;
+          }
+          
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
             display: block !important;
           }
         }
       `}</style>
       
-      <div className="print-content" style={{ width: '100%', padding: '20px', backgroundColor: 'white' }}>
+      <div className="print-only">
         <h2 style={{ fontSize: '20pt', marginBottom: '12pt', fontWeight: 'bold' }}>
           Histórico de Pagamentos
         </h2>
@@ -356,7 +353,7 @@ export function RentalPaymentHistoryDialog({
       </div>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto no-print">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl">Histórico de Pagamentos</DialogTitle>
           </DialogHeader>
