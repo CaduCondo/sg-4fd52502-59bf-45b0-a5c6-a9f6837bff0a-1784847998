@@ -13,7 +13,7 @@ interface Payment {
   payment_date: string | null;
   amount_paid: number;
   expected_amount: number;
-  status: "pago" | "pendente";
+  status: string;
   installment_number: number;
 }
 
@@ -43,7 +43,7 @@ export function RentalPaymentHistoryDialog({
     if (open && rental) {
       loadPayments();
     }
-  }, [open, rental?.id]);
+  }, [open, rental]);
 
   const loadPayments = async () => {
     if (!rental) return;
@@ -77,76 +77,82 @@ export function RentalPaymentHistoryDialog({
     }
   };
 
-  const sortedPayments = useMemo(() => {
-    const sorted = [...payments];
-    if (sortConfig) {
-      sorted.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+  const handleSort = (key: keyof Payment) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
 
-        if (aValue === null || bValue === null) return 0;
-        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+  const sortedPayments = useMemo(() => {
+    const sortablePayments = [...payments];
+    if (sortConfig !== null) {
+      sortablePayments.sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
-    return sorted;
+    return sortablePayments;
   }, [payments, sortConfig]);
 
-  const handleSort = (key: keyof Payment) => {
-    setSortConfig((current) => {
-      if (current?.key === key) {
-        return {
-          key,
-          direction: current.direction === "asc" ? "desc" : "asc",
-        };
-      }
-      return { key, direction: "asc" };
-    });
-  };
+  const totalPaid = useMemo(
+    () =>
+      sortedPayments
+        .filter((p) => p.status === "pago")
+        .reduce((sum, p) => sum + p.amount_paid, 0),
+    [sortedPayments]
+  );
 
   const handlePrint = () => {
     window.print();
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    return status === "pago"
-      ? "bg-green-100 text-green-800"
-      : "bg-yellow-100 text-yellow-800";
-  };
-
-  const totalPaid = sortedPayments.reduce((sum, payment) => {
-    return payment.status === "pago" ? sum + payment.amount_paid : sum;
-  }, 0);
-
-  useEffect(() => {
-    if (!open) {
-      setSortConfig(null);
-    }
-  }, [open]);
-
   return (
     <>
+      {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
       <style>{`
         @media print {
-          /* Esconde o overlay do Dialog */
+          /* Esconde TUDO da página */
+          body > *:not(#__next) {
+            display: none !important;
+          }
+          
+          /* Esconde layout, sidebar, header, footer */
+          header,
+          nav,
+          aside,
+          footer,
+          .sidebar,
+          [data-sidebar] {
+            display: none !important;
+          }
+          
+          /* Remove overlay escuro do Dialog */
           [data-radix-dialog-overlay] {
             display: none !important;
           }
           
-          /* Remove estilos de Dialog do conteúdo */
+          /* Dialog: remove posicionamento fixo e mostra em posição normal */
           [role="dialog"] {
             position: static !important;
+            transform: none !important;
             max-width: 100% !important;
-            max-height: 100% !important;
-            padding: 20px !important;
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 0 !important;
             border: none !important;
             box-shadow: none !important;
+            background: white !important;
           }
           
-          /* Esconde elementos desnecessários */
-          .no-print,
-          button[aria-label="Close"] {
+          /* Esconde botão Imprimir durante impressão */
+          .no-print {
             display: none !important;
           }
           
@@ -156,10 +162,25 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
+          /* Body: fundo branco, sem margens */
           body {
-            margin: 0;
-            padding: 0;
-            background: white;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          
+          html {
+            background: white !important;
+          }
+          
+          /* Garante que a tabela seja visível */
+          table {
+            page-break-inside: auto !important;
+          }
+          
+          tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
           }
         }
       `}</style>
@@ -197,7 +218,7 @@ export function RentalPaymentHistoryDialog({
             </div>
 
             {loading ? (
-              <div className="text-center py-8">Carregando...</div>
+              <div className="text-center py-8">Carregando pagamentos...</div>
             ) : (
               <Table>
                 <TableHeader>
@@ -226,10 +247,18 @@ export function RentalPaymentHistoryDialog({
                     >
                       Status
                     </TableHead>
-                    <TableHead className="text-base text-right">
+                    <TableHead
+                      className="cursor-pointer text-base text-right"
+                      onClick={() => handleSort("expected_amount")}
+                    >
                       Valor Esperado
                     </TableHead>
-                    <TableHead className="text-base text-right">Valor Pago</TableHead>
+                    <TableHead
+                      className="cursor-pointer text-base text-right"
+                      onClick={() => handleSort("amount_paid")}
+                    >
+                      Valor Pago
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -246,22 +275,14 @@ export function RentalPaymentHistoryDialog({
                           ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
                           : "-"}
                       </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(
-                            payment.status
-                          )}`}
-                        >
-                          {payment.status === "pago" ? "Pago" : "Pendente"}
-                        </span>
+                      <TableCell className="text-base text-center">
+                        {payment.status === "pago" ? "Pago" : "Pendente"}
                       </TableCell>
                       <TableCell className="text-base text-right">
                         {formatCurrency(payment.expected_amount)}
                       </TableCell>
                       <TableCell className="text-base text-right">
-                        {payment.status === "pago"
-                          ? formatCurrency(payment.amount_paid)
-                          : "-"}
+                        {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
                       </TableCell>
                     </TableRow>
                   ))}
