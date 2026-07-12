@@ -22,7 +22,7 @@ interface LocationExpensesDialogProps {
 type SortField = "location_name" | "description" | "amount";
 type SortDirection = "asc" | "desc" | null;
 
-// Estilos para impressão - SIMPLIFICADOS para funcionar corretamente
+// Estilos para impressão - IGUAL AO FINANCIAL.TSX
 const printStyles = `
   @media print {
     @page {
@@ -30,112 +30,90 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Forçar modo de impressão limpo */
-    html, body {
-      overflow: visible !important;
-      height: auto !important;
-      background: white !important;
+    body * {
+      visibility: hidden;
     }
     
-    /* Ocultar TUDO primeiro */
-    body * {
-      visibility: hidden !important;
+    .print-area, .print-area *,
+    .print-header, .print-header * {
+      visibility: visible;
+    }
+    
+    .print-header {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    
+    .print-area {
+      position: absolute;
+      left: 0;
+      top: 120px;
+      width: 100%;
+    }
+    
+    .no-print {
       display: none !important;
     }
     
-    /* Mostrar APENAS o conteúdo de impressão */
-    .print-content,
-    .print-content * {
-      visibility: visible !important;
-      display: block !important;
-    }
-    
-    .print-content {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 100% !important;
-      padding: 20px !important;
-      background: white !important;
-    }
-    
-    /* Forçar display correto para elementos específicos */
-    .print-content table {
-      display: table !important;
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-    
-    .print-content thead {
-      display: table-header-group !important;
-    }
-    
-    .print-content tbody {
-      display: table-row-group !important;
-    }
-    
-    .print-content tr {
-      display: table-row !important;
-    }
-    
-    .print-content th,
-    .print-content td {
-      display: table-cell !important;
-    }
-    
-    .print-content .print-flex {
-      display: flex !important;
-    }
-    
-    /* Estilos visuais */
-    .print-title {
-      font-size: 18pt !important;
-      font-weight: bold !important;
-      margin-bottom: 6px !important;
+    /* Estilos para o cabeçalho de impressão */
+    .print-header h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 4px;
       color: #000 !important;
     }
     
-    .print-subtitle {
-      font-size: 11pt !important;
+    .print-header p {
+      font-size: 10pt;
       color: #666 !important;
-      margin-bottom: 12px !important;
+      margin-bottom: 8px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
-    .print-period {
-      font-size: 12pt !important;
-      font-weight: 600 !important;
+    .print-header .print-period {
+      font-size: 11pt;
+      font-weight: 600;
       color: #000 !important;
-      margin-bottom: 20px !important;
+      margin-top: 8px;
     }
     
     table {
       font-size: 10pt !important;
-      margin-top: 10px !important;
+      width: 100%;
+      border-collapse: collapse;
     }
     
     th, td {
       padding: 8px !important;
       border: 1px solid #ddd !important;
-      text-align: left !important;
+      word-wrap: break-word;
     }
     
     th {
-      background-color: #f5f5f5 !important;
+      background-color: #f0f0f0 !important;
       font-weight: bold !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     
-    .print-total-wrapper {
-      margin-top: 20px !important;
-      padding: 12px !important;
+    .print-total {
+      margin-top: 15px;
+      padding: 10px;
       background-color: #f5f5f5 !important;
-      border-radius: 4px !important;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
     
-    .print-total-value {
+    .print-total .total-value {
       color: #dc2626 !important;
       font-weight: bold !important;
       font-size: 14pt !important;
@@ -380,94 +358,39 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       
-      {/* Conteúdo para impressão - FORA do Dialog */}
-      <div className="print-content hidden">
-        <div>
-          <h1 className="print-title">
-            Detalhamento das Contas do Mês - {location.name}
-          </h1>
-          <p className="print-subtitle">
-            Controle de despesas mensais por localização
-          </p>
-          <div className="print-period">
-            Período: {getMonthName(filterMonth)}/{filterYear}
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: '100px' }}>Tipo</th>
-              <th>Descrição</th>
-              <th style={{ width: '120px' }}>Período</th>
-              <th style={{ width: '150px', textAlign: 'right' }}>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedExpenses.length === 0 ? (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>
-                  Nenhuma conta cadastrada para {getMonthName(filterMonth)}/{filterYear}
-                </td>
-              </tr>
-            ) : (
-              sortedExpenses.map((expense) => (
-                <tr key={expense.id}>
-                  <td>{getExpenseTypeLabel(expense.expenseType)}</td>
-                  <td>{expense.description || "-"}</td>
-                  <td>
-                    {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: '600' }}>
-                    {formatCurrency(expense.amount)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-
-        {sortedExpenses.length > 0 && (
-          <div className="print-total-wrapper print-flex" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: '600', fontSize: '12pt' }}>
-              Total de Contas ({getMonthName(filterMonth)}/{filterYear}):
-            </span>
-            <span className="print-total-value">
-              {formatCurrency(sortedExpenses.reduce((sum, e) => sum + e.amount, 0))}
-            </span>
-          </div>
-        )}
-      </div>
-      
       <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {/* Cabeçalho */}
+          {/* Cabeçalho para impressão */}
           <div className="print-header">
-            <div className="flex items-center justify-between mb-6">
+            <h1>Detalhamento das Contas do Mês - {location.name}</h1>
+            <p>Controle de despesas mensais por localização</p>
+            <div className="print-period">Período: {getMonthName(filterMonth)}/{filterYear}</div>
+          </div>
+
+          {/* Cabeçalho para tela */}
+          <DialogHeader className="no-print">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">
+                <DialogTitle className="text-lg font-bold">
                   Detalhamento das Contas do Mês - {location.name}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1 print-subtitle">
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
                   Controle de despesas mensais por localização
                 </p>
-                <div className="hidden print:block print-period mt-2">
-                  Período: {getMonthName(filterMonth)}/{filterYear}
-                </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="flex items-center gap-2 no-print"
+                className="flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir
               </Button>
             </div>
-          </div>
+          </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 print-area">
             {/* Filtros */}
             <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border no-print">
               <Filter className="h-4 w-4 text-muted-foreground" />
