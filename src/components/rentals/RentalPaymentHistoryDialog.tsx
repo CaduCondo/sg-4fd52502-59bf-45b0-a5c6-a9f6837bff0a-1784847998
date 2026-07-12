@@ -128,10 +128,12 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        /* Esconde o conteúdo de impressão fora da viewport mas mantém renderizado */
+        /* Esconde o conteúdo de impressão na tela usando visibility */
         .print-only {
-          position: fixed;
-          left: -9999px;
+          visibility: hidden;
+          position: absolute;
+          left: 0;
+          top: 0;
           width: 100%;
         }
         
