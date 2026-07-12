@@ -1,0 +1,25 @@
+{
+  "name": "property-management-e2e-tests",
+  "version": "1.0.0",
+  "description": "Testes E2E automatizados com BDD para sistema de gerenciamento de locações",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit"
+  },
+  "keywords": ["e2e", "playwright", "bdd", "cucumber", "testing"],
+  "author": "Stefan Cadu",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@cucumber/cucumber": "^10.8.0",
+    "@cucumber/playwright": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.5.0"
+  }
+}
