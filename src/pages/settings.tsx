@@ -141,9 +141,11 @@ export default function Settings() {
     loading: permissionsLoading, 
     updateRoleMenuPermission, 
     saveLocationPermissions, 
-    saveFeeExemptions,
+    saveAdminFeeExemptions,
+    getAdminFeeExemptions,
+    saveManagementFeeExemptions,
+    getManagementFeeExemptions,
     getUserLocationPermissions,
-    getFeeExemptions
   } = usePermissions();
 
   const { 
@@ -793,9 +795,11 @@ export default function Settings() {
               isLoading={permissionsLoading}
               onUpdateRoleMenuPermission={updateRoleMenuPermission}
               onSaveLocationPermissions={saveLocationPermissions}
-              onSaveFeeExemptions={saveFeeExemptions}
+              onSaveAdminFeeExemptions={saveAdminFeeExemptions}
+              onSaveManagementFeeExemptions={saveManagementFeeExemptions}
               getUserLocationPermissions={getUserLocationPermissions}
-              getFeeExemptions={getFeeExemptions}
+              getAdminFeeExemptions={getAdminFeeExemptions}
+              getManagementFeeExemptions={getManagementFeeExemptions}
             />
           </TabsContent>
 
