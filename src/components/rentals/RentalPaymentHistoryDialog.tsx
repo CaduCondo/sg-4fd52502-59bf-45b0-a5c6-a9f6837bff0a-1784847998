@@ -135,6 +135,8 @@ export function RentalPaymentHistoryDialog({
           left: 0;
           top: 0;
           width: 100%;
+          height: 0;
+          overflow: hidden;
         }
         
         /* Na impressão */
@@ -156,6 +158,8 @@ export function RentalPaymentHistoryDialog({
             left: 0;
             top: 0;
             width: 100%;
+            height: auto;
+            overflow: visible;
           }
           
           @page {
