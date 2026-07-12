@@ -30,22 +30,57 @@ const printStyles = `
       margin: 15mm;
     }
     
-    /* Ocultar elementos específicos */
-    .no-print {
-      display: none !important;
+    /* Forçar visibilidade global */
+    * {
+      color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
-    /* Resetar estilos do Dialog para impressão */
+    /* Ocultar elementos não essenciais */
+    .no-print,
+    button:not(.keep-print),
+    [data-radix-dialog-overlay] {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    
+    /* Remover estilos do Dialog que podem interferir */
+    [role="dialog"],
+    [data-radix-portal] {
+      position: static !important;
+      inset: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      transform: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: white !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
     body, html {
       overflow: visible !important;
       height: auto !important;
     }
     
-    /* Título e subtítulo sempre visíveis */
-    .print-header {
+    /* Cabeçalho - forçar visibilidade total */
+    .print-header,
+    .print-header * {
       display: block !important;
       visibility: visible !important;
-      margin-bottom: 20px;
+      position: static !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    .print-header {
+      margin-bottom: 20px !important;
+      page-break-inside: avoid;
     }
     
     .print-header h2 {
@@ -53,29 +88,31 @@ const printStyles = `
       font-weight: bold !important;
       margin-bottom: 6px !important;
       color: #000 !important;
-      display: block !important;
+      line-height: 1.3 !important;
     }
     
     .print-header p {
       font-size: 10pt !important;
       color: #666 !important;
       margin-bottom: 12px !important;
-      display: block !important;
+      line-height: 1.4 !important;
     }
     
     /* Período */
     .print-period {
       display: block !important;
+      visibility: visible !important;
       font-size: 11pt !important;
       font-weight: 600 !important;
       margin-bottom: 10px !important;
       color: #000 !important;
     }
     
-    /* Área de impressão */
+    /* Área de conteúdo */
     .print-area {
       display: block !important;
       visibility: visible !important;
+      position: static !important;
     }
     
     /* Tabela */
@@ -83,6 +120,7 @@ const printStyles = `
       font-size: 9pt !important;
       width: 100% !important;
       border-collapse: collapse !important;
+      display: table !important;
     }
     
     thead {
@@ -94,54 +132,44 @@ const printStyles = `
     }
     
     tr {
-      page-break-inside: avoid !important;
       display: table-row !important;
+      page-break-inside: avoid !important;
     }
     
     th, td {
+      display: table-cell !important;
       padding: 6px 8px !important;
       border: 1px solid #ddd !important;
       text-align: left !important;
-      display: table-cell !important;
+      vertical-align: middle !important;
     }
     
     th {
       background-color: #f0f0f0 !important;
       font-weight: bold !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
     
-    /* Ocultar última coluna (Ações) */
+    /* Ocultar coluna de ações */
     th:last-child,
     td:last-child {
       display: none !important;
     }
     
-    /* Badges como texto */
-    .badge {
-      border: none !important;
-      background: none !important;
-      padding: 0 !important;
-    }
-    
     /* Total */
     .print-total {
+      display: flex !important;
+      visibility: visible !important;
       font-size: 11pt !important;
       font-weight: bold !important;
       margin-top: 15px !important;
       padding: 10px !important;
       background-color: #f5f5f5 !important;
-      display: flex !important;
       justify-content: space-between !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      page-break-inside: avoid !important;
     }
     
     .print-total .text-red-600 {
       color: #dc2626 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
   }
 `;
