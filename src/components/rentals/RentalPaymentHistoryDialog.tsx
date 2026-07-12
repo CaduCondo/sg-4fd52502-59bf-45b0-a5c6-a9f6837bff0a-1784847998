@@ -129,24 +129,23 @@ export function RentalPaymentHistoryDialog({
     <>
       <style>{`
         @media print {
-          /* Esconde a página de Locações por trás */
-          body > div:first-child {
-            display: none !important;
+          /* Esconde absolutamente TUDO do body */
+          body * {
+            visibility: hidden !important;
           }
           
           /* Mostra apenas o conteúdo de impressão */
+          .print-only,
+          .print-only * {
+            visibility: visible !important;
+          }
+          
+          /* Posiciona o conteúdo de impressão no topo da página */
           .print-only {
-            display: block !important;
-          }
-          
-          /* Esconde o Dialog */
-          [role="dialog"] {
-            display: none !important;
-          }
-          
-          /* Remove overlay/backdrop */
-          [data-radix-portal] > div:first-child {
-            display: none !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
           }
           
           /* Configurações da página */
@@ -155,9 +154,14 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
+          /* Remove margens, padding e garante fundo branco */
           body {
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+          }
+          
+          html {
             background: white !important;
           }
         }
