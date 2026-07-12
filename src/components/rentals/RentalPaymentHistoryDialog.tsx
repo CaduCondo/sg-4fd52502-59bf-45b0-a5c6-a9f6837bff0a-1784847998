@@ -118,49 +118,50 @@ export function RentalPaymentHistoryDialog({
       {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
       <style>{`
         @media print {
-          /* Esconde a página principal (Locações) que está por trás */
-          main,
-          header,
-          nav,
-          aside,
-          footer,
-          .sidebar,
-          [data-sidebar],
-          [class*="sidebar"] {
-            display: none !important;
+          /* ESCONDE TUDO PRIMEIRO */
+          body * {
+            visibility: hidden !important;
           }
           
-          /* Remove overlay escuro do Dialog */
+          /* MOSTRA APENAS O DIALOG E TUDO DENTRO DELE */
+          [role="dialog"],
+          [role="dialog"] * {
+            visibility: visible !important;
+          }
+          
+          /* REMOVE OVERLAY ESCURO COMPLETAMENTE */
           [data-radix-dialog-overlay] {
-            background: transparent !important;
             display: none !important;
           }
           
-          /* Dialog: remove posicionamento fixo e mostra em posição normal */
+          /* DIALOG: POSICIONAMENTO E ESTILOS */
           [role="dialog"] {
-            position: static !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
             transform: none !important;
             max-width: 100% !important;
             max-height: none !important;
             overflow: visible !important;
             padding: 20px !important;
+            margin: 0 !important;
             border: none !important;
             box-shadow: none !important;
             background: white !important;
           }
           
-          /* Esconde botão Imprimir durante impressão */
+          /* ESCONDE BOTÃO IMPRIMIR */
           .no-print {
-            display: none !important;
+            visibility: hidden !important;
           }
           
-          /* Configurações da página */
+          /* CONFIGURAÇÕES DA PÁGINA */
           @page {
             size: landscape;
             margin: 1cm;
           }
           
-          /* Body: fundo branco, sem margens */
+          /* BODY E HTML: FUNDO BRANCO */
           body {
             margin: 0 !important;
             padding: 0 !important;
@@ -171,7 +172,7 @@ export function RentalPaymentHistoryDialog({
             background: white !important;
           }
           
-          /* Garante que a tabela seja visível */
+          /* GARANTE TABELA VISÍVEL */
           table {
             page-break-inside: auto !important;
             background: white !important;
@@ -182,15 +183,13 @@ export function RentalPaymentHistoryDialog({
             page-break-after: auto !important;
           }
           
-          /* Remove cores escuras de fundo */
-          * {
-            background-color: white !important;
+          /* GARANTE TEXTO PRETO EM FUNDO BRANCO */
+          th {
+            background-color: #f5f5f5 !important;
             color: black !important;
           }
           
-          /* Exceções para células da tabela com fundo */
-          th {
-            background-color: #f5f5f5 !important;
+          td, th {
             color: black !important;
           }
           
