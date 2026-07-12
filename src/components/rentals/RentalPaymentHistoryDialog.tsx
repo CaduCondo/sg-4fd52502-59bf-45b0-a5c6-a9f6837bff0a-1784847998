@@ -118,23 +118,21 @@ export function RentalPaymentHistoryDialog({
       {/* CSS DE IMPRESSÃO ULTRA-SIMPLES */}
       <style>{`
         @media print {
-          /* Esconde TUDO da página */
-          body > *:not(#__next) {
-            display: none !important;
-          }
-          
-          /* Esconde layout, sidebar, header, footer */
+          /* Esconde a página principal (Locações) que está por trás */
+          main,
           header,
           nav,
           aside,
           footer,
           .sidebar,
-          [data-sidebar] {
+          [data-sidebar],
+          [class*="sidebar"] {
             display: none !important;
           }
           
           /* Remove overlay escuro do Dialog */
           [data-radix-dialog-overlay] {
+            background: transparent !important;
             display: none !important;
           }
           
@@ -145,7 +143,7 @@ export function RentalPaymentHistoryDialog({
             max-width: 100% !important;
             max-height: none !important;
             overflow: visible !important;
-            padding: 0 !important;
+            padding: 20px !important;
             border: none !important;
             box-shadow: none !important;
             background: white !important;
@@ -176,11 +174,28 @@ export function RentalPaymentHistoryDialog({
           /* Garante que a tabela seja visível */
           table {
             page-break-inside: auto !important;
+            background: white !important;
           }
           
           tr {
             page-break-inside: avoid !important;
             page-break-after: auto !important;
+          }
+          
+          /* Remove cores escuras de fundo */
+          * {
+            background-color: white !important;
+            color: black !important;
+          }
+          
+          /* Exceções para células da tabela com fundo */
+          th {
+            background-color: #f5f5f5 !important;
+            color: black !important;
+          }
+          
+          .bg-muted\/50 {
+            background-color: #f9f9f9 !important;
           }
         }
       `}</style>
