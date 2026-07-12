@@ -128,40 +128,29 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
-        /* Esconde o conteúdo de impressão na tela usando visibility */
-        .print-only {
-          visibility: hidden;
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 0;
-          overflow: hidden;
-        }
-        
-        /* Na impressão */
         @media print {
-          /* Esconde tudo primeiro */
-          body * {
-            visibility: hidden;
+          /* Esconde o overlay do Dialog */
+          [data-radix-dialog-overlay] {
+            display: none !important;
           }
           
-          /* Mostra apenas o conteúdo de impressão */
-          .print-only,
-          .print-only * {
-            visibility: visible;
+          /* Remove estilos de Dialog do conteúdo */
+          [role="dialog"] {
+            position: static !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            padding: 20px !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           
-          /* Posiciona o conteúdo de impressão */
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: auto;
-            overflow: visible;
+          /* Esconde elementos desnecessários */
+          .no-print,
+          button[aria-label="Close"] {
+            display: none !important;
           }
           
+          /* Configurações da página */
           @page {
             size: landscape;
             margin: 1cm;
@@ -198,6 +187,7 @@ export function RentalPaymentHistoryDialog({
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
+                    className="no-print"
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
@@ -289,86 +279,6 @@ export function RentalPaymentHistoryDialog({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Conteúdo exclusivo para impressão - sempre renderizado mas escondido na tela */}
-      <div className="print-only">
-        <div style={{ padding: '20px', backgroundColor: 'white' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center', color: '#000' }}>
-            Histórico de Pagamentos
-          </h1>
-
-          <div style={{ marginBottom: '30px', color: '#000' }}>
-            <div style={{ marginBottom: '8px' }}>
-              <strong>Local:</strong> {location}
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <strong>Complemento:</strong> {complement}
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <strong>Nome Inquilino:</strong> {tenantName}
-            </div>
-          </div>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
-            <thead>
-              <tr>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Parcela
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Vencimento
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Pagamento
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'center', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Status
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Valor Esperado
-                </th>
-                <th style={{ border: '1px solid #000', padding: '12px', textAlign: 'right', backgroundColor: '#f5f5f5', color: '#000' }}>
-                  Valor Pago
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.installment_number}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.payment_date
-                      ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR")
-                      : "-"}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', backgroundColor: 'white', color: '#000' }}>
-                    {payment.status === "pago" ? "Pago" : "Pendente"}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                    {formatCurrency(payment.expected_amount)}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', backgroundColor: 'white', color: '#000' }}>
-                    {payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
-                  </td>
-                </tr>
-              ))}
-              <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-                <td colSpan={5} style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                  Total Pago:
-                </td>
-                <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: '#000' }}>
-                  {formatCurrency(totalPaid)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </>
   );
 }
