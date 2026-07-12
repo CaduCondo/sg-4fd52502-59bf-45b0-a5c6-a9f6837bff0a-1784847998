@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { X, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { supabase } from "@/integrations/supabase/client";
 import type { Rental } from "@/types";
@@ -130,19 +130,20 @@ export function RentalPaymentHistoryDialog({
       <style>{`
         @media print {
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
           
           .print-only,
           .print-only * {
-            visibility: visible;
+            visibility: visible !important;
           }
           
           .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            display: block !important;
           }
           
           @page {
@@ -151,9 +152,9 @@ export function RentalPaymentHistoryDialog({
           }
           
           body {
-            margin: 0;
-            padding: 0;
-            background: white;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
           }
         }
         
@@ -283,14 +284,14 @@ export function RentalPaymentHistoryDialog({
           Histórico de Pagamentos
         </h1>
 
-        <div style={{ marginBottom: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', color: '#000' }}>
-          <div>
+        <div style={{ marginBottom: '30px', color: '#000' }}>
+          <div style={{ marginBottom: '8px' }}>
             <strong>Local:</strong> {location}
           </div>
-          <div>
+          <div style={{ marginBottom: '8px' }}>
             <strong>Complemento:</strong> {complement}
           </div>
-          <div>
+          <div style={{ marginBottom: '8px' }}>
             <strong>Nome Inquilino:</strong> {tenantName}
           </div>
         </div>
