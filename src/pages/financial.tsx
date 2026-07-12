@@ -265,6 +265,7 @@ export default function Financial() {
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
+  const [managementFeeExemptLocationIds, setManagementFeeExemptLocationIds] = useState<string[]>([]);
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [locationsMap, setLocationsMap] = useState<Map<string, string>>(new Map());
@@ -539,6 +540,7 @@ export default function Financial() {
 
       // Buscar configurações, isenções e permissões
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
+      const managementFeeExemptionsQuery: any = supabase.from("management_fee_exempt_locations").select("location_id");
       const configQuery: any = supabase.from("configs").select("*").maybeSingle();
       
       // ✅ CORREÇÃO: Incluir location_id na query de despesas
@@ -549,6 +551,7 @@ export default function Financial() {
         .eq("reference_year", filterYear);
 
       const exemptionsResult: any = await exemptionsQuery;
+      const managementFeeExemptionsResult: any = await managementFeeExemptionsQuery;
       const configResult: any = await configQuery;
       const expensesResult: any = await expensesQuery;
 
@@ -563,6 +566,7 @@ export default function Financial() {
       }
 
       const exemptIds: string[] = exemptionsResult.data?.map((e: any) => e.location_id) || [];
+      const managementFeeExemptIds: string[] = managementFeeExemptionsResult.data?.map((e: any) => e.location_id) || [];
       const configData: any = configResult.data;
       
       // ✅ CORREÇÃO: Armazenar array completo de despesas com location_id
@@ -580,6 +584,7 @@ export default function Financial() {
       }));
 
       setExemptLocationIds(exemptIds);
+      setManagementFeeExemptLocationIds(managementFeeExemptIds);
       setConfig(configData);
       setLocationExpensesData(expensesData);
       setExpensesDetails(expensesWithLocationName);
@@ -1008,7 +1013,9 @@ export default function Financial() {
     const managementFee = paymentsToCalculate
       .filter((p) => p.status === "paid" || p.status === "partial")
       .reduce((sum, p) => {
-        const fee = (p.paidAmount || 0) * mgmtRate;
+        const property = p.property;
+        const isManagementFeeExempt = property && managementFeeExemptLocationIds.includes(property.locationId);
+        const fee = isManagementFeeExempt ? 0 : ((p.paidAmount || 0) * mgmtRate);
         return sum + fee;
       }, 0);
 
@@ -1027,7 +1034,7 @@ export default function Financial() {
       totalPaid,
       locationExpenses: totalLocationExpenses,
     };
-  }, [locationFilteredPayments, config, exemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount]);
+  }, [locationFilteredPayments, config, exemptLocationIds, managementFeeExemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount]);
 
   const filteredPayments = getSortedPayments;
 
