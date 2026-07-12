@@ -128,6 +128,12 @@ export function RentalPaymentHistoryDialog({
   return (
     <>
       <style>{`
+        @media screen {
+          .print-only {
+            display: none;
+          }
+        }
+        
         @media print {
           body * {
             visibility: hidden !important;
@@ -139,11 +145,11 @@ export function RentalPaymentHistoryDialog({
           }
           
           .print-only {
-            position: fixed !important;
+            position: absolute !important;
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
-            height: auto !important;
+            display: block !important;
           }
           
           @page {
@@ -156,14 +162,6 @@ export function RentalPaymentHistoryDialog({
             padding: 0 !important;
             background: white !important;
           }
-        }
-        
-        /* Mantém o elemento totalmente renderizado mas fora da viewport */
-        .print-only {
-          position: fixed;
-          top: 100vh;
-          left: 0;
-          width: 100%;
         }
       `}</style>
 
