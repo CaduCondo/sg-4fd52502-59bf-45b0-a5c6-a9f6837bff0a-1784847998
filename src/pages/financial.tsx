@@ -85,21 +85,21 @@ const printStyles = `
       left: 0;
       top: 0;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
     
     .print-cards {
       position: absolute;
       left: 0;
-      top: 60px;
+      top: 80px;
       width: 100%;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     
     .print-area {
       position: absolute;
       left: 0;
-      top: 140px;
+      top: 165px;
       width: 100%;
     }
     
@@ -109,39 +109,71 @@ const printStyles = `
     
     /* Estilos para o cabeçalho de impressão */
     .print-header h1 {
-      font-size: 18pt;
+      font-size: 16pt;
       font-weight: bold;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     
     .print-header p {
-      font-size: 10pt;
+      font-size: 9pt;
       color: #666;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     
     /* Estilos para os cards na impressão */
     .print-cards {
       display: grid !important;
       grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-      font-size: 8pt;
+      gap: 6px;
+      font-size: 7pt;
     }
     
     .print-cards .card {
       border: 1px solid #ddd !important;
-      padding: 8px !important;
+      padding: 6px !important;
       break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Cores das bordas laterais dos cards */
+    .print-cards .card:nth-child(1) {
+      border-left: 3px solid #22c55e !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .print-cards .card:nth-child(2) {
+      border-left: 3px solid #f97316 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .print-cards .card:nth-child(3) {
+      border-left: 3px solid #3b82f6 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .print-cards .card:nth-child(4) {
+      border-left: 3px solid #ef4444 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .print-cards .card:nth-child(5) {
+      border-left: 3px solid #a855f7 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     .print-cards .card-title {
-      font-size: 7pt;
+      font-size: 6pt;
       color: #666;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     
     .print-cards .card-value {
-      font-size: 11pt;
+      font-size: 9pt;
       font-weight: bold;
     }
     
