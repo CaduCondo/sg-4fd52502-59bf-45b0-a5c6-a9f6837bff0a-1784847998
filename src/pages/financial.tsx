@@ -85,21 +85,23 @@ const printStyles = `
       left: 0;
       top: 0;
       width: 100%;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
     }
     
     .print-cards {
       position: absolute;
       left: 0;
-      top: 80px;
+      top: 90px;
       width: 100%;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+      page-break-inside: avoid;
     }
     
     .print-area {
       position: absolute;
       left: 0;
-      top: 165px;
+      top: 175px;
       width: 100%;
     }
     
@@ -109,76 +111,85 @@ const printStyles = `
     
     /* Estilos para o cabeçalho de impressão */
     .print-header h1 {
-      font-size: 16pt;
+      font-size: 18pt;
       font-weight: bold;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
+      color: #000 !important;
     }
     
     .print-header p {
-      font-size: 9pt;
-      color: #666;
-      margin-bottom: 8px;
+      font-size: 10pt;
+      color: #666 !important;
+      margin-bottom: 10px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     
     /* Estilos para os cards na impressão */
     .print-cards {
       display: grid !important;
       grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
+      gap: 8px;
       font-size: 7pt;
     }
     
     .print-cards .card {
       border: 1px solid #ddd !important;
-      padding: 6px !important;
+      padding: 8px 6px !important;
       break-inside: avoid;
       page-break-inside: avoid;
-    }
-    
-    /* Cores das bordas laterais dos cards */
-    .print-cards .card:nth-child(1) {
-      border-left: 3px solid #22c55e !important;
+      background: white !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+    }
+    
+    /* Cores das bordas laterais dos cards com !important */
+    .print-cards .card:nth-child(1) {
+      border-left: 4px solid #22c55e !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-cards .card:nth-child(2) {
-      border-left: 3px solid #f97316 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      border-left: 4px solid #f97316 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-cards .card:nth-child(3) {
-      border-left: 3px solid #3b82f6 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      border-left: 4px solid #3b82f6 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-cards .card:nth-child(4) {
-      border-left: 3px solid #ef4444 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      border-left: 4px solid #ef4444 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-cards .card:nth-child(5) {
-      border-left: 3px solid #a855f7 !important;
+      border-left: 4px solid #a855f7 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .print-cards .card-title {
+      font-size: 7pt;
+      color: #666 !important;
+      margin-bottom: 4px;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     
-    .print-cards .card-title {
-      font-size: 6pt;
-      color: #666;
-      margin-bottom: 3px;
-    }
-    
     .print-cards .card-value {
-      font-size: 9pt;
+      font-size: 10pt;
       font-weight: bold;
+      color: #000 !important;
     }
     
     .print-cards .card-icon {
-      display: none;
+      display: none !important;
     }
     
     table {
