@@ -27,25 +27,25 @@ const printStyles = `
   @media print {
     @page {
       size: portrait;
-      margin: 10mm;
+      margin: 15mm;
     }
     
-    /* Ocultar tudo por padrão */
-    body * {
-      visibility: hidden;
+    /* Forçar visibilidade de tudo primeiro */
+    * {
+      visibility: visible !important;
     }
     
-    /* Mostrar apenas os elementos de impressão */
-    .print-area, .print-area *,
-    .print-header, .print-header *,
-    .print-total, .print-total * {
-      visibility: visible;
+    /* Ocultar elementos específicos */
+    .no-print,
+    button:not(.print-keep),
+    [role="dialog"] > div:first-child,
+    .cursor-pointer .hover\\:bg-muted\\/50 {
+      display: none !important;
+      visibility: hidden !important;
     }
     
-    /* Garantir que o Dialog e overlay não atrapalhem */
-    [role="dialog"],
-    [data-radix-dialog-overlay],
-    [data-radix-dialog-content] {
+    /* Remover estilos de dialog */
+    [role="dialog"] {
       position: static !important;
       width: 100% !important;
       max-width: 100% !important;
@@ -55,63 +55,46 @@ const printStyles = `
       border: none !important;
       box-shadow: none !important;
       background: white !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
     
-    /* Ocultar overlay do Dialog */
+    /* Ocultar overlay */
     [data-radix-dialog-overlay] {
       display: none !important;
     }
     
-    /* Posicionar elementos de impressão */
+    /* Cabeçalho de impressão */
     .print-header {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
       margin-bottom: 20px;
       page-break-inside: avoid;
-      padding: 10px;
     }
     
-    .print-area {
-      position: absolute;
-      left: 0;
-      top: 90px;
-      width: 100%;
-      padding: 10px;
-    }
-    
-    .no-print,
-    button,
-    .cursor-pointer {
-      display: none !important;
-    }
-    
-    /* Estilos para o cabeçalho de impressão */
-    .print-header h2,
-    .print-header h1 {
+    .print-header h2 {
       font-size: 16pt !important;
       font-weight: bold !important;
-      margin-bottom: 4px !important;
+      margin-bottom: 6px !important;
       color: #000 !important;
-      visibility: visible !important;
     }
     
     .print-header p {
-      font-size: 9pt !important;
+      font-size: 10pt !important;
       color: #666 !important;
-      margin-bottom: 10px !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      visibility: visible !important;
+      margin-bottom: 12px !important;
     }
     
-    /* Período de filtro */
+    /* Período */
     .print-period {
-      font-size: 10pt !important;
+      display: block !important;
+      font-size: 11pt !important;
       font-weight: 600 !important;
-      margin-bottom: 8px !important;
+      margin-bottom: 10px !important;
       color: #000 !important;
+    }
+    
+    /* Tabela */
+    .print-area {
+      margin-top: 10px;
     }
     
     table {
@@ -130,9 +113,9 @@ const printStyles = `
     }
     
     th, td {
-      padding: 4px 6px !important;
+      padding: 6px 8px !important;
       border: 1px solid #ddd !important;
-      word-wrap: break-word !important;
+      text-align: left !important;
     }
     
     th {
@@ -142,20 +125,34 @@ const printStyles = `
       print-color-adjust: exact;
     }
     
+    /* Ocultar colunas de ação na impressão */
+    th:last-child,
+    td:last-child {
+      display: none !important;
+    }
+    
+    /* Mostrar apenas linhas de print */
+    tbody tr:not(.print-row) {
+      display: none !important;
+    }
+    
+    tbody tr.print-row {
+      display: table-row !important;
+    }
+    
+    /* Total */
     .print-total {
       font-size: 11pt !important;
       font-weight: bold !important;
-      margin-top: 10px !important;
-      padding: 8px !important;
+      margin-top: 15px !important;
+      padding: 10px !important;
       background-color: #f5f5f5 !important;
       border-radius: 4px !important;
+      display: flex !important;
+      justify-content: space-between !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
       page-break-inside: avoid !important;
-    }
-    
-    .print-total span {
-      color: #000 !important;
     }
     
     .print-total .text-red-600 {
@@ -505,15 +502,15 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                     </TableRow>
                   ) : (
                     <>
-                      {/* Linhas para tela (com hover e ações) */}
                       {sortedExpenses.map((expense) => (
                         <TableRow 
                           key={expense.id}
-                          className="cursor-pointer hover:bg-muted/50 no-print"
+                          className="cursor-pointer hover:bg-muted/50 print-row"
                           onClick={() => handleView(expense)}
                         >
                           <TableCell>
-                            <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                            <Badge variant="outline" className="no-print">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                            <span className="hidden print:inline">{getExpenseTypeLabel(expense.expenseType)}</span>
                           </TableCell>
                           <TableCell>{expense.description || "-"}</TableCell>
                           <TableCell>
@@ -522,7 +519,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                           <TableCell className="text-right font-semibold">
                             {formatCurrency(expense.amount)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="no-print">
                             <div className="flex justify-center">
                               <Button
                                 variant="ghost"
@@ -536,23 +533,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      
-                      {/* Linhas para impressão (sem hover e ações) */}
-                      {sortedExpenses.map((expense) => (
-                        <TableRow 
-                          key={`print-${expense.id}`}
-                          className="hidden print:table-row"
-                        >
-                          <TableCell>{getExpenseTypeLabel(expense.expenseType)}</TableCell>
-                          <TableCell>{expense.description || "-"}</TableCell>
-                          <TableCell>
-                            {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(expense.amount)}
                           </TableCell>
                         </TableRow>
                       ))}
