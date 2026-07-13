@@ -116,21 +116,6 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - SIMPLIFICADO AO MÁXIMO */}
-      <style>{`
-        @media print {
-          @page {
-            size: landscape;
-            margin: 1cm;
-          }
-          
-          /* Esconder apenas navegação e botões */
-          aside, nav, button, .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
-
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

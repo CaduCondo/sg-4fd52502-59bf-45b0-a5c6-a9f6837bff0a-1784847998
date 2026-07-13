@@ -103,7 +103,7 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: fixed !important;
+      position: absolute !important;
       display: block !important;
       top: 0 !important;
       left: 0 !important;
@@ -114,7 +114,7 @@ const printStyles = `
       height: auto !important;
       max-height: none !important;
       margin: 0 !important;
-      padding: 40px 20px !important;
+      padding: 20px !important;
       background: white !important;
       box-shadow: none !important;
       border: none !important;
@@ -272,11 +272,11 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards .card {
       border: 1px solid #ddd !important;
-      padding: 8px 6px !important;
+      padding: 8px 4px !important;
       background: white !important;
       break-inside: avoid !important;
       margin: 0 !important;
-      min-height: 85px !important;
+      min-height: 80px !important;
       display: flex !important;
       flex-direction: column !important;
       justify-content: space-between !important;
@@ -284,8 +284,8 @@ const printStyles = `
     }
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards .card-icon {
-      width: 24px !important;
-      height: 24px !important;
+      width: 20px !important;
+      height: 20px !important;
     }
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards .card:nth-child(1) { 
@@ -356,7 +356,7 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-area {
       position: absolute !important;
-      top: 210px !important;
+      top: 225px !important;
       left: 0 !important;
       width: 100% !important;
       margin: 0 !important;
