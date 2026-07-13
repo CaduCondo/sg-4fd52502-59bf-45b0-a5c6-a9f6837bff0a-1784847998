@@ -97,10 +97,8 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
+      position: static !important;
+      display: block !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
@@ -110,7 +108,10 @@ const printStyles = `
       background: white !important;
       box-shadow: none !important;
       border: none !important;
-      z-index: 9999 !important;
+      transform: none !important;
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
     }
     
     .print-expenses-title {
@@ -121,6 +122,7 @@ const printStyles = `
       padding: 0 !important;
       color: #000 !important;
       visibility: visible !important;
+      display: block !important;
     }
     
     .print-expenses-subtitle {
@@ -130,24 +132,50 @@ const printStyles = `
       margin: 0 0 20px 0 !important;
       padding: 0 !important;
       visibility: visible !important;
+      display: block !important;
     }
     
     .print-expenses-content {
       width: 100% !important;
       visibility: visible !important;
+      display: block !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
     }
     
     .print-expenses-content table {
       width: 100% !important;
       border-collapse: collapse !important;
+      table-layout: auto !important;
+      margin: 0 auto !important;
+    }
+    
+    .print-expenses-content thead {
+      display: table-header-group !important;
+    }
+    
+    .print-expenses-content tbody {
+      display: table-row-group !important;
+    }
+    
+    .print-expenses-content tr {
+      display: table-row !important;
+      page-break-inside: avoid !important;
     }
     
     .print-expenses-content th,
     .print-expenses-content td {
-      padding: 8px !important;
+      display: table-cell !important;
+      padding: 8px 12px !important;
       border: 1px solid #ddd !important;
       font-size: 12pt !important;
       visibility: visible !important;
+      text-align: left !important;
+    }
+    
+    .print-expenses-content th:last-child,
+    .print-expenses-content td:last-child {
+      text-align: right !important;
     }
     
     .print-expenses-content th {
@@ -260,7 +288,7 @@ const printStyles = `
     }
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards .card-value {
-      font-size: 20pt !important;
+      font-size: 17pt !important;
       font-weight: bold !important;
       line-height: 1.2 !important;
       word-break: break-word !important;
@@ -294,7 +322,7 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-area {
       position: absolute !important;
-      top: 180px !important;
+      top: 200px !important;
       left: 0 !important;
       width: 100% !important;
       margin: 0 !important;
