@@ -103,7 +103,8 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: fixed !important;
+      position: static !important;
+      display: block !important;
       top: 0 !important;
       left: 0 !important;
       width: 100% !important;

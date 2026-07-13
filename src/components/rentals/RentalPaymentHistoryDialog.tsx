@@ -6,6 +6,7 @@ import { Printer } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { supabase } from "@/integrations/supabase/client";
 import type { Rental } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 interface Payment {
   id: string;
@@ -240,7 +241,17 @@ export function RentalPaymentHistoryDialog({
                             : "-"}
                         </TableCell>
                         <TableCell className="text-base text-center">
-                          <span className={payment.status === "pago" ? "status-pago px-2 py-1 rounded" : "status-pendente px-2 py-1 rounded"}>
+                          <Badge
+                            variant="outline"
+                            className={`no-print ${
+                              payment.status === "pago"
+                                ? "bg-green-100 text-green-700 border-green-300"
+                                : "bg-red-100 text-red-700 border-red-300"
+                            }`}
+                          >
+                            {payment.status === "pago" ? "Pago" : "Pendente"}
+                          </Badge>
+                          <span className={payment.status === "pago" ? "status-pago" : "status-pendente"}>
                             {payment.status === "pago" ? "Pago" : "Pendente"}
                           </span>
                         </TableCell>
