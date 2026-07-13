@@ -70,18 +70,123 @@ const printStyles = `
       margin: 10mm;
     }
     
+    /* Esconder TUDO por padrão */
     body * {
-      visibility: hidden;
+      visibility: hidden !important;
     }
     
-    .print-area, .print-area *,
-    .print-header, .print-header *,
-    .print-cards, .print-cards *,
-    .print-expenses-content, .print-expenses-content * {
-      visibility: visible;
+    /* Quando o dialog de despesas estiver aberto, mostrar apenas ele */
+    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"],
+    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] * {
+      visibility: visible !important;
     }
     
-    .print-header {
+    /* Forçar dialog a ocupar página inteira */
+    [data-expenses-dialog="true"] {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 20px !important;
+      background: white !important;
+      box-shadow: none !important;
+      border: none !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    
+    /* Esconder overlay do dialog */
+    [data-radix-popper-content-wrapper],
+    [data-state="open"],
+    [data-radix-presence] {
+      position: static !important;
+      transform: none !important;
+      background: white !important;
+    }
+    
+    /* Título principal */
+    .print-expenses-title {
+      font-size: 20pt !important;
+      font-weight: bold !important;
+      margin-bottom: 8px !important;
+      color: #000 !important;
+      text-align: center !important;
+      display: block !important;
+      visibility: visible !important;
+    }
+    
+    /* Subtítulo */
+    .print-expenses-subtitle {
+      font-size: 14pt !important;
+      color: #666 !important;
+      margin-bottom: 20px !important;
+      text-align: center !important;
+      display: block !important;
+      visibility: visible !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Conteúdo da tabela */
+    .print-expenses-content {
+      display: block !important;
+      visibility: visible !important;
+      position: static !important;
+      width: 100% !important;
+    }
+    
+    .print-expenses-content * {
+      visibility: visible !important;
+    }
+    
+    .print-expenses-content table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 12pt !important;
+    }
+    
+    .print-expenses-content th,
+    .print-expenses-content td {
+      padding: 8px !important;
+      border: 1px solid #ddd !important;
+      font-size: 12pt !important;
+      visibility: visible !important;
+    }
+    
+    .print-expenses-content th {
+      background-color: #f0f0f0 !important;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Esconder todos os botões e ícones */
+    .no-print,
+    button,
+    svg.lucide-receipt,
+    svg.lucide-file-text,
+    svg.lucide-arrow-up-down,
+    svg.lucide-arrow-up,
+    svg.lucide-arrow-down {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    
+    /* Estilos para impressão da página principal (quando dialog NÃO está aberto) */
+    body:not(:has([data-expenses-dialog="true"])) .print-area,
+    body:not(:has([data-expenses-dialog="true"])) .print-area *,
+    body:not(:has([data-expenses-dialog="true"])) .print-header,
+    body:not(:has([data-expenses-dialog="true"])) .print-header *,
+    body:not(:has([data-expenses-dialog="true"])) .print-cards,
+    body:not(:has([data-expenses-dialog="true"])) .print-cards * {
+      visibility: visible !important;
+    }
+    
+    body:not(:has([data-expenses-dialog="true"])) .print-header {
       position: absolute;
       left: 0;
       top: 0;
@@ -90,7 +195,7 @@ const printStyles = `
       page-break-inside: avoid;
     }
     
-    .print-cards {
+    body:not(:has([data-expenses-dialog="true"])) .print-cards {
       position: absolute;
       left: 0;
       top: 90px;
@@ -99,22 +204,11 @@ const printStyles = `
       page-break-inside: avoid;
     }
     
-    .print-area {
+    body:not(:has([data-expenses-dialog="true"])) .print-area {
       position: absolute;
       left: 0;
       top: 175px;
       width: 100%;
-    }
-    
-    .print-expenses-content {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    
-    .no-print {
-      display: none !important;
     }
     
     /* Estilos para o cabeçalho de impressão */
@@ -129,24 +223,6 @@ const printStyles = `
       font-size: 10pt;
       color: #666 !important;
       margin-bottom: 10px;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    /* Estilos para título do dialog de despesas */
-    .print-expenses-title {
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 4px;
-      color: #000 !important;
-      text-align: center;
-    }
-    
-    .print-expenses-subtitle {
-      font-size: 12pt;
-      color: #666 !important;
-      margin-bottom: 15px;
-      text-align: center;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -168,7 +244,7 @@ const printStyles = `
       print-color-adjust: exact;
     }
     
-    /* Cores das bordas laterais dos cards com !important */
+    /* Cores das bordas laterais dos cards */
     .print-cards .card:nth-child(1) {
       border-left: 4px solid #22c55e !important;
       -webkit-print-color-adjust: exact !important;
@@ -214,7 +290,7 @@ const printStyles = `
       print-color-adjust: exact !important;
     }
     
-    /* Cores dos valores dos cards na impressão */
+    /* Cores dos valores dos cards */
     .print-cards .card:nth-child(1) .card-value {
       color: #22c55e !important;
     }
@@ -266,7 +342,7 @@ const printStyles = `
       text-align: center;
     }
     
-    /* Ajustar larguras específicas das colunas */
+    /* Ajustar larguras específicas das colunas da tabela principal */
     .col-parcela { width: 50px; }
     .col-local { width: 80px; }
     .col-compl { width: 70px; }
@@ -1493,7 +1569,7 @@ export default function Financial() {
         
         {/* Dialog de Detalhamento de Contas do Mês */}
         <Dialog open={showExpensesDialog} onOpenChange={setShowExpensesDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" data-expenses-dialog="true">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <div>
