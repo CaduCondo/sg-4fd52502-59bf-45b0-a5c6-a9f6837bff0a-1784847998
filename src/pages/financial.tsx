@@ -70,184 +70,247 @@ const printStyles = `
       margin: 10mm;
     }
     
-    /* === ESTILOS PARA O DIALOG DE DESPESAS (quando aberto) === */
+    /* === REGRAS GLOBAIS === */
+    /* Esconder sidebar/menu em TODAS as impressões */
+    aside,
+    nav,
+    [role="navigation"],
+    .sidebar,
+    header:not(.print-header) {
+      display: none !important;
+    }
+    
+    /* Esconder botões e elementos de UI */
+    .no-print,
+    button:not(.print-keep) {
+      display: none !important;
+    }
+    
+    /* === IMPRESSÃO DO DIALOG DE DESPESAS === */
     body:has([data-expenses-dialog="true"]) {
-      /* Esconder TODA a página principal quando dialog está aberto */
-      .print-area,
-      .print-header,
-      .print-cards,
-      > div:not([data-state]) {
+      /* Esconder TUDO da página principal */
+      > div:not([data-radix-portal]) {
         display: none !important;
+      }
+      
+      /* Remover overlay escuro do Radix Dialog */
+      [data-radix-dialog-overlay] {
+        display: none !important;
+      }
+      
+      /* Forçar dialog a ocupar página inteira SEM overlay */
+      [data-radix-portal] {
+        position: static !important;
+        background: white !important;
+      }
+      
+      [data-expenses-dialog="true"] {
+        position: static !important;
+        display: block !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+      }
+      
+      /* Título e subtítulo do dialog */
+      .print-expenses-title {
+        display: block !important;
+        font-size: 20pt !important;
+        font-weight: bold !important;
+        text-align: center !important;
+        margin: 0 0 10px 0 !important;
+        color: #000 !important;
+      }
+      
+      .print-expenses-subtitle {
+        display: block !important;
+        font-size: 14pt !important;
+        text-align: center !important;
+        color: #666 !important;
+        margin: 0 0 20px 0 !important;
+      }
+      
+      /* Tabela de despesas */
+      .print-expenses-content {
+        display: block !important;
+        width: 100% !important;
+      }
+      
+      .print-expenses-content table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      
+      .print-expenses-content th,
+      .print-expenses-content td {
+        padding: 8px !important;
+        border: 1px solid #ddd !important;
+        font-size: 12pt !important;
+      }
+      
+      .print-expenses-content th {
+        background-color: #f0f0f0 !important;
+        font-weight: bold !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     }
     
-    /* Dialog de despesas: forçar visibilidade e layout correto */
-    [data-expenses-dialog="true"] {
-      display: block !important;
-      position: static !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      padding: 20px !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      border: none !important;
-    }
-    
-    /* Título e subtítulo do dialog */
-    .print-expenses-title {
-      display: block !important;
-      font-size: 20pt !important;
-      font-weight: bold !important;
-      text-align: center !important;
-      margin-bottom: 10px !important;
-    }
-    
-    .print-expenses-subtitle {
-      display: block !important;
-      font-size: 14pt !important;
-      text-align: center !important;
-      color: #666 !important;
-      margin-bottom: 20px !important;
-    }
-    
-    /* Tabela de despesas no dialog */
-    .print-expenses-content table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-    
-    .print-expenses-content th,
-    .print-expenses-content td {
-      padding: 8px !important;
-      border: 1px solid #ddd !important;
-      font-size: 12pt !important;
-    }
-    
-    .print-expenses-content th {
-      background-color: #f0f0f0 !important;
-      font-weight: bold !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    /* === ESTILOS PARA A PÁGINA PRINCIPAL (quando dialog NÃO está aberto) === */
+    /* === IMPRESSÃO DA PÁGINA PRINCIPAL === */
     body:not(:has([data-expenses-dialog="true"])) {
-      /* Esconder elementos de UI que não devem ser impressos */
-      .no-print {
-        display: none !important;
-      }
-      
       /* Esconder tudo exceto área de impressão */
-      body * {
-        visibility: hidden;
+      > * {
+        visibility: hidden !important;
       }
       
-      /* Mostrar apenas área de impressão */
+      /* Mostrar APENAS elementos de impressão */
       .print-header,
       .print-header *,
       .print-cards,
       .print-cards *,
       .print-area,
-      .print-area * {
-        visibility: visible;
+      .print-area *,
+      .print-title,
+      .print-title * {
+        visibility: visible !important;
       }
       
-      /* Posicionar elementos de impressão */
+      /* Remover espaçamento superior - FORÇAR TOPO */
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* Header no topo absoluto SEM espaço */
       .print-header {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin-bottom: 20px;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 0 10px 0 !important;
       }
       
       .print-header h1 {
-        font-size: 18pt;
-        font-weight: bold;
-        margin-bottom: 4px;
+        font-size: 18pt !important;
+        font-weight: bold !important;
+        margin: 0 0 4px 0 !important;
+        color: #000 !important;
       }
       
       .print-header p {
-        font-size: 10pt;
-        color: #666;
-        margin-bottom: 10px;
+        font-size: 10pt !important;
+        color: #666 !important;
+        margin: 0 !important;
       }
       
+      /* Cards LOGO ABAIXO do header SEM espaço */
       .print-cards {
-        position: absolute;
-        left: 0;
-        top: 90px;
-        width: 100%;
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 8px;
-        margin-bottom: 15px;
+        position: absolute !important;
+        top: 60px !important;
+        left: 0 !important;
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 8px !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
       .print-cards .card {
-        border: 1px solid #ddd;
-        padding: 10px 8px;
-        break-inside: avoid;
-        background: white;
+        border: 1px solid #ddd !important;
+        padding: 10px 8px !important;
+        background: white !important;
+        break-inside: avoid !important;
+        margin: 0 !important;
       }
       
       /* Cores das bordas laterais dos cards */
-      .print-cards .card:nth-child(1) { border-left: 4px solid #22c55e; }
-      .print-cards .card:nth-child(2) { border-left: 4px solid #f97316; }
-      .print-cards .card:nth-child(3) { border-left: 4px solid #3b82f6; }
-      .print-cards .card:nth-child(4) { border-left: 4px solid #ef4444; }
-      .print-cards .card:nth-child(5) { border-left: 4px solid #a855f7; }
+      .print-cards .card:nth-child(1) { 
+        border-left: 4px solid #22c55e !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(2) { 
+        border-left: 4px solid #f97316 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(3) { 
+        border-left: 4px solid #3b82f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(4) { 
+        border-left: 4px solid #ef4444 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(5) { 
+        border-left: 4px solid #a855f7 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       
       .print-cards .card-title {
-        font-size: 8pt;
-        color: #666;
-        margin-bottom: 4px;
+        font-size: 8pt !important;
+        color: #666 !important;
+        margin-bottom: 4px !important;
       }
       
       .print-cards .card-value {
-        font-size: 18pt;
-        font-weight: bold;
+        font-size: 18pt !important;
+        font-weight: bold !important;
       }
       
       /* Cores dos valores dos cards */
-      .print-cards .card:nth-child(1) .card-value { color: #22c55e; }
-      .print-cards .card:nth-child(2) .card-value { color: #f97316; }
-      .print-cards .card:nth-child(3) .card-value { color: #3b82f6; }
-      .print-cards .card:nth-child(4) .card-value { color: #ef4444; }
-      .print-cards .card:nth-child(5) .card-value { color: #a855f7; }
+      .print-cards .card:nth-child(1) .card-value { color: #22c55e !important; }
+      .print-cards .card:nth-child(2) .card-value { color: #f97316 !important; }
+      .print-cards .card:nth-child(3) .card-value { color: #3b82f6 !important; }
+      .print-cards .card:nth-child(4) .card-value { color: #ef4444 !important; }
+      .print-cards .card:nth-child(5) .card-value { color: #a855f7 !important; }
       
+      /* Tabela LOGO ABAIXO dos cards */
       .print-area {
-        position: absolute;
-        left: 0;
-        top: 175px;
-        width: 100%;
+        position: absolute !important;
+        top: 140px !important;
+        left: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
       .print-title {
-        font-size: 14pt;
-        font-weight: bold;
-        margin-bottom: 10px;
-        text-align: center;
+        font-size: 14pt !important;
+        font-weight: bold !important;
+        text-align: center !important;
+        margin: 0 0 10px 0 !important;
       }
       
-      /* Tabela da página principal */
+      /* Tabela */
       table {
-        width: 100%;
-        border-collapse: collapse;
+        width: 100% !important;
+        border-collapse: collapse !important;
       }
       
       th, td {
-        padding: 2px 4px;
-        border: 1px solid #ddd;
-        font-size: 9pt;
+        padding: 2px 4px !important;
+        border: 1px solid #ddd !important;
+        font-size: 9pt !important;
       }
       
       th {
-        background-color: #f0f0f0;
-        font-weight: bold;
+        background-color: #f0f0f0 !important;
+        font-weight: bold !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
       
-      /* Larguras específicas das colunas */
+      /* Larguras das colunas */
       .col-parcela { width: 50px; }
       .col-local { width: 80px; }
       .col-compl { width: 70px; }
@@ -259,7 +322,7 @@ const printStyles = `
       .col-hora { width: 45px; }
       .col-val-esp { width: 65px; }
       .col-val-pg { width: 65px; }
-      .col-pix { width: 120px; font-size: 6pt; }
+      .col-pix { width: 120px; font-size: 6pt !important; }
     }
   }
 `;
