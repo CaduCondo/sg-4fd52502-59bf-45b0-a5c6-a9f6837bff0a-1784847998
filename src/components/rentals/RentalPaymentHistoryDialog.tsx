@@ -116,7 +116,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - ESCONDER OVERLAYS DO RADIX DIALOG */}
+      {/* CSS DE IMPRESSÃO - ESCONDER TUDO E MOSTRAR APENAS O DIALOG */}
       <style>{`
         @media print {
           @page {
@@ -124,19 +124,18 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
-          /* Esconder elementos de navegação */
-          aside, nav, header:not([role="dialog"] header), [role="navigation"], button {
-            display: none !important;
+          /* ESCONDER TUDO primeiro */
+          body * {
+            visibility: hidden !important;
           }
           
-          /* CRÍTICO: Esconder TODOS os overlays e portals do Radix Dialog */
-          [data-radix-dialog-overlay],
-          [data-radix-portal] > div:first-child,
-          [data-radix-popper-content-wrapper] {
-            display: none !important;
+          /* MOSTRAR APENAS o dialog e seu conteúdo */
+          [role="dialog"],
+          [role="dialog"] * {
+            visibility: visible !important;
           }
           
-          /* Forçar dialog content a ser visível e no topo */
+          /* Resetar posicionamento do dialog */
           [role="dialog"] {
             position: static !important;
             max-width: 100% !important;
@@ -146,7 +145,11 @@ export function RentalPaymentHistoryDialog({
             padding: 20px !important;
             box-shadow: none !important;
             border: none !important;
-            transform: none !important;
+          }
+          
+          /* Esconder botões */
+          button {
+            display: none !important;
           }
         }
       `}</style>

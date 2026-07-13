@@ -115,11 +115,11 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: fixed !important;
+      position: static !important;
       display: block !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
       bottom: auto !important;
       width: 100% !important;
       max-width: 100% !important;
@@ -131,8 +131,8 @@ const printStyles = `
       box-shadow: none !important;
       border: none !important;
       transform: none !important;
-      z-index: 9999 !important;
-      inset: 0 auto auto 0 !important;
+      z-index: auto !important;
+      inset: auto !important;
     }
     
     .print-expenses-title {
