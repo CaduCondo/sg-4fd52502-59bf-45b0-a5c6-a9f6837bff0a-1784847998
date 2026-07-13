@@ -243,17 +243,14 @@ export function RentalPaymentHistoryDialog({
                         <TableCell className="text-base text-center">
                           <Badge
                             variant="outline"
-                            className={`no-print ${
+                            className={
                               payment.status === "pago"
-                                ? "bg-green-100 text-green-700 border-green-300"
-                                : "bg-red-100 text-red-700 border-red-300"
-                            }`}
+                                ? "bg-green-100 text-green-700 border-green-300 status-pago"
+                                : "bg-red-100 text-red-700 border-red-300 status-pendente"
+                            }
                           >
                             {payment.status === "pago" ? "Pago" : "Pendente"}
                           </Badge>
-                          <span className={payment.status === "pago" ? "status-pago" : "status-pendente"}>
-                            {payment.status === "pago" ? "Pago" : "Pendente"}
-                          </span>
                         </TableCell>
                         <TableCell className="text-base text-right">
                           {formatCurrency(payment.expected_amount)}

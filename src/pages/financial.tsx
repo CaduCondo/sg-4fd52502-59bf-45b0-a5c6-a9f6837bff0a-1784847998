@@ -103,7 +103,7 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: static !important;
+      position: absolute !important;
       display: block !important;
       top: 0 !important;
       left: 0 !important;
@@ -117,6 +117,7 @@ const printStyles = `
       box-shadow: none !important;
       border: none !important;
       transform: none !important;
+      inset: 0 !important;
     }
     
     .print-expenses-title {
@@ -346,7 +347,7 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-area {
       position: absolute !important;
-      top: 170px !important;
+      top: 195px !important;
       left: 0 !important;
       width: 100% !important;
       margin: 0 !important;
