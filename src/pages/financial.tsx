@@ -103,14 +103,15 @@ const printStyles = `
     }
     
     [data-expenses-dialog="true"] {
-      position: static !important;
-      display: block !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
       max-height: none !important;
-      margin: 0 auto !important;
-      padding: 40px 20px !important;
+      margin: 0 !important;
+      padding: 20px !important;
       background: white !important;
       box-shadow: none !important;
       border: none !important;
@@ -255,7 +256,7 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards {
       position: absolute !important;
-      top: 220px !important;
+      top: 80px !important;
       left: 0 !important;
       width: 100% !important;
       display: grid !important;
@@ -272,6 +273,8 @@ const printStyles = `
       break-inside: avoid !important;
       margin: 0 !important;
       min-height: 85px !important;
+      display: block !important;
+      visibility: visible !important;
     }
     
     body:not(:has([data-expenses-dialog="true"])) .print-cards .card:nth-child(1) { 
@@ -342,7 +345,7 @@ const printStyles = `
     
     body:not(:has([data-expenses-dialog="true"])) .print-area {
       position: absolute !important;
-      top: 220px !important;
+      top: 170px !important;
       left: 0 !important;
       width: 100% !important;
       margin: 0 !important;
@@ -371,6 +374,37 @@ const printStyles = `
     body:not(:has([data-expenses-dialog="true"])) th {
       background-color: #f0f0f0 !important;
       font-weight: bold !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Cores dos status na impressão */
+    .status-paid {
+      background-color: #dcfce7 !important;
+      color: #166534 !important;
+      border: 1px solid #86efac !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .status-partial {
+      background-color: #fef3c7 !important;
+      color: #92400e !important;
+      border: 1px solid #fcd34d !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .status-pending {
+      background-color: #fee2e2 !important;
+      color: #991b1b !important;
+      border: 1px solid #fca5a5 !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
@@ -1491,7 +1525,13 @@ export default function Financial() {
                                 >
                                   {statusText}
                                 </Badge>
-                                <span className="hidden print:inline">{statusText}</span>
+                                <span className={`hidden print:inline ${
+                                  payment.status === "paid" ? "status-paid" :
+                                  payment.status === "partial" ? "status-partial" :
+                                  "status-pending"
+                                }`}>
+                                  {statusText}
+                                </span>
                               </TableCell>
                               <TableCell className="text-center text-sm print:text-[9px] col-venc">
                                 {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}

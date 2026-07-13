@@ -115,7 +115,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - SIMPLIFICADO */}
+      {/* CSS DE IMPRESSÃO - CORRIGIDO COM CORES */}
       <style>{`
         @media print {
           @page {
@@ -126,6 +126,23 @@ export function RentalPaymentHistoryDialog({
           /* Esconder elementos de navegação */
           aside, nav, header:not([role="dialog"] header), [role="navigation"], button {
             display: none !important;
+          }
+          
+          /* Garantir que badge de status tenha cores */
+          .status-pago {
+            background-color: #dcfce7 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          .status-pendente {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fca5a5 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
@@ -223,7 +240,9 @@ export function RentalPaymentHistoryDialog({
                             : "-"}
                         </TableCell>
                         <TableCell className="text-base text-center">
-                          {payment.status === "pago" ? "Pago" : "Pendente"}
+                          <span className={payment.status === "pago" ? "status-pago px-2 py-1 rounded" : "status-pendente px-2 py-1 rounded"}>
+                            {payment.status === "pago" ? "Pago" : "Pendente"}
+                          </span>
                         </TableCell>
                         <TableCell className="text-base text-right">
                           {formatCurrency(payment.expected_amount)}
