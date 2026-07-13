@@ -116,7 +116,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - CORRIGIDO COM CORES */}
+      {/* CSS DE IMPRESSÃO - SIMPLIFICADO AO MÁXIMO */}
       <style>{`
         @media print {
           @page {
@@ -124,26 +124,9 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
-          /* Esconder elementos de navegação */
-          aside, nav, header:not([role="dialog"] header), [role="navigation"], button {
+          /* Esconder apenas navegação e botões */
+          aside, nav, button, .print\\:hidden {
             display: none !important;
-          }
-          
-          /* Garantir que badge de status tenha cores */
-          .status-pago {
-            background-color: #dcfce7 !important;
-            color: #166534 !important;
-            border: 1px solid #86efac !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          .status-pendente {
-            background-color: #fee2e2 !important;
-            color: #991b1b !important;
-            border: 1px solid #fca5a5 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
           }
         }
       `}</style>
