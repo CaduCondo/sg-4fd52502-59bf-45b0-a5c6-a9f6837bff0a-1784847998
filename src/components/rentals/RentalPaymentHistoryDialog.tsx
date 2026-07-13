@@ -116,6 +116,41 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
+      {/* CSS DE IMPRESSÃO - ESCONDER OVERLAYS DO RADIX DIALOG */}
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 1cm;
+          }
+          
+          /* Esconder elementos de navegação */
+          aside, nav, header:not([role="dialog"] header), [role="navigation"], button {
+            display: none !important;
+          }
+          
+          /* CRÍTICO: Esconder TODOS os overlays e portals do Radix Dialog */
+          [data-radix-dialog-overlay],
+          [data-radix-portal] > div:first-child,
+          [data-radix-popper-content-wrapper] {
+            display: none !important;
+          }
+          
+          /* Forçar dialog content a ser visível e no topo */
+          [role="dialog"] {
+            position: static !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            box-shadow: none !important;
+            border: none !important;
+            transform: none !important;
+          }
+        }
+      `}</style>
+
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

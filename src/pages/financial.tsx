@@ -96,14 +96,26 @@ const printStyles = `
       visibility: visible !important;
     }
     
-    /* Remover todos os overlays e wrappers */
-    body:has([data-expenses-dialog="true"]) [data-radix-dialog-overlay],
+    /* CRÍTICO: Remover TODOS os overlays, portals e wrappers do Radix Dialog */
+    body:has([data-expenses-dialog="true"]) [data-radix-dialog-overlay] {
+      display: none !important;
+    }
+    
+    body:has([data-expenses-dialog="true"]) [data-radix-portal] {
+      position: static !important;
+      display: block !important;
+      width: 100% !important;
+      height: auto !important;
+      inset: auto !important;
+      transform: none !important;
+    }
+    
     body:has([data-expenses-dialog="true"]) [data-radix-portal] > div:first-child {
       display: none !important;
     }
     
     [data-expenses-dialog="true"] {
-      position: absolute !important;
+      position: fixed !important;
       display: block !important;
       top: 0 !important;
       left: 0 !important;
@@ -114,12 +126,13 @@ const printStyles = `
       height: auto !important;
       max-height: none !important;
       margin: 0 !important;
-      padding: 20px !important;
+      padding: 40px 20px !important;
       background: white !important;
       box-shadow: none !important;
       border: none !important;
       transform: none !important;
       z-index: 9999 !important;
+      inset: 0 auto auto 0 !important;
     }
     
     .print-expenses-title {
