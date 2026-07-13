@@ -70,6 +70,14 @@ const printStyles = `
       margin: 10mm;
     }
     
+    /* RESET COMPLETO: remover TODO espaçamento de body/html */
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    
     /* Esconder TUDO por padrão */
     body * {
       visibility: hidden !important;
@@ -81,38 +89,56 @@ const printStyles = `
       visibility: visible !important;
     }
     
-    /* Forçar dialog a ocupar página inteira */
-    [data-expenses-dialog="true"] {
-      position: fixed !important;
+    /* RESET: Remover todos os wrappers e overlays do Radix Dialog */
+    [data-radix-portal],
+    [data-radix-popper-content-wrapper],
+    [data-state="open"],
+    [data-radix-presence],
+    [role="presentation"] {
+      position: static !important;
+      transform: none !important;
+      background: transparent !important;
+      margin: 0 !important;
+      padding: 0 !important;
       top: 0 !important;
       left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      inset: 0 !important;
+    }
+    
+    /* Forçar dialog a começar no topo absoluto da página sem espaços */
+    [data-expenses-dialog="true"] {
+      position: static !important;
+      display: block !important;
       width: 100% !important;
       max-width: 100% !important;
       height: auto !important;
       max-height: none !important;
       margin: 0 !important;
-      padding: 20px !important;
+      padding: 0 !important;
       background: white !important;
       box-shadow: none !important;
       border: none !important;
       overflow: visible !important;
       transform: none !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
     }
     
-    /* Esconder overlay do dialog */
-    [data-radix-popper-content-wrapper],
-    [data-state="open"],
-    [data-radix-presence] {
-      position: static !important;
-      transform: none !important;
-      background: white !important;
+    /* Header do dialog sem espaço superior */
+    [data-expenses-dialog="true"] > div:first-child {
+      margin: 0 !important;
+      padding: 10px 0 !important;
     }
     
     /* Título principal */
     .print-expenses-title {
       font-size: 20pt !important;
       font-weight: bold !important;
-      margin-bottom: 8px !important;
+      margin: 0 0 8px 0 !important;
+      padding: 0 !important;
       color: #000 !important;
       text-align: center !important;
       display: block !important;
@@ -123,7 +149,8 @@ const printStyles = `
     .print-expenses-subtitle {
       font-size: 14pt !important;
       color: #666 !important;
-      margin-bottom: 20px !important;
+      margin: 0 0 20px 0 !important;
+      padding: 0 !important;
       text-align: center !important;
       display: block !important;
       visibility: visible !important;
@@ -137,6 +164,8 @@ const printStyles = `
       visibility: visible !important;
       position: static !important;
       width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
     
     .print-expenses-content * {
@@ -147,6 +176,7 @@ const printStyles = `
       width: 100% !important;
       border-collapse: collapse !important;
       font-size: 12pt !important;
+      margin: 0 !important;
     }
     
     .print-expenses-content th,
