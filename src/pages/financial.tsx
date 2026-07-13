@@ -70,68 +70,36 @@ const printStyles = `
       margin: 10mm;
     }
     
-    /* RESET RADICAL: Resetar ABSOLUTAMENTE TUDO */
-    * {
-      position: static !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      transform: none !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      inset: auto !important;
+    /* === ESTILOS PARA O DIALOG DE DESPESAS (quando aberto) === */
+    body:has([data-expenses-dialog="true"]) {
+      /* Esconder TODA a página principal quando dialog está aberto */
+      .print-area,
+      .print-header,
+      .print-cards,
+      > div:not([data-state]) {
+        display: none !important;
+      }
     }
     
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      height: auto !important;
-      overflow: visible !important;
-      background: white !important;
-    }
-    
-    /* Esconder TUDO primeiro */
-    body * {
-      display: none !important;
-      visibility: hidden !important;
-    }
-    
-    /* Quando dialog de despesas aberto: mostrar APENAS ele */
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"],
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] *,
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] *::before,
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] *::after {
-      display: block !important;
-      visibility: visible !important;
-    }
-    
-    /* Forçar dialog a começar imediatamente no topo */
+    /* Dialog de despesas: forçar visibilidade e layout correto */
     [data-expenses-dialog="true"] {
-      position: static !important;
       display: block !important;
+      position: static !important;
       width: 100% !important;
       max-width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
-      margin: 0 !important;
       padding: 20px !important;
-      background: white !important;
+      margin: 0 !important;
       box-shadow: none !important;
       border: none !important;
-      overflow: visible !important;
     }
     
-    /* Título e subtítulo com padding mínimo */
+    /* Título e subtítulo do dialog */
     .print-expenses-title {
       display: block !important;
       font-size: 20pt !important;
       font-weight: bold !important;
       text-align: center !important;
-      color: #000 !important;
-      margin: 0 !important;
-      padding: 0 0 8px 0 !important;
-      visibility: visible !important;
+      margin-bottom: 10px !important;
     }
     
     .print-expenses-subtitle {
@@ -139,51 +107,17 @@ const printStyles = `
       font-size: 14pt !important;
       text-align: center !important;
       color: #666 !important;
-      margin: 0 !important;
-      padding: 0 0 20px 0 !important;
-      visibility: visible !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      margin-bottom: 20px !important;
     }
     
-    /* Conteúdo da tabela */
-    .print-expenses-content {
-      display: block !important;
-      visibility: visible !important;
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    
+    /* Tabela de despesas no dialog */
     .print-expenses-content table {
-      display: table !important;
-      visibility: visible !important;
       width: 100% !important;
       border-collapse: collapse !important;
-      font-size: 12pt !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    
-    .print-expenses-content thead {
-      display: table-header-group !important;
-      visibility: visible !important;
-    }
-    
-    .print-expenses-content tbody {
-      display: table-row-group !important;
-      visibility: visible !important;
-    }
-    
-    .print-expenses-content tr {
-      display: table-row !important;
-      visibility: visible !important;
     }
     
     .print-expenses-content th,
     .print-expenses-content td {
-      display: table-cell !important;
-      visibility: visible !important;
       padding: 8px !important;
       border: 1px solid #ddd !important;
       font-size: 12pt !important;
@@ -196,187 +130,137 @@ const printStyles = `
       print-color-adjust: exact !important;
     }
     
-    /* Esconder botões */
-    .no-print,
-    button,
-    svg {
-      display: none !important;
-      visibility: hidden !important;
+    /* === ESTILOS PARA A PÁGINA PRINCIPAL (quando dialog NÃO está aberto) === */
+    body:not(:has([data-expenses-dialog="true"])) {
+      /* Esconder elementos de UI que não devem ser impressos */
+      .no-print {
+        display: none !important;
+      }
+      
+      /* Esconder tudo exceto área de impressão */
+      body * {
+        visibility: hidden;
+      }
+      
+      /* Mostrar apenas área de impressão */
+      .print-header,
+      .print-header *,
+      .print-cards,
+      .print-cards *,
+      .print-area,
+      .print-area * {
+        visibility: visible;
+      }
+      
+      /* Posicionar elementos de impressão */
+      .print-header {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      
+      .print-header h1 {
+        font-size: 18pt;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+      
+      .print-header p {
+        font-size: 10pt;
+        color: #666;
+        margin-bottom: 10px;
+      }
+      
+      .print-cards {
+        position: absolute;
+        left: 0;
+        top: 90px;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-bottom: 15px;
+      }
+      
+      .print-cards .card {
+        border: 1px solid #ddd;
+        padding: 10px 8px;
+        break-inside: avoid;
+        background: white;
+      }
+      
+      /* Cores das bordas laterais dos cards */
+      .print-cards .card:nth-child(1) { border-left: 4px solid #22c55e; }
+      .print-cards .card:nth-child(2) { border-left: 4px solid #f97316; }
+      .print-cards .card:nth-child(3) { border-left: 4px solid #3b82f6; }
+      .print-cards .card:nth-child(4) { border-left: 4px solid #ef4444; }
+      .print-cards .card:nth-child(5) { border-left: 4px solid #a855f7; }
+      
+      .print-cards .card-title {
+        font-size: 8pt;
+        color: #666;
+        margin-bottom: 4px;
+      }
+      
+      .print-cards .card-value {
+        font-size: 18pt;
+        font-weight: bold;
+      }
+      
+      /* Cores dos valores dos cards */
+      .print-cards .card:nth-child(1) .card-value { color: #22c55e; }
+      .print-cards .card:nth-child(2) .card-value { color: #f97316; }
+      .print-cards .card:nth-child(3) .card-value { color: #3b82f6; }
+      .print-cards .card:nth-child(4) .card-value { color: #ef4444; }
+      .print-cards .card:nth-child(5) .card-value { color: #a855f7; }
+      
+      .print-area {
+        position: absolute;
+        left: 0;
+        top: 175px;
+        width: 100%;
+      }
+      
+      .print-title {
+        font-size: 14pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      
+      /* Tabela da página principal */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      
+      th, td {
+        padding: 2px 4px;
+        border: 1px solid #ddd;
+        font-size: 9pt;
+      }
+      
+      th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+      }
+      
+      /* Larguras específicas das colunas */
+      .col-parcela { width: 50px; }
+      .col-local { width: 80px; }
+      .col-compl { width: 70px; }
+      .col-inquilino { width: 80px; }
+      .col-mes { width: 70px; }
+      .col-status { width: 50px; }
+      .col-venc { width: 60px; }
+      .col-rec { width: 60px; }
+      .col-hora { width: 45px; }
+      .col-val-esp { width: 65px; }
+      .col-val-pg { width: 65px; }
+      .col-pix { width: 120px; font-size: 6pt; }
     }
-    
-    /* Estilos para impressão da página principal (quando dialog NÃO está aberto) */
-    body:not(:has([data-expenses-dialog="true"])) .print-area,
-    body:not(:has([data-expenses-dialog="true"])) .print-area *,
-    body:not(:has([data-expenses-dialog="true"])) .print-header,
-    body:not(:has([data-expenses-dialog="true"])) .print-header *,
-    body:not(:has([data-expenses-dialog="true"])) .print-cards,
-    body:not(:has([data-expenses-dialog="true"])) .print-cards * {
-      display: block !important;
-      visibility: visible !important;
-    }
-    
-    body:not(:has([data-expenses-dialog="true"])) .print-header {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      margin-bottom: 20px !important;
-      page-break-inside: avoid;
-    }
-    
-    body:not(:has([data-expenses-dialog="true"])) .print-cards {
-      position: absolute;
-      left: 0;
-      top: 90px;
-      width: 100%;
-      margin-bottom: 15px !important;
-      page-break-inside: avoid;
-      display: grid !important;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-    
-    body:not(:has([data-expenses-dialog="true"])) .print-area {
-      position: absolute;
-      left: 0;
-      top: 175px;
-      width: 100%;
-    }
-    
-    body:not(:has([data-expenses-dialog="true"])) .print-cards .card {
-      display: block !important;
-      border: 1px solid #ddd !important;
-      padding: 10px 8px !important;
-      break-inside: avoid;
-      page-break-inside: avoid;
-      background: white !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    /* Estilos para o cabeçalho de impressão */
-    .print-header h1 {
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 4px !important;
-      color: #000 !important;
-    }
-    
-    .print-header p {
-      font-size: 10pt;
-      color: #666 !important;
-      margin-bottom: 10px !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    /* Cores das bordas laterais dos cards */
-    .print-cards .card:nth-child(1) {
-      border-left: 4px solid #22c55e !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    .print-cards .card:nth-child(2) {
-      border-left: 4px solid #f97316 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    .print-cards .card:nth-child(3) {
-      border-left: 4px solid #3b82f6 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    .print-cards .card:nth-child(4) {
-      border-left: 4px solid #ef4444 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    .print-cards .card:nth-child(5) {
-      border-left: 4px solid #a855f7 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    .print-cards .card-title {
-      font-size: 8pt;
-      color: #666 !important;
-      margin-bottom: 4px !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    .print-cards .card-value {
-      font-size: 18pt !important;
-      font-weight: bold !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    /* Cores dos valores dos cards */
-    .print-cards .card:nth-child(1) .card-value {
-      color: #22c55e !important;
-    }
-    
-    .print-cards .card:nth-child(2) .card-value {
-      color: #f97316 !important;
-    }
-    
-    .print-cards .card:nth-child(3) .card-value {
-      color: #3b82f6 !important;
-    }
-    
-    .print-cards .card:nth-child(4) .card-value {
-      color: #ef4444 !important;
-    }
-    
-    .print-cards .card:nth-child(5) .card-value {
-      color: #a855f7 !important;
-    }
-    
-    table {
-      font-size: 9pt !important;
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    th, td {
-      padding: 2px 4px !important;
-      border: 1px solid #ddd !important;
-      word-wrap: break-word;
-      font-size: 9pt !important;
-    }
-    
-    th {
-      background-color: #f0f0f0 !important;
-      font-weight: bold !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    
-    .print-title {
-      font-size: 14pt;
-      font-weight: bold;
-      margin-bottom: 10px !important;
-      text-align: center;
-    }
-    
-    /* Ajustar larguras específicas das colunas da tabela principal */
-    .col-parcela { width: 50px; }
-    .col-local { width: 80px; }
-    .col-compl { width: 70px; }
-    .col-inquilino { width: 80px; }
-    .col-mes { width: 70px; }
-    .col-status { width: 50px; }
-    .col-venc { width: 60px; }
-    .col-rec { width: 60px; }
-    .col-hora { width: 45px; }
-    .col-val-esp { width: 65px; }
-    .col-val-pg { width: 65px; }
-    .col-pix { width: 120px; font-size: 6pt !important; }
   }
 `;
 
