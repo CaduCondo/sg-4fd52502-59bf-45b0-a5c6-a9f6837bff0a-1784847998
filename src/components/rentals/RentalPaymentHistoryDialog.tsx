@@ -115,7 +115,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - CORRIGIDO */}
+      {/* CSS DE IMPRESSÃO - SIMPLIFICADO */}
       <style>{`
         @media print {
           @page {
@@ -123,39 +123,8 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
-          /* Esconder tudo primeiro */
-          body * {
-            visibility: hidden !important;
-          }
-          
-          /* Mostrar apenas o dialog e seu conteúdo */
-          [role="dialog"],
-          [role="dialog"] * {
-            visibility: visible !important;
-          }
-          
-          /* Resetar posicionamento do dialog */
-          [role="dialog"] {
-            position: static !important;
-            max-width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          
-          /* Esconder sidebar/menu/header */
-          aside,
-          nav,
-          header:not([role="dialog"] header),
-          [role="navigation"] {
-            display: none !important;
-          }
-          
-          /* Esconder botões */
-          button {
+          /* Esconder elementos de navegação */
+          aside, nav, header:not([role="dialog"] header), [role="navigation"], button {
             display: none !important;
           }
         }
