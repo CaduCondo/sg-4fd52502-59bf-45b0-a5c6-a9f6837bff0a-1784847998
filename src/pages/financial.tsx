@@ -87,38 +87,36 @@ const printStyles = `
     /* ================================================== */
     /* IMPRESSÃO DO DIALOG DE DESPESAS (PRIORIDADE 1) */
     /* ================================================== */
+    
+    /* Esconder overlays e portals do Radix Dialog */
+    body:has([data-expenses-dialog="true"]) [data-radix-dialog-overlay],
+    body:has([data-expenses-dialog="true"]) [data-radix-portal] > div:first-child {
+      display: none !important;
+    }
+    
+    /* Forçar portal a posição estática */
+    body:has([data-expenses-dialog="true"]) [data-radix-portal] {
+      position: static !important;
+      display: block !important;
+    }
+    
+    /* ESCONDER TUDO primeiro */
     body:has([data-expenses-dialog="true"]) * {
       visibility: hidden !important;
     }
     
+    /* MOSTRAR APENAS o dialog e seu conteúdo */
     body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"],
     body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] * {
       visibility: visible !important;
     }
     
-    /* CRÍTICO: Remover TODOS os overlays, portals e wrappers do Radix Dialog */
-    body:has([data-expenses-dialog="true"]) [data-radix-dialog-overlay] {
-      display: none !important;
-    }
-    
-    body:has([data-expenses-dialog="true"]) [data-radix-portal] {
-      position: static !important;
-      display: block !important;
-      width: 100% !important;
-      height: auto !important;
-      inset: auto !important;
-      transform: none !important;
-    }
-    
-    body:has([data-expenses-dialog="true"]) [data-radix-portal] > div:first-child {
-      display: none !important;
-    }
-    
+    /* Forçar dialog ao topo absoluto */
     [data-expenses-dialog="true"] {
-      position: static !important;
+      position: absolute !important;
       display: block !important;
-      top: auto !important;
-      left: auto !important;
+      top: 0 !important;
+      left: 0 !important;
       right: auto !important;
       bottom: auto !important;
       width: 100% !important;
