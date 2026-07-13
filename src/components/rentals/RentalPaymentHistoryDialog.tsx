@@ -115,37 +115,33 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - ESTRATÉGIA EXATA DO FINANCIAL.TSX */}
+      {/* CSS DE IMPRESSÃO - SIMPLES E FUNCIONAL */}
       <style>{`
         @media print {
-          /* ESCONDE TUDO PRIMEIRO */
-          body * {
-            visibility: hidden;
-          }
-          
-          /* MOSTRA APENAS O DIALOG E TODO SEU CONTEÚDO */
-          [role="dialog"],
-          [role="dialog"] * {
-            visibility: visible;
-          }
-          
-          /* POSICIONA O DIALOG NO TOPO */
-          [role="dialog"] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          /* ESCONDE BOTÃO IMPRIMIR */
-          .print\\:hidden {
-            visibility: hidden !important;
-          }
-          
-          /* CONFIGURAÇÃO DE PÁGINA PAISAGEM */
           @page {
             size: landscape;
             margin: 1cm;
+          }
+          
+          /* Esconder sidebar/menu/header */
+          aside,
+          nav,
+          header,
+          [role="navigation"] {
+            display: none !important;
+          }
+          
+          /* Esconder botões */
+          .print\\:hidden,
+          button {
+            display: none !important;
+          }
+          
+          /* Garantir que o dialog seja visível e ocupe toda a página */
+          [role="dialog"] {
+            max-width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
         }
       `}</style>
