@@ -192,26 +192,27 @@ const printStyles = `
         left: 0 !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 0 0 10px 0 !important;
+        padding: 0 0 15px 0 !important;
       }
       
       .print-header h1 {
         font-size: 18pt !important;
         font-weight: bold !important;
-        margin: 0 0 4px 0 !important;
+        margin: 0 0 6px 0 !important;
         color: #000 !important;
       }
       
       .print-header p {
-        font-size: 10pt !important;
+        font-size: 11pt !important;
         color: #666 !important;
         margin: 0 !important;
+        line-height: 1.4 !important;
       }
       
       /* Cards LOGO ABAIXO do header SEM espaço */
       .print-cards {
         position: absolute !important;
-        top: 60px !important;
+        top: 75px !important;
         left: 0 !important;
         width: 100% !important;
         display: grid !important;
@@ -223,10 +224,11 @@ const printStyles = `
       
       .print-cards .card {
         border: 1px solid #ddd !important;
-        padding: 10px 8px !important;
+        padding: 12px 10px !important;
         background: white !important;
         break-inside: avoid !important;
         margin: 0 !important;
+        min-height: 80px !important;
       }
       
       /* Cores das bordas laterais dos cards */
@@ -257,27 +259,50 @@ const printStyles = `
       }
       
       .print-cards .card-title {
-        font-size: 8pt !important;
+        font-size: 9pt !important;
         color: #666 !important;
-        margin-bottom: 4px !important;
+        margin-bottom: 6px !important;
+        line-height: 1.2 !important;
       }
       
       .print-cards .card-value {
-        font-size: 18pt !important;
+        font-size: 20pt !important;
         font-weight: bold !important;
+        line-height: 1.2 !important;
+        word-break: break-word !important;
       }
       
       /* Cores dos valores dos cards */
-      .print-cards .card:nth-child(1) .card-value { color: #22c55e !important; }
-      .print-cards .card:nth-child(2) .card-value { color: #f97316 !important; }
-      .print-cards .card:nth-child(3) .card-value { color: #3b82f6 !important; }
-      .print-cards .card:nth-child(4) .card-value { color: #ef4444 !important; }
-      .print-cards .card:nth-child(5) .card-value { color: #a855f7 !important; }
+      .print-cards .card:nth-child(1) .card-value { 
+        color: #22c55e !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(2) .card-value { 
+        color: #f97316 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(3) .card-value { 
+        color: #3b82f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(4) .card-value { 
+        color: #ef4444 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-cards .card:nth-child(5) .card-value { 
+        color: #a855f7 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       
       /* Tabela LOGO ABAIXO dos cards */
       .print-area {
         position: absolute !important;
-        top: 140px !important;
+        top: 170px !important;
         left: 0 !important;
         width: 100% !important;
         margin: 0 !important;
