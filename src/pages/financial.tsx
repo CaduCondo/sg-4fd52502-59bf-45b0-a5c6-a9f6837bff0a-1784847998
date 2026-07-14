@@ -460,11 +460,6 @@ export default function Financial() {
   const isAdmin = user?.role === "admin" || user?.role === "broker";
   const isFinancial = user?.role === "financial";
   
-  // Debug: Log da role do usuário
-  console.log("👤 [Financial] User role:", user?.role);
-  console.log("🏦 [Financial] isAdmin:", isAdmin);
-  console.log("💼 [Financial] isBroker:", user?.role === "broker");
-  
   // Data fetching state
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -525,18 +520,10 @@ export default function Financial() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
 
   useEffect(() => {
-    console.log("🔄 [Financial] Componente montando...");
     setMounted(true);
-    console.log("✅ [Financial] Componente montado (mounted = true)");
   }, []);
 
   useEffect(() => {
-    console.log("🔄 [Financial] useEffect loadData disparado", {
-      user: !!user,
-      filterMonth,
-      filterYear,
-      mounted
-    });
     if (user) {
       loadData();
     }
@@ -545,7 +532,6 @@ export default function Financial() {
   const loadData = async () => {
     // Prevenir execuções simultâneas
     if (loadingRef.current) {
-      console.log("⏸️ [Financial] Carregamento já em andamento, ignorando...");
       return;
     }
 
@@ -558,19 +544,11 @@ export default function Financial() {
     const cacheKey = `${filterMonth}-${filterYear}-${user?.id}`;
     const now = Date.now();
     
-    console.log("🔍 [Financial] Verificando cache:", {
-      cacheKey,
-      hasCachedData: !!financialCache.data,
-      cacheAge: financialCache.timestamp ? (now - financialCache.timestamp) : 'N/A',
-      cacheDuration: CACHE_DURATION
-    });
-    
     if (
       financialCache.data &&
       financialCache.key === cacheKey &&
       (now - financialCache.timestamp) < CACHE_DURATION
     ) {
-      console.log("✅ [Financial] Usando cache em memória");
       setPayments(financialCache.data.payments);
       setLocationsMap(financialCache.data.locations);
       setExemptLocationIds(financialCache.data.exemptLocationIds);
@@ -584,13 +562,6 @@ export default function Financial() {
       setLoading(true);
       abortControllerRef.current = new AbortController();
       
-      console.log("🔄 [Financial] Buscando do banco...", {
-        filterMonth,
-        filterYear,
-        userId: user?.id,
-        userRole: user?.role
-      });
-
       // QUERY OTIMIZADA: já filtra por location_id quando necessário
       const paymentsQuery: any = supabase
         .from("payments")
@@ -651,12 +622,6 @@ export default function Financial() {
       const { data: paymentsData, error: paymentsError } = await paymentsQuery;
 
       if (paymentsError) throw paymentsError;
-
-      console.log("✅ [Financial] Dados retornados:", {
-        totalPayments: paymentsData?.length || 0,
-        filterMonth,
-        filterYear
-      });
 
       // Processar dados e extrair locations
       const locationsMapTemp = new Map<string, string>();
@@ -807,20 +772,7 @@ export default function Financial() {
           const locationId = payment.property?.locationId;
           return locationId && allowedLocations.includes(locationId);
         });
-        
-        console.log("🔍 [Financial] Filtro de localização aplicado:", {
-          totalPayments: formattedPayments.length,
-          filteredPayments: filteredPayments.length,
-          allowedLocations: allowedLocations
-        });
       }
-
-      console.log("✅ [Financial] Processamento concluído:", {
-        totalPayments: filteredPayments.length,
-        totalLocations: locationsMapTemp.size,
-        exemptLocations: exemptIds.length,
-        locationExpenses: expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
-      });
 
       // Atualizar cache com dados já filtrados
       financialCache = {
@@ -839,7 +791,6 @@ export default function Financial() {
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError') {
-        console.log("⏸️ [Financial] Requisição cancelada");
         return;
       }
       
@@ -1051,9 +1002,6 @@ export default function Financial() {
 
   const handlePrint = useCallback(async () => {
     try {
-      console.log("🖨️ [handlePrint] Iniciando impressão nativa...");
-      console.log("📊 [handlePrint] Total de pagamentos:", getSortedPayments.length);
-      
       if (getSortedPayments.length === 0) {
         toast({
           title: "Aviso",
@@ -1065,8 +1013,6 @@ export default function Financial() {
 
       // Disparar impressão nativa do navegador
       window.print();
-      
-      console.log("✅ [handlePrint] Impressão iniciada com sucesso!");
 
     } catch (error) {
       console.error("❌ [handlePrint] Erro ao imprimir:", error);
@@ -1579,7 +1525,7 @@ export default function Financial() {
       {/* Adicionar estilos de impressão */}
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       
-      <div className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
+      <div id="financial-page" className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
           <div className="flex flex-col gap-1 sm:gap-2 print-header">
             <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
@@ -1592,11 +1538,11 @@ export default function Financial() {
         <Tabs defaultValue="rentals" className="w-full">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1 no-print">
-              <TabsTrigger value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+              <TabsTrigger id="financial-tab-rentals" value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
                 Locações
               </TabsTrigger>
               {(isAdmin || user?.role === "broker") && (
-                <TabsTrigger value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+                <TabsTrigger id="financial-tab-deposits" value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
                   Cauções
                 </TabsTrigger>
               )}
@@ -1673,7 +1619,7 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => handleShowExpenses(selectedLocationId)}>
+              <Card id="financial-expenses-card" className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => handleShowExpenses(selectedLocationId)}>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1718,7 +1664,7 @@ export default function Financial() {
                   </CardTitle>
                   <div className="flex gap-2 w-full sm:w-auto flex-wrap">
                     <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                      <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9">
+                      <SelectTrigger id="financial-location-filter" className="w-full sm:w-[200px] h-8 sm:h-9">
                         <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         <SelectValue placeholder="Todos os Locais" />
                       </SelectTrigger>
@@ -1733,6 +1679,7 @@ export default function Financial() {
                     </Select>
                     
                     <Button
+                      id="financial-print-button"
                       variant="outline"
                       size="sm"
                       onClick={handlePrint}
@@ -1742,6 +1689,7 @@ export default function Financial() {
                       Imprimir
                     </Button>
                     <Button
+                      id="financial-export-button"
                       variant="outline"
                       size="sm"
                       onClick={handleExport}
@@ -1872,12 +1820,14 @@ export default function Financial() {
                                 {editingPixCode?.id === payment.id ? (
                                   <div className="flex gap-1 items-center min-w-[200px] no-print">
                                     <Input
+                                      id="financial-pix-input"
                                       value={editingPixCode.value}
                                       onChange={(e) => setEditingPixCode({ id: payment.id, value: e.target.value })}
                                       className="h-7 text-sm"
                                       autoFocus
                                     />
                                     <Button
+                                      id="financial-pix-save"
                                       size="sm"
                                       variant="ghost"
                                       className="h-7 w-7 p-0"
@@ -1886,6 +1836,7 @@ export default function Financial() {
                                       <Check className="h-4 w-4 text-green-600" />
                                     </Button>
                                     <Button
+                                      id="financial-pix-cancel"
                                       size="sm"
                                       variant="ghost"
                                       className="h-7 w-7 p-0"
@@ -1898,6 +1849,7 @@ export default function Financial() {
                                   <div className="flex gap-1 items-center group min-w-[150px]">
                                     <span className="text-sm print:text-[9px] break-all">{details.pixCode || "-"}</span>
                                     <Button
+                                      id={`financial-pix-edit-${payment.id}`}
                                       size="sm"
                                       variant="ghost"
                                       className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity no-print"
