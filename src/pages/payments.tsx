@@ -143,7 +143,6 @@ export default function Payments() {
     // Todos os pagamentos devem ter installment e totalInstallments definidos
     // Formato sempre: "X/Y" mesmo para parcelas proporcionais
     if (!payment.installment || !payment.totalInstallments) {
-      console.warn("Payment sem installment ou totalInstallments:", payment);
       return "N/A";
     }
     
@@ -196,20 +195,13 @@ export default function Payments() {
 
   // Carregar pagamentos quando os filtros mudarem (incluindo montagem inicial)
   useEffect(() => {
-    console.log(`🔄 [payments.tsx useEffect] Chamando loadPayments:`, {
-      selectedMonth: selectedMonth.toString(),
-      selectedYear: selectedYear.toString(),
-      isFirstLoad: firstLoadRef.current,
-      timestamp: new Date().toISOString()
-    });
-    
     loadPayments(selectedMonth.toString(), selectedYear.toString());
     
     if (firstLoadRef.current) {
       firstLoadRef.current = false;
     }
-  }, [loadPayments, selectedMonth, selectedYear]); // ✅ loadPayments agora é estável
-  
+  }, [loadPayments, selectedMonth, selectedYear]);
+
   // 🔥 FORÇA RE-RENDER: Garantir que mudanças no estado payments causem re-render
   useEffect(() => {
     console.log(`🔔 [payments.tsx] FORÇANDO RE-RENDER - payments mudou para ${payments.length} itens`);
@@ -349,13 +341,6 @@ export default function Payments() {
               
             if (tenantError) throw tenantError;
             
-            console.log("✅ DADOS COMPLETOS BUSCADOS DO BANCO:", {
-              payment: paymentData,
-              rental: rentalData,
-              property: propertyData,
-              tenant: tenantData
-            });
-            
             if (propertyData && tenantData) {
               // Extrair dados da location
               const locationData = propertyData.locations as any;
@@ -471,13 +456,6 @@ export default function Payments() {
                   : "new" as "new" | "inactive" | "rented",
               };
               
-              console.log("✅ DADOS CONVERTIDOS PARA O RECIBO:", {
-                payment,
-                rental,
-                property,
-                tenant
-              });
-              
               // Abrir o recibo com os dados completos
               setUiState(prev => ({
                 ...prev,
@@ -515,8 +493,6 @@ export default function Payments() {
 
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
-    console.log(`🔍 [payments.tsx] Separando recebimentos - Total disponível: ${payments.length}`);
-    
     const filterBySearch = (p: Payment) => {
       if (!debouncedSearchQuery) return true;
       
@@ -539,12 +515,6 @@ export default function Payments() {
 
     const paid = payments.filter((p) => {
       return p.status === "paid" && filterBySearch(p);
-    });
-    
-    console.log(`📊 [payments.tsx] Resultado da separação:`, {
-      pending: pending.length,
-      paid: paid.length,
-      searchQuery: debouncedSearchQuery || "(vazio)"
     });
 
     if (sortKeyPending) {
@@ -725,7 +695,7 @@ export default function Payments() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div id="payments-page" className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
@@ -736,6 +706,7 @@ export default function Payments() {
           </div>
           <div className="flex gap-1 border rounded-lg p-1">
             <Button
+              id="payments-view-grid"
               variant={uiState.viewMode === "grid" ? "default" : "ghost"}
               size="sm"
               onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
@@ -745,6 +716,7 @@ export default function Payments() {
               Grade
             </Button>
             <Button
+              id="payments-view-list"
               variant={uiState.viewMode === "list" ? "default" : "ghost"}
               size="sm"
               onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
@@ -768,6 +740,7 @@ export default function Payments() {
             
             <div className="relative w-full max-w-sm ml-0 sm:ml-2">
               <Input
+                id="payments-search-input"
                 type="search"
                 placeholder="Buscar por inquilino, endereço..."
                 className="pl-8 w-full"
@@ -785,14 +758,14 @@ export default function Payments() {
         ) : (
           <Tabs defaultValue="pending" className="space-y-6">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
-              <TabsTrigger value="pending" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+              <TabsTrigger id="payments-tab-pending" value="pending" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
                 <span className="hidden sm:inline">Recebimentos Pendentes</span>
                 <span className="sm:hidden">Pendentes</span>
                 <Badge variant="destructive" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="paid" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+              <TabsTrigger id="payments-tab-paid" value="paid" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
                 <span className="hidden sm:inline">Recebimentos Pagos</span>
                 <span className="sm:hidden">Pagos</span>
                 <Badge variant="default" className="bg-green-500 text-xs">
@@ -896,7 +869,7 @@ export default function Payments() {
 
       {/* Dialog de confirmação de cancelamento */}
       <AlertDialog open={!!uiState.paymentToCancel} onOpenChange={(open) => !open && setUiState(prev => ({ ...prev, paymentToCancel: null }))}>
-        <AlertDialogContent>
+        <AlertDialogContent id="payments-cancel-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -913,8 +886,8 @@ export default function Payments() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancelPayment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel id="payments-cancel-no">Cancelar</AlertDialogCancel>
+            <AlertDialogAction id="payments-cancel-yes" onClick={confirmCancelPayment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Confirmar Cancelamento
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -938,7 +911,7 @@ export default function Payments() {
       )}
 
       <Dialog open={!!uiState.selectedPaymentId} onOpenChange={(open) => !open && setUiState(prev => ({ ...prev, selectedPaymentId: null }))}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent id="payments-manage-dialog" className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="hidden">Detalhes do Recebimento</DialogTitle>
           </DialogHeader>
