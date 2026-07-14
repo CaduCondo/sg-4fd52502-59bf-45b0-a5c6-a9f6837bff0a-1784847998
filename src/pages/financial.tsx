@@ -88,7 +88,7 @@ const printStyles = `
     /* IMPRESSÃO DO DIALOG DE DESPESAS (PRIORIDADE 1) */
     /* ================================================== */
     
-    /* Quando dialog de despesas está aberto, esconder elementos indesejados */
+    /* Esconder elementos de navegação e overlay quando dialog de despesas está aberto */
     body:has([data-expenses-dialog="true"]) aside,
     body:has([data-expenses-dialog="true"]) nav,
     body:has([data-expenses-dialog="true"]) header:not([data-expenses-dialog] header),
@@ -98,18 +98,7 @@ const printStyles = `
       display: none !important;
     }
     
-    /* CRÍTICO: Esconder TODOS os portals do Radix Dialog */
-    body:has([data-expenses-dialog="true"]) [data-radix-portal] {
-      display: none !important;
-    }
-    
-    /* Mostrar APENAS o portal que contém o dialog de despesas */
-    body:has([data-expenses-dialog="true"]) [data-radix-portal]:has([data-expenses-dialog="true"]) {
-      display: block !important;
-      position: static !important;
-    }
-    
-    /* Deixar dialog fluir naturalmente */
+    /* Forçar dialog a expandir completamente para paginação natural */
     [data-expenses-dialog="true"] {
       display: block !important;
       max-width: 100% !important;
@@ -117,6 +106,7 @@ const printStyles = `
       overflow: visible !important;
       height: auto !important;
       position: static !important;
+      transform: none !important;
       margin: 20px auto !important;
       padding: 20px !important;
       box-shadow: none !important;
