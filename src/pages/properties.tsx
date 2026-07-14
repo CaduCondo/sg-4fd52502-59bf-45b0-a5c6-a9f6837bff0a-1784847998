@@ -223,7 +223,6 @@ export default function PropertiesPage() {
         const result = await updatePropertyService(editingProperty.id, formData);
         
         if (result === false) {
-          console.log("⏸️ Aguardando confirmação do usuário para ajuste de valor");
           return;
         }
         
@@ -269,14 +268,11 @@ export default function PropertiesPage() {
 
   const handleCardClick = useCallback(async (property: Property) => {
     try {
-      console.log("🔄 Carregando dados completos do imóvel:", property.id);
-      
       const fullProperty = await propertyService.getById(property.id);
       
       if (fullProperty) {
         setEditingProperty(fullProperty);
         setFormData(prepareFormDataFromProperty(fullProperty));
-        console.log("✅ Descrição carregada:", fullProperty.description);
       } else {
         setEditingProperty(property);
         setFormData(prepareFormDataFromProperty(property));
@@ -286,7 +282,7 @@ export default function PropertiesPage() {
       setIsViewMode(true);
       setIsEditMode(true);
     } catch (error) {
-      console.error("❌ Erro ao carregar dados completos:", error);
+      console.error("Erro ao carregar dados completos:", error);
       setEditingProperty(property);
       setFormData(prepareFormDataFromProperty(property));
       setIsDialogOpen(true);
@@ -387,7 +383,7 @@ export default function PropertiesPage() {
   return (
     <Layout>
       <SEO title="Imóveis - Gerenciador de Locações" />
-      <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+      <div id="properties-page" className="space-y-6 w-full max-w-full overflow-x-hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
             <h1 className="text-2xl font-bold tracking-tight">Imóveis</h1>
@@ -398,6 +394,7 @@ export default function PropertiesPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="flex gap-1 border rounded-lg p-1">
               <Button
+                id="properties-view-grid"
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
@@ -407,6 +404,7 @@ export default function PropertiesPage() {
                 <span className="hidden sm:inline">Grade</span>
               </Button>
               <Button
+                id="properties-view-table"
                 variant={viewMode === "table" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("table")}
@@ -416,7 +414,7 @@ export default function PropertiesPage() {
                 <span className="hidden sm:inline">Lista</span>
               </Button>
             </div>
-            <Button onClick={handleOpenDialog} className="flex-1 sm:flex-none">
+            <Button id="properties-new-button" onClick={handleOpenDialog} className="flex-1 sm:flex-none">
               <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Novo Imóvel</span>
               <span className="sm:hidden">Novo</span>
@@ -500,7 +498,7 @@ export default function PropertiesPage() {
       </div>
 
       <AlertDialog open={!!pendingRentAdjustment} onOpenChange={(open) => !open && handleCancelRentAdjustment()}>
-        <AlertDialogContent className="max-w-lg">
+        <AlertDialogContent id="properties-rent-adjustment-dialog" className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold">
               🔄 Atualização de Valor de Aluguel
@@ -552,10 +550,10 @@ export default function PropertiesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelRentAdjustment} disabled={isSubmitting}>
+            <AlertDialogCancel id="properties-rent-adjustment-cancel" onClick={handleCancelRentAdjustment} disabled={isSubmitting}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRentAdjustment} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
+            <AlertDialogAction id="properties-rent-adjustment-confirm" onClick={handleConfirmRentAdjustment} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
               {isSubmitting ? "Processando..." : "Confirmar Ajuste"}
             </AlertDialogAction>
           </AlertDialogFooter>
