@@ -46,32 +46,19 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Clear any existing sessions BEFORE login
-      console.log("🧹 Cleaning all existing sessions before login...");
       localStorage.removeItem("auth_session");
       localStorage.removeItem("auth_user");
       localStorage.removeItem("rental_auth_user");
       localStorage.removeItem("currentUser");
 
-      // Attempt login
       const result = await login({ email: username, password });
       
       if (result.success && result.user) {
-        // Login successful
-        console.log("✅ Login successful!");
-        console.log("✅ Logged in as:", result.user.username);
-        console.log("✅ Name:", result.user.name);
-        console.log("✅ Role:", result.user.role);
-        
-        // Wait for synchronization
         await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Redirect to dashboard
         window.location.href = "/dashboard";
         return;
       }
 
-      // Login failed - invalid credentials
       setError("Credenciais inválidas. Verifique seu usuário e senha.");
       
     } catch (error) {
@@ -161,6 +148,7 @@ export default function Login() {
                     className="h-11 border-slate-300 pr-10"
                   />
                   <button
+                    id="login-toggle-password"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
@@ -182,6 +170,7 @@ export default function Login() {
               )}
               
               <Button 
+                id="login-submit-button"
                 type="submit" 
                 className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 disabled={loading || supabaseStatus === 'unhealthy'}
@@ -205,6 +194,7 @@ export default function Login() {
               
               <div className="text-center mt-4">
                 <button
+                  id="login-forgot-password-link"
                   type="button"
                   onClick={() => setShowForgotPassword(true)}
                   className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
@@ -232,7 +222,7 @@ export default function Login() {
 
       {/* Forgot Password Dialog */}
       <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent id="login-forgot-password-dialog" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Recuperar Senha</DialogTitle>
             <DialogDescription>
@@ -264,6 +254,7 @@ export default function Login() {
 
               <DialogFooter className="pt-2">
                 <Button 
+                  id="login-forgot-password-cancel"
                   type="button" 
                   variant="outline" 
                   onClick={() => setShowForgotPassword(false)}
@@ -271,6 +262,7 @@ export default function Login() {
                   Cancelar
                 </Button>
                 <Button 
+                  id="login-forgot-password-submit"
                   type="submit" 
                   className="bg-blue-600 hover:bg-blue-700"
                   disabled={resetLoading}
@@ -292,6 +284,7 @@ export default function Login() {
                 </p>
               </div>
               <Button 
+                id="login-forgot-password-close"
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetSuccess(false);
