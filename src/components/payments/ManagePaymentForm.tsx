@@ -166,8 +166,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const loadPaymentData = useCallback(async () => {
     try {
-      console.log("🔍 Loading payment data for ID:", paymentId);
-      
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -212,19 +210,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         throw new Error("Pagamento não encontrado");
       }
 
-      // Type assertion para garantir TypeScript type safety
       const validatedPayment = paymentData as any;
-
-      console.log("📦 Payment data loaded:", validatedPayment);
-      console.log("🔍 TODOS OS CAMPOS DO PAYMENT:", {
-        id: validatedPayment.id,
-        discount_amount: validatedPayment.discount_amount,
-        discount: validatedPayment.discount,
-        expected_amount: validatedPayment.expected_amount,
-        paid_amount: validatedPayment.paid_amount,
-        late_fee: validatedPayment.late_fee,
-        interest: validatedPayment.interest
-      });
 
       setPayment(validatedPayment);
       setRental(validatedPayment.rentals);
@@ -232,12 +218,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(validatedPayment.rentals.properties.locations);
       setTenant(validatedPayment.rentals.tenants);
 
-      // SEMPRE usar valores do contrato - NUNCA extrair do breakdown
-      // O breakdown pode conter valores incorretos de cálculos anteriores
       const baseRentalValue = validatedPayment.rentals.rent_value || 0;
       const baseGarageValue = validatedPayment.rentals.has_garage ? (validatedPayment.rentals.garage_value || 0) : 0;
-      
-      console.log("💰 Valores do CONTRATO - Aluguel:", baseRentalValue, "Garagem:", baseGarageValue);
 
       setRentalValue(baseRentalValue);
       setGarageValue(baseGarageValue);
@@ -251,15 +233,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const isTermination = validatedPayment.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
       
-      // CRITICAL: Carregar estados dos checkboxes salvos no banco
       const waiveLateFee = validatedPayment.late_fee_waived || false;
       const waiveInterest = validatedPayment.interest_waived || false;
       
-      console.log("📋 Carregando estados salvos - Multa perdoada:", waiveLateFee, "Juros perdoados:", waiveInterest);
-      
       setRemoveLateFee(waiveLateFee);
       setRemoveInterest(waiveInterest);
-      
+
       if (validatedPayment.breakdown) {
         try {
           let breakdownData = validatedPayment.breakdown;
@@ -300,16 +279,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }
       }
       
-      // CRITICAL: Carregar discount_amount do banco de dados
       if (validatedPayment.discount_amount !== undefined && validatedPayment.discount_amount !== null) {
-        console.log("💰 CARREGANDO DISCOUNT_AMOUNT DO BANCO:", validatedPayment.discount_amount);
         setDiscountAmount(validatedPayment.discount_amount);
         setDiscountAmountInput(formatCurrency(validatedPayment.discount_amount.toFixed(2)));
       }
 
       if (isTermination && validatedPayment.rentals) {
-        console.log("🚨🚨🚨 BUSCANDO PARCELAS DO CAUÇÃO NA TABELA deposit_installments");
-        
         const rentalId = validatedPayment.rentals.id;
 
         const { data: installments, error: installmentsError } = await supabase
@@ -321,12 +296,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         if (installmentsError) {
           console.error("Erro ao buscar parcelas do caução:", installmentsError);
         } else {
-          console.log("✅✅✅ PARCELAS DO CAUÇÃO CARREGADAS:", installments);
-          
           if (installments && installments.length > 0) {
             const totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-            
-            console.log(`💰 SOMA TOTAL (2 parcelas?): R$ ${totalDeposit.toFixed(2)}`);
             
             const startDate = validatedPayment.rentals.start_date;
             const endDate = validatedPayment.rentals.end_date;
@@ -340,8 +311,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               
               setIgpmCorrection(igpmCorrectionValue);
             }
-          } else {
-            console.log("⚠️⚠️⚠️ Nenhuma parcela de caução encontrada para esta locação");
           }
         }
       }
@@ -770,13 +739,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      // 🔥 CORREÇÃO CRÍTICA: Valor digitado pelo usuário
       const userInputAmount = formData.amount_to_pay 
         ? parseCurrency(formData.amount_to_pay)
         : 0;
-      
-      console.log("💰 VALOR DIGITADO PELO USUÁRIO:", formData.amount_to_pay);
-      console.log("💰 VALOR PARSEADO:", userInputAmount);
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -841,83 +806,40 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           const breakdownTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
           expectedTotal = breakdownTotal - discountAmount;
           
-          console.log("🔥 RESCISÃO - Breakdown completo:", breakdownData);
-          console.log("💰 RESCISÃO - Breakdown Total:", breakdownTotal);
-          console.log("💰 RESCISÃO - Desconto:", discountAmount);
-          console.log("💰 RESCISÃO - Expected Total calculado:", expectedTotal);
-          
         } catch (error) {
           console.error("❌ Erro ao atualizar breakdown:", error);
           expectedTotal = calculatedTotal;
-          console.log("⚠️ RESCISÃO - Usando calculatedTotal como fallback:", expectedTotal);
         }
       } else {
-        // 🔥 CORREÇÃO CRÍTICA: Incluir desconto no cálculo do expected_amount
         expectedTotal = values.valorAPagar - discountAmount;
-        console.log("💰 PAGAMENTO NORMAL - Expected Total (com desconto):", {
-          valorAPagar: values.valorAPagar,
-          discountAmount: discountAmount,
-          expectedTotal: expectedTotal
-        });
       }
-      
-      console.log("📊 VALOR ESPERADO (expected_amount):", expectedTotal);
       
       let paymentStatus: string;
       let finalPaidAmount: number;
       
-      // 🔥 CORREÇÃO CRÍTICA: Lógica simplificada e correta para pagamentos parciais
       if (userInputAmount === 0) {
-        // Apenas editando outros campos, não o valor pago
         finalPaidAmount = payment?.paid_amount || 0;
         paymentStatus = payment?.status || "pending";
-        console.log("📝 Editando sem alterar valor pago - mantendo:", finalPaidAmount);
       } else {
         const previousPaid = payment?.paid_amount || 0;
         const previousStatus = payment?.status || "pending";
         
-        console.log("📊 ESTADO ANTERIOR:", {
-          previousPaid,
-          previousStatus,
-          userInputAmount
-        });
-        
-        // 🔥 NOVA LÓGICA: Se o status anterior era "partial", o valor digitado é ADICIONAL
-        // Se o status anterior era "pending" ou outro, o valor digitado é o TOTAL
         if (previousStatus === "partial" && previousPaid > 0) {
-          // Pagamento adicional em cima do que já foi pago
           finalPaidAmount = previousPaid + userInputAmount;
-          console.log("💰 PAGAMENTO PARCIAL ADICIONAL - Somando:", {
-            valorAnterior: previousPaid,
-            valorAdicional: userInputAmount,
-            totalNovo: finalPaidAmount
-          });
         } else {
-          // Primeiro pagamento ou substituindo valor anterior
           finalPaidAmount = userInputAmount;
-          console.log("💰 NOVO PAGAMENTO COMPLETO:", finalPaidAmount);
         }
         
-        // Verificar se o pagamento está completo
         const totalExpected = Math.abs(expectedTotal);
         const totalPaid = Math.abs(finalPaidAmount);
         
-        // Tolerância de 1 centavo para considerar como pago
         if (totalPaid >= (totalExpected - 0.01)) {
           paymentStatus = "paid";
-          console.log("✅ Pagamento COMPLETO - Total pago:", totalPaid, ">=", totalExpected);
         } else {
           paymentStatus = "partial";
           const remaining = totalExpected - totalPaid;
-          console.log("⚠️ Pagamento PARCIAL - Total pago:", totalPaid, "<", totalExpected, "Faltam:", remaining);
         }
       }
-
-      console.log("💾 VALORES FINAIS A SEREM SALVOS:", {
-        paid_amount: finalPaidAmount,
-        expected_amount: expectedTotal,
-        status: paymentStatus
-      });
 
       const attachmentsToSave = attachments.filter(a => a.url).map(a => ({
         url: a.url,
@@ -1131,6 +1053,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         ) : (
           <>
             <Button
+              id="manage-payment-cancel"
               type="button"
               variant="outline"
               onClick={isPaid ? handleCancelEdit : (onClose ? onClose : () => router.push("/payments"))}
@@ -1139,6 +1062,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               Cancelar
             </Button>
             <Button 
+              id="manage-payment-submit"
               type="button" 
               onClick={handleSubmit} 
               disabled={isSubmitting} 

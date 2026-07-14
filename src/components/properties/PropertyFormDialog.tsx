@@ -151,7 +151,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="location_id" className="text-sm font-medium">
+              <Label htmlFor="property-location" className="text-sm font-medium">
                 Local *
               </Label>
               <Select
@@ -159,7 +159,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
                 onValueChange={(value) => handleFieldChange("location_id", value)}
                 disabled={isReadOnly}
               >
-                <SelectTrigger id="location_id" className="h-11 sm:h-10 text-sm mobile-input">
+                <SelectTrigger id="property-location" className="h-11 sm:h-10 text-sm mobile-input">
                   <SelectValue placeholder="Selecione o local" />
                 </SelectTrigger>
                 <SelectContent>
@@ -173,11 +173,11 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="complement" className="text-sm font-medium">
+              <Label htmlFor="property-complement" className="text-sm font-medium">
                 Complemento
               </Label>
               <Input
-                id="complement"
+                id="property-complement"
                 value={formData.complement}
                 onChange={(e) => handleFieldChange("complement", e.target.value)}
                 placeholder="Ex: Apto 102, Bloco A"
@@ -189,11 +189,11 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="rooms" className="text-sm font-medium">
+              <Label htmlFor="property-rooms" className="text-sm font-medium">
                 Quartos *
               </Label>
               <Input
-                id="rooms"
+                id="property-rooms"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -210,11 +210,11 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bathrooms" className="text-sm font-medium">
+              <Label htmlFor="property-bathrooms" className="text-sm font-medium">
                 Banheiros *
               </Label>
               <Input
-                id="bathrooms"
+                id="property-bathrooms"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -231,11 +231,11 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="area" className="text-sm font-medium">
+              <Label htmlFor="property-area" className="text-sm font-medium">
                 Área (m²) *
               </Label>
               <Input
-                id="area"
+                id="property-area"
                 value={formData.area}
                 onChange={(e) => handleFieldChange("area", e.target.value)}
                 placeholder="80"
@@ -245,11 +245,11 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="monthly_rent" className="text-sm font-medium">
+              <Label htmlFor="property-value" className="text-sm font-medium">
                 Valor
               </Label>
               <Input
-                id="monthly_rent"
+                id="property-value"
                 value={formData.monthly_rent}
                 onChange={handleMonthlyRentChange}
                 placeholder="R$ 0,00"
@@ -260,7 +260,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status" className="text-sm font-medium">
+            <Label htmlFor="property-status" className="text-sm font-medium">
               Status *
             </Label>
             <Select
@@ -268,7 +268,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
               onValueChange={(value) => handleFieldChange("status", value)}
               disabled={isReadOnly}
             >
-              <SelectTrigger className="h-11 sm:h-10 text-sm mobile-input">
+              <SelectTrigger id="property-status" className="h-11 sm:h-10 text-sm mobile-input">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -282,50 +282,50 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex items-center space-x-3 touch-target">
               <Checkbox
-                id="hasFurniture"
+                id="property-furniture"
                 checked={formData.hasFurniture}
                 onCheckedChange={(checked) => handleFieldChange("hasFurniture", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
-              <Label htmlFor="hasFurniture" className="text-sm cursor-pointer font-normal">
+              <Label htmlFor="property-furniture" className="text-sm cursor-pointer font-normal">
                 Móveis Planejados
               </Label>
             </div>
 
             <div className="flex items-center space-x-3 touch-target">
               <Checkbox
-                id="acceptsPets"
+                id="property-pets"
                 checked={formData.acceptsPets}
                 onCheckedChange={(checked) => handleFieldChange("acceptsPets", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
-              <Label htmlFor="acceptsPets" className="text-sm cursor-pointer font-normal">
+              <Label htmlFor="property-pets" className="text-sm cursor-pointer font-normal">
                 Aceita Pets
               </Label>
             </div>
 
             <div className="flex items-center space-x-3 touch-target">
               <Checkbox
-                id="hasGarage"
+                id="property-garage"
                 checked={formData.hasGarage}
                 onCheckedChange={(checked) => handleFieldChange("hasGarage", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
-              <Label htmlFor="hasGarage" className="text-sm cursor-pointer font-normal">
+              <Label htmlFor="property-garage" className="text-sm cursor-pointer font-normal">
                 Vaga Garagem
               </Label>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
+            <Label htmlFor="property-description" className="text-sm font-medium">
               Descrição
             </Label>
             <Textarea
-              id="description"
+              id="property-description"
               value={formData.description}
               onChange={(e) => handleFieldChange("description", e.target.value)}
               className="text-sm resize-none min-h-[80px] mobile-input"
@@ -397,6 +397,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t">
             {showEditButton && (
               <Button 
+                id="property-form-edit"
                 type="button" 
                 onClick={handleEditClick} 
                 variant="default" 
@@ -409,6 +410,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             {!isReadOnly && (
               <>
                 <Button
+                  id="property-form-cancel"
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
@@ -418,6 +420,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
                   Cancelar
                 </Button>
                 <Button 
+                  id="property-form-submit"
                   type="submit" 
                   disabled={isSubmitting} 
                   className="h-11 sm:h-10 touch-target"
@@ -428,6 +431,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             )}
             {isReadOnly && (
               <Button
+                id="property-form-close"
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}

@@ -82,9 +82,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
       <h3 className="text-sm font-semibold text-muted-foreground">Dados Pessoais</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
+          <Label htmlFor="tenant-name" className="text-sm font-medium">Nome Completo *</Label>
           <Input
-            id="name"
+            id="tenant-name"
             value={formData.name}
             onChange={(e) => onFieldChange("name", e.target.value)}
             placeholder="Nome completo"
@@ -95,9 +95,10 @@ const PersonalDataSection = memo(function PersonalDataSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
+          <Label htmlFor="tenant-document" className="text-sm font-medium">CPF/CNPJ *</Label>
           <div className="flex gap-2 mb-2">
             <Button
+              id="tenant-doc-type-cpf"
               type="button"
               variant={documentType === "cpf" ? "default" : "outline"}
               size="sm"
@@ -108,6 +109,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
               CPF
             </Button>
             <Button
+              id="tenant-doc-type-cnpj"
               type="button"
               variant={documentType === "cnpj" ? "default" : "outline"}
               size="sm"
@@ -119,7 +121,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
             </Button>
           </div>
           <Input
-            id="document"
+            id="tenant-document"
             value={documentType === "cpf" ? formData.cpf : formData.cnpj}
             onChange={documentType === "cpf" ? onCpfChange : onCnpjChange}
             placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
@@ -130,9 +132,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
+          <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
           <Input
-            id="rg"
+            id="tenant-rg"
             value={formData.rg}
             onChange={onRgChange}
             placeholder="00.000.000-0"
@@ -142,9 +144,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
+          <Label htmlFor="tenant-phone" className="text-sm font-medium">Telefone *</Label>
           <Input
-            id="phone"
+            id="tenant-phone"
             value={formData.phone}
             onChange={onPhoneChange}
             placeholder="(00) 00000-0000"
@@ -155,9 +157,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium">E-mail *</Label>
+          <Label htmlFor="tenant-email" className="text-sm font-medium">E-mail *</Label>
           <Input
-            id="email"
+            id="tenant-email"
             type="email"
             value={formData.email}
             onChange={(e) => onFieldChange("email", e.target.value)}
@@ -170,13 +172,13 @@ const PersonalDataSection = memo(function PersonalDataSection({
 
         {showStatus && (
           <div className="space-y-2">
-            <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
+            <Label htmlFor="tenant-status" className="text-sm font-medium">Status *</Label>
             <Select
               value={formData.status}
               onValueChange={(value) => onStatusChange(value)}
               disabled={!isEditing}
             >
-              <SelectTrigger className="h-11 sm:h-10">
+              <SelectTrigger id="tenant-status" className="h-11 sm:h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -210,10 +212,10 @@ const AddressSection = memo(function AddressSection({
       <h3 className="text-sm font-semibold text-muted-foreground">Endereço</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="space-y-2">
-          <Label htmlFor="cep" className="text-sm font-medium">CEP</Label>
+          <Label htmlFor="tenant-cep" className="text-sm font-medium">CEP</Label>
           <div className="relative">
             <Input
-              id="cep"
+              id="tenant-cep"
               value={formData.cep}
               onChange={onCepChange}
               placeholder="00000-000"
@@ -227,9 +229,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-          <Label htmlFor="street" className="text-sm font-medium">Rua/Logradouro</Label>
+          <Label htmlFor="tenant-street" className="text-sm font-medium">Rua/Logradouro</Label>
           <Input
-            id="street"
+            id="tenant-street"
             value={formData.street}
             onChange={(e) => onFieldChange("street", e.target.value)}
             placeholder="Rua, avenida, etc."
@@ -239,9 +241,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="number" className="text-sm font-medium">Número</Label>
+          <Label htmlFor="tenant-number" className="text-sm font-medium">Número</Label>
           <Input
-            id="number"
+            id="tenant-number"
             value={formData.number}
             onChange={(e) => onFieldChange("number", e.target.value)}
             placeholder="123"
@@ -251,9 +253,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="complement" className="text-sm font-medium">Complemento</Label>
+          <Label htmlFor="tenant-complement" className="text-sm font-medium">Complemento</Label>
           <Input
-            id="complement"
+            id="tenant-complement"
             value={formData.complement}
             onChange={(e) => onFieldChange("complement", e.target.value)}
             placeholder="Apto, casa, etc."
@@ -263,9 +265,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2 lg:col-span-2">
-          <Label htmlFor="neighborhood" className="text-sm font-medium">Bairro</Label>
+          <Label htmlFor="tenant-neighborhood" className="text-sm font-medium">Bairro</Label>
           <Input
-            id="neighborhood"
+            id="tenant-neighborhood"
             value={formData.neighborhood}
             onChange={(e) => onFieldChange("neighborhood", e.target.value)}
             placeholder="Bairro"
@@ -275,9 +277,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="city" className="text-sm font-medium">Cidade</Label>
+          <Label htmlFor="tenant-city" className="text-sm font-medium">Cidade</Label>
           <Input
-            id="city"
+            id="tenant-city"
             value={formData.city}
             onChange={(e) => onFieldChange("city", e.target.value)}
             placeholder="Cidade"
@@ -287,9 +289,9 @@ const AddressSection = memo(function AddressSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="state" className="text-sm font-medium">Estado</Label>
+          <Label htmlFor="tenant-state" className="text-sm font-medium">Estado</Label>
           <Input
-            id="state"
+            id="tenant-state"
             value={formData.state}
             onChange={(e) => onFieldChange("state", e.target.value.toUpperCase().slice(0, 2))}
             placeholder="UF"
@@ -477,6 +479,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
             {isViewMode && !isEditing ? (
               <>
                 <Button 
+                  id="tenant-form-close"
                   type="button" 
                   variant="outline" 
                   onClick={() => onOpenChange(false)}
@@ -485,6 +488,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
                   Fechar
                 </Button>
                 <Button 
+                  id="tenant-form-edit"
                   type="button" 
                   onClick={handleEdit}
                   className="h-11 sm:h-10 touch-target"
@@ -496,6 +500,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
             ) : (
               <>
                 <Button 
+                  id="tenant-form-cancel"
                   type="button" 
                   variant="outline" 
                   onClick={() => onOpenChange(false)}
@@ -504,6 +509,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
                   Cancelar
                 </Button>
                 <Button 
+                  id="tenant-form-submit"
                   type="submit"
                   className="h-11 sm:h-10 touch-target"
                 >

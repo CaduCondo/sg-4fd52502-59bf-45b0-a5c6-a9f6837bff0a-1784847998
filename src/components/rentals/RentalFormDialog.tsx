@@ -303,22 +303,12 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
-        // Se houve mudanças que afetam recebimentos, atualizar
         if (Object.keys(changes).length > 0) {
-          console.log("🔄 Atualizando recebimentos afetados pelas mudanças...");
-          console.log("🔑 ID da locação:", rental.id);
-          console.log("📦 Dados antigos da locação:", rental);
-          console.log("🆕 Mudanças a aplicar:", changes);
-          
           await rentalUpdateService.updatePaymentsOnRentalEdit(
             rental.id,
             rental,
             changes
           );
-          
-          console.log("✅ Atualização de recebimentos concluída!");
-        } else {
-          console.log("ℹ️ Nenhuma mudança que afete recebimentos");
         }
 
         const mergedRental: Rental = {
@@ -473,13 +463,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="property_id">{rental ? "Imóvel Selecionado" : "Imóveis Disponíveis"} *</Label>
+              <Label htmlFor="rental-property">{rental ? "Imóvel Selecionado" : "Imóveis Disponíveis"} *</Label>
               <Select
                 value={selectedPropertyId}
                 onValueChange={(value) => setSelectedPropertyId(value)}
                 disabled={isFieldDisabled || !!rental}
               >
-                <SelectTrigger id="property_id">
+                <SelectTrigger id="rental-property">
                   <SelectValue placeholder="Selecione um imóvel" />
                 </SelectTrigger>
                 <SelectContent>
@@ -526,9 +516,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">{rental ? "Inquilino Selecionado" : "Inquilinos Disponíveis"} *</Label>
+              <Label htmlFor="rental-tenant">{rental ? "Inquilino Selecionado" : "Inquilinos Disponíveis"} *</Label>
               <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={isFieldDisabled || !!rental}>
-                <SelectTrigger id="tenant">
+                <SelectTrigger id="rental-tenant">
                   <SelectValue placeholder="Selecione o inquilino" />
                 </SelectTrigger>
                 <SelectContent>
@@ -547,9 +537,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Data Início Contrato *</Label>
+              <Label htmlFor="rental-start-date">Data Início Contrato *</Label>
               <Input
-                id="startDate"
+                id="rental-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -559,9 +549,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endDate">Data Fim Contrato</Label>
+              <Label htmlFor="rental-end-date">Data Fim Contrato</Label>
               <Input
-                id="endDate"
+                id="rental-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
@@ -572,9 +562,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="paymentDay">Dia Pagamento *</Label>
+              <Label htmlFor="rental-payment-day">Dia Pagamento *</Label>
               <Select value={paymentDay} onValueChange={setPaymentDay} disabled={isFieldDisabled}>
-                <SelectTrigger id="paymentDay">
+                <SelectTrigger id="rental-payment-day">
                   <SelectValue placeholder="Selecione o dia" />
                 </SelectTrigger>
                 <SelectContent>
@@ -591,7 +581,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="hasGarage"
+                id="rental-has-garage"
                 checked={hasGarage}
                 onCheckedChange={(checked) => {
                   setHasGarage(checked as boolean);
@@ -601,13 +591,14 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 }}
                 disabled={isFieldDisabled}
               />
-              <Label htmlFor="hasGarage" className="cursor-pointer">
+              <Label htmlFor="rental-has-garage" className="cursor-pointer">
                 Vaga Garagem ?
               </Label>
             </div>
 
             {hasGarage && (
               <Input
+                id="rental-garage-value"
                 value={garageValue}
                 onChange={(e) => setGarageValue(formatCurrencyInput(e.target.value))}
                 placeholder="R$ 0,00"
@@ -618,12 +609,12 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
             <div className="flex items-center space-x-2 ml-auto">
               <Checkbox
-                id="hasPartnerBroker"
+                id="rental-partner-broker"
                 checked={hasPartnerBroker}
                 onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
                 disabled={isFieldDisabled}
               />
-              <Label htmlFor="hasPartnerBroker" className="cursor-pointer">
+              <Label htmlFor="rental-partner-broker" className="cursor-pointer">
                 Corretor Parceiro ?
               </Label>
             </div>
@@ -634,11 +625,11 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-5">
-                <Label htmlFor="depositAmount">
+                <Label htmlFor="rental-deposit-amount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
                 <Input
-                  id="depositAmount"
+                  id="rental-deposit-amount"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(formatCurrencyInput(e.target.value))}
                   placeholder="R$ 0,00"
@@ -647,9 +638,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               </div>
 
               <div className="space-y-2 md:col-span-4">
-                <Label htmlFor="depositPaymentDate">Data Pagamento *</Label>
+                <Label htmlFor="rental-deposit-date">Data Pagamento *</Label>
                 <Input
-                  id="depositPaymentDate"
+                  id="rental-deposit-date"
                   type="date"
                   value={depositPaymentDate}
                   onChange={(e) => setDepositPaymentDate(e.target.value)}
@@ -658,9 +649,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               </div>
 
               <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="depositPixCode">Código PIX</Label>
+                <Label htmlFor="rental-deposit-pix">Código PIX</Label>
                 <Input
-                  id="depositPixCode"
+                  id="rental-deposit-pix"
                   value={depositPixCode}
                   onChange={(e) => setDepositPixCode(e.target.value)}
                   placeholder="Código PIX"
@@ -672,7 +663,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             <div className="flex items-center gap-4 mt-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
-                  id="isDepositInstallment"
+                  id="rental-deposit-installment"
                   checked={isDepositInstallment}
                   onCheckedChange={(checked) => {
                     setIsDepositInstallment(checked as boolean);
@@ -686,7 +677,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   }}
                   disabled={isFieldDisabled}
                 />
-                <Label htmlFor="isDepositInstallment" className="cursor-pointer font-medium">
+                <Label htmlFor="rental-deposit-installment" className="cursor-pointer font-medium">
                   Caução Parcelado ?
                 </Label>
               </div>
@@ -704,7 +695,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                     }}
                     disabled={isFieldDisabled}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="rental-installment-count" className="h-9">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -935,6 +926,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             {isViewMode && !isEditing ? (
               <>
                 <Button
+                  id="rental-form-close"
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -946,6 +938,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   Fechar
                 </Button>
                 <Button
+                  id="rental-form-edit"
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
@@ -959,6 +952,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             ) : (
               <>
                 <Button
+                  id="rental-form-cancel"
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -973,7 +967,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={loading}>
+                <Button id="rental-form-submit" type="submit" disabled={loading}>
                   {loading ? (rental ? "Atualizando..." : "Criando...") : rental ? "Atualizar Locação" : "Criar Locação"}
                 </Button>
               </>
