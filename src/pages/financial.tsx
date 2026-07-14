@@ -479,7 +479,6 @@ export default function Financial() {
   const [locationExpensesData, setLocationExpensesData] = useState<Array<{amount: number, location_id: string}>>([]);
   
   // Estado para controlar o dialog de detalhamento de contas
-  const [showExpensesDialog, setShowExpensesDialog] = useState(false);
   const [expensesDetails, setExpensesDetails] = useState<Array<{
     id: string;
     location_name: string;
@@ -498,9 +497,6 @@ export default function Financial() {
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
 
-  // Location filter state
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
-
   // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -508,6 +504,11 @@ export default function Financial() {
   // Sorting state for expenses dialog
   const [expenseSortField, setExpenseSortField] = useState<ExpenseSortField | null>(null);
   const [expenseSortDirection, setExpenseSortDirection] = useState<SortDirection>(null);
+  
+  const [sortExpenses, setSortExpenses] = useState<{
+    field: ExpenseSortField;
+    direction: SortDirection;
+  }>({ field: "location_name", direction: "asc" });
 
   const expensesContentRef = useRef<HTMLDivElement>(null);
 
@@ -1120,130 +1121,33 @@ export default function Financial() {
     }
   }, [getSortedPayments, toast]);
 
-  const handlePrintExpenses = () => {
-    if (!filteredExpensesDetails || filteredExpensesDetails.length === 0) return;
-
-    const locationName = filteredExpensesDetails[0]?.location_name || "Todos os Locais";
-    const monthName = months[selectedMonth - 1];
-    const total = filteredExpensesDetails.reduce((sum, exp) => sum + exp.amount, 0);
-
-    // Criar conteúdo HTML para o pop-up
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Detalhamento das Contas do Mês</title>
-          <style>
-            @page {
-              size: portrait;
-              margin: 15mm;
-            }
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-            }
-            h1 {
-              font-size: 20px;
-              font-weight: bold;
-              margin-bottom: 8px;
-            }
-            .subtitle {
-              font-size: 12px;
-              color: #666;
-              margin-bottom: 16px;
-            }
-            .period {
-              font-size: 13px;
-              font-weight: 600;
-              margin-bottom: 20px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 12px;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 10px 8px;
-              word-wrap: break-word;
-            }
-            th {
-              background-color: #f0f0f0;
-              font-weight: bold;
-              text-align: left;
-            }
-            .text-right {
-              text-align: right;
-            }
-            .total-box {
-              margin-top: 15px;
-              padding: 12px;
-              background-color: #f5f5f5;
-              border-radius: 4px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .total-label {
-              font-weight: 600;
-            }
-            .total-value {
-              color: #dc2626;
-              font-weight: bold;
-              font-size: 16px;
-            }
-            @media print {
-              body {
-                padding: 0;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Detalhamento das Contas do Mês - ${locationName}</h1>
-          <div class="subtitle">Controle de despesas mensais por localização</div>
-          <div class="period">Período: ${monthName}/${selectedYear}</div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 25%;">Local</th>
-                <th style="width: 50%;">Descrição</th>
-                <th class="text-right" style="width: 25%;">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredExpensesDetails.map(expense => `
-                <tr>
-                  <td>${expense.location_name}</td>
-                  <td>${expense.description || "-"}</td>
-                  <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-
-          <div class="total-box">
-            <span class="total-label">Total de Contas (${monthName}/${selectedYear}):</span>
-            <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
-          </div>
-
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `;
-
-    // Abrir pop-up
-    const printWindow = window.open("", "_blank", "width=900,height=800");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
+  const handleExportExpenses = () => {
+    if (!filteredExpensesDetails || filteredExpensesDetails.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao exportar",
+        description: "Não há dados para exportar.",
+      });
+      return;
     }
+
+    const ws = XLSX.utils.json_to_sheet(
+      filteredExpensesDetails.map((expense) => ({
+        Local: expense.location_name,
+        Descrição: expense.description || "-",
+        Valor: expense.amount,
+      }))
+    );
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Despesas");
+
+    XLSX.writeFile(wb, `despesas_${selectedMonth}_${selectedYear}.xlsx`);
+
+    toast({
+      title: "Exportado com sucesso!",
+      description: "O arquivo foi baixado.",
+    });
   };
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
@@ -1822,130 +1726,6 @@ export default function Financial() {
             </TabsContent>
           )}
         </Tabs>
-        
-        {/* Dialog de Detalhamento de Contas do Mês */}
-        <Dialog open={showExpensesDialog} onOpenChange={setShowExpensesDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" data-expenses-dialog="true">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2 print-expenses-title">
-                    <Receipt className="h-5 w-5 text-orange-600 no-print" />
-                    Detalhamento das Contas do Mês
-                  </DialogTitle>
-                  <DialogDescription className="print-expenses-subtitle">
-                    {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
-                    {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
-                  </DialogDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintExpenses}
-                  className="flex items-center gap-2 no-print"
-                >
-                  <FileText className="h-4 w-4" />
-                  Imprimir
-                </Button>
-              </div>
-            </DialogHeader>
-            
-            <div ref={expensesContentRef} className="space-y-4 print-expenses-content">
-              {/* Tabela de Despesas */}
-              {filteredExpensesDetails.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma despesa cadastrada para este período
-                </div>
-              ) : (
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="cursor-pointer" onClick={() => handleExpenseSort("location_name")}>
-                          <div className="flex items-center">
-                            Local
-                            <ExpenseSortIcon field="location_name" />
-                          </div>
-                        </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => handleExpenseSort("description")}>
-                          <div className="flex items-center">
-                            Descrição
-                            <ExpenseSortIcon field="description" />
-                          </div>
-                        </TableHead>
-                        <TableHead className="text-right cursor-pointer" onClick={() => handleExpenseSort("amount")}>
-                          <div className="flex items-center justify-end">
-                            Valor
-                            <ExpenseSortIcon field="amount" />
-                          </div>
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredExpensesDetails.map((expense) => (
-                        <TableRow key={expense.id}>
-                          <TableCell className="font-medium">
-                            {expense.location_name}
-                          </TableCell>
-                          <TableCell className="text-black">
-                            {expense.description}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-orange-600">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(expense.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      
-                      {/* Linha de Total */}
-                      <TableRow className="bg-muted/50 font-bold">
-                        <TableCell colSpan={2} className="text-right">
-                          Total de Despesas:
-                        </TableCell>
-                        <TableCell className="text-right text-orange-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(kpiCalculations.locationExpenses)}
-                        </TableCell>
-                      </TableRow>
-                      
-                      {user?.role === "broker" && (
-                        <TableRow className="bg-muted/50 font-bold">
-                          <TableCell colSpan={2} className="text-right">
-                            Taxa de Gerenciamento ({config?.management_fee_percentage || 3}%):
-                          </TableCell>
-                          <TableCell className="text-right text-blue-600">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(kpiCalculations.managementFee)}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      
-                      {user?.role === "broker" && (
-                        <TableRow className="bg-muted font-bold">
-                          <TableCell colSpan={2} className="text-right">
-                            Total Geral:
-                          </TableCell>
-                          <TableCell className="text-right text-purple-600">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(kpiCalculations.locationExpenses + kpiCalculations.managementFee)}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </Layout>
   );

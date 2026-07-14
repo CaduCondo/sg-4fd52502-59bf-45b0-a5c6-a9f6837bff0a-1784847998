@@ -28,7 +28,6 @@ import {
 import { SortableTable } from "@/components/ui/sortable-table";
 import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
 import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
-import { RentalPaymentHistoryDialog } from "@/components/rentals/RentalPaymentHistoryDialog";
 import { useContractExpiration } from "@/hooks/useContractExpiration";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -68,13 +67,12 @@ export default function RentalsPage() {
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
+  const [rentalToDelete, setRentalToDelete] = useState<string | null>(null);
   const [paymentCounts, setPaymentCounts] = useState<{ pending: number; paid: number } | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2 | 3>(1);
   const [deleteChoices, setDeleteChoices] = useState({ pending: false, paid: false });
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
-  const [rentalForPaymentHistory, setRentalForPaymentHistory] = useState<Rental | null>(null);
   
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
@@ -518,6 +516,187 @@ export default function RentalsPage() {
       });
     }
   }, [toast]);
+
+  const handleViewHistory = async (rental: Rental) => {
+    try {
+      // Buscar pagamentos do rental
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("rental_id", rental.id)
+        .order("installment", { ascending: true });
+
+      if (error) throw error;
+
+      const payments = (data || []).map((p) => ({
+        id: p.id,
+        due_date: p.due_date,
+        payment_date: p.payment_date,
+        amount_paid: p.paid_amount || 0,
+        expected_amount: p.expected_amount || 0,
+        status: p.status === "paid" || p.status === "partial" ? "pago" : "pendente",
+        installment_number: p.installment || 0,
+      }));
+
+      const location = rental?.property?.location || "-";
+      const complement = rental?.property?.complement || "-";
+      const tenantName = rental?.tenant?.name || "-";
+
+      const totalPaid = payments
+        .filter((p) => p.status === "pago")
+        .reduce((sum, p) => sum + p.amount_paid, 0);
+
+      // Criar conteúdo HTML para o pop-up
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Histórico de Pagamentos</title>
+            <style>
+              @page {
+                size: landscape;
+                margin: 1cm;
+              }
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+              }
+              h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+              }
+              .info-box {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 16px;
+                background: #f9f9f9;
+                margin-bottom: 20px;
+              }
+              .info-box div {
+                margin-bottom: 8px;
+                font-size: 14px;
+              }
+              .info-box strong {
+                font-weight: 600;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+              }
+              th, td {
+                border: 1px solid #ddd;
+                padding: 12px 8px;
+                text-align: center;
+                font-size: 14px;
+              }
+              th {
+                background-color: #f0f0f0;
+                font-weight: 600;
+              }
+              .status-pago {
+                background-color: #dcfce7;
+                color: #15803d;
+                border: 1px solid #86efac;
+                padding: 4px 12px;
+                border-radius: 4px;
+                display: inline-block;
+              }
+              .status-pendente {
+                background-color: #fee2e2;
+                color: #991b1b;
+                border: 1px solid #fca5a5;
+                padding: 4px 12px;
+                border-radius: 4px;
+                display: inline-block;
+              }
+              .total-row {
+                font-weight: bold;
+                background-color: #f9f9f9;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .text-green {
+                color: #15803d;
+                font-weight: 600;
+              }
+              @media print {
+                body {
+                  padding: 0;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Histórico de Pagamentos</h1>
+            
+            <div class="info-box">
+              <div><strong>Local:</strong> ${location}</div>
+              <div><strong>Complemento:</strong> ${complement}</div>
+              <div><strong>Nome Inquilino:</strong> ${tenantName}</div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Parcela</th>
+                  <th>Vencimento</th>
+                  <th>Pagamento</th>
+                  <th>Status</th>
+                  <th class="text-right">Valor Esperado</th>
+                  <th class="text-right">Valor Pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${payments.map(payment => `
+                  <tr>
+                    <td>${payment.installment_number}</td>
+                    <td>${new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                    <td>${payment.payment_date ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
+                    <td>
+                      <span class="${payment.status === "pago" ? "status-pago" : "status-pendente"}">
+                        ${payment.status === "pago" ? "Pago" : "Pendente"}
+                      </span>
+                    </td>
+                    <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.expected_amount)}</td>
+                    <td class="text-right text-green">
+                      ${payment.status === "pago" ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.amount_paid) : "-"}
+                    </td>
+                  </tr>
+                `).join("")}
+                <tr class="total-row">
+                  <td colspan="5" class="text-right">Total Pago:</td>
+                  <td class="text-right text-green">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `;
+
+      // Abrir pop-up
+      const printWindow = window.open("", "_blank", "width=1200,height=800");
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      console.error("Erro ao abrir histórico:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao abrir histórico",
+        description: "Ocorreu um erro ao carregar os dados.",
+      });
+    }
+  };
 
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
@@ -1003,12 +1182,6 @@ export default function RentalsPage() {
           onOpenChange={(open) => !open && setRentalToEnd(null)}
           rental={rentalToEnd}
           onConfirm={handleConfirmTermination}
-        />
-
-        <RentalPaymentHistoryDialog
-          open={!!rentalForPaymentHistory}
-          onOpenChange={(open) => !open && setRentalForPaymentHistory(null)}
-          rental={rentalForPaymentHistory}
         />
 
         {/* Dialog Step 1: Confirmar exclusão da locação */}
