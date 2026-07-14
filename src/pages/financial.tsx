@@ -520,6 +520,9 @@ export default function Financial() {
     id: string;
     value: string;
   } | null>(null);
+  
+  const [showExpensesDialog, setShowExpensesDialog] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
 
   // Controlar impressão do dialog de despesas via JavaScript
   useEffect(() => {
@@ -1449,7 +1452,7 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => setShowExpensesDialog(true)}>
+              <Card className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => handleShowExpenses(selectedLocationId)}>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1730,3 +1733,164 @@ export default function Financial() {
     </Layout>
   );
 }
+
+const handleShowExpenses = async (locationId: string) => {
+  try {
+    // Buscar despesas da localização e mês selecionados
+    const { data, error } = await supabase
+      .from("location_expenses")
+      .select(`
+        *,
+        location:locations(name)
+      `)
+      .eq("location_id", locationId)
+      .eq("reference_month", selectedMonth)
+      .eq("reference_year", selectedYear);
+
+    if (error) throw error;
+
+    const expenses = (data || []).map((exp) => ({
+      id: exp.id,
+      location_name: exp.location?.name || "Desconhecido",
+      description: exp.description || "",
+      amount: exp.amount || 0,
+    }));
+
+    if (expenses.length === 0) {
+      toast({
+        title: "Sem despesas",
+        description: "Não há despesas cadastradas para este período.",
+      });
+      return;
+    }
+
+    const locationName = expenses[0]?.location_name || "Local";
+    const monthName = months[selectedMonth - 1];
+    const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    // Criar conteúdo HTML para o pop-up
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Detalhamento das Contas do Mês</title>
+          <style>
+            @page {
+              size: portrait;
+              margin: 15mm;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              font-size: 20px;
+              font-weight: bold;
+              margin-bottom: 8px;
+            }
+            .subtitle {
+              font-size: 12px;
+              color: #666;
+              margin-bottom: 16px;
+            }
+            .period {
+              font-size: 13px;
+              font-weight: 600;
+              margin-bottom: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 10px 8px;
+              word-wrap: break-word;
+            }
+            th {
+              background-color: #f0f0f0;
+              font-weight: bold;
+              text-align: left;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .total-box {
+              margin-top: 15px;
+              padding: 12px;
+              background-color: #f5f5f5;
+              border-radius: 4px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .total-label {
+              font-weight: 600;
+            }
+            .total-value {
+              color: #dc2626;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Detalhamento das Contas do Mês - ${locationName}</h1>
+          <div class="subtitle">Controle de despesas mensais por localização</div>
+          <div class="period">Período: ${monthName}/${selectedYear}</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 25%;">Local</th>
+                <th style="width: 50%;">Descrição</th>
+                <th class="text-right" style="width: 25%;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${expenses.map(expense => `
+                <tr>
+                  <td>${expense.location_name}</td>
+                  <td>${expense.description || "-"}</td>
+                  <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div class="total-box">
+            <span class="total-label">Total de Contas (${monthName}/${selectedYear}):</span>
+            <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    // Abrir pop-up
+    const printWindow = window.open("", "_blank", "width=900,height=800");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+    }
+  } catch (error) {
+    console.error("Erro ao abrir despesas:", error);
+    toast({
+      variant: "destructive",
+      title: "Erro ao abrir despesas",
+      description: "Ocorreu um erro ao carregar os dados.",
+    });
+  }
+};

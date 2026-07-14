@@ -67,12 +67,13 @@ export default function RentalsPage() {
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [rentalToDelete, setRentalToDelete] = useState<string | null>(null);
+  const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [paymentCounts, setPaymentCounts] = useState<{ pending: number; paid: number } | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2 | 3>(1);
   const [deleteChoices, setDeleteChoices] = useState({ pending: false, paid: false });
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
+  const [rentalForPaymentHistory, setRentalForPaymentHistory] = useState<Rental | null>(null);
   
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
@@ -517,7 +518,11 @@ export default function RentalsPage() {
     }
   }, [toast]);
 
-  const handleViewHistory = async (rental: Rental) => {
+  const handleViewHistory = async () => {
+    if (!rentalForPaymentHistory) return;
+    
+    const rental = rentalForPaymentHistory;
+    
     try {
       // Buscar pagamentos do rental
       const { data, error } = await supabase
@@ -688,6 +693,9 @@ export default function RentalsPage() {
         printWindow.document.write(printContent);
         printWindow.document.close();
       }
+      
+      // Fechar o estado após abrir o popup
+      setRentalForPaymentHistory(null);
     } catch (error) {
       console.error("Erro ao abrir histórico:", error);
       toast({
@@ -697,6 +705,13 @@ export default function RentalsPage() {
       });
     }
   };
+  
+  // Executar quando rentalForPaymentHistory for definido
+  useEffect(() => {
+    if (rentalForPaymentHistory) {
+      handleViewHistory();
+    }
+  }, [rentalForPaymentHistory]);
 
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
