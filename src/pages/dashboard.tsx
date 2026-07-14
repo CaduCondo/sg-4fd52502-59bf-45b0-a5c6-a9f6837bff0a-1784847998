@@ -71,13 +71,6 @@ export default function Dashboard() {
     // Total Taxas e Contas = Taxa Admin + Taxa Gerenciamento + Contas do Local
     const totalFeesAndExpenses = counts.adminFees + counts.managementFees + counts.locationExpenses;
     
-    console.log("💳 [Dashboard] Calculando totalFeesAndExpenses:", {
-      adminFees: counts.adminFees,
-      managementFees: counts.managementFees,
-      locationExpenses: counts.locationExpenses,
-      total: totalFeesAndExpenses
-    });
-    
     // Receita Líquida = Receita Bruta - (Taxas + Contas)
     const netRevenue = grossRevenue - totalFeesAndExpenses;
 
@@ -105,7 +98,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
-      <div className="p-4 md:p-6 space-y-6">
+      <div id="dashboard-page" className="p-4 md:p-6 space-y-6">
         <WelcomeCard userName={userName} />
 
         {loading ? (

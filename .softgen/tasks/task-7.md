@@ -16,7 +16,7 @@ Remover logs de desenvolvimento/debug (console.log, console.warn) mantendo conso
 
 ## Checklist
 - [x] Login page - adicionar IDs e limpar logs
-- [ ] Dashboard page - adicionar IDs e limpar logs
+- [x] Dashboard page - adicionar IDs e limpar logs
 - [ ] Properties page - adicionar IDs e limpar logs
 - [ ] Rentals page - adicionar IDs e limpar logs
 - [ ] Tenants page - adicionar IDs e limpar logs
