@@ -575,17 +575,40 @@ export default function RentalsPage() {
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 padding: 16px;
-                padding-bottom: 60px;
                 background: #f9f9f9;
                 margin-bottom: 20px;
-                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 20px;
               }
-              .info-box div {
+              .info-content {
+                flex: 1;
+              }
+              .info-content div {
                 margin-bottom: 8px;
                 font-size: 14px;
               }
+              .info-content div:last-child {
+                margin-bottom: 0;
+              }
               .info-box strong {
                 font-weight: 600;
+              }
+              .print-button {
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                white-space: nowrap;
+                flex-shrink: 0;
               }
               table {
                 width: 100%;
@@ -640,26 +663,13 @@ export default function RentalsPage() {
             <h1>Histórico de Pagamentos</h1>
             
             <div class="info-box">
-              <div><strong>Local:</strong> ${location}</div>
-              <div><strong>Complemento:</strong> ${complement}</div>
-              <div><strong>Nome Inquilino:</strong> ${tenantName}</div>
+              <div class="info-content">
+                <div><strong>Local:</strong> ${location}</div>
+                <div><strong>Complemento:</strong> ${complement}</div>
+                <div><strong>Nome Inquilino:</strong> ${tenantName}</div>
+              </div>
               
-              <button onclick="window.print()" style="
-                position: absolute;
-                bottom: 16px;
-                right: 16px;
-                background-color: #2563eb;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-              ">
+              <button onclick="window.print()" class="print-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>

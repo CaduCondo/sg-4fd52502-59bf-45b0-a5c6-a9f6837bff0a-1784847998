@@ -1176,12 +1176,28 @@ export default function Financial() {
               .period {
                 font-size: 13px;
                 font-weight: 600;
-                margin-bottom: 20px;
               }
-              .header-controls {
+              .period-row {
                 display: flex;
-                justify-content: flex-end;
-                margin-bottom: 12px;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+                gap: 20px;
+              }
+              .print-button {
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                white-space: nowrap;
+                flex-shrink: 0;
               }
               table {
                 width: 100%;
@@ -1251,22 +1267,11 @@ export default function Financial() {
           <body>
             <h1>Detalhamento das Contas do Mês - ${locationName}</h1>
             <div class="subtitle">Controle de despesas mensais por localização</div>
-            <div class="period">Período: ${monthName}/${selectedYear}</div>
-
-            <div class="header-controls">
-              <button onclick="window.print()" style="
-                background-color: #2563eb;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-              ">
+            
+            <div class="period-row">
+              <div class="period">Período: ${monthName}/${selectedYear}</div>
+              
+              <button onclick="window.print()" class="print-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
