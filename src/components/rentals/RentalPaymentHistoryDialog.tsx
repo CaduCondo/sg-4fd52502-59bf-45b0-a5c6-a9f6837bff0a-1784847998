@@ -116,7 +116,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - CORRIGIR REPETIÇÃO DE PÁGINAS */}
+      {/* CSS DE IMPRESSÃO - ESCONDER PORTALS DUPLICADOS */}
       <style>{`
         @media print {
           @page {
@@ -124,7 +124,7 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
-          /* Esconder apenas elementos indesejados */
+          /* Esconder elementos indesejados */
           aside,
           nav,
           button,
@@ -132,11 +132,24 @@ export function RentalPaymentHistoryDialog({
             display: none !important;
           }
           
-          /* CRÍTICO: Forçar dialog a expandir completamente */
+          /* CRÍTICO: Esconder TODOS os portals do Radix Dialog */
+          [data-radix-portal] {
+            display: none !important;
+          }
+          
+          /* Mostrar APENAS o portal que contém o dialog atual */
+          [data-radix-portal]:has([role="dialog"]) {
+            display: block !important;
+            position: static !important;
+          }
+          
+          /* Forçar dialog a expandir completamente */
           [role="dialog"] {
             max-height: none !important;
             overflow: visible !important;
             height: auto !important;
+            position: static !important;
+            display: block !important;
           }
         }
       `}</style>
