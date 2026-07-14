@@ -1164,17 +1164,17 @@ export default function Financial() {
                 padding: 20px;
               }
               h1 {
-                font-size: 20px;
+                font-size: 24px;
                 font-weight: bold;
                 margin-bottom: 8px;
               }
               .subtitle {
-                font-size: 12px;
+                font-size: 14px;
                 color: #666;
                 margin-bottom: 16px;
               }
               .period {
-                font-size: 13px;
+                font-size: 16px;
                 font-weight: 600;
               }
               .period-row {
@@ -1190,7 +1190,7 @@ export default function Financial() {
                 border: none;
                 padding: 10px 20px;
                 border-radius: 6px;
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 600;
                 cursor: pointer;
                 display: inline-flex;
@@ -1202,7 +1202,7 @@ export default function Financial() {
               table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 12px;
+                font-size: 16px;
               }
               th, td {
                 border: 1px solid #ddd;
@@ -1245,6 +1245,7 @@ export default function Financial() {
               .total-value {
                 color: #15803d;
                 font-weight: bold;
+                font-size: 18px;
               }
               @media print {
                 body {

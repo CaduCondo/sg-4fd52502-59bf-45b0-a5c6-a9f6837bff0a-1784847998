@@ -568,8 +568,9 @@ export default function RentalsPage() {
                 padding: 20px;
               }
               h1 {
-                font-size: 24px;
+                font-size: 28px;
                 margin-bottom: 20px;
+                font-weight: bold;
               }
               .info-box {
                 border: 1px solid #ddd;
@@ -587,7 +588,7 @@ export default function RentalsPage() {
               }
               .info-content div {
                 margin-bottom: 8px;
-                font-size: 14px;
+                font-size: 16px;
               }
               .info-content div:last-child {
                 margin-bottom: 0;
@@ -601,7 +602,7 @@ export default function RentalsPage() {
                 border: none;
                 padding: 10px 20px;
                 border-radius: 6px;
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 600;
                 cursor: pointer;
                 display: inline-flex;
@@ -619,7 +620,7 @@ export default function RentalsPage() {
                 border: 1px solid #ddd;
                 padding: 12px 8px;
                 text-align: center;
-                font-size: 14px;
+                font-size: 16px;
               }
               th {
                 background-color: #f0f0f0;
