@@ -230,6 +230,7 @@ export function Layout({ children }: LayoutProps) {
             {/* Mobile Menu Button & Logo */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
               <Button
+                id="layout-mobile-menu-button"
                 variant="ghost"
                 size="icon"
                 className="md:hidden h-10 w-10 flex-shrink-0"
@@ -254,6 +255,7 @@ export function Layout({ children }: LayoutProps) {
                 
                 return (
                   <Link
+                    id={`layout-nav-${item.path.slice(1)}`}
                     key={item.name}
                     href={item.path}
                     className={cn(
@@ -274,7 +276,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="hidden md:flex items-center gap-3 flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <Button id="layout-user-menu-trigger" variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Avatar className="h-12 w-12 border-2 border-blue-600/20 cursor-pointer hover:border-blue-600/40 transition-colors">
                       <AvatarImage src={authUser?.photo} alt={authUser?.name} className="object-cover" />
                       <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium text-sm">
@@ -289,16 +291,16 @@ export function Layout({ children }: LayoutProps) {
                     <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(authUser?.role)}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
+                  <DropdownMenuItem id="layout-menu-edit-profile" onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Editar Perfil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)} className="cursor-pointer">
+                  <DropdownMenuItem id="layout-menu-change-password" onClick={() => setShowPasswordDialog(true)} className="cursor-pointer">
                     <Lock className="mr-2 h-4 w-4" />
                     Trocar Senha
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400 cursor-pointer">
+                  <DropdownMenuItem id="layout-menu-logout" onClick={handleLogout} className="text-red-600 dark:text-red-400 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sair
                   </DropdownMenuItem>
@@ -345,6 +347,7 @@ export function Layout({ children }: LayoutProps) {
                     <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">D&apos;Uvo</span>
                   </div>
                   <Button
+                    id="layout-mobile-menu-close"
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9"
@@ -377,6 +380,7 @@ export function Layout({ children }: LayoutProps) {
                     const active = isActive(item.path);
                     return (
                       <Link
+                        id={`layout-mobile-nav-${item.path.slice(1)}`}
                         key={item.name}
                         href={item.path}
                         onClick={() => setMobileMenuOpen(false)}
@@ -399,6 +403,7 @@ export function Layout({ children }: LayoutProps) {
                 {/* Actions */}
                 <div className="space-y-2">
                   <Button
+                    id="layout-mobile-edit-profile"
                     variant="outline"
                     className="w-full justify-start gap-3 h-11 text-sm"
                     onClick={() => {
@@ -410,6 +415,7 @@ export function Layout({ children }: LayoutProps) {
                     Editar Perfil
                   </Button>
                   <Button
+                    id="layout-mobile-change-password"
                     variant="outline"
                     className="w-full justify-start gap-3 h-11 text-sm"
                     onClick={() => {
@@ -421,6 +427,7 @@ export function Layout({ children }: LayoutProps) {
                     Trocar Senha
                   </Button>
                   <Button
+                    id="layout-mobile-logout"
                     variant="outline"
                     className="w-full justify-start gap-3 h-11 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                     onClick={() => {
@@ -462,7 +469,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent id="layout-password-dialog" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Trocar Senha</DialogTitle>
           </DialogHeader>
@@ -499,6 +506,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
               <Button 
+                id="layout-password-cancel"
                 variant="outline" 
                 onClick={() => {
                   setShowPasswordDialog(false);
@@ -510,7 +518,7 @@ export function Layout({ children }: LayoutProps) {
               >
                 Cancelar
               </Button>
-              <Button onClick={handleChangePassword} className="flex-1 h-11">
+              <Button id="layout-password-submit" onClick={handleChangePassword} className="flex-1 h-11">
                 Alterar Senha
               </Button>
             </div>

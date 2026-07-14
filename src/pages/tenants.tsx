@@ -282,7 +282,7 @@ export default function TenantsPage() {
         description="Gerencie seus inquilinos"
       />
 
-      <div className="space-y-6">
+      <div id="tenants-page" className="space-y-6">
         <ScrollReveal>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
@@ -291,6 +291,7 @@ export default function TenantsPage() {
             </div>
             <div className="flex gap-2">
               <Button
+                id="tenants-view-grid"
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
@@ -299,6 +300,7 @@ export default function TenantsPage() {
                 Grade
               </Button>
               <Button
+                id="tenants-view-table"
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("list")}
@@ -306,7 +308,7 @@ export default function TenantsPage() {
                 <List className="h-4 w-4 mr-2" />
                 Lista
               </Button>
-              <Button onClick={handleCreateNew}>
+              <Button id="tenants-new-button" onClick={handleCreateNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Novo Inquilino
               </Button>
@@ -336,7 +338,7 @@ export default function TenantsPage() {
                 : "Nenhum inquilino encontrado."}
             </p>
             {!searchTerm && statusFilter.length === 0 && (
-              <Button onClick={handleCreateNew} className="mt-4">
+              <Button id="tenants-create-first" onClick={handleCreateNew} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Inquilino
               </Button>
