@@ -1110,15 +1110,21 @@ export default function Financial() {
   const handleShowExpenses = async (locationId: string) => {
     try {
       // Buscar despesas da localização e mês selecionados
-      const { data, error } = await supabase
+      let query = supabase
         .from("location_expenses")
         .select(`
           *,
           location:locations(name)
         `)
-        .eq("location_id", locationId)
         .eq("reference_month", selectedMonth)
         .eq("reference_year", selectedYear);
+
+      // Se não for "all", filtrar por location_id
+      if (locationId !== "all") {
+        query = query.eq("location_id", locationId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -1137,7 +1143,7 @@ export default function Financial() {
         return;
       }
 
-      const locationName = expenses[0]?.location_name || "Local";
+      const locationName = locationId === "all" ? "Todos os Locais" : (expenses[0]?.location_name || "Local");
       const monthName = months[selectedMonth - 1];
       const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -1211,6 +1217,9 @@ export default function Financial() {
                 body {
                   padding: 0;
                 }
+                button {
+                  display: none !important;
+                }
               }
             </style>
           </head>
@@ -1243,11 +1252,28 @@ export default function Financial() {
               <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
             </div>
 
-            <script>
-              window.onload = function() {
-                window.print();
-              };
-            </script>
+            <div style="margin-top: 20px; text-align: center;">
+              <button onclick="window.print()" style="
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+              ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Imprimir
+              </button>
+            </div>
           </body>
         </html>
       `;
