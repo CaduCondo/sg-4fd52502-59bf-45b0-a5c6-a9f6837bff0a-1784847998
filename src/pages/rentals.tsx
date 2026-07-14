@@ -575,8 +575,10 @@ export default function RentalsPage() {
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 padding: 16px;
+                padding-bottom: 60px;
                 background: #f9f9f9;
                 margin-bottom: 20px;
+                position: relative;
               }
               .info-box div {
                 margin-bottom: 8px;
@@ -641,6 +643,30 @@ export default function RentalsPage() {
               <div><strong>Local:</strong> ${location}</div>
               <div><strong>Complemento:</strong> ${complement}</div>
               <div><strong>Nome Inquilino:</strong> ${tenantName}</div>
+              
+              <button onclick="window.print()" style="
+                position: absolute;
+                bottom: 16px;
+                right: 16px;
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+              ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Imprimir
+              </button>
             </div>
 
             <table>
@@ -677,34 +703,6 @@ export default function RentalsPage() {
                 </tr>
               </tbody>
             </table>
-
-            <div class="total-box">
-              <span class="total-label">Total Pago:</span>
-              <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid)}</span>
-            </div>
-
-            <div style="margin-top: 20px; text-align: center;">
-              <button onclick="window.print()" style="
-                background-color: #2563eb;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-              ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                  <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Imprimir
-              </button>
-            </div>
 
             <style>
               @media print {

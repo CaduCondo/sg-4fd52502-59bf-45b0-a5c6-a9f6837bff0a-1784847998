@@ -1178,6 +1178,11 @@ export default function Financial() {
                 font-weight: 600;
                 margin-bottom: 20px;
               }
+              .header-controls {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 12px;
+              }
               table {
                 width: 100%;
                 border-collapse: collapse;
@@ -1192,26 +1197,38 @@ export default function Financial() {
                 background-color: #f0f0f0;
                 font-weight: bold;
                 text-align: left;
+                cursor: pointer;
+                user-select: none;
+              }
+              th:hover {
+                background-color: #e5e5e5;
+              }
+              th.sortable::after {
+                content: ' ⇅';
+                opacity: 0.5;
+              }
+              th.sorted-asc::after {
+                content: ' ↑';
+                opacity: 1;
+              }
+              th.sorted-desc::after {
+                content: ' ↓';
+                opacity: 1;
               }
               .text-right {
                 text-align: right;
               }
-              .total-box {
-                margin-top: 15px;
-                padding: 12px;
-                background-color: #f5f5f5;
-                border-radius: 4px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+              .value-cell {
+                color: #15803d;
+                font-weight: bold;
               }
-              .total-label {
-                font-weight: 600;
+              .total-row {
+                font-weight: bold;
+                background-color: #f9f9f9;
               }
               .total-value {
-                color: #dc2626;
+                color: #15803d;
                 font-weight: bold;
-                font-size: 16px;
               }
               @media print {
                 body {
@@ -1219,6 +1236,14 @@ export default function Financial() {
                 }
                 button {
                   display: none !important;
+                }
+                th {
+                  cursor: default;
+                }
+                th.sortable::after,
+                th.sorted-asc::after,
+                th.sorted-desc::after {
+                  display: none;
                 }
               }
             </style>
@@ -1228,38 +1253,14 @@ export default function Financial() {
             <div class="subtitle">Controle de despesas mensais por localização</div>
             <div class="period">Período: ${monthName}/${selectedYear}</div>
 
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 25%;">Local</th>
-                  <th style="width: 50%;">Descrição</th>
-                  <th class="text-right" style="width: 25%;">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${expenses.map(expense => `
-                  <tr>
-                    <td>${expense.location_name}</td>
-                    <td>${expense.description || "-"}</td>
-                    <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-
-            <div class="total-box">
-              <span class="total-label">Total de Contas (${monthName}/${selectedYear}):</span>
-              <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
-            </div>
-
-            <div style="margin-top: 20px; text-align: center;">
+            <div class="header-controls">
               <button onclick="window.print()" style="
                 background-color: #2563eb;
                 color: white;
                 border: none;
-                padding: 12px 24px;
+                padding: 10px 20px;
                 border-radius: 6px;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 600;
                 cursor: pointer;
                 display: inline-flex;
@@ -1274,6 +1275,79 @@ export default function Financial() {
                 Imprimir
               </button>
             </div>
+
+            <table id="expensesTable">
+              <thead>
+                <tr>
+                  <th class="sortable" onclick="sortTable(0)" style="width: 25%;">Local</th>
+                  <th class="sortable" onclick="sortTable(1)" style="width: 50%;">Descrição</th>
+                  <th class="sortable text-right" onclick="sortTable(2)" style="width: 25%;">Valor</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                ${expenses.map(expense => `
+                  <tr>
+                    <td>${expense.location_name}</td>
+                    <td>${expense.description || "-"}</td>
+                    <td class="text-right value-cell">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td colspan="2" class="text-right">Total de Contas (${monthName}/${selectedYear}):</td>
+                  <td class="text-right total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <script>
+              let currentSort = { column: -1, direction: 'asc' };
+
+              function sortTable(columnIndex) {
+                const table = document.getElementById('expensesTable');
+                const tbody = document.getElementById('tableBody');
+                const rows = Array.from(tbody.rows);
+                
+                // Toggle direction
+                if (currentSort.column === columnIndex) {
+                  currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                  currentSort.column = columnIndex;
+                  currentSort.direction = 'asc';
+                }
+                
+                // Sort rows
+                rows.sort((a, b) => {
+                  let aVal = a.cells[columnIndex].textContent.trim();
+                  let bVal = b.cells[columnIndex].textContent.trim();
+                  
+                  // Para valores monetários (coluna 2)
+                  if (columnIndex === 2) {
+                    aVal = parseFloat(aVal.replace(/[^0-9,-]/g, '').replace(',', '.'));
+                    bVal = parseFloat(bVal.replace(/[^0-9,-]/g, '').replace(',', '.'));
+                    return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                  }
+                  
+                  // Para texto (colunas 0 e 1)
+                  const comparison = aVal.localeCompare(bVal, 'pt-BR');
+                  return currentSort.direction === 'asc' ? comparison : -comparison;
+                });
+                
+                // Clear tbody and re-append sorted rows
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+                
+                // Update header classes
+                const headers = table.querySelectorAll('th.sortable');
+                headers.forEach((header, index) => {
+                  header.classList.remove('sorted-asc', 'sorted-desc');
+                  if (index === columnIndex) {
+                    header.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                  }
+                });
+              }
+            </script>
           </body>
         </html>
       `;
