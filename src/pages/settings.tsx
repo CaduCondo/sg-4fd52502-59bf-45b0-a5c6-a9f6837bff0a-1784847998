@@ -198,13 +198,11 @@ export default function Settings() {
   };
 
   const fetchLocations = async () => {
-    console.log("[UI] fetchLocations called - loading locations from database...");
     try {
       const data = await locationService.getLocations();
-      console.log(`[UI] Loaded ${data.length} locations from database:`, data.map(l => ({ id: l.id, name: l.name })));
       setLocations(data);
     } catch (error) {
-      console.error("[UI ERROR] Failed to fetch locations:", error);
+      console.error("Failed to fetch locations:", error);
       toast({ 
         title: "Erro ao carregar locais",
         description: "Não foi possível carregar a lista de locais.",
@@ -268,12 +266,8 @@ export default function Settings() {
   const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("[SUBMIT] Form data:", locationForm);
-    console.log("[SUBMIT] Editing location:", editingLocation);
-    
     try {
       if (editingLocation) {
-        console.log("[UPDATE] Updating location:", editingLocation.id);
         await locationService.updateLocation(editingLocation.id, {
           name: locationForm.name,
           street: locationForm.street,
@@ -289,7 +283,6 @@ export default function Settings() {
           description: "Local atualizado com sucesso.",
         });
       } else {
-        console.log("[CREATE] Creating new location");
         await locationService.createLocation({
           name: locationForm.name,
           street: locationForm.street,
@@ -321,7 +314,7 @@ export default function Settings() {
       });
       await fetchLocations();
     } catch (error: any) {
-      console.error("[ERROR] Failed to save location:", error);
+      console.error("Failed to save location:", error);
       toast({
         title: "Erro",
         description: error.message || "Não foi possível salvar o local.",
@@ -332,7 +325,6 @@ export default function Settings() {
 
   const openLocationDialog = (location?: Location) => {
     if (location) {
-      console.log("[DIALOG] Opening for edit:", location);
       setEditingLocation(location);
       setLocationForm({
         name: location.name,
@@ -346,7 +338,6 @@ export default function Settings() {
         is_active: location.is_active !== false,
       });
     } else {
-      console.log("[DIALOG] Opening for create");
       setEditingLocation(null);
       setLocationForm({
         name: "",
@@ -366,49 +357,29 @@ export default function Settings() {
   const confirmDeleteLocation = async () => {
     if (!locationToDelete) return;
 
-    console.log(`[UI DELETE] Starting deletion process for: ${locationToDelete.name} (${locationToDelete.id})`);
-    
-    // Close dialog immediately
     setLocationToDelete(null);
     setIsLoadingLocations(true);
 
     try {
-      // Show processing toast
       toast({
         title: "Processando...",
         description: "Removendo local do sistema...",
       });
 
-      console.log(`[UI DELETE] Calling locationService.deleteLocation(${locationToDelete.id})`);
-      
-      // Delete from database
       await locationService.deleteLocation(locationToDelete.id);
-      
-      console.log("[UI DELETE] Delete successful from database, updating UI...");
 
-      // Remove from local state immediately (optimistic update)
-      const oldCount = locations.length;
       setLocations(prev => prev.filter(loc => loc.id !== locationToDelete.id));
-      const newCount = locations.length - 1;
-      console.log(`[UI DELETE] Removed from state. Old count: ${oldCount}, New count: ${newCount}`);
 
-      // Show success toast
       toast({
         title: "Sucesso!",
         description: "Local excluído com sucesso.",
       });
 
-      // Wait a moment for database to sync
       await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Force complete reload from database
-      console.log("[UI DELETE] Reloading locations list from database...");
       await fetchLocations();
 
-      console.log("[UI DELETE] Process complete!");
-
     } catch (error: any) {
-      console.error("[UI DELETE ERROR]", error);
+      console.error("Error deleting location:", error);
       
       let errorMessage = "Não foi possível excluir o local.";
       
@@ -426,7 +397,6 @@ export default function Settings() {
         variant: "destructive",
       });
 
-      // Reload to ensure UI shows current state
       await fetchLocations();
     } finally {
       setIsLoadingLocations(false);
@@ -478,7 +448,7 @@ export default function Settings() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div id="settings-page" className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Configurações</h1>
           <p className="text-muted-foreground mt-2">
@@ -488,27 +458,27 @@ export default function Settings() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-auto">
-            <TabsTrigger value="company" className="gap-2 py-3">
+            <TabsTrigger id="settings-tab-company" value="company" className="gap-2 py-3">
               <Building2 className="h-4 w-4" />
               Dados da Empresa
             </TabsTrigger>
-            <TabsTrigger value="admin-fees" className="gap-2 py-3">
+            <TabsTrigger id="settings-tab-admin-fees" value="admin-fees" className="gap-2 py-3">
               <Percent className="h-4 w-4" />
               Taxas Admin
             </TabsTrigger>
-            <TabsTrigger value="fines" className="gap-2 py-3">
+            <TabsTrigger id="settings-tab-fines" value="fines" className="gap-2 py-3">
               <AlertCircle className="h-4 w-4" />
               Multas e Juros
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 py-3">
+            <TabsTrigger id="settings-tab-users" value="users" className="gap-2 py-3">
               <Users className="h-4 w-4" />
               Usuários
             </TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-2 py-3">
+            <TabsTrigger id="settings-tab-permissions" value="permissions" className="gap-2 py-3">
               <Shield className="h-4 w-4" />
               Permissões
             </TabsTrigger>
-            <TabsTrigger value="locations" className="flex items-center gap-2">
+            <TabsTrigger id="settings-tab-locations" value="locations" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Locais
             </TabsTrigger>
@@ -602,7 +572,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button id="settings-company-save" type="submit" className="bg-emerald-600 hover:bg-emerald-700">
                       <Save className="h-4 w-4 mr-2" />
                       Salvar Alterações
                     </Button>
@@ -685,7 +655,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button id="settings-fees-save" type="submit" className="bg-emerald-600 hover:bg-emerald-700">
                       <Save className="h-4 w-4 mr-2" />
                       Salvar Taxas
                     </Button>
@@ -762,7 +732,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button id="settings-fines-save" type="submit" className="bg-emerald-600 hover:bg-emerald-700">
                       <Save className="h-4 w-4 mr-2" />
                       Salvar Encargos
                     </Button>
@@ -817,7 +787,7 @@ export default function Settings() {
                       Cadastre locais/condomínios e gerencie contas
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setIsLocationDialogOpen(true)} size="sm">
+                  <Button id="settings-location-new" onClick={() => setIsLocationDialogOpen(true)} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Local
                   </Button>
@@ -826,6 +796,7 @@ export default function Settings() {
               <CardContent>
                 <div className="mb-4">
                   <Input
+                    id="settings-location-search"
                     placeholder="Buscar por nome, cidade ou bairro..."
                     value={searchLocation}
                     onChange={(e) => setSearchLocation(e.target.value)}
@@ -862,6 +833,7 @@ export default function Settings() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <Button
+                          id={`settings-location-expenses-${location.id}`}
                           variant="outline"
                           size="sm"
                           className="w-full"
@@ -908,7 +880,7 @@ export default function Settings() {
             });
           }
         }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent id="settings-location-dialog" className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingLocation ? "Editar Local" : "Novo Local"}
@@ -1005,6 +977,7 @@ export default function Settings() {
 
               <DialogFooter>
                 <Button
+                  id="settings-location-cancel"
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -1025,7 +998,7 @@ export default function Settings() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button id="settings-location-submit" type="submit">
                   {editingLocation ? "Atualizar" : "Cadastrar"}
                 </Button>
               </DialogFooter>
@@ -1035,7 +1008,7 @@ export default function Settings() {
 
         {/* ALERT DIALOG PARA CONFIRMAR EXCLUSÃO */}
         <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent id="settings-location-delete-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
               <AlertDialogDescription>
@@ -1044,8 +1017,9 @@ export default function Settings() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel id="settings-location-delete-cancel">Cancelar</AlertDialogCancel>
               <Button
+                id="settings-location-delete-confirm"
                 onClick={(e) => {
                   (e.target as HTMLButtonElement).blur();
                   confirmDeleteLocation();

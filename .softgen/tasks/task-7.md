@@ -1,6 +1,6 @@
 ---
 title: Adicionar IDs em elementos HTML - Páginas Principais
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [ids, testing, automation]
@@ -23,7 +23,7 @@ Remover logs de desenvolvimento/debug (console.log, console.warn) mantendo conso
 - [x] Rentals page - adicionar IDs e limpar logs
 - [x] Payments page - adicionar IDs e limpar logs
 - [x] Financial page - adicionar IDs e limpar logs
-- [ ] Settings page - adicionar IDs e limpar logs
+- [x] Settings page - adicionar IDs e limpar logs
 
 ## Acceptance
 - Todos os campos de formulário têm IDs únicos
