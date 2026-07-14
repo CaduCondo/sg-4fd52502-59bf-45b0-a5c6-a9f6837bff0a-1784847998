@@ -1137,6 +1137,18 @@ export default function RentalsPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
+                                  className="h-8 w-8 bg-gray-500 hover:bg-gray-600 text-white border-gray-500"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRentalForPaymentHistory(rental);
+                                  }}
+                                  title="Histórico de Pagamentos"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
                                   className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
                                   onClick={(e) => {
                                     e.stopPropagation();
