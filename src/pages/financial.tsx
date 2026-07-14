@@ -1114,11 +1114,11 @@ export default function Financial() {
   }, [getSortedPayments, toast]);
 
   const handlePrintExpenses = () => {
-    if (!locationExpenses.length) return;
+    if (!selectedLocationExpenses || selectedLocationExpenses.length === 0) return;
 
-    const locationName = locationsMap.get(locationExpenses[0].locationId) || "Local não encontrado";
-    const monthName = months[selectedMonth - 1];
-    const total = locationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const locationName = locationsMap.get(selectedLocationExpenses[0].locationId) || "Local não encontrado";
+    const monthName = getMonthName(selectedMonth);
+    const total = selectedLocationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     const getExpenseTypeLabel = (type: string) => {
       const labels: Record<string, string> = {
@@ -1220,12 +1220,12 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody>
-              ${locationExpenses.map(expense => `
+              ${selectedLocationExpenses.map(expense => `
                 <tr>
                   <td>${getExpenseTypeLabel(expense.expenseType)}</td>
                   <td>${expense.description || "-"}</td>
-                  <td>${months[expense.referenceMonth - 1]}/${expense.referenceYear}</td>
-                  <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
+                  <td>${getMonthName(expense.referenceMonth)}/${expense.referenceYear}</td>
+                  <td class="text-right">${formatCurrency(expense.amount)}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -1233,7 +1233,7 @@ export default function Financial() {
 
           <div class="total-box">
             <span class="total-label">Total de Contas (${monthName}/${selectedYear}):</span>
-            <span class="total-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
+            <span class="total-value">${formatCurrency(total)}</span>
           </div>
 
           <script>
