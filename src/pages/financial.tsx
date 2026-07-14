@@ -102,6 +102,9 @@ const printStyles = `
     [data-expenses-dialog="true"] {
       display: block !important;
       max-width: 100% !important;
+      max-height: none !important;
+      overflow: visible !important;
+      height: auto !important;
       margin: 20px auto !important;
       padding: 20px !important;
       box-shadow: none !important;

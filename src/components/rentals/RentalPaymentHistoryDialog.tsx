@@ -116,7 +116,7 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - MINIMALISTA */}
+      {/* CSS DE IMPRESSÃO - CORRIGIR REPETIÇÃO DE PÁGINAS */}
       <style>{`
         @media print {
           @page {
@@ -124,12 +124,19 @@ export function RentalPaymentHistoryDialog({
             margin: 1cm;
           }
           
-          /* Esconder apenas elementos indesejados - SEM visibility */
+          /* Esconder apenas elementos indesejados */
           aside,
           nav,
           button,
           [data-radix-dialog-overlay] {
             display: none !important;
+          }
+          
+          /* CRÍTICO: Forçar dialog a expandir completamente */
+          [role="dialog"] {
+            max-height: none !important;
+            overflow: visible !important;
+            height: auto !important;
           }
         }
       `}</style>
