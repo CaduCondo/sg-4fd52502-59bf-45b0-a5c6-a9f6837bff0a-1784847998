@@ -140,15 +140,6 @@ export const PaymentCard = memo(function PaymentCard({
     return isNegative ? `- ${formatted}` : formatted;
   }, [payment.paidAmount]);
 
-  console.log('Payment Card Debug:', {
-    paymentId: payment.id,
-    displayAmount,
-    paidAmount: payment.paidAmount,
-    expectedAmount,
-    formattedDisplayAmount,
-    amountColor
-  });
-
   if (viewMode === "grid") {
     return (
       <Card
@@ -217,6 +208,7 @@ export const PaymentCard = memo(function PaymentCard({
               </p>
               {hasAttachments(payment) && (
                 <div 
+                  id={`payment-card-attachments-${payment.id}`}
                   className="cursor-pointer hover:opacity-70 transition-opacity flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -252,6 +244,7 @@ export const PaymentCard = memo(function PaymentCard({
           <div className="pt-3 border-t space-y-2">
             {isPaid && onViewReceipt && (
               <Button
+                id={`payment-card-receipt-${payment.id}`}
                 variant="outline"
                 size="sm"
                 className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -267,6 +260,7 @@ export const PaymentCard = memo(function PaymentCard({
             
             {isPaid && onCancelPayment && (
               <Button
+                id={`payment-card-cancel-${payment.id}`}
                 variant="outline"
                 size="sm"
                 className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -304,6 +298,7 @@ export const PaymentCard = memo(function PaymentCard({
                   {getStatusBadge(payment.status)}
                   {hasAttachments(payment) && (
                     <div 
+                      id={`payment-list-attachments-${payment.id}`}
                       className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -386,6 +381,7 @@ export const PaymentCard = memo(function PaymentCard({
               <div className="flex flex-col gap-2 sm:flex-shrink-0 pt-3 border-t sm:border-t-0 sm:pt-0">
                 {onViewReceipt && (
                   <Button
+                    id={`payment-list-receipt-${payment.id}`}
                     variant="outline"
                     size="sm"
                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -401,6 +397,7 @@ export const PaymentCard = memo(function PaymentCard({
                 
                 {onCancelPayment && (
                   <Button
+                    id={`payment-list-cancel-${payment.id}`}
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -421,7 +418,7 @@ export const PaymentCard = memo(function PaymentCard({
 
       {/* Modal de Anexos */}
       <Dialog open={showAttachmentsModal} onOpenChange={setShowAttachmentsModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent id={`payment-attachments-modal-${payment.id}`} className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Anexos do Pagamento</DialogTitle>
             <DialogDescription>
@@ -484,6 +481,7 @@ export const PaymentCard = memo(function PaymentCard({
                       {/* Botões */}
                       <div className="flex gap-2">
                         <Button
+                          id={`attachment-open-${index}`}
                           variant="outline"
                           size="sm"
                           className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -493,6 +491,7 @@ export const PaymentCard = memo(function PaymentCard({
                           Abrir
                         </Button>
                         <Button
+                          id={`attachment-download-${index}`}
                           variant="outline"
                           size="sm"
                           className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"

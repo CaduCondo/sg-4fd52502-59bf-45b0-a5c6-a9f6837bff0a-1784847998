@@ -17,7 +17,7 @@ Adicionar IDs nos componentes reutilizáveis para facilitar automação de teste
 - [x] TenantFormDialog - adicionar IDs em todos os inputs
 - [x] PropertyFormDialog - adicionar IDs em formulário
 - [x] RentalFormDialog - adicionar IDs e limpar logs
-- [ ] Payment components (PaymentCard, PaymentFilters, PaymentBreakdownCard)
+- [x] Payment components (PaymentCard, PaymentFilters, PaymentBreakdownCard)
 - [ ] Rental components (RentalDetailsCard, RentalTerminationDialog)
 - [ ] Settings components (PermissionsTab, UsersTab, LocationExpensesDialog)
 - [ ] Dashboard components (OverviewCards, FinancialCharts)

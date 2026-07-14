@@ -42,7 +42,7 @@ export const PaymentFilters = memo(function PaymentFilters({
   return (
     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center w-full sm:w-auto">
       <Select value={selectedMonth} onValueChange={onMonthChange}>
-        <SelectTrigger className="w-full sm:w-[180px] h-11 sm:h-10 touch-target">
+        <SelectTrigger id="payment-filters-month" className="w-full sm:w-[180px] h-11 sm:h-10 touch-target">
           <SelectValue placeholder="Todos os meses" />
         </SelectTrigger>
         <SelectContent>
@@ -59,7 +59,7 @@ export const PaymentFilters = memo(function PaymentFilters({
       </Select>
       
       <Select value={selectedYear} onValueChange={onYearChange}>
-        <SelectTrigger className="w-full sm:w-[140px] h-11 sm:h-10 touch-target">
+        <SelectTrigger id="payment-filters-year" className="w-full sm:w-[140px] h-11 sm:h-10 touch-target">
           <SelectValue placeholder="Todos os anos" />
         </SelectTrigger>
         <SelectContent>

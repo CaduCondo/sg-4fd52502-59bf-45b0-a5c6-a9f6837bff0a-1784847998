@@ -180,14 +180,6 @@ export function PaymentBreakdownCard({
   payment,
   rental,
 }: PaymentBreakdownCardProps) {
-  console.log("🔍 PaymentBreakdownCard Debug:", {
-    paymentStatus,
-    paidAmount,
-    calculatedTotal,
-    displayBreakdown,
-    isTerminationPayment
-  });
-
   // 🔥 CORREÇÃO CRÍTICA: Calcular finalTotal baseado no total do breakdown (que já considera sinais)
   const finalTotal = isTerminationPayment 
     ? calculatedTotal // Para rescisões, usar calculatedTotal diretamente (já vem com sinal correto)
@@ -195,22 +187,6 @@ export function PaymentBreakdownCard({
 
   const remainingDue = Math.max(0, Math.abs(finalTotal) - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
-
-  console.log("💰 PaymentBreakdownCard - Cálculos:", {
-    isTerminationPayment,
-    displayBreakdownTotal: displayBreakdown.total,
-    multa: values.multa,
-    juros: values.juros,
-    removeLateFee,
-    removeInterest,
-    multaAplicada: removeLateFee ? 0 : values.multa,
-    jurosAplicados: removeInterest ? 0 : values.juros,
-    discountAmount,
-    finalTotal,
-    paidAmount,
-    remainingDue,
-    paymentStatus
-  });
 
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
@@ -248,6 +224,7 @@ export function PaymentBreakdownCard({
                   
                   {isEditMode ? (
                     <Input
+                      id="breakdown-repair-expenses"
                       type="text"
                       placeholder="R$ 0,00"
                       value={repairExpensesInput}
@@ -274,7 +251,7 @@ export function PaymentBreakdownCard({
                     <div className="flex items-center gap-2">
                       {isEditMode && (
                         <Checkbox
-                          id="remove-late-fee-termination"
+                          id="breakdown-remove-late-fee-termination"
                           checked={removeLateFee}
                           onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
                           disabled={isReadOnly}
@@ -295,7 +272,7 @@ export function PaymentBreakdownCard({
                       <div className="flex items-center gap-2">
                         {isEditMode && (
                           <Checkbox
-                            id="remove-interest-termination"
+                            id="breakdown-remove-interest-termination"
                             checked={removeInterest}
                             onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
                             disabled={isReadOnly}
@@ -324,6 +301,7 @@ export function PaymentBreakdownCard({
                   
                   {isEditMode ? (
                     <Input
+                      id="breakdown-discount-termination"
                       type="text"
                       placeholder="R$ 0,00"
                       value={discountAmountInput}
@@ -405,7 +383,7 @@ export function PaymentBreakdownCard({
                     <div className="flex items-center gap-2">
                       {isEditMode && (
                         <Checkbox
-                          id="remove-late-fee"
+                          id="breakdown-remove-late-fee"
                           checked={removeLateFee}
                           onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
                           disabled={isReadOnly}
@@ -426,7 +404,7 @@ export function PaymentBreakdownCard({
                       <div className="flex items-center gap-2">
                         {isEditMode && (
                           <Checkbox
-                            id="remove-interest"
+                            id="breakdown-remove-interest"
                             checked={removeInterest}
                             onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
                             disabled={isReadOnly}
@@ -455,6 +433,7 @@ export function PaymentBreakdownCard({
                   
                   {isEditMode ? (
                     <Input
+                      id="breakdown-discount"
                       type="text"
                       placeholder="R$ 0,00"
                       value={discountAmountInput}
@@ -505,6 +484,7 @@ export function PaymentBreakdownCard({
         {isTerminationPayment && isEditMode && (
           <div className="flex justify-end pt-4 mt-2 border-t border-dashed">
             <Button 
+              id="breakdown-save-expenses"
               size="sm" 
               onClick={onSaveExpensesAndDiscount}
               disabled={isSaving}
