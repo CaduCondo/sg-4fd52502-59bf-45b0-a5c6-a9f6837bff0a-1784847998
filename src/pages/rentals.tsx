@@ -152,7 +152,6 @@ export default function RentalsPage() {
     }
 
     try {
-      // ✅ OTIMIZAÇÃO: 1 única query para todos os rentals
       const rentalIds = activeRentals.map(r => r.id);
       
       const { data: payments } = await supabase
@@ -161,7 +160,6 @@ export default function RentalsPage() {
         .in("rental_id", rentalIds)
         .ilike("notes", "%Rescisão de Contrato%");
       
-      // Mapear resultados
       const terminationMap: Record<string, boolean> = {};
       activeRentals.forEach(rental => {
         terminationMap[rental.id] = payments?.some(p => p.rental_id === rental.id) || false;
@@ -229,16 +227,13 @@ export default function RentalsPage() {
   const loadAdditionalData = useCallback(async () => {
     const now = Date.now();
     
-    // ✅ OTIMIZAÇÃO: Cache de 10 minutos
     if (dataCache.loaded && (now - dataCache.timestamp) < CACHE_DURATION) {
-      console.log("✅ Usando dados em cache");
       return;
     }
 
     try {
       setLoadingAdditionalData(true);
       
-      console.log("🔄 Carregando dados adicionais...");
       const [allPropertiesData, allTenantsData] = await Promise.all([
         getAllProperties(),
         getAllTenants(),
@@ -247,7 +242,6 @@ export default function RentalsPage() {
       setAllProperties(allPropertiesData);
       setAllTenants(allTenantsData);
       setDataCache({ loaded: true, timestamp: now });
-      console.log("✅ Dados adicionais carregados e em cache");
     } catch (error) {
       console.error("❌ Erro ao carregar dados adicionais:", error);
       toast({
@@ -859,7 +853,7 @@ export default function RentalsPage() {
     <>
       <SEO title="Locações - Gerenciador de Locações" />
       <Layout>
-        <div className="space-y-6">
+        <div id="rentals-page" className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
               <h1 className="text-4xl font-bold mb-2">Locações</h1>
@@ -868,6 +862,7 @@ export default function RentalsPage() {
             <div className="flex gap-3">
               <div className="flex border rounded-lg overflow-hidden">
                 <Button
+                  id="rentals-view-grid"
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
@@ -877,6 +872,7 @@ export default function RentalsPage() {
                   Grade
                 </Button>
                 <Button
+                  id="rentals-view-table"
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("table")}
@@ -886,7 +882,7 @@ export default function RentalsPage() {
                   Lista
                 </Button>
               </div>
-              <Button onClick={handleCreateNew} disabled={!canCreateRental}>
+              <Button id="rentals-new-button" onClick={handleCreateNew} disabled={!canCreateRental}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Locação
               </Button>
@@ -981,6 +977,7 @@ export default function RentalsPage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                      id="rentals-search-input"
                       placeholder="Buscar por inquilino, local ou complemento..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -998,7 +995,7 @@ export default function RentalsPage() {
                       value={statusFilter}
                       onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="rentals-status-filter">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1036,7 +1033,7 @@ export default function RentalsPage() {
                   </p>
                   {statusFilter === "all" && !searchTerm && (
                     <div className="flex justify-center">
-                      <Button onClick={handleCreateNew} disabled={!canCreateRental}>
+                      <Button id="rentals-create-first" onClick={handleCreateNew} disabled={!canCreateRental}>
                         <Plus className="mr-2 h-4 w-4" />
                         Nova Locação
                       </Button>
@@ -1136,6 +1133,7 @@ export default function RentalsPage() {
                             {rental.isActive && (
                               <div className="flex gap-1.5 flex-shrink-0">
                                 <Button
+                                  id={`rentals-history-${rental.id}`}
                                   variant="outline"
                                   size="icon"
                                   className="h-8 w-8 bg-gray-500 hover:bg-gray-600 text-white border-gray-500"
@@ -1148,6 +1146,7 @@ export default function RentalsPage() {
                                   <FileText className="h-4 w-4" />
                                 </Button>
                                 <Button
+                                  id={`rentals-renew-${rental.id}`}
                                   variant="outline"
                                   size="icon"
                                   className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
@@ -1160,6 +1159,7 @@ export default function RentalsPage() {
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
                                 <Button
+                                  id={`rentals-terminate-${rental.id}`}
                                   variant="outline"
                                   size="icon"
                                   className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
@@ -1172,6 +1172,7 @@ export default function RentalsPage() {
                                   <XCircle className="h-4 w-4" />
                                 </Button>
                                 <Button
+                                  id={`rentals-delete-${rental.id}`}
                                   variant="destructive"
                                   size="icon"
                                   className="h-8 w-8"
@@ -1262,7 +1263,7 @@ export default function RentalsPage() {
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent id="rentals-delete-confirm-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar exclusão da locação</AlertDialogTitle>
               <AlertDialogDescription className="space-y-4">
@@ -1278,8 +1279,9 @@ export default function RentalsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel className="w-full sm:w-auto">Não</AlertDialogCancel>
+              <AlertDialogCancel id="rentals-delete-cancel-1" className="w-full sm:w-auto">Não</AlertDialogCancel>
               <Button
+                id="rentals-delete-confirm-1"
                 onClick={() => {
                   if (paymentCounts && paymentCounts.pending > 0) {
                     setDeleteStep(2); // Ir para pergunta sobre pendentes
@@ -1309,7 +1311,7 @@ export default function RentalsPage() {
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent id="rentals-delete-pending-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>Deletar recebimentos pendentes?</AlertDialogTitle>
               <AlertDialogDescription className="space-y-4">
@@ -1319,6 +1321,7 @@ export default function RentalsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <Button
+                id="rentals-delete-pending-no"
                 onClick={() => {
                   setDeleteChoices(prev => ({ ...prev, pending: false }));
                   if (paymentCounts && paymentCounts.paid > 0) {
@@ -1333,6 +1336,7 @@ export default function RentalsPage() {
                 Não
               </Button>
               <Button
+                id="rentals-delete-pending-yes"
                 onClick={() => {
                   setDeleteChoices(prev => ({ ...prev, pending: true }));
                   if (paymentCounts && paymentCounts.paid > 0) {
@@ -1361,7 +1365,7 @@ export default function RentalsPage() {
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent id="rentals-delete-paid-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>Deletar recebimentos pagos/parciais?</AlertDialogTitle>
               <AlertDialogDescription className="space-y-4">
@@ -1378,6 +1382,7 @@ export default function RentalsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <Button
+                id="rentals-delete-paid-no"
                 onClick={() => {
                   setDeleteChoices(prev => ({ ...prev, paid: false }));
                   handleDeleteRental();
@@ -1388,6 +1393,7 @@ export default function RentalsPage() {
                 Não
               </Button>
               <Button
+                id="rentals-delete-paid-yes"
                 onClick={() => {
                   setDeleteChoices(prev => ({ ...prev, paid: true }));
                   handleDeleteRental();
@@ -1401,7 +1407,7 @@ export default function RentalsPage() {
         </AlertDialog>
 
         <AlertDialog open={!!rentalToRenew} onOpenChange={() => setRentalToRenew(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent id="rentals-renew-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Renovação</AlertDialogTitle>
               <AlertDialogDescription>
@@ -1409,8 +1415,8 @@ export default function RentalsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Não</AlertDialogCancel>
-              <AlertDialogAction onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
+              <AlertDialogCancel id="rentals-renew-cancel">Não</AlertDialogCancel>
+              <AlertDialogAction id="rentals-renew-confirm" onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
                 Sim
               </AlertDialogAction>
             </AlertDialogFooter>
