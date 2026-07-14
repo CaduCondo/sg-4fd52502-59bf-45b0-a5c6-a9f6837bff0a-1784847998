@@ -56,12 +56,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { Payment, Property, Rental, Tenant } from "@/types";
-import { formatCurrency } from "@/utils/formatCurrency";
+import { formatCurrency } from "@/lib/masks";
 
 type SortField = "installment" | "location" | "complement" | "tenant" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
 
 type ExpenseSortField = "location_name" | "description" | "amount";
+
+// Array de meses
+const months = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
 
 // Adicionar estilos para impressão
 const printStyles = `
@@ -1115,23 +1121,11 @@ export default function Financial() {
   }, [getSortedPayments, toast]);
 
   const handlePrintExpenses = () => {
-    if (!locationExpenses || locationExpenses.length === 0) return;
+    if (!filteredExpensesDetails || filteredExpensesDetails.length === 0) return;
 
-    const locationName = locationsMap.get(locationExpenses[0].locationId) || "Local não encontrado";
+    const locationName = filteredExpensesDetails[0]?.location_name || "Todos os Locais";
     const monthName = months[selectedMonth - 1];
-    const total = locationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-    const getExpenseTypeLabel = (type: string) => {
-      const labels: Record<string, string> = {
-        water: "Água",
-        electricity: "Luz",
-        gas: "Gás",
-        internet: "Internet",
-        maintenance: "Manutenção",
-        other: "Outros",
-      };
-      return labels[type] || type;
-    };
+    const total = filteredExpensesDetails.reduce((sum, exp) => sum + exp.amount, 0);
 
     // Criar conteúdo HTML para o pop-up
     const printContent = `
@@ -1214,18 +1208,16 @@ export default function Financial() {
           <table>
             <thead>
               <tr>
-                <th style="width: 100px;">Tipo</th>
-                <th>Descrição</th>
-                <th style="width: 100px;">Período</th>
-                <th class="text-right" style="width: 120px;">Valor</th>
+                <th style="width: 25%;">Local</th>
+                <th style="width: 50%;">Descrição</th>
+                <th class="text-right" style="width: 25%;">Valor</th>
               </tr>
             </thead>
             <tbody>
-              ${locationExpenses.map(expense => `
+              ${filteredExpensesDetails.map(expense => `
                 <tr>
-                  <td>${getExpenseTypeLabel(expense.expenseType)}</td>
+                  <td>${expense.location_name}</td>
                   <td>${expense.description || "-"}</td>
-                  <td>${months[expense.referenceMonth - 1]}/${expense.referenceYear}</td>
                   <td class="text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense.amount)}</td>
                 </tr>
               `).join("")}
