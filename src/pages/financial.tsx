@@ -88,49 +88,24 @@ const printStyles = `
     /* IMPRESSÃO DO DIALOG DE DESPESAS (PRIORIDADE 1) */
     /* ================================================== */
     
-    /* Esconder overlays e portals do Radix Dialog */
+    /* Quando dialog de despesas está aberto, esconder APENAS sidebar/nav/buttons */
+    body:has([data-expenses-dialog="true"]) aside,
+    body:has([data-expenses-dialog="true"]) nav,
+    body:has([data-expenses-dialog="true"]) header:not([data-expenses-dialog] header),
+    body:has([data-expenses-dialog="true"]) button,
     body:has([data-expenses-dialog="true"]) [data-radix-dialog-overlay],
-    body:has([data-expenses-dialog="true"]) [data-radix-portal] > div:first-child {
+    body:has([data-expenses-dialog="true"]) .no-print {
       display: none !important;
     }
     
-    /* Forçar portal a posição estática */
-    body:has([data-expenses-dialog="true"]) [data-radix-portal] {
-      position: static !important;
-      display: block !important;
-    }
-    
-    /* ESCONDER TUDO primeiro */
-    body:has([data-expenses-dialog="true"]) * {
-      visibility: hidden !important;
-    }
-    
-    /* MOSTRAR APENAS o dialog e seu conteúdo */
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"],
-    body:has([data-expenses-dialog="true"]) [data-expenses-dialog="true"] * {
-      visibility: visible !important;
-    }
-    
-    /* Forçar dialog ao topo absoluto */
+    /* Deixar dialog fluir naturalmente - SEM forçar posição */
     [data-expenses-dialog="true"] {
-      position: absolute !important;
       display: block !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: auto !important;
-      bottom: auto !important;
-      width: 100% !important;
       max-width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
-      margin: 0 !important;
-      padding: 40px 20px !important;
-      background: white !important;
+      margin: 20px auto !important;
+      padding: 20px !important;
       box-shadow: none !important;
       border: none !important;
-      transform: none !important;
-      z-index: auto !important;
-      inset: auto !important;
     }
     
     .print-expenses-title {
@@ -224,8 +199,15 @@ const printStyles = `
     /* ================================================== */
     /* IMPRESSÃO DA PÁGINA PRINCIPAL (quando dialog NÃO está aberto) */
     /* ================================================== */
-    body:not(:has([data-expenses-dialog="true"])) * {
-      visibility: hidden !important;
+    
+    /* Esconder APENAS sidebar/nav/buttons quando NÃO há dialog de despesas */
+    body:not(:has([data-expenses-dialog="true"])) aside,
+    body:not(:has([data-expenses-dialog="true"])) nav,
+    body:not(:has([data-expenses-dialog="true"])) header:not(.print-header),
+    body:not(:has([data-expenses-dialog="true"])) [role="navigation"],
+    body:not(:has([data-expenses-dialog="true"])) button,
+    body:not(:has([data-expenses-dialog="true"])) .no-print {
+      display: none !important;
     }
     
     body:not(:has([data-expenses-dialog="true"])) .print-header,
