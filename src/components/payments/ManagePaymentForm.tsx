@@ -852,8 +852,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           console.log("⚠️ RESCISÃO - Usando calculatedTotal como fallback:", expectedTotal);
         }
       } else {
-        expectedTotal = values.valorAPagar;
-        console.log("💰 PAGAMENTO NORMAL - Expected Total:", expectedTotal);
+        // 🔥 CORREÇÃO CRÍTICA: Incluir desconto no cálculo do expected_amount
+        expectedTotal = values.valorAPagar - discountAmount;
+        console.log("💰 PAGAMENTO NORMAL - Expected Total (com desconto):", {
+          valorAPagar: values.valorAPagar,
+          discountAmount: discountAmount,
+          expectedTotal: expectedTotal
+        });
       }
       
       console.log("📊 VALOR ESPERADO (expected_amount):", expectedTotal);
