@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Column<T> {
   key: string;
