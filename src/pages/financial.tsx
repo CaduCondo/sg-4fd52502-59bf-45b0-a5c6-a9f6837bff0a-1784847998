@@ -513,6 +513,52 @@ export default function Financial() {
     value: string;
   } | null>(null);
 
+  // Controlar impressão do dialog de despesas via JavaScript
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      if (showExpensesDialog) {
+        // Esconder TUDO
+        document.body.style.visibility = 'hidden';
+        // Mostrar APENAS o dialog de despesas
+        const dialog = document.querySelector('[data-expenses-dialog="true"]') as HTMLElement;
+        if (dialog) {
+          dialog.style.visibility = 'visible';
+          dialog.style.position = 'static';
+          dialog.style.maxHeight = 'none';
+          dialog.style.overflow = 'visible';
+          
+          // Garantir que todo o conteúdo do dialog seja visível
+          const allChildren = dialog.querySelectorAll('*');
+          allChildren.forEach((child) => {
+            (child as HTMLElement).style.visibility = 'visible';
+          });
+        }
+      }
+    };
+
+    const handleAfterPrint = () => {
+      // Restaurar visibilidade
+      document.body.style.visibility = '';
+      const dialog = document.querySelector('[data-expenses-dialog="true"]') as HTMLElement;
+      if (dialog) {
+        dialog.style.visibility = '';
+        dialog.style.position = '';
+        dialog.style.maxHeight = '';
+        dialog.style.overflow = '';
+      }
+    };
+
+    if (showExpensesDialog) {
+      window.addEventListener('beforeprint', handleBeforePrint);
+      window.addEventListener('afterprint', handleAfterPrint);
+    }
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [showExpensesDialog]);
+
   useEffect(() => {
     console.log("🔄 [Financial] Componente montando...");
     setMounted(true);

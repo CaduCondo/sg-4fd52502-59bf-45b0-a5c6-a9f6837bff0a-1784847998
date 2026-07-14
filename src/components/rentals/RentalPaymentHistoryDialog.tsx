@@ -40,6 +40,50 @@ export function RentalPaymentHistoryDialog({
   const complement = rental?.property?.complement || "-";
   const tenantName = rental?.tenant?.name || "-";
 
+  // Controlar impressão via JavaScript
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      // Esconder TUDO
+      document.body.style.visibility = 'hidden';
+      // Mostrar APENAS o dialog
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+      if (dialog) {
+        dialog.style.visibility = 'visible';
+        dialog.style.position = 'static';
+        dialog.style.maxHeight = 'none';
+        dialog.style.overflow = 'visible';
+        
+        // Garantir que todo o conteúdo do dialog seja visível
+        const allChildren = dialog.querySelectorAll('*');
+        allChildren.forEach((child) => {
+          (child as HTMLElement).style.visibility = 'visible';
+        });
+      }
+    };
+
+    const handleAfterPrint = () => {
+      // Restaurar visibilidade
+      document.body.style.visibility = '';
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+      if (dialog) {
+        dialog.style.visibility = '';
+        dialog.style.position = '';
+        dialog.style.maxHeight = '';
+        dialog.style.overflow = '';
+      }
+    };
+
+    if (open) {
+      window.addEventListener('beforeprint', handleBeforePrint);
+      window.addEventListener('afterprint', handleAfterPrint);
+    }
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (open && rental) {
       loadPayments();
@@ -116,33 +160,6 @@ export function RentalPaymentHistoryDialog({
 
   return (
     <>
-      {/* CSS DE IMPRESSÃO - SOLUÇÃO SIMPLES E DEFINITIVA */}
-      <style>{`
-        @media print {
-          @page {
-            size: landscape;
-            margin: 1cm;
-          }
-          
-          /* Esconder apenas elementos de navegação e overlay */
-          aside,
-          nav,
-          button,
-          [data-radix-dialog-overlay] {
-            display: none !important;
-          }
-          
-          /* Forçar dialog a expandir completamente para paginação natural */
-          [role="dialog"] {
-            max-height: none !important;
-            overflow: visible !important;
-            height: auto !important;
-            position: static !important;
-            transform: none !important;
-          }
-        }
-      `}</style>
-
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
