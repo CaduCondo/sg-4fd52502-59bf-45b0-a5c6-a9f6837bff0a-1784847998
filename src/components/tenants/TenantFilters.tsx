@@ -65,6 +65,7 @@ export const TenantFilters = memo(function TenantFilters({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              id="tenant-filters-search"
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -76,7 +77,7 @@ export const TenantFilters = memo(function TenantFilters({
         <div className="hidden lg:flex ml-auto">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[180px] h-10 justify-between">
+              <Button id="tenant-filters-status" variant="outline" className="w-[180px] h-10 justify-between">
                 <span className="truncate">{statusText}</span>
                 <Filter className="ml-2 h-4 w-4 shrink-0" />
               </Button>
@@ -89,6 +90,7 @@ export const TenantFilters = memo(function TenantFilters({
                     className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
                   >
                     <Checkbox
+                      id={`tenant-status-${option.value}`}
                       checked={statusFilter.includes(option.value)}
                       onCheckedChange={() => handleStatusToggle(option.value)}
                     />

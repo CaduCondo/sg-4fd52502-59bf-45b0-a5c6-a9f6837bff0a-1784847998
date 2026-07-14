@@ -96,19 +96,10 @@ export function RentalTerminationDialog({
 
     const fetchTotalDeposit = async () => {
       try {
-        console.log("\n\n");
-        console.log("💰 ========================================");
-        console.log("💰   BUSCA DE CAUÇÃO E DATA BASE POUPANÇA");
-        console.log("💰 ========================================");
-        console.log("📋 Rental ID:", rental.id);
-
         let totalDeposit = 0;
         let source = "";
         let lastPaidDate = "";
 
-        console.log("\n🔍 FONTE 1: Tabela deposit_installments");
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
@@ -117,70 +108,31 @@ export function RentalTerminationDialog({
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
-          console.log("✅ Total de parcelas encontradas:", installments.length);
-          console.log("\n📊 TODAS AS PARCELAS (ordem original do banco):");
-          
-          installments.forEach((inst, index) => {
-            const status = inst.payment_date ? `✅ PAGA em ${inst.payment_date}` : "⏳ PENDENTE";
-            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: R$ ${inst.amount.toFixed(2)} - ${status}`);
-          });
-
           const paidInstallments = installments
             .filter(inst => inst.payment_date)
             .sort((a, b) => b.installment_number - a.installment_number);
           
-          console.log("\n🎯 PARCELAS PAGAS (ordenadas: MAIOR → menor):");
           if (paidInstallments.length > 0) {
-            paidInstallments.forEach((inst, index) => {
-              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
-            });
-            
             const lastPaidInstallment = paidInstallments[0];
             lastPaidDate = lastPaidInstallment.payment_date;
-            
-            console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
-            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
-            console.log(`   • Número da Parcela: ${lastPaidInstallment.installment_number}`);
-            console.log(`   • Valor: R$ ${lastPaidInstallment.amount.toFixed(2)}`);
-            console.log(`   • Data de Pagamento: ${lastPaidDate}`);
-            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            console.log("📅 ESTA DATA SERÁ USADA COMO BASE PARA CORREÇÃO POUPANÇA");
-            console.log("💡 Quanto mais recente a data, MENOR a correção (mais barato)");
-            console.log("🔥🔥🔥 FIM DA CONFIRMAÇÃO 🔥🔥🔥\n");
           } else {
-            console.log("⚠️ Nenhuma parcela paga ainda");
             lastPaidDate = rental.startDate;
-            console.log(`📅 Usando data início do contrato como base: ${lastPaidDate}`);
           }
 
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
           source = "deposit_installments (tabela de parcelas)";
-          console.log(`\n💰 SOMA TOTAL DAS PARCELAS: R$ ${totalDeposit.toFixed(2)}`);
-          
-          console.warn(
-            `🚨 ATENÇÃO - CAUÇÃO CALCULADO:\n` +
-            `   • Parcelas encontradas: ${installments.length}\n` +
-            `   • Total calculado: R$ ${totalDeposit.toFixed(2)}\n` +
-            `   • Detalhes: ${installments.map(i => `Parcela ${i.installment_number} = R$ ${(i.amount || 0).toFixed(2)}`).join(', ')}`
-          );
-        } else {
-          console.log("⚠️ Nenhuma parcela encontrada");
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 2: Campo security_deposit");
           const securityDepositValue = Number(rental.security_deposit) || 0;
           if (securityDepositValue > 0) {
             totalDeposit = securityDepositValue;
             source = "security_deposit";
             lastPaidDate = rental.startDate;
-            console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
           }
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 3: Campo deposit_value");
           const { data: rentalData } = await supabase
             .from("rentals")
             .select("deposit_value")
@@ -193,46 +145,20 @@ export function RentalTerminationDialog({
               totalDeposit = depositValue;
               source = "deposit_value";
               lastPaidDate = rental.startDate;
-              console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
             }
           }
         }
-
-        console.log("\n💰 ========================================");
-        console.log("💰   RESULTADO FINAL DA BUSCA");
-        console.log("💰 ========================================");
-        if (totalDeposit > 0) {
-          console.log(`✅ Caução encontrado: R$ ${totalDeposit.toFixed(2)}`);
-          console.log(`📍 Fonte: ${source}`);
-          console.log(`📅 Data base: ${lastPaidDate}`);
-        } else {
-          console.error("❌ NENHUM VALOR DE CAUÇÃO ENCONTRADO!");
-        }
-        console.log("💰 ========================================\n");
 
         setDepositAmount(totalDeposit);
         setLastInstallmentDate(lastPaidDate);
         
         if (totalDeposit > 0 && lastPaidDate) {
-          console.log("\n📈 ========================================");
-          console.log("📈   APLICAÇÃO DA CORREÇÃO POUPANÇA");
-          console.log("📈 ========================================");
-          console.log(`💰 Valor original: R$ ${totalDeposit.toFixed(2)}`);
-          console.log(`📅 Data base (última parcela): ${lastPaidDate}`);
-          console.log(`📅 Data rescisão (hoje): ${format(today, "yyyy-MM-dd")}`);
-          
           try {
             const poupancaCorrection = calculateCorrectedDeposit(
               totalDeposit,
               lastPaidDate,
               format(today, "yyyy-MM-dd")
             );
-            
-            console.log(`✅ Valor corrigido: R$ ${poupancaCorrection.correctedAmount.toFixed(2)}`);
-            console.log(`📊 Percentual Poupança: +${poupancaCorrection.poupancaPercentage.toFixed(4)}%`);
-            console.log(`📋 Detalhes: ${poupancaCorrection.poupancaDetails}`);
-            console.log(`💡 ECONOMIA: Quanto mais recente a data base, menor o valor corrigido (melhor para vocês!)`);
-            console.log("📈 ========================================\n");
             
             setCorrectedDepositAmount(poupancaCorrection.correctedAmount);
             setPoupancaPercentage(poupancaCorrection.poupancaPercentage);
@@ -286,13 +212,6 @@ export function RentalTerminationDialog({
       // Data de vencimento do mês atual
       const dueDateOfTerminationMonth = new Date(terminationYear, terminationMonth, paymentDay);
       
-      console.log("\n🔍 ========================================");
-      console.log("🔍   CÁLCULO DE DIAS PROPORCIONAIS (FRONTEND)");
-      console.log("🔍 ========================================");
-      console.log("📅 Data de rescisão:", format(termDate, "dd/MM/yyyy"));
-      console.log("📅 Dia de vencimento:", paymentDay);
-      console.log("📅 Data de vencimento do mês atual:", format(dueDateOfTerminationMonth, "dd/MM/yyyy"));
-      
       let daysUsed = 0;
       let lastPaymentDate: Date;
       let fullMonth = 0;
@@ -300,43 +219,19 @@ export function RentalTerminationDialog({
       let afterDue = false;
 
       if (termDate >= dueDateOfTerminationMonth) {
-        // Rescisão APÓS o vencimento do mês atual
         afterDue = true;
         lastPaymentDate = dueDateOfTerminationMonth;
-        
-        console.log("✅ RESCISÃO APÓS VENCIMENTO:");
-        console.log(`  Último vencimento: ${format(lastPaymentDate, "dd/MM/yyyy")}`);
-        
-        // Mês cheio + dias extras
         fullMonth = monthlyRent;
         daysUsed = differenceInDays(termDate, lastPaymentDate) + 1;
         proportional = (monthlyRent / 30) * daysUsed;
-        
-        console.log(`  Mês cheio: R$ ${fullMonth.toFixed(2)}`);
-        console.log(`  Dias extras (${format(lastPaymentDate, "dd/MM/yyyy")} até ${format(termDate, "dd/MM/yyyy")}): ${daysUsed} dias`);
-        console.log(`  Valor proporcional dias extras: R$ ${proportional.toFixed(2)}`);
       } else {
-        // Rescisão ANTES do vencimento do mês atual
         afterDue = false;
-        
-        // Calcular último vencimento (mês anterior)
         const previousMonth = terminationMonth === 0 ? 11 : terminationMonth - 1;
         const previousYear = terminationMonth === 0 ? terminationYear - 1 : terminationYear;
         lastPaymentDate = new Date(previousYear, previousMonth, paymentDay);
-        
-        console.log("✅ RESCISÃO ANTES DO VENCIMENTO:");
-        console.log(`  Último vencimento: ${format(lastPaymentDate, "dd/MM/yyyy")}`);
-        
-        // Apenas proporcional desde o último vencimento
         daysUsed = differenceInDays(termDate, lastPaymentDate) + 1;
         proportional = (monthlyRent / 30) * daysUsed;
-        
-        console.log(`  Período: ${format(lastPaymentDate, "dd/MM/yyyy")} até ${format(termDate, "dd/MM/yyyy")}`);
-        console.log(`  Total de dias: ${daysUsed}`);
-        console.log(`  Valor proporcional: R$ ${proportional.toFixed(2)}`);
       }
-      
-      console.log("🔍 ========================================\n");
       
       setProportionalDays(daysUsed);
       setProportionalRent(proportional);
@@ -387,15 +282,6 @@ export function RentalTerminationDialog({
       // SEMPRE usar o valor corrigido quando disponível
       const finalDepositAmount = correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount;
       
-      console.log("\n🎯 ========================================");
-      console.log("🎯   CONFIRMAÇÃO DE RESCISÃO - VALORES");
-      console.log("🎯 ========================================");
-      console.log("💰 Valor original do caução:", depositAmount.toFixed(2));
-      console.log("💰 Correção Poupança (%):", poupancaPercentage.toFixed(4));
-      console.log("💰 Valor corrigido do caução:", correctedDepositAmount.toFixed(2));
-      console.log("✅ VALOR FINAL ENVIADO:", finalDepositAmount.toFixed(2));
-      console.log("🎯 ========================================\n");
-
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
@@ -614,7 +500,7 @@ export function RentalTerminationDialog({
               <div className="space-y-2">
                 <div className="flex items-start space-x-2">
                   <Checkbox
-                    id="apply-full-penalty"
+                    id="termination-apply-full-penalty"
                     checked={applyFullContractPenalty}
                     onCheckedChange={(checked) => {
                       setApplyFullContractPenalty(checked as boolean);
@@ -622,7 +508,7 @@ export function RentalTerminationDialog({
                     }}
                   />
                   <div className="grid gap-1 leading-none">
-                    <Label htmlFor="apply-full-penalty" className="cursor-pointer font-normal">
+                    <Label htmlFor="termination-apply-full-penalty" className="cursor-pointer font-normal">
                       Multa Proporcional ao Tempo Restante
                     </Label>
                     <p className="text-xs text-muted-foreground">
@@ -633,7 +519,7 @@ export function RentalTerminationDialog({
 
                 <div className="flex items-start space-x-2">
                   <Checkbox
-                    id="apply-12months-penalty"
+                    id="termination-apply-12months-penalty"
                     checked={apply12MonthsPenalty}
                     onCheckedChange={(checked) => {
                       setApply12MonthsPenalty(checked as boolean);
@@ -643,7 +529,7 @@ export function RentalTerminationDialog({
                   />
                   <div className="grid gap-1 leading-none">
                     <Label 
-                      htmlFor="apply-12months-penalty" 
+                      htmlFor="termination-apply-12months-penalty" 
                       className={`cursor-pointer font-normal ${currentMonth >= 12 ? "opacity-50" : ""}`}
                     >
                       Multa Cláusula 12 Meses
@@ -686,6 +572,7 @@ export function RentalTerminationDialog({
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
+              id="termination-cancel"
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -694,6 +581,7 @@ export function RentalTerminationDialog({
               Cancelar
             </Button>
             <Button
+              id="termination-confirm"
               type="button"
               onClick={handleConfirm}
               disabled={!terminationDate || isSubmitting}

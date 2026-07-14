@@ -266,6 +266,7 @@ export function PermissionsTab({
           </CardHeader>
           <CardContent className="pb-3 flex flex-col justify-center items-center h-[120px]">
             <Button 
+              id="permissions-admin-fee-exemption"
               variant="outline" 
               className="w-full max-w-xs gap-2"
               onClick={openManagementFeeExemptionDialog}
@@ -293,6 +294,7 @@ export function PermissionsTab({
           </CardHeader>
           <CardContent className="pb-3 flex flex-col justify-center items-center h-[120px]">
             <Button 
+              id="permissions-management-fee-exemption"
               variant="outline" 
               className="w-full max-w-xs gap-2"
               onClick={openAdminFeeExemptionDialog}
@@ -338,6 +340,7 @@ export function PermissionsTab({
                       </div>
                     </div>
                     <Button 
+                      id={`permissions-location-${user.id}`}
                       variant="outline" 
                       size="sm" 
                       className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
@@ -354,7 +357,7 @@ export function PermissionsTab({
 
       {/* Dialog de Permissões de Local */}
       <Dialog open={isLocationPermissionsDialogOpen} onOpenChange={setIsLocationPermissionsDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent id="permissions-location-dialog" className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base">Permissões de Locais - {selectedUserForLocations?.name}</DialogTitle>
             <DialogDescription className="text-xs">Selecione os locais que este usuário pode visualizar</DialogDescription>
@@ -369,11 +372,11 @@ export function PermissionsTab({
                 {locations.map((location) => (
                   <div key={location.id} className="flex items-center gap-2 p-2 border rounded hover:bg-accent/50">
                     <Checkbox
-                      id={`loc-${location.id}`}
+                      id={`permissions-location-checkbox-${location.id}`}
                       checked={userLocationPermissions.includes(location.id)}
                       onCheckedChange={() => handleToggleLocationPermission(location.id)}
                     />
-                    <label htmlFor={`loc-${location.id}`} className="flex-1 cursor-pointer">
+                    <label htmlFor={`permissions-location-checkbox-${location.id}`} className="flex-1 cursor-pointer">
                       <p className="font-medium text-sm">{location.name}</p>
                       <p className="text-xs text-muted-foreground">{location.city}, {location.state}</p>
                     </label>
@@ -383,10 +386,10 @@ export function PermissionsTab({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLocationPermissionsDialogOpen(false)}>
+            <Button id="permissions-location-cancel" variant="outline" onClick={() => setIsLocationPermissionsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveLocationPermissions} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button id="permissions-location-save" onClick={handleSaveLocationPermissions} className="bg-emerald-600 hover:bg-emerald-700">
               Salvar
             </Button>
           </DialogFooter>

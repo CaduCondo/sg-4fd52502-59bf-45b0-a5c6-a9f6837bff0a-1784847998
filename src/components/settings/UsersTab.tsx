@@ -171,7 +171,7 @@ export function UsersTab({
               <CardTitle>Usuários do Sistema</CardTitle>
               <CardDescription>Gerencie os usuários e suas permissões de acesso</CardDescription>
             </div>
-            <Button onClick={handleAddUser} className="gap-2">
+            <Button id="users-add-button" onClick={handleAddUser} className="gap-2">
               <Plus className="h-4 w-4" />
               Adicionar Usuário
             </Button>
@@ -227,19 +227,19 @@ export function UsersTab({
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button id={`users-actions-${user.id}`} variant="ghost" size="sm">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                              <DropdownMenuItem id={`users-edit-${user.id}`} onClick={() => handleEditUser(user)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
                               
                               {/* Mostrar Desbloquear quando bloqueado temporariamente */}
                               {status.type === "blocked_temp" && (
-                                <DropdownMenuItem onClick={() => handleUnblock(user.id)}>
+                                <DropdownMenuItem id={`users-unblock-${user.id}`} onClick={() => handleUnblock(user.id)}>
                                   <CheckCircle className="mr-2 h-4 w-4" />
                                   Desbloquear
                                 </DropdownMenuItem>
@@ -247,7 +247,7 @@ export function UsersTab({
                               
                               {/* Mostrar Ativar/Desativar apenas quando NÃO bloqueado temporariamente */}
                               {status.type !== "blocked_temp" && (
-                                <DropdownMenuItem onClick={() => handleToggleActive(user.id)}>
+                                <DropdownMenuItem id={`users-toggle-${user.id}`} onClick={() => handleToggleActive(user.id)}>
                                   {user.active ? (
                                     <>
                                       <Ban className="mr-2 h-4 w-4" />
@@ -262,12 +262,12 @@ export function UsersTab({
                                 </DropdownMenuItem>
                               )}
                               
-                              <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
+                              <DropdownMenuItem id={`users-reset-password-${user.id}`} onClick={() => handleResetPassword(user.id)}>
                                 <Key className="mr-2 h-4 w-4" />
                                 Resetar Senha
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleDeleteClick(user)} className="text-red-600">
+                              <DropdownMenuItem id={`users-delete-${user.id}`} onClick={() => handleDeleteClick(user)} className="text-red-600">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
                               </DropdownMenuItem>
@@ -292,7 +292,7 @@ export function UsersTab({
       />
 
       <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent id="users-delete-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
@@ -300,8 +300,8 @@ export function UsersTab({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogCancel id="users-delete-cancel">Cancelar</AlertDialogCancel>
+            <AlertDialogAction id="users-delete-confirm" onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

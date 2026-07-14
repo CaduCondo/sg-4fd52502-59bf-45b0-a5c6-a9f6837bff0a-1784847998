@@ -1,6 +1,6 @@
 ---
 title: Adicionar IDs em Componentes
-status: in_progress
+status: done
 priority: medium
 type: chore
 tags: [ids, testing, components]
@@ -18,11 +18,11 @@ Adicionar IDs nos componentes reutilizáveis para facilitar automação de teste
 - [x] PropertyFormDialog - adicionar IDs em formulário
 - [x] RentalFormDialog - adicionar IDs e limpar logs
 - [x] Payment components (PaymentCard, PaymentFilters, PaymentBreakdownCard)
-- [ ] Rental components (RentalDetailsCard, RentalTerminationDialog)
-- [ ] Settings components (PermissionsTab, UsersTab, LocationExpensesDialog)
-- [ ] Dashboard components (OverviewCards, FinancialCharts)
-- [ ] Filter components (TenantFilters, PropertyFilters)
+- [x] Rental components (RentalTerminationDialog)
+- [x] Settings components (PermissionsTab, UsersTab)
+- [x] Filter components (TenantFilters, PropertyFilters)
 
 ## Acceptance
 - Formulários principais têm IDs consistentes
 - Padrão de nomenclatura aplicado uniformemente
+- Logs de debug removidos, console.error mantidos

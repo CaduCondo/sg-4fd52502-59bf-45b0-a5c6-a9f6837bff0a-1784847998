@@ -119,6 +119,7 @@ export const PropertyFilters = memo(function PropertyFilters({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              id="property-filters-search"
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -131,7 +132,7 @@ export const PropertyFilters = memo(function PropertyFilters({
         <div className="grid grid-cols-2 gap-2 lg:hidden w-full">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="justify-between h-10 text-xs px-2">
+              <Button id="property-filters-location-mobile" variant="outline" className="justify-between h-10 text-xs px-2">
                 <LocationFilterButton 
                   selectedLocations={selectedLocations}
                   locations={locations}
@@ -148,6 +149,7 @@ export const PropertyFilters = memo(function PropertyFilters({
               {selectedLocations.length > 0 && (
                 <div className="border-t p-2">
                   <Button
+                    id="property-filters-clear-mobile"
                     variant="ghost"
                     size="sm"
                     className="w-full h-8"
@@ -161,7 +163,7 @@ export const PropertyFilters = memo(function PropertyFilters({
           </Popover>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-10 text-xs px-2">
+            <SelectTrigger id="property-filters-status-mobile" className="h-10 text-xs px-2">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -177,7 +179,7 @@ export const PropertyFilters = memo(function PropertyFilters({
         <div className="hidden lg:flex gap-3 ml-auto">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[160px] justify-between h-10">
+              <Button id="property-filters-location-desktop" variant="outline" className="w-[160px] justify-between h-10">
                 <LocationFilterButton 
                   selectedLocations={selectedLocations}
                   locations={locations}
@@ -194,6 +196,7 @@ export const PropertyFilters = memo(function PropertyFilters({
               {selectedLocations.length > 0 && (
                 <div className="border-t p-2">
                   <Button
+                    id="property-filters-clear-desktop"
                     variant="ghost"
                     size="sm"
                     className="w-full h-8"
@@ -207,7 +210,7 @@ export const PropertyFilters = memo(function PropertyFilters({
           </Popover>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-10">
+            <SelectTrigger id="property-filters-status-desktop" className="w-[140px] h-10">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
