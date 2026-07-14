@@ -40,50 +40,6 @@ export function RentalPaymentHistoryDialog({
   const complement = rental?.property?.complement || "-";
   const tenantName = rental?.tenant?.name || "-";
 
-  // Controlar impressão via JavaScript
-  useEffect(() => {
-    const handleBeforePrint = () => {
-      // Esconder TUDO
-      document.body.style.visibility = 'hidden';
-      // Mostrar APENAS o dialog
-      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
-      if (dialog) {
-        dialog.style.visibility = 'visible';
-        dialog.style.position = 'static';
-        dialog.style.maxHeight = 'none';
-        dialog.style.overflow = 'visible';
-        
-        // Garantir que todo o conteúdo do dialog seja visível
-        const allChildren = dialog.querySelectorAll('*');
-        allChildren.forEach((child) => {
-          (child as HTMLElement).style.visibility = 'visible';
-        });
-      }
-    };
-
-    const handleAfterPrint = () => {
-      // Restaurar visibilidade
-      document.body.style.visibility = '';
-      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
-      if (dialog) {
-        dialog.style.visibility = '';
-        dialog.style.position = '';
-        dialog.style.maxHeight = '';
-        dialog.style.overflow = '';
-      }
-    };
-
-    if (open) {
-      window.addEventListener('beforeprint', handleBeforePrint);
-      window.addEventListener('afterprint', handleAfterPrint);
-    }
-
-    return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, [open]);
-
   useEffect(() => {
     if (open && rental) {
       loadPayments();
@@ -155,7 +111,148 @@ export function RentalPaymentHistoryDialog({
   );
 
   const handlePrint = () => {
-    window.print();
+    // Criar conteúdo HTML para o pop-up
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Histórico de Pagamentos</title>
+          <style>
+            @page {
+              size: landscape;
+              margin: 1cm;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 20px;
+            }
+            .info-box {
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              padding: 16px;
+              background: #f9f9f9;
+              margin-bottom: 20px;
+            }
+            .info-box div {
+              margin-bottom: 8px;
+              font-size: 14px;
+            }
+            .info-box strong {
+              font-weight: 600;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 12px 8px;
+              text-align: center;
+              font-size: 14px;
+            }
+            th {
+              background-color: #f0f0f0;
+              font-weight: 600;
+            }
+            .status-pago {
+              background-color: #dcfce7;
+              color: #15803d;
+              border: 1px solid #86efac;
+              padding: 4px 12px;
+              border-radius: 4px;
+              display: inline-block;
+            }
+            .status-pendente {
+              background-color: #fee2e2;
+              color: #991b1b;
+              border: 1px solid #fca5a5;
+              padding: 4px 12px;
+              border-radius: 4px;
+              display: inline-block;
+            }
+            .total-row {
+              font-weight: bold;
+              background-color: #f9f9f9;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .text-green {
+              color: #15803d;
+              font-weight: 600;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Histórico de Pagamentos</h1>
+          
+          <div class="info-box">
+            <div><strong>Local:</strong> ${location}</div>
+            <div><strong>Complemento:</strong> ${complement}</div>
+            <div><strong>Nome Inquilino:</strong> ${tenantName}</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Parcela</th>
+                <th>Vencimento</th>
+                <th>Pagamento</th>
+                <th>Status</th>
+                <th class="text-right">Valor Esperado</th>
+                <th class="text-right">Valor Pago</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedPayments.map(payment => `
+                <tr>
+                  <td>${payment.installment_number}</td>
+                  <td>${new Date(payment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                  <td>${payment.payment_date ? new Date(payment.payment_date + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
+                  <td>
+                    <span class="${payment.status === "pago" ? "status-pago" : "status-pendente"}">
+                      ${payment.status === "pago" ? "Pago" : "Pendente"}
+                    </span>
+                  </td>
+                  <td class="text-right">${formatCurrency(payment.expected_amount)}</td>
+                  <td class="text-right text-green">
+                    ${payment.status === "pago" ? formatCurrency(payment.amount_paid) : "-"}
+                  </td>
+                </tr>
+              `).join("")}
+              <tr class="total-row">
+                <td colspan="5" class="text-right">Total Pago:</td>
+                <td class="text-right text-green">${formatCurrency(totalPaid)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    // Abrir pop-up
+    const printWindow = window.open("", "_blank", "width=1200,height=800");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+    }
   };
 
   return (
