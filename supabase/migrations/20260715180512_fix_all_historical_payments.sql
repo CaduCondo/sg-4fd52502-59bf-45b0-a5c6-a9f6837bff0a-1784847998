@@ -37,7 +37,7 @@ BEGIN
         rental_record.id, 
         jan2026_payment.expected_amount;
 
-      -- Atualizar TODOS os pagamentos ≤ dezembro/2025
+      -- Atualizar TODOS os pagamentos ≤ dezembro/2025 COM STATUS PENDING
       WITH updated AS (
         UPDATE payments
         SET 
@@ -50,6 +50,7 @@ BEGIN
             OR (reference_year = 2026 AND reference_month = 12)
           )
           AND due_date <= '2025-12-31'
+          AND status = 'pending'  -- ✅ CRÍTICO: Não tocar em pagamentos pagos
         RETURNING *
       )
       SELECT COUNT(*) INTO affected_count FROM updated;
