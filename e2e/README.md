@@ -273,3 +273,179 @@ Principais configurações:
 **Pronto para começar!** 🚀
 
 Execute `npm run test:e2e:ui` e veja a mágica acontecer!
+
+---
+
+# Testes E2E com Playwright + Cucumber (Gherkin)
+
+Sistema profissional de testes automatizados usando **Cucumber + Gherkin**, **Page Object Model**, e **testes de API/Database**.
+
+## 🏗️ Arquitetura
+
+```
+e2e/
+├── features/                      # Arquivos Gherkin (.feature)
+│   ├── 1-autenticacao.feature
+│   ├── 2-permissoes-admin.feature
+│   ├── 3-permissoes-financeiro.feature
+│   ├── 4-permissoes-gestao.feature
+│   ├── 5-imoveis-crud.feature
+│   ├── 6-inquilinos-crud.feature
+│   ├── 7-locacoes-regras.feature
+│   ├── 8-pagamentos-calculos.feature
+│   └── 9-regressao-visual.feature
+├── step-definitions/              # Implementação dos steps
+│   ├── common.steps.ts
+│   ├── login.steps.ts
+│   └── ...
+├── pages/                         # Page Object Model
+├── helpers/                       # Helpers (Auth, API, DB)
+├── config/                        # Configurações
+└── reports/                       # Relatórios HTML/JSON
+```
+
+## 🎯 Cobertura de Testes Gherkin
+
+### 📝 Features Implementadas:
+
+1. **Autenticação** (7 cenários)
+   - Login com diferentes perfis
+   - Recuperação de senha
+   - Logout
+
+2. **Permissões Admin** (8 cenários)
+   - Acesso a todos os menus
+   - Gerenciar usuários
+   - Editar permissões
+
+3. **Permissões Financeiro** (7 cenários + 5 exemplos)
+   - Acesso limitado (Dashboard + Financeiro)
+   - Bloqueio de outras páginas
+
+4. **Permissões Gestão** (6 cenários)
+   - Acesso a operações
+   - Bloqueio de Financeiro e Configurações
+
+5. **Imóveis CRUD** (12 cenários)
+   - Criar, editar, deletar
+   - Filtros e validações
+   - Alternância de visualização
+
+6. **Inquilinos CRUD** (10 cenários)
+   - CPF/CNPJ com máscaras
+   - Busca de CEP
+   - Validações
+
+7. **Locações - Regras de Negócio** (8 cenários)
+   - Caução e parcelamento
+   - Geração automática de pagamentos
+   - Encerramento antecipado
+
+8. **Pagamentos - Cálculos** (10 cenários)
+   - Cálculos de taxa
+   - Recibos
+   - Filtros
+
+9. **Regressão Visual** (8 cenários)
+   - Garantir que mudanças em uma página não afetam outras
+   - Layout consistente
+   - Responsividade
+
+**Total: ~60 cenários em Gherkin**
+
+## 🚀 Como Executar
+
+### Executar testes Gherkin:
+```bash
+npm run test:cucumber
+```
+
+### Com navegador visível:
+```bash
+npm run test:cucumber:headed
+```
+
+### Gerar relatório HTML:
+```bash
+npm run test:cucumber:report
+```
+
+### Executar feature específica:
+```bash
+npx cucumber-js e2e/features/1-autenticacao.feature
+```
+
+### Executar cenário específico (por linha):
+```bash
+npx cucumber-js e2e/features/2-permissoes-admin.feature:15
+```
+
+## 📝 Exemplo de Gherkin
+
+```gherkin
+# language: pt
+Funcionalidade: Autenticação de Usuários
+  Como um usuário do sistema
+  Quero fazer login com minhas credenciais
+  Para acessar o sistema
+
+  Cenário: Login com sucesso
+    Dado que estou na página de login
+    Quando preencho o campo "Usuário" com "admin@teste.com"
+    E preencho o campo "Senha" com "Admin@123"
+    E clico no botão "Entrar"
+    Então devo ser redirecionado para "/dashboard"
+```
+
+## 🔧 Criar Novos Testes Gherkin
+
+### 1. Criar arquivo .feature:
+```gherkin
+# e2e/features/minha-feature.feature
+# language: pt
+Funcionalidade: Minha Nova Funcionalidade
+  
+  Cenário: Meu cenário
+    Dado que ...
+    Quando ...
+    Então ...
+```
+
+### 2. Implementar steps (se necessário):
+```typescript
+// e2e/step-definitions/minha-feature.steps.ts
+import { Given, When, Then } from '@cucumber/cucumber';
+
+Given('que estou...', async function() {
+  // implementação
+});
+```
+
+### 3. Executar:
+```bash
+npm run test:cucumber
+```
+
+## 📊 Relatórios
+
+Após executar, veja:
+- `e2e/reports/cucumber-report.html` - Relatório visual
+- `e2e/reports/cucumber-report.json` - Dados JSON
+
+## ✨ Vantagens do Gherkin
+
+1. ✅ **Linguagem natural** - Qualquer um pode ler
+2. ✅ **Documentação viva** - Os testes SÃO a documentação
+3. ✅ **Reutilização** - Steps são reutilizáveis entre cenários
+4. ✅ **Colaboração** - PO, QA e Dev falam a mesma língua
+5. ✅ **Manutenção** - Alterar comportamento = alterar o Gherkin
+
+---
+
+**Continua válido:**
+- Testes Playwright antigos em `e2e/*.spec.ts`
+- Execute com `npm run test:e2e`
+
+**Novidade:**
+- Testes Gherkin em `e2e/features/*.feature`
+- Execute com `npm run test:cucumber`

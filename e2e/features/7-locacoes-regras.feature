@@ -1,0 +1,82 @@
+# language: pt
+Funcionalidade: Regras de Negócio de Locações
+  Como um usuário autorizado
+  Quero gerenciar locações
+  Para garantir que as regras de negócio sejam aplicadas corretamente
+
+  Contexto:
+    Dado que fiz login como "admin"
+    E estou na página "/rentals"
+
+  Cenário: Criar locação - Validar imóvel disponível
+    Quando clico no botão "Nova Locação"
+    E seleciono um imóvel que está "Ocupado"
+    Então devo ver uma mensagem de erro
+    E não devo poder continuar
+
+  Cenário: Criar locação - Caução obrigatória
+    Quando clico no botão "Nova Locação"
+    E preencho todos os campos obrigatórios
+    E NÃO preencho o valor da caução
+    E tento salvar
+    Então devo ver a mensagem "Caução é obrigatória"
+
+  Cenário: Criar locação - Parcelamento de caução
+    Quando clico no botão "Nova Locação"
+    E preencho o valor da caução com "5000.00"
+    E marco a opção "Parcelar caução"
+    E seleciono "5 parcelas"
+    Então devo ver que cada parcela será de "1000.00"
+    E a primeira parcela deve vencer na data de início do contrato
+
+  Cenário: Criar locação - Caução integral
+    Quando clico no botão "Nova Locação"
+    E preencho o valor da caução com "5000.00"
+    E NÃO marco a opção "Parcelar caução"
+    Então o valor total da caução deve ser "5000.00"
+    E deve vencer na data de início do contrato
+
+  Cenário: Criar locação - Garagem opcional
+    Quando clico no botão "Nova Locação"
+    E marco a opção "Possui garagem"
+    Então devo ver o campo "Valor da garagem"
+    E devo poder preencher o valor
+
+  Cenário: Criar locação - Corretor parceiro
+    Quando clico no botão "Nova Locação"
+    E marco a opção "Corretor parceiro"
+    Então devo ver os campos:
+      | campo           |
+      | Nome do corretor|
+      | Taxa (%)        |
+
+  Cenário: Criar locação - Gerar pagamentos automaticamente
+    Dado que existe um imóvel disponível "IMO-001" com aluguel de "2500.00"
+    E existe um inquilino "João Silva"
+    Quando crio uma locação com:
+      | campo          | valor      |
+      | Imóvel         | IMO-001    |
+      | Inquilino      | João Silva |
+      | Dia vencimento | 10         |
+      | Data início    | 01/01/2026 |
+      | Data fim       | 31/12/2026 |
+    Então devem ser criados 12 pagamentos
+    E cada pagamento deve ter valor de "2500.00"
+    E todos os pagamentos devem vencer no dia 10
+
+  Cenário: Editar locação - Atualizar valor do aluguel
+    Dado que existe uma locação ativa
+    Quando edito a locação
+    E altero o valor do aluguel de "2500.00" para "2800.00"
+    E salvo as alterações
+    Então os pagamentos futuros devem ser atualizados para "2800.00"
+    E os pagamentos já pagos devem manter o valor original
+
+  Cenário: Encerrar locação antecipadamente
+    Dado que existe uma locação ativa com término em "31/12/2026"
+    Quando clico em "Encerrar Locação"
+    E preencho a data de encerramento com "30/06/2026"
+    E confirmo o encerramento
+    Então a data de término deve ser atualizada para "30/06/2026"
+    E os pagamentos após "30/06/2026" devem ser cancelados
+    E o imóvel deve ficar "Disponível"
