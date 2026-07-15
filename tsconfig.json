@@ -35,6 +35,9 @@
   "exclude": [
     "node_modules",
     "supabase/functions",
-    "src/services/__tests__"
+    "src/services/__tests__",
+    "e2e",
+    "playwright-report",
+    "test-results"
   ]
 }
