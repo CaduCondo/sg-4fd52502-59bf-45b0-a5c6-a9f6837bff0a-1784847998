@@ -10,17 +10,33 @@ export default defineConfig({
   /* Executar testes em paralelo */
   fullyParallel: true,
   
+  /* IMPORTANTE: NÃO parar testes ao encontrar erros - continuar executando */
+  maxFailures: 0, // 0 = nunca para, continua até o fim
+  
   /* Falhar no CI se você acidentalmente deixou test.only */
   forbidOnly: !!process.env.CI,
   
   /* Retry em CI apenas */
   retries: process.env.CI ? 2 : 0,
   
-  /* Opt out de testes paralelos no CI */
-  workers: process.env.CI ? 1 : undefined,
+  /* Workers - controla paralelismo */
+  workers: process.env.CI ? 1 : 4,
   
-  /* Reporter */
-  reporter: 'html',
+  /* Timeout por teste */
+  timeout: 60 * 1000, // 60 segundos
+  
+  /* Timeout de expect */
+  expect: {
+    timeout: 10 * 1000 // 10 segundos
+  },
+  
+  /* Reporter com múltiplos formatos */
+  reporter: [
+    ['html', { outputFolder: 'e2e/reports/playwright-report' }],
+    ['json', { outputFile: 'e2e/reports/test-results.json' }],
+    ['junit', { outputFile: 'e2e/reports/junit.xml' }],
+    ['list'] // Console output
+  ],
   
   /* Configuração compartilhada para todos os projetos */
   use: {
@@ -35,31 +51,66 @@ export default defineConfig({
     
     /* Trace apenas quando falhar */
     trace: 'on-first-retry',
+    
+    /* Ignorar erros de HTTPS */
+    ignoreHTTPSErrors: true,
+    
+    /* Viewport padrão */
+    viewport: { width: 1280, height: 720 },
   },
 
-  /* Configurar projetos para diferentes navegadores */
+  /* Configurar projetos para diferentes navegadores e tipos de teste */
   projects: [
+    /* Testes de UI */
     {
-      name: 'chromium',
+      name: 'ui-chromium',
       use: { ...devices['Desktop Chrome'] },
+      testMatch: /.*\.spec\.ts/,
+      grep: /@ui/,
     },
 
-    // Descomente para testar em outros navegadores
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
+    /* Testes de API */
+    {
+      name: 'api-tests',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@api/,
+    },
 
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    /* Testes de Permissões */
+    {
+      name: 'permissions',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@permissions/,
+    },
 
-    /* Teste em Mobile viewports */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
+    /* Testes de Performance */
+    {
+      name: 'performance',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@performance/,
+      timeout: 120 * 1000, // 2 minutos
+    },
+
+    /* Testes de Segurança */
+    {
+      name: 'security',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@security/,
+    },
+
+    /* Testes de Smoke (fumaça - os mais críticos) */
+    {
+      name: 'smoke',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@smoke/,
+    },
+
+    /* Testes de Regressão */
+    {
+      name: 'regression',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@regression/,
+    },
   ],
 
   /* Executar servidor de desenvolvimento antes dos testes */
@@ -68,5 +119,11 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
+
+  /* Global setup/teardown */
+  globalSetup: require.resolve('./e2e/helpers/global-setup.ts'),
+  globalTeardown: require.resolve('./e2e/helpers/global-teardown.ts'),
 });
