@@ -1,47 +1,44 @@
 /**
  * Configuração de testes E2E
  * 
- * Centralize todas as credenciais e configurações aqui
+ * Centraliza todas as credenciais e configurações aqui.
+ * As variáveis de ambiente são carregadas do .env.local
  */
 
-export const TEST_CONFIG = {
-  // Base URL
-  baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
-  
-  // Supabase
+const TEST_CONFIG = {
+  // URLs do Supabase (do .env.local)
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '', // Para testes de API/DB
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   },
-  
-  // Usuários de teste
+
+  // URL base da aplicação
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+
+  // Usuários de teste (ALTERE estas credenciais conforme seu ambiente)
   users: {
     admin: {
       email: 'admin@teste.com',
       password: 'Admin@123',
-      role: 'admin',
-      permissions: ['all']
+      name: 'Admin Teste',
+      role: 'admin'
     },
     financial: {
       email: 'financeiro@teste.com',
       password: 'Financeiro@123',
-      role: 'financial',
-      permissions: ['dashboard', 'financial']
+      name: 'Financeiro Teste',
+      role: 'financial'
     },
     management: {
       email: 'gestao@teste.com',
       password: 'Gestao@123',
-      role: 'management',
-      permissions: ['dashboard', 'properties', 'tenants', 'rentals', 'payments']
-    },
-    invalid: {
-      email: 'invalido@teste.com',
-      password: 'SenhaErrada123'
+      name: 'Gestão Teste',
+      role: 'management'
     }
   },
-  
-  // Timeouts
+
+  // Timeouts (em milissegundos)
   timeouts: {
     short: 2000,
     medium: 5000,
