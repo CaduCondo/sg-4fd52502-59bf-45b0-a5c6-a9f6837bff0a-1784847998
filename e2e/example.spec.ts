@@ -92,14 +92,15 @@ test('modal de esqueci senha deve validar email', async ({ page }) => {
   await page.locator('#reset-email').fill('email-invalido');
   await page.locator('#login-forgot-password-submit').click();
 
-  // Deve mostrar mensagem de erro
-  await expect(page.getByText(/e-mail válido/i)).toBeVisible();
+  // Deve mostrar mensagem de erro (texto exato da página)
+  await expect(page.getByText('Por favor, insira um e-mail válido.')).toBeVisible();
 
   // Preencher com email válido
   await page.locator('#reset-email').fill('teste@example.com');
   await page.locator('#login-forgot-password-submit').click();
 
-  // Aguardar mensagem de sucesso
+  // Aguardar mensagem de sucesso (texto exato da página)
   await page.waitForTimeout(2000);
-  await expect(page.getByText(/E-mail enviado/i)).toBeVisible();
+  await expect(page.getByText('E-mail enviado!')).toBeVisible();
+  await expect(page.getByText(/Verifique sua caixa de entrada/i)).toBeVisible();
 });

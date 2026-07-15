@@ -129,8 +129,8 @@ test.describe('Modal de Recuperação de Senha', () => {
     await page.locator('#reset-email').fill('emailinvalido');
     await page.locator('#login-forgot-password-submit').click();
 
-    // Deve mostrar erro
-    await expect(page.getByText(/e-mail válido/i)).toBeVisible();
+    // Deve mostrar erro (texto exato da página)
+    await expect(page.getByText('Por favor, insira um e-mail válido.')).toBeVisible();
   });
 
   test('deve processar email válido', async ({ page }) => {
@@ -141,8 +141,8 @@ test.describe('Modal de Recuperação de Senha', () => {
     // Aguardar processamento (simula envio de email)
     await page.waitForTimeout(2000);
 
-    // Deve mostrar mensagem de sucesso
-    await expect(page.getByText(/E-mail enviado/i)).toBeVisible();
+    // Deve mostrar mensagem de sucesso (textos exatos da página)
+    await expect(page.getByText('E-mail enviado!')).toBeVisible();
     await expect(page.getByText(/Verifique sua caixa de entrada/i)).toBeVisible();
 
     // Deve ter botão para fechar
