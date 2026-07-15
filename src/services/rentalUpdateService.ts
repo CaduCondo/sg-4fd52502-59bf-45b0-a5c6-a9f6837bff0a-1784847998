@@ -35,6 +35,9 @@ interface PaymentToUpdate {
 
 /**
  * Ajusta o valor do aluguel de uma locação ativa e recalcula os recebimentos futuros
+ * 
+ * REGRA CRÍTICA: Atualiza APENAS pagamentos FUTUROS (due_date >= hoje) e status = 'pending'
+ * NUNCA toca em pagamentos PAGOS ou PASSADOS
  */
 async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void> {
   console.log("💰 [adjustRentalValue] Iniciando ajuste de valor do aluguel...");
@@ -43,6 +46,7 @@ async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void>
   const { rentalId, oldValue, newValue, effectiveDate } = adjustment;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
   const { data: rental, error: rentalError } = await supabase
     .from("rentals")
@@ -55,69 +59,48 @@ async function adjustRentalValue(adjustment: RentValueAdjustment): Promise<void>
     throw new Error("Locação não encontrada");
   }
 
-  const { data: pendingPayments, error: paymentsError } = await supabase
+  // ✅ CRÍTICO: Buscar APENAS pagamentos FUTUROS e PENDING
+  const { data: futurePayments, error: paymentsError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalId)
-    .in("status", ["pending", "overdue"])
-    .order("reference_year", { ascending: true })
-    .order("reference_month", { ascending: true });
+    .eq("status", "pending")
+    .gte("due_date", todayStr)  // ← APENAS due_date >= hoje
+    .order("due_date", { ascending: true });
 
   if (paymentsError) throw paymentsError;
-  if (!pendingPayments || pendingPayments.length === 0) return;
-
-  const currentMonth = today.getMonth() + 1;
-  const currentYear = today.getFullYear();
-  const currentPeriodPayment = pendingPayments.find(
-    p => Number(p.reference_month) === currentMonth && Number(p.reference_year) === currentYear
-  );
-  const futurePayments = pendingPayments.filter(p => {
-    const paymentYear = Number(p.reference_year);
-    const paymentMonth = Number(p.reference_month);
-    return paymentYear > currentYear || (paymentYear === currentYear && paymentMonth > currentMonth);
-  });
-
-  const updates: Array<{ id: string; changes: any }> = [];
-
-  if (currentPeriodPayment) {
-    const paymentDay = (rental as any).payment_day;
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-    const daysRemaining = daysInMonth - today.getDate() + 1;
-    const daysPassed = today.getDate() - 1;
-    
-    const dailyRateOld = oldValue / 30;
-    const dailyRateNew = newValue / 30;
-    const amountForOldDays = dailyRateOld * daysPassed;
-    const amountForNewDays = dailyRateNew * daysRemaining;
-    const totalAmount = amountForOldDays + amountForNewDays;
-    
-    const breakdown = [
-      { type: "addition", amount: parseFloat(amountForOldDays.toFixed(2)), description: `Aluguel - Valor Antigo (${daysPassed} dias)` },
-      { type: "addition", amount: parseFloat(amountForNewDays.toFixed(2)), description: `Aluguel - Valor Novo (${daysRemaining} dias)` }
-    ];
-
-    if (rental.has_garage && rental.garage_value) {
-      breakdown.push({ type: "addition", amount: parseFloat(rental.garage_value.toFixed(2)), description: "Garagem" });
-    }
-
-    updates.push({ id: currentPeriodPayment.id, changes: { expected_amount: parseFloat(totalAmount.toFixed(2)), breakdown } });
+  if (!futurePayments || futurePayments.length === 0) {
+    console.log("ℹ️ Nenhum pagamento futuro pendente para atualizar");
+    return;
   }
+
+  console.log(`📊 ${futurePayments.length} pagamentos futuros serão atualizados`);
 
   const garageAmount = (rental.has_garage && rental.garage_value) ? rental.garage_value : 0;
   const totalNewValue = newValue + garageAmount;
+
+  const updates: Array<{ id: string; changes: any }> = [];
 
   for (const payment of futurePayments) {
     const breakdown = [{ type: "addition", amount: parseFloat(newValue.toFixed(2)), description: "Aluguel" }];
     if (garageAmount > 0) {
       breakdown.push({ type: "addition", amount: parseFloat(garageAmount.toFixed(2)), description: "Garagem" });
     }
-    updates.push({ id: payment.id, changes: { expected_amount: parseFloat(totalNewValue.toFixed(2)), breakdown } });
+    updates.push({ 
+      id: payment.id, 
+      changes: { 
+        expected_amount: parseFloat(totalNewValue.toFixed(2)), 
+        breakdown 
+      } 
+    });
   }
 
   for (const update of updates) {
     const { error: updateError } = await supabase.from("payments").update(update.changes).eq("id", update.id);
     if (updateError) throw updateError;
   }
+
+  console.log(`✅ ${updates.length} pagamentos futuros atualizados com sucesso`);
 }
 
 function getDaysBetween(startDate: Date, endDate: Date): number {

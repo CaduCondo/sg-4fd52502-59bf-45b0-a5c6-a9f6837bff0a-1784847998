@@ -864,24 +864,42 @@ export async function createPaymentsForRental(params: {
   }
 }
 
+/**
+ * Atualiza valores de pagamentos FUTUROS quando a locação é editada
+ * 
+ * REGRA CRÍTICA:
+ * - Atualiza APENAS pagamentos com due_date >= HOJE
+ * - Atualiza APENAS pagamentos com status = 'pending' ou 'overdue'
+ * - NUNCA toca em pagamentos 'paid' ou 'partial'
+ * - Preserva o snapshot de valores em pagamentos já pagos
+ */
 export async function updateFuturePayments(
   rentalId: string,
   newTotalValue: number,
   rental: Rental
 ): Promise<void> {
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
+  console.log("🔄 [updateFuturePayments] Atualizando pagamentos futuros...");
+  console.log("📅 Data de corte:", todayStr);
+
+  // ✅ CRÍTICO: Buscar APENAS pagamentos futuros (due_date >= hoje) e pending/overdue
   const { data: futurePayments, error } = await supabase
     .from("payments")
-    .select("id, reference_month, reference_year, breakdown, status")
+    .select("id, reference_month, reference_year, breakdown, status, due_date")
     .eq("rental_id", rentalId)
-    .eq("status", "pending")
-    .or(`reference_year.gt.${currentYear},and(reference_year.eq.${currentYear},reference_month.gte.${currentMonth})`);
+    .in("status", ["pending", "overdue"])
+    .gte("due_date", todayStr);  // ← APENAS pagamentos futuros
 
   if (error) throw error;
-  if (!futurePayments || futurePayments.length === 0) return;
+  if (!futurePayments || futurePayments.length === 0) {
+    console.log("ℹ️ Nenhum pagamento futuro para atualizar");
+    return;
+  }
+
+  console.log(`📊 ${futurePayments.length} pagamentos futuros serão atualizados`);
 
   const baseRent = rental.monthlyRent || rental.value || 0;
   const garage = rental.hasGarage && rental.garageValue ? rental.garageValue : 0;
@@ -923,33 +941,46 @@ export async function updateFuturePayments(
       if (error) throw error;
     })
   );
+
+  console.log(`✅ ${updates.length} pagamentos futuros atualizados com sucesso`);
 }
 
+/**
+ * Atualiza dia de vencimento de pagamentos FUTUROS
+ * 
+ * REGRA CRÍTICA: Atualiza APENAS due_date >= hoje e status = 'pending'
+ */
 export const updateFuturePaymentsOnPaymentDayChange = async (
   rentalId: string,
   newPaymentDay: number
 ): Promise<void> => {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
+  console.log("🔄 [updateFuturePaymentsOnPaymentDayChange] Atualizando datas...");
+  console.log("📅 Data de corte:", todayStr);
+
+  // ✅ CRÍTICO: Buscar APENAS pagamentos futuros e pending
   const { data: futurePayments, error: fetchError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalId)
     .eq("status", "pending")
-    .or(
-      `reference_year.gt.${currentYear},and(reference_year.eq.${currentYear},reference_month.gte.${currentMonth})`
-    );
+    .gte("due_date", todayStr);  // ← APENAS pagamentos futuros
 
   if (fetchError) throw fetchError;
-  if (!futurePayments || futurePayments.length === 0) return;
+  if (!futurePayments || futurePayments.length === 0) {
+    console.log("ℹ️ Nenhum pagamento futuro para atualizar data");
+    return;
+  }
+
+  console.log(`📊 ${futurePayments.length} datas de vencimento serão atualizadas`);
 
   const updates = futurePayments.map((payment) => {
     const refYear = typeof payment.reference_year === 'string' ? parseInt(payment.reference_year) : payment.reference_year;
     const refMonth = typeof payment.reference_month === 'string' ? parseInt(payment.reference_month) : payment.reference_month;
 
-    // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
     const dueDate = getValidDueDate(newPaymentDay, refYear, refMonth);
 
     return {
@@ -966,8 +997,15 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
 
     if (error) throw error;
   }
+
+  console.log(`✅ ${updates.length} datas atualizadas com sucesso`);
 };
 
+/**
+ * Atualiza pagamentos quando a locação é editada
+ * 
+ * REGRA CRÍTICA: Atualiza APENAS pagamentos futuros (due_date >= hoje) e pending
+ */
 export const updatePendingPaymentsOnRentalEdit = async (
   rentalId: string,
   updates: Partial<{
@@ -978,8 +1016,24 @@ export const updatePendingPaymentsOnRentalEdit = async (
   }>,
   rental: Rental
 ): Promise<void> => {
-  if (updates.monthlyRent !== undefined) {
-    await updateFuturePayments(rentalId, updates.monthlyRent, rental);
+  console.log("🔄 [updatePendingPaymentsOnRentalEdit] Iniciando...");
+  console.log("📋 Updates:", updates);
+
+  if (updates.monthlyRent !== undefined || updates.garageValue !== undefined || updates.hasGarage !== undefined) {
+    const baseRent = updates.monthlyRent ?? rental.monthlyRent ?? rental.value ?? 0;
+    const garage = (updates.hasGarage ?? rental.hasGarage) && (updates.garageValue ?? rental.garageValue) 
+      ? (updates.garageValue ?? rental.garageValue ?? 0) 
+      : 0;
+    const totalValue = baseRent + garage;
+    
+    console.log("💰 Novo total:", totalValue, "(aluguel:", baseRent, "+ garagem:", garage, ")");
+    
+    await updateFuturePayments(rentalId, totalValue, {
+      ...rental,
+      monthlyRent: baseRent,
+      hasGarage: updates.hasGarage ?? rental.hasGarage,
+      garageValue: updates.garageValue ?? rental.garageValue
+    });
   }
 
   if (updates.paymentDay !== undefined) {
