@@ -1,0 +1,136 @@
+name: 🧪 Testes E2E Automatizados
+
+on:
+  push:
+    branches: 
+      - main
+      - develop
+  pull_request:
+    branches: 
+      - main
+  workflow_dispatch: # Permite rodar manualmente
+
+jobs:
+  # Job 1: Smoke Tests (Rápido)
+  smoke-tests:
+    name: 🔥 Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🎭 Install Playwright
+        run: npx playwright install --with-deps chromium
+        
+      - name: 🔥 Run Smoke Tests
+        run: npm run test:smoke
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          
+      - name: 📊 Upload Smoke Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-report
+          path: playwright-report/
+          retention-days: 30
+
+  # Job 2: Critical Tests (Importante)
+  critical-tests:
+    name: ⚡ Critical Tests
+    runs-on: ubuntu-latest
+    needs: smoke-tests # Só roda se smoke passar
+    timeout-minutes: 20
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🎭 Install Playwright
+        run: npx playwright install --with-deps
+        
+      - name: ⚡ Run Critical Tests
+        run: npm run test:critical
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          
+      - name: 📊 Upload Critical Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-test-report
+          path: playwright-report/
+          retention-days: 30
+
+  # Job 3: Full Test Suite (Completo - apenas em main)
+  full-tests:
+    name: 🎯 Full Test Suite
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # Só roda em main
+    needs: critical-tests
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🎭 Install Playwright
+        run: npx playwright install --with-deps
+        
+      - name: 🎯 Run Full Test Suite
+        run: npm run test:all
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          
+      - name: 📊 Upload Full Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-test-report
+          path: playwright-report/
+          retention-days: 30
+          
+      - name: 📈 Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "Full test suite completed!" >> $GITHUB_STEP_SUMMARY
+          echo "Check artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
