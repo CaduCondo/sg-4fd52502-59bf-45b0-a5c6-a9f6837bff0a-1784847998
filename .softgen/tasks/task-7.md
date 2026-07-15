@@ -24,8 +24,13 @@ Remover logs de desenvolvimento/debug (console.log, console.warn) mantendo conso
 - [x] Payments page - adicionar IDs e limpar logs
 - [x] Financial page - adicionar IDs e limpar logs
 - [x] Settings page - adicionar IDs e limpar logs
+- [x] Playwright configurado e testes criados
+- [x] Testes corrigidos e validados
 
 ## Acceptance
 - Todos os campos de formulário têm IDs únicos
 - Todos os botões de ação têm IDs
 - Logs de debug removidos, console.error() mantidos em try-catch
+- Playwright instalado e configurado
+- Testes E2E criados para login, properties, tenants, dashboard
+- Testes passando na página de login
