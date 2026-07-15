@@ -83,7 +83,7 @@ export function RentalContract({
                       <div className="pt-2 border-t">
                         <span className="text-muted-foreground">Valor Total:</span>
                         <p className="font-bold text-lg text-primary">
-                          {formatCurrency(rental.value || 0)}
+                          {formatCurrency((rental.value || 0) + (rental.hasGarage && rental.garageValue ? rental.garageValue : 0))}
                         </p>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { X, Printer, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,6 +6,7 @@ import type { Payment, Rental, Property, Tenant } from "@/types";
 import html2pdf from "html2pdf.js";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -553,6 +554,39 @@ export function PaymentReceipt({
   const displayContractDate = contractDate ? formatDate(contractDate) : "Data não informada";
   
   console.log("📅 DISPLAY CONTRACT DATE:", displayContractDate);
+
+  // ✅ SNAPSHOT: Preservar informações do contrato no momento do pagamento
+  // Se o pagamento está pago, usar os valores que estavam no breakdown
+  // Se está pendente, usar os valores atuais da locação
+  const contractSnapshot = useMemo(() => {
+    if (payment.status === 'paid' || payment.status === 'partial') {
+      // ✅ Pagamento PAGO: usar valores do breakdown (snapshot do momento do pagamento)
+      const breakdownAluguel = payment.breakdown?.find((b: any) => 
+        b.description?.toLowerCase().includes('aluguel') || b.description?.toLowerCase().includes('rent')
+      );
+      const breakdownGaragem = payment.breakdown?.find((b: any) => 
+        b.description?.toLowerCase().includes('garagem') || b.description?.toLowerCase().includes('garage')
+      );
+      
+      return {
+        aluguel: breakdownAluguel?.amount || payment.expectedAmount || 0,
+        garagem: breakdownGaragem?.amount || 0,
+        hasGarage: !!breakdownGaragem,
+        total: payment.expectedAmount || 0
+      };
+    } else {
+      // ❌ Pagamento PENDENTE: usar valores ATUAIS da locação
+      const aluguel = rental?.monthlyRent || rental?.value || 0;
+      const garagem = (rental?.hasGarage && rental?.garageValue) ? rental.garageValue : 0;
+      
+      return {
+        aluguel,
+        garagem,
+        hasGarage: rental?.hasGarage || false,
+        total: aluguel + garagem
+      };
+    }
+  }, [payment.status, payment.breakdown, payment.expectedAmount, rental]);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
