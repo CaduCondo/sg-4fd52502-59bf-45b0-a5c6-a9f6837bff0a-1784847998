@@ -412,7 +412,7 @@ export function Layout({ children }: LayoutProps) {
                     }}
                   >
                     <User className="h-4 w-4" />
-                    Editar Perfil
+                    Meu Perfil
                   </Button>
                   <Button
                     id="layout-mobile-change-password"

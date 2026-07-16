@@ -20,6 +20,7 @@ import {
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
+import { DepositReceipt } from "@/components/DepositReceipt";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { rentalUpdateService } from "@/services/rentalUpdateService";
 
@@ -54,6 +55,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>(locationsFromProps);
   const [showContract, setShowContract] = useState(false);
+  const [showDepositReceipt, setShowDepositReceipt] = useState(false);
   const [createdRentalData, setCreatedRentalData] = useState<{
     rental: Rental;
     property: Property;
@@ -984,6 +986,28 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           location={createdRentalData.location}
           onClose={() => {
             setShowContract(false);
+            // Se for nova locação (não é edição), mostrar recibo de caução
+            if (!rental) {
+              setShowDepositReceipt(true);
+            } else {
+              setCreatedRentalData(null);
+              resetForm();
+              onOpenChange(false);
+              onSuccess();
+            }
+          }}
+        />
+      )}
+
+      {showDepositReceipt && createdRentalData && depositAmount && depositPaymentDate && (
+        <DepositReceipt
+          depositAmount={parseCurrencyToNumber(depositAmount)}
+          depositPaymentDate={depositPaymentDate}
+          property={createdRentalData.property}
+          tenant={createdRentalData.tenant}
+          contractDate={createdRentalData.rental.startDate}
+          onClose={() => {
+            setShowDepositReceipt(false);
             setCreatedRentalData(null);
             resetForm();
             onOpenChange(false);
