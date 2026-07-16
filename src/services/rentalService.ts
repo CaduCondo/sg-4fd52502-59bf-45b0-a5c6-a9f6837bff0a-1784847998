@@ -505,27 +505,43 @@ export const rentalService = {
   },
 
   async remove(id: string): Promise<void> {
-    // 🔒 GATILHO DE SEGURANÇA: Verificar recebimentos PENDING antes de deletar
-    const { data: pendingPayments, error: paymentsError } = await supabase
+    // 🔒 GATILHO DE SEGURANÇA: Verificar se existem recebimentos pagos/parciais
+    const { data: paidPayments, error: paidError } = await supabase
       .from("payments")
       .select("id")
       .eq("rental_id", id)
-      .eq("status", "pending");
+      .in("status", ["paid", "partial"]);
 
-    if (paymentsError) throw paymentsError;
+    if (paidError) throw paidError;
 
-    if (pendingPayments && pendingPayments.length > 0) {
+    // Se houver algum pagamento que NÃO seja pending, não permitir deletar
+    if (paidPayments && paidPayments.length > 0) {
       throw new Error(
-        `❌ Não é possível deletar esta locação porque ela possui ${pendingPayments.length} recebimento(s) pendente(s). ` +
-        "Finalize ou cancele todos os recebimentos pendentes antes de deletar a locação."
+        `❌ Não é possível deletar esta locação porque ela possui ${paidPayments.length} recebimento(s) pago(s) ou parcialmente pago(s). ` +
+        "Apenas locações sem nenhum recebimento efetivado podem ser deletadas."
       );
     }
 
+    // Se chegou aqui, todos os pagamentos são pending (ou não há pagamentos)
+    // Deletar todos os pagamentos pendentes primeiro
+    const { error: deletePaymentsError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", id)
+      .eq("status", "pending");
+
+    if (deletePaymentsError) {
+      console.error("❌ Erro ao deletar pagamentos pendentes:", deletePaymentsError);
+      throw deletePaymentsError;
+    }
+
+    // Agora deletar a locação
     const { error } = await supabase.from("rentals").delete().eq("id", id);
     if (error) throw error;
     
     // ✅ OTIMIZAÇÃO: Invalidar cache
     rentalService.invalidateCache();
+    invalidatePaymentsCache();
   },
 
   async terminateContract(id: string): Promise<void> {
