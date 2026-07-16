@@ -1,5 +1,62 @@
 # 📋 Guia Completo de Comandos de Teste
 
+## 🔄 Workflow Completo: Git → Testes → Relatórios
+
+### **Passo a Passo - Atualizar Repositório Local e Rodar Testes:**
+
+```bash
+# 1️⃣ ATUALIZAR REPOSITÓRIO LOCAL
+git fetch origin                    # Busca atualizações do repositório remoto
+git pull origin main                # Atualiza branch main (ou nome da sua branch)
+
+# 2️⃣ INSTALAR DEPENDÊNCIAS (caso tenha novas)
+npm install                         # Instala/atualiza dependências
+
+# 3️⃣ RODAR TODOS OS TESTES COM RELATÓRIO COMPLETO
+npm run test:all                    # Executa todos os testes (headless)
+
+# 4️⃣ GERAR E VER RELATÓRIO HTML COMPLETO
+npm run test:report                 # Abre navegador com relatório visual
+```
+
+### **Relatório HTML - O que você verá:**
+
+✅ **Dashboard Completo:**
+- Gráfico de pizza (Passed/Failed/Skipped)
+- Tempo total de execução
+- Taxa de sucesso (%)
+- Lista de todos os testes executados
+
+✅ **Detalhes por Teste:**
+- Screenshots de falhas
+- Vídeos de execução (quando falha)
+- Logs completos (console.log, network, etc.)
+- Trace viewer (timeline de ações)
+
+✅ **Filtros:**
+- Ver apenas testes com falha
+- Ver apenas testes passados
+- Filtrar por arquivo/tag
+- Buscar por nome do teste
+
+### **Relatório Completo com Máximas Informações:**
+
+```bash
+# Rodar testes com rastreamento COMPLETO (screenshots + vídeos + traces)
+npx playwright test --reporter=html,json,junit
+
+# Ver relatório HTML
+npx playwright show-report
+
+# Relatório JSON (para integração CI/CD)
+cat playwright-report/results.json
+
+# Relatório JUnit XML (para Jenkins, GitLab CI, etc.)
+cat results.xml
+```
+
+---
+
 ## 🚀 Instalação (rode UMA VEZ antes dos testes)
 
 ```bash
