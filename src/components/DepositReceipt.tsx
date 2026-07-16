@@ -10,6 +10,14 @@ interface DepositReceiptProps {
   property: Property;
   tenant: Tenant;
   contractDate: string;
+  location?: { 
+    name?: string; 
+    address?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+  };
   onClose: () => void;
 }
 
@@ -19,6 +27,7 @@ export function DepositReceipt({
   property,
   tenant,
   contractDate,
+  location,
   onClose,
 }: DepositReceiptProps) {
   const printRef = useRef<HTMLDivElement>(null);
@@ -156,34 +165,32 @@ export function DepositReceipt({
   };
 
   const getPropertyAddress = () => {
-    if (!property) {
-      return "IMÓVEL NÃO INFORMADO";
-    }
-    
     const parts = [];
     
-    if (property.address) {
-      parts.push(property.address.toUpperCase());
+    // Usar dados do location (endereço principal)
+    if (location?.address) {
+      parts.push(location.address.toUpperCase());
     }
     
-    if (property.number) {
-      parts.push(`Nº ${property.number}`);
+    if (location?.number) {
+      parts.push(`Nº ${location.number}`);
     }
     
-    if (property.complement) {
+    // Complement do imóvel específico (ex: APTO 04)
+    if (property?.complement) {
       parts.push(property.complement.toUpperCase());
     }
     
-    if (property.neighborhood) {
-      parts.push(property.neighborhood.toUpperCase());
+    if (location?.neighborhood) {
+      parts.push(location.neighborhood.toUpperCase());
     }
     
-    if (property.city) {
-      parts.push(property.city.toUpperCase());
+    if (location?.city) {
+      parts.push(location.city.toUpperCase());
     }
     
-    if (property.state) {
-      parts.push(property.state.toUpperCase());
+    if (location?.state) {
+      parts.push(location.state.toUpperCase());
     }
     
     return parts.length > 0 ? parts.join(", ") : "LOCAL NÃO INFORMADO";

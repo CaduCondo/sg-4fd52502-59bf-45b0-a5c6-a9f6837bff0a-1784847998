@@ -335,13 +335,14 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
       </CardContent>
 
       {/* Recibo de Caução Dialog */}
-      {showDepositReceipt && property && tenant && rental.depositPaymentDate && (rental.depositInstallment1 || rental.depositAmount || 0) && (
+      {showDepositReceipt && property && tenant && rental.depositPaymentDate && (
         <DepositReceipt
           depositAmount={rental.depositInstallment1 || rental.depositAmount || 0}
           depositPaymentDate={rental.depositPaymentDate}
           property={property}
           tenant={tenant}
           contractDate={rental.startDate}
+          location={property.locationDetails}
           onClose={() => setShowDepositReceipt(false)}
         />
       )}
