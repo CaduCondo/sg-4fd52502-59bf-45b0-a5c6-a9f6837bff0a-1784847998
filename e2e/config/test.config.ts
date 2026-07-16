@@ -5,7 +5,20 @@ import * as path from 'path';
  * CRÍTICO: Carregar .env.local ANTES de qualquer outra coisa
  * Este arquivo é importado pelos helpers, então precisa carregar as variáveis aqui
  */
-dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
+const envPath = path.resolve(__dirname, '../../.env.local');
+console.log('🔍 [TEST CONFIG] Carregando .env.local de:', envPath);
+
+const result = dotenv.config({ path: envPath, override: true });
+
+if (result.error) {
+  console.error('❌ [TEST CONFIG] ERRO ao carregar .env.local:', result.error);
+  throw new Error(`Falha ao carregar .env.local: ${result.error.message}`);
+}
+
+console.log('✅ [TEST CONFIG] .env.local carregado com sucesso!');
+console.log('🔍 [TEST CONFIG] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...');
+console.log('🔍 [TEST CONFIG] NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20) + '...');
+console.log('🔍 [TEST CONFIG] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) + '...');
 
 /**
  * Configuração de testes E2E
@@ -55,5 +68,23 @@ const TEST_CONFIG = {
     navigation: 30000
   }
 };
+
+// Validar variáveis obrigatórias
+if (!TEST_CONFIG.supabase.url) {
+  console.error('❌ [TEST CONFIG] NEXT_PUBLIC_SUPABASE_URL está vazia!');
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL é obrigatória no .env.local');
+}
+
+if (!TEST_CONFIG.supabase.anonKey) {
+  console.error('❌ [TEST CONFIG] NEXT_PUBLIC_SUPABASE_ANON_KEY está vazia!');
+  throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY é obrigatória no .env.local');
+}
+
+if (!TEST_CONFIG.supabase.serviceRoleKey) {
+  console.error('❌ [TEST CONFIG] SUPABASE_SERVICE_ROLE_KEY está vazia!');
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY é obrigatória no .env.local');
+}
+
+console.log('✅ [TEST CONFIG] Todas as variáveis obrigatórias carregadas!');
 
 export default TEST_CONFIG;
