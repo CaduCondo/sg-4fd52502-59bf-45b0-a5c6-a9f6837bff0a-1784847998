@@ -206,7 +206,7 @@ export function DepositReceipt({
           <DialogTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <span>📄</span>
-              Recibo de Caução
+              Recibo de Recebimento
             </span>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function DepositReceipt({
 
         <div id="deposit-receipt-content" className="space-y-2 p-4 bg-white text-black">
           <div className="text-center space-y-1">
-            <h1 className="text-lg font-bold">RECIBO DE RECEBIMENTO</h1>
+            <h1 className="text-lg font-bold">RECIBO DE CAUÇÃO</h1>
           </div>
 
           <div className="space-y-2 text-justify leading-tight text-sm">
