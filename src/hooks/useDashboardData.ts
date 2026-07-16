@@ -168,7 +168,8 @@ export function useDashboardData(
           propertiesResult,
           tenantsResult,
           rentalsResult,
-          paymentsResult,
+          financialPaymentsResult,
+          currentMonthPaymentsResult,
           expensesResult,
           configResult,
         ] = await Promise.all([
@@ -230,7 +231,7 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Pagamentos para Resumo Financeiro (DO MÊS SELECIONADO)
+          // Pagamentos para Resumo Financeiro (DO MÊS SELECIONADO NO FILTRO)
           (async () => {
             let query = supabase
               .from("payments")
@@ -257,7 +258,7 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Pagamentos para Contratos e Pagamentos (DO MÊS ATUAL - IGNORANDO FILTRO)
+          // Pagamentos para Contratos e Pagamentos (DO MÊS ATUAL - IGNORA FILTRO)
           (async () => {
             const currentMonth = new Date().getMonth() + 1;
             const currentYear = new Date().getFullYear();
@@ -353,14 +354,42 @@ export function useDashboardData(
           return alert.level === "warning" || alert.level === "critical";
         }).length;
 
-        // 🔥 Processar pagamentos para Resumo Financeiro (Mês do Filtro)
-        const financialPaymentsData = paymentsResult.data || [];
+        // 🔥 PROCESSAR PAGAMENTOS DO MÊS ATUAL (para linha "Contratos e Pagamentos")
+        const currentMonthPaymentsData = currentMonthPaymentsResult.data || [];
+        let overduePayments = 0;
+        let dueTodayPayments = 0;
+        let completedPayments = 0;
+        let pendingPayments = 0;
+
+        currentMonthPaymentsData.forEach((payment: any) => {
+          const dueDate = payment.due_date;
+          const status = payment.status;
+          
+          if (status === 'paid') {
+            completedPayments++;
+          }
+          
+          if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
+            overduePayments++;
+            pendingPayments++;
+          } 
+          else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
+            dueTodayPayments++;
+            pendingPayments++;
+          }
+          else if (status === 'pending' || status === 'partial') {
+            pendingPayments++;
+          }
+        });
+
+        // 🔥 PROCESSAR PAGAMENTOS DO MÊS DO FILTRO (para "Resumo Financeiro")
+        const financialPaymentsData = financialPaymentsResult.data || [];
         
         let expectedAmount = 0;
         let grossRevenue = 0;
         let adminFees = 0;
         let managementFees = 0;
-        let overdueAmount = 0; // O overdueAmount fica no Resumo Financeiro, então usa o mês do filtro
+        let overdueAmount = 0;
 
         financialPaymentsData.forEach((payment: any) => {
           const dueDate = payment.due_date;
@@ -390,61 +419,6 @@ export function useDashboardData(
           
           if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
             overdueAmount += expectedAmountValue;
-          } 
-        });
-
-        // 🔥 Processar pagamentos para Contratos e Pagamentos (Mês Atual)
-        const currentMonthPaymentsData = paymentsResult.data || [];
-        let overduePayments = 0;
-        let dueTodayPayments = 0;
-        let completedPayments = 0;
-        let pendingPayments = 0;
-
-        currentMonthPaymentsData.forEach((payment: any) => {
-          const dueDate = payment.due_date;
-          const status = payment.status;
-          const locationId = payment.rentals?.properties?.location_id;
-          const paidAmount = payment.paid_amount || 0;
-          const expectedAmountValue = payment.expected_amount || 0;
-          
-          expectedAmount += expectedAmountValue;
-          
-          if (status === 'paid' || status === 'partial') {
-            if (status === 'paid') {
-              completedPayments++;
-            }
-            
-            grossRevenue += paidAmount;
-            
-            if (paidAmount > 0) {
-              const isAdminFeeExempt = locationId && exemptIds.includes(locationId);
-              const isManagementFeeExempt = locationId && managementFeeExemptIds.includes(locationId);
-              
-              // Taxa Admin - apenas se NÃO isento
-              if (!isAdminFeeExempt) {
-                const adminFee = paidAmount * (adminFeePercent / 100);
-                adminFees += adminFee;
-              }
-              
-              // Taxa de Gerenciamento - apenas se NÃO isento
-              if (!isManagementFeeExempt) {
-                const mgmtFee = paidAmount * (managementFeePercent / 100);
-                managementFees += mgmtFee;
-              }
-            }
-          }
-          
-          if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
-            overduePayments++;
-            overdueAmount += expectedAmountValue;
-            pendingPayments++;
-          } 
-          else if ((status === 'pending' || status === 'partial') && dueDate === todayStr) {
-            dueTodayPayments++;
-            pendingPayments++;
-          }
-          else if (status === 'pending' || status === 'partial') {
-            pendingPayments++;
           }
         });
 
