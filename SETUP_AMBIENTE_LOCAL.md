@@ -1,157 +1,156 @@
-# 🚀 Setup do Ambiente Local - Guia Definitivo
+# 🚀 GUIA RÁPIDO - Rodar Testes no VSCode
 
-## ⚠️ FAÇA ISSO UMA VEZ - Setup Inicial da Máquina
+## 📋 PASSO A PASSO (copie e cole cada comando)
 
-Este guia é para configurar seu ambiente local pela primeira vez ou após limpar o repositório com `git reset`.
+### 1️⃣ Sincronizar seu repositório local com o GitHub/Softgen
 
----
-
-## 📋 Workflow Diário (Todo dia de manhã)
-
-### **Passo 1: Atualizar do Git (limpar tudo e baixar versão mais recente)**
+Abra o terminal do VSCode (Ctrl + ') e cole estes 3 comandos:
 
 ```bash
-# Buscar atualizações do repositório remoto
 git fetch origin
-
-# Resetar para exatamente o que está no Git (descarta mudanças locais)
 git reset --hard origin/main
-
-# Limpar arquivos não rastreados (remove arquivos/pastas locais)
 git clean -fd
 ```
 
-**Resultado:** Seu código local fica EXATAMENTE igual ao Git.
-
-**⚠️ ATENÇÃO:** Isso vai deletar:
-- ✅ Todas as mudanças locais não commitadas (é isso que você quer)
-- ✅ Arquivos não rastreados (node_modules, cache, etc.)
-- ❌ O arquivo `.env.local` (contém suas credenciais)
+✅ **O que isso faz?** Baixa todas as alterações do Softgen e descarta qualquer mudança local
 
 ---
 
-### **Passo 2: Recriar o .env.local (se foi deletado)**
+### 2️⃣ Configurar as chaves do Supabase (APENAS 1 VEZ)
 
-**O arquivo `.env.local` NÃO está no Git** (contém credenciais secretas), então você precisa criá-lo localmente.
+Cole este comando no terminal:
 
 ```bash
-# Copiar o template
-cp .env.local.example .env.local
+npm run setup:env
 ```
 
-**Depois, edite o `.env.local` e preencha as 3 variáveis:**
+O assistente vai te pedir 3 informações:
 
-1. **NEXT_PUBLIC_SUPABASE_URL**
-   - Onde: Supabase Dashboard > Settings > API > Project URL
-   - Formato: `https://xxxxxxxxxxxx.supabase.co`
+**🔑 Onde encontrar suas chaves:**
+1. Acesse: https://supabase.com/dashboard
+2. Clique no seu projeto
+3. Vá em **Settings** → **API**
+4. Copie e cole quando o assistente pedir:
+   - **Project URL** (ex: https://xyz.supabase.co)
+   - **anon key** (começa com eyJ...)
+   - **service_role key** (começa com eyJ...)
 
-2. **NEXT_PUBLIC_SUPABASE_ANON_KEY**
-   - Onde: Supabase Dashboard > Settings > API > anon/public key
-   - Chave pública (segura para frontend)
-
-3. **SUPABASE_SERVICE_ROLE_KEY**
-   - Onde: Supabase Dashboard > Settings > API > service_role key
-   - Chave privada (NUNCA exponha no frontend)
-
-**Exemplo do .env.local preenchido:**
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://abcd1234.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
+✅ **Pronto!** O arquivo `.env.local` foi criado automaticamente
 
 ---
 
-### **Passo 3: Instalar Dependências**
+### 3️⃣ Instalar dependências (APENAS 1 VEZ)
 
 ```bash
 npm install
 ```
 
-**Isso vai instalar:**
-- Pacotes do Next.js, React, Tailwind, etc.
-- Playwright (para testes E2E)
-- dotenv (para carregar .env.local nos testes)
-
 ---
 
-### **Passo 4: Rodar o Servidor de Desenvolvimento**
+### 4️⃣ Rodar os testes!
 
+Escolha um destes comandos:
+
+#### 🎯 Todos os testes (recomendado para começar)
 ```bash
-npm run dev
-```
-
-**Acesse:** http://localhost:3000
-
----
-
-### **Passo 5: Rodar Testes E2E (opcional)**
-
-```bash
-# Rodar todos os testes
 npm run test:e2e
-
-# Ver relatório HTML
-npm run test:report
 ```
 
----
-
-## 🐛 Troubleshooting - Problemas Comuns
-
-### **Erro: "supabaseUrl is required"**
-
-**Causa:** O `.env.local` não existe ou as variáveis estão vazias.
-
-**Solução:**
-1. Verifique se `.env.local` existe na raiz do projeto
-2. Abra o arquivo e confirme que as 3 variáveis estão preenchidas
-3. Reinicie o terminal ou servidor
-
----
-
-### **Erro: "Missing script: test:all"**
-
-**Causa:** Os scripts de teste não foram adicionados ao `package.json`.
-
-**Solução:**
-Use os scripts que já existem:
+#### 🖥️ Interface visual (mais fácil de usar)
 ```bash
-npm run test:e2e        # Rodar todos os testes
-npm run test:e2e:ui     # Interface visual
-npm run test:report     # Ver relatório
+npm run test:e2e:ui
+```
+
+#### 🐛 Modo debug (para investigar problemas)
+```bash
+npm run test:e2e:debug
+```
+
+#### 👀 Ver navegador rodando (headed mode)
+```bash
+npm run test:e2e:headed
 ```
 
 ---
 
-### **Testes falhando com erro de conexão**
+## 📊 Ver Relatórios de Testes
 
-**Causa:** Servidor Next.js não está rodando ou .env.local está incorreto.
+Depois de rodar os testes, veja o relatório:
 
-**Solução:**
+```bash
+npx playwright show-report
+```
+
+Abre no navegador com prints, vídeos e detalhes de cada teste!
+
+---
+
+## 🔄 Workflow Diário
+
+**Toda vez que o Softgen fizer alterações:**
+
+```bash
+# 1. Sincronizar
+git fetch origin && git reset --hard origin/main && git clean -fd
+
+# 2. Instalar novas dependências (se houver)
+npm install
+
+# 3. Rodar testes
+npm run test:e2e:ui
+```
+
+---
+
+## 🆘 Problemas Comuns
+
+### ❌ "NEXT_PUBLIC_SUPABASE_URL é obrigatória"
+**Solução:** Rode novamente `npm run setup:env` e cole as chaves corretas
+
+### ❌ "Cannot find module"
+**Solução:** Rode `npm install` novamente
+
+### ❌ Testes falhando
+**Solução:** 
 1. Verifique se o servidor está rodando: `npm run dev`
 2. Acesse http://localhost:3000 no navegador
-3. Confirme que o login funciona manualmente
-4. Rode os testes novamente
+3. Se carregar, os testes devem funcionar
 
 ---
 
-## 📝 Checklist - Antes de Rodar Testes
+## 🎯 Atalho Útil (opcional)
 
-- [ ] `git reset --hard origin/main` executado
-- [ ] `.env.local` existe e está preenchido
-- [ ] `npm install` executado sem erros
-- [ ] Servidor rodando em http://localhost:3000
-- [ ] Login manual funciona no navegador
+Adicione isto ao seu terminal para ter um comando rápido:
+
+**No Windows (PowerShell):**
+Crie/edite o arquivo `$PROFILE` e adicione:
+```powershell
+function Sync-Softgen {
+    git fetch origin
+    git reset --hard origin/main
+    git clean -fd
+    Write-Host "✅ Sincronizado com Softgen!" -ForegroundColor Green
+}
+Set-Alias sync Sync-Softgen
+```
+
+**No Mac/Linux (Bash/Zsh):**
+Adicione no `~/.bashrc` ou `~/.zshrc`:
+```bash
+alias sync="git fetch origin && git reset --hard origin/main && git clean -fd && echo '✅ Sincronizado!'"
+```
+
+Depois basta digitar:
+```bash
+sync
+```
 
 ---
 
-## 🆘 Ainda com problemas?
+## 📞 Precisa de Ajuda?
 
-Se após seguir todos os passos ainda houver erros, compartilhe:
-
-1. Comando que rodou
-2. Erro completo (todo o console output)
-3. Conteúdo do `.env.local` (OCULTE as chaves - mostre só se estão preenchidas)
-4. Versão do Node.js (`node -v`)
+Se tiver dúvidas, pergunte ao Softgen! Ele pode:
+- Ver os logs dos testes que falharam
+- Ajustar configurações
+- Criar novos testes
+- Corrigir bugs encontrados nos testes
