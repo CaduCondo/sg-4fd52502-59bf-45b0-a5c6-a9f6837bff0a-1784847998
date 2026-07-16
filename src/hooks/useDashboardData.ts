@@ -230,7 +230,7 @@ export function useDashboardData(
             return query;
           })(),
 
-          // Pagamentos do mês com JOIN para pegar location_id
+          // Pagamentos para Resumo Financeiro (DO MÊS SELECIONADO)
           (async () => {
             let query = supabase
               .from("payments")
@@ -249,6 +249,36 @@ export function useDashboardData(
               `)
               .eq("reference_month", month.toString().padStart(2, '0'))
               .eq("reference_year", year.toString());
+            
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("rentals.properties.location_id", allowedLocations);
+            }
+            
+            return query;
+          })(),
+
+          // Pagamentos para Contratos e Pagamentos (DO MÊS ATUAL - IGNORANDO FILTRO)
+          (async () => {
+            const currentMonth = new Date().getMonth() + 1;
+            const currentYear = new Date().getFullYear();
+            
+            let query = supabase
+              .from("payments")
+              .select(`
+                id,
+                status,
+                due_date,
+                expected_amount,
+                paid_amount,
+                rentals!inner(
+                  id,
+                  properties!inner(
+                    location_id
+                  )
+                )
+              `)
+              .eq("reference_month", currentMonth.toString().padStart(2, '0'))
+              .eq("reference_year", currentYear.toString());
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               query = query.in("rentals.properties.location_id", allowedLocations);
@@ -323,20 +353,54 @@ export function useDashboardData(
           return alert.level === "warning" || alert.level === "critical";
         }).length;
 
-        // 🔥 Processar pagamentos com lógica CORRETA
-        const paymentsData = paymentsResult.data || [];
+        // 🔥 Processar pagamentos para Resumo Financeiro (Mês do Filtro)
+        const financialPaymentsData = paymentsResult.data || [];
         
-        let overduePayments = 0;
-        let overdueAmount = 0;
-        let dueTodayPayments = 0;
-        let completedPayments = 0;
-        let pendingPayments = 0;
         let expectedAmount = 0;
         let grossRevenue = 0;
         let adminFees = 0;
         let managementFees = 0;
+        let overdueAmount = 0; // O overdueAmount fica no Resumo Financeiro, então usa o mês do filtro
 
-        paymentsData.forEach((payment: any) => {
+        financialPaymentsData.forEach((payment: any) => {
+          const dueDate = payment.due_date;
+          const status = payment.status;
+          const locationId = payment.rentals?.properties?.location_id;
+          const paidAmount = payment.paid_amount || 0;
+          const expectedAmountValue = payment.expected_amount || 0;
+          
+          expectedAmount += expectedAmountValue;
+          
+          if (status === 'paid' || status === 'partial') {
+            grossRevenue += paidAmount;
+            
+            if (paidAmount > 0) {
+              const isAdminFeeExempt = locationId && exemptIds.includes(locationId);
+              const isManagementFeeExempt = locationId && managementFeeExemptIds.includes(locationId);
+              
+              if (!isAdminFeeExempt) {
+                adminFees += paidAmount * (adminFeePercent / 100);
+              }
+              
+              if (!isManagementFeeExempt) {
+                managementFees += paidAmount * (managementFeePercent / 100);
+              }
+            }
+          }
+          
+          if ((status === 'pending' || status === 'partial') && dueDate < todayStr) {
+            overdueAmount += expectedAmountValue;
+          } 
+        });
+
+        // 🔥 Processar pagamentos para Contratos e Pagamentos (Mês Atual)
+        const currentMonthPaymentsData = paymentsResult.data || [];
+        let overduePayments = 0;
+        let dueTodayPayments = 0;
+        let completedPayments = 0;
+        let pendingPayments = 0;
+
+        currentMonthPaymentsData.forEach((payment: any) => {
           const dueDate = payment.due_date;
           const status = payment.status;
           const locationId = payment.rentals?.properties?.location_id;

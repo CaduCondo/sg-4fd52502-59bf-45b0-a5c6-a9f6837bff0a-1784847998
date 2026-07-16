@@ -182,18 +182,13 @@ export const OverviewCards = memo(function OverviewCards({
           <h2 className="text-sm font-semibold text-foreground px-1">
             📅 Contratos e Pagamentos
           </h2>
-          <PeriodSelector 
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onPeriodChange={onPeriodChange}
-          />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <CardWrapper hasLinks={hasLinks} href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
               value={safeData.overduePayments}
-              subtitle="Pagamentos em atraso"
+              subtitle="Situação atual"
               icon={AlertCircle}
               iconColor="text-red-600"
               iconBgClass="bg-red-50 dark:bg-red-900/20"
@@ -241,10 +236,10 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper hasLinks={hasLinks} href="/payments?status=pending">
+          <CardWrapper hasLinks={hasLinks} href="/rentals?sort=end_date">
             <MetricCard
               title="Locações a Vencer"
-              value={safeData.pendingPayments}
+              value={safeData.expiringContracts}
               subtitle="Vencem em até 2 meses"
               icon={AlertCircle}
               iconColor="text-purple-600"
@@ -257,9 +252,16 @@ export const OverviewCards = memo(function OverviewCards({
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
-          💰 Resumo Financeiro
-        </h2>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-foreground px-1">
+            💰 Resumo Financeiro
+          </h2>
+          <PeriodSelector 
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onPeriodChange={onPeriodChange}
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <CardWrapper hasLinks={hasLinks} href="/payments?status=overdue">
             <FinancialMetricCard

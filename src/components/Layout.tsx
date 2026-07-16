@@ -239,7 +239,7 @@ export function Layout({ children }: LayoutProps) {
                 <Menu className="h-5 w-5" />
               </Button>
 
-              <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+              <Link href="/" className="flex items-center gap-2 min-w-0">
                 <Building2 className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
                 <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm whitespace-nowrap truncate">
                   D&apos;Uvo Enterprise
