@@ -1,3 +1,12 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+/**
+ * CRÍTICO: Carregar .env.local ANTES de qualquer outra coisa
+ * Este arquivo é importado pelos helpers, então precisa carregar as variáveis aqui
+ */
+dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
+
 /**
  * Configuração de testes E2E
  * 
