@@ -1,108 +1,57 @@
-# 🚀 Guia Rápido de Testes
+# 🚀 GUIA RÁPIDO - 3 Comandos para Funcionar
 
-## 📦 Setup Inicial (rode UMA VEZ)
-
+## 1️⃣ Sincronizar
 ```bash
-# 1. Limpar alterações locais e atualizar
-git reset --hard HEAD
 git pull origin main
+```
 
-# 2. Instalar dependências
+## 2️⃣ Setup (primeira vez)
+```bash
 npm install
+npm run test:setup
+```
 
-# 3. Instalar navegadores do Playwright
-npx playwright install
+## 3️⃣ Rodar
+```bash
+npm run test:e2e:ui
 ```
 
 ---
 
-## 🧪 Comandos de Teste
+## ⚠️ IMPORTANTE
 
-### **1. TODOS os testes (sem navegador) + relatório:**
-```bash
-npx playwright test --reporter=html
-npx playwright show-report
-```
+**Antes de rodar os testes, o servidor DEVE estar rodando:**
 
-### **2. CRÍTICOS apenas (rápido) + relatório:**
 ```bash
-npx playwright test --grep "@smoke|@critical" --reporter=html
-npx playwright show-report
-```
+# Terminal 1
+npm run dev
 
-### **3. SMOKE apenas (super rápido) + relatório:**
-```bash
-npx playwright test --grep @smoke --reporter=html
-npx playwright show-report
-```
-
-### **4. Com navegador VISÍVEL (debug):**
-```bash
-npx playwright test --headed --grep @smoke
-```
-
-### **5. Interface visual (melhor para explorar):**
-```bash
-npx playwright test --ui
+# Terminal 2  
+npm run test:e2e:ui
 ```
 
 ---
 
-## 🏷️ Testes por Categoria
+## 📌 Comandos Salvos
+
+Copie e cole no terminal (tudo de uma vez):
 
 ```bash
-# Performance
-npx playwright test --grep @performance
+git pull origin main && npm install && npm run test:setup
+```
 
-# Segurança
-npx playwright test --grep @security
+Depois:
 
-# Estresse
-npx playwright test --grep @stress
+```bash
+npm run dev
+```
 
-# Permissões
-npx playwright test --grep @permissions
+Em outro terminal:
 
-# API
-npx playwright test --grep @api
+```bash
+npm run test:e2e:ui
 ```
 
 ---
 
-## 📊 Relatórios
-
-Após rodar testes, veja:
-- **HTML:** `npx playwright show-report`
-- **Pasta:** `playwright-report/`
-
----
-
-## ✅ CI/CD (GitHub Actions)
-
-O arquivo `.github/workflows/tests.yml` roda automaticamente:
-- ✅ Push para `main` ou `develop`
-- ✅ Gera relatório HTML
-- ✅ Disponível em Artifacts
-
----
-
-## 🐛 Troubleshooting
-
-**Erro "browser not installed":**
-```bash
-npx playwright install
-```
-
-**Limpar cache:**
-```bash
-rm -rf playwright-report/ test-results/
-```
-
-**Ver testes disponíveis:**
-```bash
-npx playwright test --list
-```
-
----
-
-**Simples assim!** 🎉
+**Pronto! ✅**
