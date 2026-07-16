@@ -72,6 +72,55 @@ Funcionalidade: Regras de Negócio de Locações
     Então os pagamentos futuros devem ser atualizados para "2800.00"
     E os pagamentos já pagos devem manter o valor original
 
+  Cenário: Editar locação - Preservar snapshot em pagamentos pagos
+    Dado que existe uma locação ativa com aluguel de "2500.00"
+    E o pagamento de Janeiro/2026 está "Pago" com valor de "2500.00"
+    Quando edito a locação
+    E altero o valor do aluguel para "2800.00"
+    E altero a garagem para "400.00"
+    E salvo as alterações
+    E visualizo o recibo do pagamento de Janeiro/2026
+    Então no bloco "Informações do Contrato" devo ver:
+      | campo             | valor   |
+      | Valor do Aluguel  | 2500.00 |
+      | Valor da Garagem  | 0.00    |
+      | Valor Total       | 2500.00 |
+    E no bloco "Formação de Valores" devo ver:
+      | descrição | valor   |
+      | Aluguel   | 2500.00 |
+    Quando visualizo um pagamento futuro
+    Então no bloco "Informações do Contrato" devo ver:
+      | campo             | valor   |
+      | Valor do Aluguel  | 2800.00 |
+      | Valor da Garagem  | 400.00  |
+      | Valor Total       | 3200.00 |
+    E no bloco "Formação de Valores" devo ver:
+      | descrição | valor   |
+      | Aluguel   | 2800.00 |
+      | Garagem   | 400.00  |
+
+  Cenário: Editar locação - Não atualizar pagamentos passados pendentes
+    Dado que existe uma locação ativa com aluguel de "2500.00"
+    E o pagamento de Novembro/2025 está "Pendente" com valor de "2500.00"
+    E o pagamento de Dezembro/2025 está "Pendente" com valor de "2500.00"
+    E o pagamento de Março/2026 está "Pendente" com valor de "2500.00"
+    Quando edito a locação em "15/02/2026"
+    E altero o valor do aluguel para "2800.00"
+    E salvo as alterações
+    Então o pagamento de Novembro/2025 deve manter "2500.00"
+    E o pagamento de Dezembro/2025 deve manter "2500.00"
+    E o pagamento de Março/2026 deve ser atualizado para "2800.00"
+    E pagamentos futuros devem ter "2800.00"
+
+  Cenário: Comprovante de Contrato - Somar aluguel e garagem
+    Dado que existe uma locação com:
+      | campo          | valor   |
+      | Aluguel        | 1500.00 |
+      | Garagem        | 400.00  |
+    Quando visualizo o "Comprovante de Contrato de Locação"
+    Então no campo "Valor Total" devo ver "1900.00"
+    E não apenas o valor do aluguel
+
   Cenário: Encerrar locação antecipadamente
     Dado que existe uma locação ativa com término em "31/12/2026"
     Quando clico em "Encerrar Locação"
