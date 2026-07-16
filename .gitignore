@@ -30,7 +30,9 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
+
+# IMPORTANTE: .env.local contém credenciais secretas e NUNCA deve ser commitado
+# Use .env.local.example como template para criar seu .env.local local
 
 # vercel
 .vercel
