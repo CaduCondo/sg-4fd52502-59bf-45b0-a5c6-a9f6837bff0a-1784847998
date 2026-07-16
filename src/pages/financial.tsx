@@ -1581,45 +1581,56 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-orange-500 card">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground card-title">
-                        Taxa Adm ({config?.admin_fee_percentage || 5}%)
-                      </p>
-                      <h3 className="text-2xl font-bold text-orange-500 card-value">
-                        {new Intl.NumberFormat("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        }).format(kpiCalculations.adminFee)}
-                      </h3>
+              {/* Taxa Adm - Ocultar para perfil Financeiro */}
+              {!isFinancial && (
+                <Card className="border-l-4 border-l-orange-500 card">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground card-title">
+                          Taxa Adm ({config?.admin_fee_percentage || 5}%)
+                        </p>
+                        <h3 className="text-2xl font-bold text-orange-500 card-value">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(kpiCalculations.adminFee)}
+                        </h3>
+                      </div>
+                      <Percent className="h-8 w-8 text-orange-500 card-icon" />
                     </div>
-                    <Percent className="h-8 w-8 text-orange-500 card-icon" />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-              <Card className="border-l-4 border-l-blue-500 card">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground card-title">
-                        Taxa Ger ({config?.management_fee_percentage || 3}%)
-                      </p>
-                      <h3 className="text-2xl font-bold text-blue-500 card-value">
-                        {new Intl.NumberFormat("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        }).format(kpiCalculations.managementFee)}
-                      </h3>
+              {/* Taxa Ger - Ocultar para perfil Financeiro */}
+              {!isFinancial && (
+                <Card className="border-l-4 border-l-blue-500 card">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground card-title">
+                          Taxa Ger ({config?.management_fee_percentage || 3}%)
+                        </p>
+                        <h3 className="text-2xl font-bold text-blue-500 card-value">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(kpiCalculations.managementFee)}
+                        </h3>
+                      </div>
+                      <Settings className="h-8 w-8 text-blue-500 card-icon" />
                     </div>
-                    <Settings className="h-8 w-8 text-blue-500 card-icon" />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-              <Card id="financial-expenses-card" className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-shadow card" onClick={() => handleShowExpenses(selectedLocationId)}>
+              {/* Contas do Mês - Sem link para Financeiro, com taxas somadas */}
+              <Card 
+                id="financial-expenses-card" 
+                className={`border-l-4 border-l-red-500 card ${!isFinancial ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+                onClick={!isFinancial ? () => handleShowExpenses(selectedLocationId) : undefined}
+              >
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1628,7 +1639,11 @@ export default function Financial() {
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
-                        }).format(kpiCalculations.locationExpenses)}
+                        }).format(
+                          isFinancial 
+                            ? kpiCalculations.locationExpenses + kpiCalculations.adminFee + kpiCalculations.managementFee
+                            : kpiCalculations.locationExpenses
+                        )}
                       </h3>
                     </div>
                     <Receipt className="h-8 w-8 text-red-500 card-icon" />
