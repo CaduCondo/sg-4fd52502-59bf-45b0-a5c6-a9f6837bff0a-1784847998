@@ -3,7 +3,6 @@ import TEST_CONFIG from '../config/test.config';
 
 /**
  * Helper de API
- * 
  * Funções para testar endpoints da API Supabase
  */
 
@@ -44,84 +43,6 @@ export class ApiHelper {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('*')
-        .limit(10);
-
-      return {
-        success: !error,
-        data,
-        error,
-        count: data?.length || 0
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error,
-        count: 0
-      };
-    }
-  }
-
-  /**
-   * Testar busca de inquilinos
-   */
-  static async testGetTenants() {
-    try {
-      const { data, error } = await supabase
-        .from('tenants')
-        .select('*')
-        .limit(10);
-
-      return {
-        success: !error,
-        data,
-        error,
-        count: data?.length || 0
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error,
-        count: 0
-      };
-    }
-  }
-
-  /**
-   * Testar busca de locações
-   */
-  static async testGetRentals() {
-    try {
-      const { data, error } = await supabase
-        .from('rentals')
-        .select('*')
-        .limit(10);
-
-      return {
-        success: !error,
-        data,
-        error,
-        count: data?.length || 0
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error,
-        count: 0
-      };
-    }
-  }
-
-  /**
-   * Testar busca de pagamentos
-   */
-  static async testGetPayments() {
-    try {
-      const { data, error } = await supabase
-        .from('payments')
         .select('*')
         .limit(10);
 
