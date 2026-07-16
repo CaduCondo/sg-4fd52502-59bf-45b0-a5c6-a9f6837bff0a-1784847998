@@ -1,242 +1,145 @@
-# 🚀 Setup e Comandos Simples
+# 🚀 Setup Definitivo de Testes E2E - Passo a Passo
 
-## 📦 1. SETUP LOCAL (fazer UMA VEZ)
+## ⚠️ SIGA NA ORDEM - NÃO PULE PASSOS
 
-### Passo 1: Limpar tudo e atualizar do repositório
+### **PASSO 1: Instalar Dependências Necessárias**
+
 ```bash
-# Descartar TODAS as alterações locais
-git reset --hard HEAD
+# Instalar dotenv (OBRIGATÓRIO para carregar .env.local)
+npm install dotenv --save-dev
 
-# Baixar última versão do repositório
-git pull origin main
-
-# Instalar dependências
-npm install
-
-# Instalar navegadores do Playwright (apenas primeira vez)
+# Instalar Playwright e navegadores (se ainda não fez)
 npx playwright install
 ```
 
----
-
-## 🧪 2. RODAR OS TESTES
-
-### Opção 1: TUDO (Completo com Relatório)
-```bash
-npm run test:all
-```
-**O que faz:**
-- ✅ Roda TODOS os testes (Smoke, Critical, UI, API, Permissions)
-- ✅ Gera relatório HTML completo com screenshots
-- ✅ Continua mesmo se encontrar erros
-- ✅ Limpa dados de teste automaticamente no final
-
-**Ver relatório depois:**
-```bash
-npx playwright show-report
-```
+**Aguarde instalação completa antes de prosseguir.**
 
 ---
 
-### Opção 2: Apenas CRÍTICOS (Relatório Completo)
-```bash
-npm run test:critical
-```
-**O que faz:**
-- ✅ Roda apenas testes @smoke e @critical (os mais importantes)
-- ✅ Mais rápido (~5-10 minutos)
-- ✅ Gera relatório HTML
-- ✅ Ideal para validação rápida
+### **PASSO 2: Verificar Arquivo .env.local**
 
-**Ver relatório depois:**
-```bash
-npx playwright show-report
+Abra o arquivo `.env.local` na raiz do projeto e confirme que estas 3 variáveis existem:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 ```
+
+✅ **Se existem:** Prossiga para PASSO 3  
+❌ **Se faltam:** Copie do Supabase Dashboard → Settings → API
 
 ---
 
-### Opção 3: Apenas SMOKE (Relatório Completo)
-```bash
-npm run test:smoke
-```
-**O que faz:**
-- ✅ Roda apenas testes @smoke (fluxos críticos básicos)
-- ✅ MUITO rápido (~2-5 minutos)
-- ✅ Gera relatório HTML
-- ✅ Ideal para verificação rápida antes de commit
+### **PASSO 3: Rodar Testes**
 
-**Ver relatório depois:**
 ```bash
-npx playwright show-report
+# Rodar TODOS os testes
+npm run test:e2e
+```
+
+**O que vai acontecer:**
+1. ✅ Next.js vai iniciar em http://localhost:3000
+2. ✅ Variáveis do .env.local serão carregadas
+3. ✅ Testes começarão a executar
+4. ✅ Relatório HTML será gerado automaticamente
+
+---
+
+### **PASSO 4: Ver Relatório**
+
+Quando os testes terminarem:
+
+```bash
+# Abrir relatório HTML no navegador
+npx playwright show-report e2e/reports/playwright-report
 ```
 
 ---
 
-## 📊 3. RELATÓRIOS
+## 🐛 Solução de Problemas
 
-Todos os comandos acima geram relatórios automaticamente em:
-- `playwright-report/index.html`
+### **Erro: "supabaseUrl is required"**
 
-**Abrir relatório:**
+**Causa:** Variáveis do .env.local não foram carregadas.
+
+**Solução:**
 ```bash
-npx playwright show-report
-```
+# 1. Verificar se dotenv está instalado
+npm list dotenv
 
-**O relatório contém:**
-- ✅ Total de testes passados/falhos
-- ✅ Screenshots de cada passo
-- ✅ Vídeos de testes que falharam
-- ✅ Logs detalhados
-- ✅ Tempo de execução
+# 2. Se não aparecer na lista, instalar:
+npm install dotenv --save-dev
 
----
-
-## 🔄 4. WORKFLOW RECOMENDADO
-
-### Antes de fazer commit:
-```bash
-# 1. Atualizar do repositório
-git pull origin main
-
-# 2. Rodar smoke tests (rápido)
-npm run test:smoke
-
-# 3. Se passar, fazer commit
-git add .
-git commit -m "sua mensagem"
-git push
-```
-
-### Antes de deploy:
-```bash
-# Rodar testes críticos (mais completo)
-npm run test:critical
-
-# Se tudo passar, pode deployar
-```
-
-### Testes completos (semanal/antes de release):
-```bash
-# Rodar TUDO
-npm run test:all
-
-# Revisar relatório
-npx playwright show-report
+# 3. Rodar testes novamente
+npm run test:e2e
 ```
 
 ---
 
-## 🤖 5. CONFIGURAÇÃO PARA CI/CD
+### **Erro: "Cannot find module 'dotenv'"**
 
-### GitHub Actions (.github/workflows/tests.yml)
-```yaml
-name: Testes E2E
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Install Playwright
-        run: npx playwright install --with-deps
-        
-      - name: Run tests
-        run: npm run test:all
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
-```
-
-### Vercel (vercel.json)
-```json
-{
-  "buildCommand": "npm run build && npm run test:critical",
-  "installCommand": "npm install && npx playwright install"
-}
+**Solução:**
+```bash
+npm install dotenv --save-dev
 ```
 
 ---
 
-## ❓ DÚVIDAS COMUNS
+### **Erro: "Timed out waiting for WebServer"**
 
-### "Teste falhou mas não entendo o erro"
+**Causa:** Next.js não conseguiu iniciar em 120s.
+
+**Solução:**
 ```bash
-# Abrir relatório visual
-npx playwright show-report
+# Matar processos Node.js rodando
+taskkill /F /IM node.exe
 
-# Ou rodar em modo debug
-npm run test:e2e:debug
-```
-
-### "Quero ver os testes rodando"
-```bash
-# Rodar com navegador visível
-npm run test:e2e:headed
-```
-
-### "Dados de teste ficaram no banco"
-Não se preocupe! Os testes limpam automaticamente ao final.
-
-Mas se quiser limpar manualmente:
-```bash
-# Abrir console do Supabase
-# SQL > Execute:
-DELETE FROM rentals WHERE created_at > NOW() - INTERVAL '1 hour';
-DELETE FROM properties WHERE name LIKE '%[TEST]%';
-DELETE FROM tenants WHERE name LIKE '%Teste%';
-```
-
-### "Comando não encontrado"
-```bash
-# Reinstalar dependências
-npm install
-
-# Reinstalar Playwright
-npx playwright install
+# Rodar testes novamente
+npm run test:e2e
 ```
 
 ---
 
-## 📋 RESUMO DOS 3 COMANDOS PRINCIPAIS
+### **Erro: "Port 3000 already in use"**
 
+**Solução:**
 ```bash
-# 1. TUDO (completo, ~30min)
-npm run test:all
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <numero_do_pid> /F
 
-# 2. CRÍTICOS (importantes, ~10min)
-npm run test:critical
-
-# 3. SMOKE (rápido, ~5min)
-npm run test:smoke
-
-# Ver relatório de qualquer um
-npx playwright show-report
+# Rodar testes novamente
+npm run test:e2e
 ```
 
 ---
 
-**Pronto! Apenas 3 comandos simples.** 🎉
+## ✅ Checklist Final
+
+Antes de rodar os testes, confirme:
+
+- [ ] `npm install dotenv --save-dev` executado com sucesso
+- [ ] `.env.local` existe na raiz do projeto
+- [ ] `.env.local` contém as 3 variáveis do Supabase
+- [ ] Nenhum processo rodando na porta 3000
+- [ ] Internet conectada (precisa acessar Supabase)
+
+---
+
+## 🎯 Comandos Rápidos
+
+```bash
+# Setup completo (rode UMA VEZ)
+npm install dotenv --save-dev && npx playwright install
+
+# Rodar testes
+npm run test:e2e
+
+# Ver relatório
+npx playwright show-report e2e/reports/playwright-report
+```
+
+---
+
+**Seguindo estes passos NA ORDEM, os testes funcionarão!** 🚀
