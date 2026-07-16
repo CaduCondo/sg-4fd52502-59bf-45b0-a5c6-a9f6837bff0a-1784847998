@@ -1,4 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+/**
+ * Carregar variáveis de ambiente do .env.local
+ * CRÍTICO: Playwright NÃO carrega .env.local automaticamente
+ */
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
 /**
  * Configuração do Playwright para testes E2E

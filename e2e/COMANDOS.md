@@ -1,5 +1,40 @@
 # 📋 Guia Completo de Comandos de Teste
 
+## ⚠️ CONFIGURAÇÃO OBRIGATÓRIA (antes de rodar testes)
+
+### **1. Verificar arquivo `.env.local` existe na raiz do projeto**
+
+O arquivo `.env.local` DEVE conter as variáveis do Supabase:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
+SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
+```
+
+**IMPORTANTE:** Se o arquivo não existir ou estiver vazio, os testes vão FALHAR com erro:
+```
+Error: supabaseUrl is required.
+```
+
+### **2. Instalar dependência dotenv (caso não esteja instalada)**
+
+```bash
+npm install dotenv --save-dev
+```
+
+### **3. Verificar se o servidor Next.js está rodando**
+
+Os testes precisam que o app esteja rodando em `http://localhost:3000`.
+
+O Playwright inicia automaticamente, mas se houver problemas:
+```bash
+# Em um terminal separado
+npm run dev
+```
+
+---
+
 ## 🔄 Workflow Completo: Git → Testes → Relatórios
 
 ### **Passo a Passo - Atualizar Repositório Local e Rodar Testes:**
