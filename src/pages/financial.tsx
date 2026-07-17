@@ -1469,12 +1469,18 @@ export default function Financial() {
 
   // Preparar lista de locais para o Select
   const locationOptions = useMemo(() => {
-    const options = Array.from(locationsMap.entries()).map(([id, name]) => ({
+    let options = Array.from(locationsMap.entries()).map(([id, name]) => ({
       id,
       name
     }));
+    
+    // 🔥 FILTRO: Para usuários financeiros, mostrar apenas locais permitidos
+    if (isFinancial && allowedLocationIds.length > 0) {
+      options = options.filter(opt => allowedLocationIds.includes(opt.id));
+    }
+    
     return options.sort((a, b) => a.name.localeCompare(b.name));
-  }, [locationsMap]);
+  }, [locationsMap, isFinancial, allowedLocationIds]);
   
   // Filtrar despesas detalhadas por localização
   const filteredExpensesDetails = useMemo(() => {
@@ -1581,55 +1587,73 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              {/* Taxa Adm - Ocultar para perfil Financeiro */}
-              {!isFinancial && (
-                <Card className="border-l-4 border-l-orange-500 card">
+              {/* Para perfil Financeiro: card único de Taxas */}
+              {isFinancial ? (
+                <Card className="border-l-4 border-l-indigo-500 card">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground card-title">
-                          Taxa Adm ({config?.admin_fee_percentage || 5}%)
-                        </p>
-                        <h3 className="text-2xl font-bold text-orange-500 card-value">
+                        <p className="text-sm font-medium text-muted-foreground card-title">Taxas</p>
+                        <h3 className="text-2xl font-bold text-indigo-500 card-value">
                           {new Intl.NumberFormat("pt-BR", {
                             style: "currency",
                             currency: "BRL",
-                          }).format(kpiCalculations.adminFee)}
+                          }).format(kpiCalculations.adminFee + kpiCalculations.managementFee)}
                         </h3>
                       </div>
-                      <Percent className="h-8 w-8 text-orange-500 card-icon" />
+                      <Percent className="h-8 w-8 text-indigo-500 card-icon" />
                     </div>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Taxa Ger - Ocultar para perfil Financeiro */}
-              {!isFinancial && (
-                <Card className="border-l-4 border-l-blue-500 card">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground card-title">
-                          Taxa Ger ({config?.management_fee_percentage || 3}%)
-                        </p>
-                        <h3 className="text-2xl font-bold text-blue-500 card-value">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(kpiCalculations.managementFee)}
-                        </h3>
+              ) : (
+                <>
+                  {/* Taxa Adm - Admin e Broker */}
+                  <Card className="border-l-4 border-l-orange-500 card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground card-title">
+                            Taxa Adm ({config?.admin_fee_percentage || 5}%)
+                          </p>
+                          <h3 className="text-2xl font-bold text-orange-500 card-value">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(kpiCalculations.adminFee)}
+                          </h3>
+                        </div>
+                        <Percent className="h-8 w-8 text-orange-500 card-icon" />
                       </div>
-                      <Settings className="h-8 w-8 text-blue-500 card-icon" />
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+
+                  {/* Taxa Ger - Admin e Broker */}
+                  <Card className="border-l-4 border-l-blue-500 card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground card-title">
+                            Taxa Ger ({config?.management_fee_percentage || 3}%)
+                          </p>
+                          <h3 className="text-2xl font-bold text-blue-500 card-value">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(kpiCalculations.managementFee)}
+                          </h3>
+                        </div>
+                        <Settings className="h-8 w-8 text-blue-500 card-icon" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
               )}
 
-              {/* Contas do Mês - Sem link para Financeiro, com taxas somadas */}
+              {/* Contas do Mês - Clicável para todos, com despesas filtradas por permissão */}
               <Card 
                 id="financial-expenses-card" 
-                className={`border-l-4 border-l-red-500 card ${!isFinancial ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
-                onClick={!isFinancial ? () => handleShowExpenses(selectedLocationId) : undefined}
+                className="border-l-4 border-l-red-500 card cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handleShowExpenses(selectedLocationId)}
               >
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -1639,11 +1663,7 @@ export default function Financial() {
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
-                        }).format(
-                          isFinancial 
-                            ? kpiCalculations.locationExpenses + kpiCalculations.adminFee + kpiCalculations.managementFee
-                            : kpiCalculations.locationExpenses
-                        )}
+                        }).format(kpiCalculations.locationExpenses)}
                       </h3>
                     </div>
                     <Receipt className="h-8 w-8 text-red-500 card-icon" />
