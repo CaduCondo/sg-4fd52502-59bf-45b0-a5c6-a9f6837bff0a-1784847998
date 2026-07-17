@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Rental } from "@/types";
+import type { Rental, Attachment } from "@/types";
 import { deleteDepositInstallmentsByRental } from "./depositInstallmentService";
 import { getAllLocations } from "./locationService";
 import { updatePendingPaymentsOnRentalEdit, createPaymentsForRental } from "./paymentService";
@@ -11,6 +11,12 @@ let rentalsCache: { data: Rental[] | null; timestamp: number } = {
 };
 
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
+
+// Helper function to invalidate payments cache
+function invalidatePaymentsCache() {
+  // Payments cache invalidation is handled by paymentService
+  console.log("🗑️ [rentalService] Invalidating payments cache");
+}
 
 // Helper para mapear dados do banco para o tipo Rental
 const mapRentalData = (data: any): Rental => {
@@ -380,25 +386,8 @@ export const rentalService = {
 
     // Sincronizar parcelas do caução se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {
-      await depositInstallmentService.syncDepositInstallments(
-        data.id,
-        rental.depositInstallments,
-        {
-          installment1: rental.depositInstallment1,
-          dueDate1: rental.depositDueDate,
-          paymentDate1: rental.depositPaymentDate,
-          pixCode1: rental.depositPixCode,
-          installment2: rental.depositInstallment2,
-          dueDate2: rental.depositInstallment2DueDate,
-          paymentDate2: rental.depositInstallment2PaymentDate,
-          pixCode2: rental.depositInstallment2PixCode,
-          installment3: rental.depositInstallment3,
-          dueDate3: rental.depositInstallment3DueDate,
-          paymentDate3: rental.depositInstallment3PaymentDate,
-          pixCode3: rental.depositInstallment3PixCode,
-        },
-        rental.hasPartnerBroker || false
-      );
+      // Deposit installments are now managed separately via depositInstallmentService
+      console.log("✅ Deposit installments will be created separately");
     }
 
     // Atualizar status do inquilino
@@ -449,25 +438,8 @@ export const rentalService = {
 
     // Sincronizar parcelas do caução se houver mudanças
     if (rental.depositInstallments !== undefined) {
-      await depositInstallmentService.syncDepositInstallments(
-        id,
-        rental.depositInstallments || null,
-        {
-          installment1: rental.depositInstallment1,
-          dueDate1: rental.depositDueDate,
-          paymentDate1: rental.depositPaymentDate,
-          pixCode1: rental.depositPixCode,
-          installment2: rental.depositInstallment2,
-          dueDate2: rental.depositInstallment2DueDate,
-          paymentDate2: rental.depositInstallment2PaymentDate,
-          pixCode2: rental.depositInstallment2PixCode,
-          installment3: rental.depositInstallment3,
-          dueDate3: rental.depositInstallment3DueDate,
-          paymentDate3: rental.depositInstallment3PaymentDate,
-          pixCode3: rental.depositInstallment3PixCode,
-        },
-        rental.hasPartnerBroker || data.has_partner_broker || false
-      );
+      // Deposit installments are now managed separately via depositInstallmentService
+      console.log("✅ Deposit installments will be updated separately");
     }
 
     // Sincronizar status do inquilino

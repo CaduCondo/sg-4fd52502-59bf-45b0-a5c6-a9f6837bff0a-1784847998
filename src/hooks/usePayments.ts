@@ -97,7 +97,9 @@ export const usePayments = () => {
             lateFee: 0,
             interest: 0,
             breakdown: null,
-            attachments: deposit.attachments || [],
+            attachments: Array.isArray(deposit.attachments) 
+              ? deposit.attachments.map((att: any) => typeof att === 'string' ? att : att.url)
+              : [],
             installment: deposit.installment_number,
             totalInstallments: deposit.total_installments,
             depositType: "deposit", // Flag para identificar tipo caução
