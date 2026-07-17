@@ -74,7 +74,11 @@ export const usePayments = () => {
             .eq("id", deposit.rental_id)
             .single();
 
-          if (!rentalData) return null;
+          // ✅ NULL SAFETY: Se não encontrou rental, retornar null (será filtrado depois)
+          if (!rentalData) {
+            console.warn(`⚠️ Rental ${deposit.rental_id} não encontrado para deposit_installment ${deposit.id}`);
+            return null;
+          }
 
           const dueDate = new Date(deposit.due_date);
           const depositMonth = dueDate.getMonth() + 1;
@@ -107,7 +111,7 @@ export const usePayments = () => {
         })
       );
 
-      // Remover nulls
+      // ✅ Remover nulls do array
       const validDepositPayments = depositPayments.filter(p => p !== null) as Payment[];
 
       // Processar payments regulares
