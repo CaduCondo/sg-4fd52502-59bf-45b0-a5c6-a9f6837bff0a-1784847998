@@ -890,8 +890,8 @@ export default function RentalsPage() {
           </div>
 
           {/* Vacant Properties Card + New Rental Button */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card>
+          <div className="flex gap-[1%] mb-6">
+            <Card className="w-[39%]">
               <CardHeader className="pb-2 pt-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4" />
@@ -932,7 +932,7 @@ export default function RentalsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="w-[39%]">
               <CardHeader className="pb-2 pt-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <User className="h-4 w-4" />
@@ -961,7 +961,7 @@ export default function RentalsPage() {
               </CardContent>
             </Card>
 
-            <div className="flex items-center justify-center">
+            <div className="w-[20%] flex items-center justify-center">
               <Button 
                 onClick={handleCreateNew}
                 className="h-auto py-4 px-6"
