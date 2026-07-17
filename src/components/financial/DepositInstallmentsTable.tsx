@@ -59,7 +59,7 @@ interface DepositInstallmentsTableProps {
   allowedLocationIds?: string[];
 }
 
-type SortField = "location" | "complement" | "tenant" | "rent" | "deposit" | "partner" | "partnerCommission" | "internalCommission" | "installment" | "date" | "amount" | "pix" | "rental_property" | "tenant_name" | "installment_number" | "due_date" | "payment_date" | "status";
+type SortField = "location" | "complement" | "tenant" | "rent" | "deposit" | "partner" | "partnerCommission" | "internalCommission" | "installment" | "date" | "amount" | "pix" | "rental_property" | "tenant_name" | "installment_number" | "due_date" | "payment_date" | "status" | "dueDate" | "paymentDate";
 type SortDirection = "asc" | "desc" | null;
 
 export function DepositInstallmentsTable({
@@ -76,6 +76,17 @@ export function DepositInstallmentsTable({
 
   // 🔥 CORREÇÃO: Permitir acesso para admin E broker
   const isAdmin = userRole === "admin" || userRole === "broker";
+
+  // SortIcon component
+  const SortIcon = useCallback(({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-30" />;
+    }
+    if (sortDirection === "asc") {
+      return <ArrowUp className="h-4 w-4 ml-1" />;
+    }
+    return <ArrowDown className="h-4 w-4 ml-1" />;
+  }, [sortField, sortDirection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -185,16 +196,6 @@ export function DepositInstallmentsTable({
       setSortField(field);
       setSortDirection("asc");
     }
-  }, [sortField, sortDirection]);
-
-  const getSortIcon = useCallback((field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-30" />;
-    }
-    if (sortDirection === "asc") {
-      return <ArrowUp className="h-4 w-4 ml-1" />;
-    }
-    return <ArrowDown className="h-4 w-4 ml-1" />;
   }, [sortField, sortDirection]);
 
   const handleUpdateField = useCallback(async (

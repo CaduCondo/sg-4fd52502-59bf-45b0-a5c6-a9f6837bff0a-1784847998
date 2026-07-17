@@ -240,28 +240,27 @@ export interface Payment {
   rentalId: string;
   propertyId: string;
   tenantId: string;
+  referenceMonth: number;
+  referenceYear: number;
   dueDate: string;
   expectedAmount: number;
   paidAmount: number;
-  paymentDate?: string;
-  paymentTime?: string;
-  status: "paid" | "pending" | "overdue" | "partial";
-  paymentMethod: string;
-  referenceMonth?: number;
-  referenceYear?: number;
-  discount?: number;
+  status: "pending" | "paid" | "overdue" | "partial";
+  paymentDate: string | null;
+  paymentMethod: string | null;
+  notes: string | null;
   lateFee?: number;
   interest?: number;
-  notes?: string;
-  attachments?: string[];
-  receiptUrl?: string; 
   breakdown?: any;
+  attachments?: string[];
   installment?: number;
   totalInstallments?: number;
-  pixCode?: string;
   rental?: Rental;
   property?: Property;
   tenant?: Tenant;
+  pixCode?: string;
+  paymentTime?: string;
+  depositType?: "rent" | "deposit"; // Flag para identificar tipo (aluguel ou caução)
 }
 
 export interface PaymentInstallment {

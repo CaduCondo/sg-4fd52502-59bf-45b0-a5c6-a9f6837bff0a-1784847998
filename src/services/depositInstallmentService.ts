@@ -30,26 +30,28 @@ export async function createDepositInstallments(
     due_date: string;
   }>
 ): Promise<DepositInstallment[]> {
-  const { data, error } = await supabase
-    .from("deposit_installments")
-    .insert(
-      installments.map((inst) => ({
-        rental_id: rentalId,
-        installment_number: inst.installment_number,
-        total_installments: inst.total_installments,
-        amount: inst.amount,
-        due_date: inst.due_date,
-        status: "pending",
-      }))
-    )
-    .select();
+  try {
+    const installmentsData = installments.map(inst => ({
+      rental_id: rentalId,
+      installment_number: inst.installment_number,
+      installment_total: inst.total_installments,
+      amount: inst.amount,
+      due_date: inst.due_date,
+      status: "pending",
+    }));
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("deposit_installments")
+      .insert(installmentsData)
+      .select();
+
+    if (error) throw error;
+
+    return (data || []) as unknown as DepositInstallment[];
+  } catch (error) {
     console.error("Erro ao criar parcelas de caução:", error);
     throw error;
   }
-
-  return data as DepositInstallment[];
 }
 
 /**
@@ -75,49 +77,20 @@ export async function getDepositInstallmentsByRental(
 /**
  * Buscar todas as parcelas de caução (com filtros opcionais)
  */
-export async function getAllDepositInstallments(filters?: {
-  status?: string;
-  locationIds?: string[];
-}): Promise<DepositInstallment[]> {
-  let query = supabase
-    .from("deposit_installments")
-    .select(`
-      *,
-      rental:rentals(
-        id,
-        property:properties(
-          id,
-          location_id,
-          complement,
-          location:locations(
-            id,
-            name
-          )
-        ),
-        tenant:tenants(
-          id,
-          name
-        )
-      )
-    `)
-    .order("due_date", { ascending: true });
+export async function getAllDepositInstallments(): Promise<DepositInstallment[]> {
+  try {
+    const { data, error } = await supabase
+      .from("deposit_installments")
+      .select("*")
+      .order("due_date", { ascending: true });
 
-  if (filters?.status) {
-    query = query.eq("status", filters.status);
-  }
+    if (error) throw error;
 
-  if (filters?.locationIds && filters.locationIds.length > 0) {
-    query = query.in("rental.property.location_id", filters.locationIds);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("Erro ao buscar todas as parcelas de caução:", error);
+    return (data || []) as unknown as DepositInstallment[];
+  } catch (error) {
+    console.error("Erro ao buscar parcelas de caução:", error);
     throw error;
   }
-
-  return data as any;
 }
 
 /**
@@ -127,19 +100,35 @@ export async function updateDepositInstallment(
   id: string,
   updates: Partial<DepositInstallment>
 ): Promise<DepositInstallment> {
-  const { data, error } = await supabase
-    .from("deposit_installments")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  try {
+    // Convert DepositInstallment fields to database schema
+    const dbUpdates: any = {};
+    
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.due_date !== undefined) dbUpdates.due_date = updates.due_date;
+    if (updates.payment_date !== undefined) dbUpdates.payment_date = updates.payment_date;
+    if (updates.payment_method !== undefined) dbUpdates.payment_method = updates.payment_method;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.attachments !== undefined) {
+      // Convert attachment objects to strings if needed
+      dbUpdates.attachments = updates.attachments;
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("deposit_installments")
+      .update(dbUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data as unknown as DepositInstallment;
+  } catch (error) {
     console.error("Erro ao atualizar parcela de caução:", error);
     throw error;
   }
-
-  return data as DepositInstallment;
 }
 
 /**
@@ -228,6 +217,39 @@ export async function deleteDepositInstallmentsByRental(
 
   if (error) {
     console.error("Erro ao deletar parcelas de caução:", error);
+    throw error;
+  }
+}
+
+export async function markDepositInstallmentAsPaid(
+  id: string,
+  paymentDate: string,
+  paymentMethod: string,
+  notes?: string,
+  attachments?: Array<{ url: string; name: string }>
+): Promise<DepositInstallment> {
+  try {
+    const updates: any = {
+      status: "paid",
+      payment_date: paymentDate,
+      payment_method: paymentMethod,
+    };
+
+    if (notes) updates.notes = notes;
+    if (attachments) updates.attachments = attachments;
+
+    const { data, error } = await supabase
+      .from("deposit_installments")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data as unknown as DepositInstallment;
+  } catch (error) {
+    console.error("Erro ao marcar parcela como paga:", error);
     throw error;
   }
 }

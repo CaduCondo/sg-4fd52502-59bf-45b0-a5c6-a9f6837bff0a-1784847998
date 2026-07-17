@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Rental, Attachment } from "@/types";
-import { depositInstallmentService } from "./depositInstallmentService";
+import type { Rental } from "@/types";
+import { deleteDepositInstallmentsByRental } from "./depositInstallmentService";
+import { getAllLocations } from "./locationService";
 import { updatePendingPaymentsOnRentalEdit, createPaymentsForRental } from "./paymentService";
-import { invalidatePaymentsCache } from "@/hooks/usePayments";
 
 // ✅ CACHE: Cache simples em memória
 let rentalsCache: { data: Rental[] | null; timestamp: number } = {
