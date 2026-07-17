@@ -1768,15 +1768,17 @@ export default function Financial() {
                                 onSelect={() => {
                                   setSelectedLocationIds([]);
                                 }}
-                                className="flex items-center gap-2"
                               >
-                                <Checkbox
-                                  checked={selectedLocationIds.length === 0}
-                                  onCheckedChange={() => {
-                                    setSelectedLocationIds([]);
-                                  }}
-                                />
-                                <span>Todos os Locais</span>
+                                <div className="flex items-center gap-2 w-full">
+                                  <Checkbox
+                                    checked={selectedLocationIds.length === 0}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedLocationIds([]);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <span>Todos os Locais</span>
+                                </div>
                               </CommandItem>
                               
                               {/* Lista de locais com checkboxes */}
@@ -1792,19 +1794,21 @@ export default function Financial() {
                                       }
                                     });
                                   }}
-                                  className="flex items-center gap-2"
                                 >
-                                  <Checkbox
-                                    checked={selectedLocationIds.includes(location.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedLocationIds(prev => [...prev, location.id]);
-                                      } else {
-                                        setSelectedLocationIds(prev => prev.filter(id => id !== location.id));
-                                      }
-                                    }}
-                                  />
-                                  <span>{location.name}</span>
+                                  <div className="flex items-center gap-2 w-full">
+                                    <Checkbox
+                                      checked={selectedLocationIds.includes(location.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setSelectedLocationIds(prev => [...prev, location.id]);
+                                        } else {
+                                          setSelectedLocationIds(prev => prev.filter(id => id !== location.id));
+                                        }
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <span>{location.name}</span>
+                                  </div>
                                 </CommandItem>
                               ))}
                             </CommandGroup>
