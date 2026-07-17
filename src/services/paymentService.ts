@@ -176,15 +176,20 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return object literal directly - remove intermediate type annotation
+  // Extract values with guaranteed non-undefined types
+  const refMonth = data.reference_month ? Number(data.reference_month) : 1;
+  const refYear = data.reference_year ? Number(data.reference_year) : new Date().getFullYear();
+  const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
+  
+  // Return object literal with guaranteed values
   return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: data.reference_month ? Number(data.reference_month) : 1,
-    referenceYear: data.reference_year ? Number(data.reference_year) : new Date().getFullYear(),
-    dueDate: data.due_date || new Date().toISOString().split('T')[0],
+    referenceMonth: refMonth,
+    referenceYear: refYear,
+    dueDate: paymentDueDate,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
