@@ -1,14 +1,15 @@
-import { useMemo, memo, useCallback, useState } from "react";
+import { useMemo, memo, useCallback, useState, useEffect } from "react";
 import { Rental, Property, Tenant, Attachment } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, DollarSign, FileText, Car, Coins, Banknote } from "lucide-react";
+import { MapPin, User, DollarSign, FileText, Car, Coins, Banknote, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RentalAttachmentsDialog } from "./RentalAttachmentsDialog";
-import { DepositReceipt } from "@/components/DepositReceipt";
+import { supabase } from "@/integrations/supabase/client";
+import type { DepositInstallment } from "@/types";
 
 interface RentalDetailsCardProps {
   rental: Rental;
@@ -70,7 +71,52 @@ const DepositInstallment = memo(({
 DepositInstallment.displayName = "DepositInstallment";
 
 export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
-  const [showDepositReceipt, setShowDepositReceipt] = useState(false);
+  const [depositInstallments, setDepositInstallments] = useState<DepositInstallment[]>([]);
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+
+  // Buscar parcelas de caução
+  useEffect(() => {
+    const fetchDepositInstallments = async () => {
+      if (!rental.id) return;
+      
+      setLoadingInstallments(true);
+      try {
+        const { data, error } = await supabase
+          .from("deposit_installments")
+          .select("*")
+          .eq("rental_id", rental.id)
+          .order("installment_number", { ascending: true });
+
+        if (error) throw error;
+        
+        // Convert database schema to DepositInstallment type
+        const installments: DepositInstallment[] = (data || []).map(item => ({
+          id: item.id,
+          rental_id: item.rental_id,
+          installment_number: item.installment_number,
+          total_installments: item.installment_total,
+          amount: item.amount,
+          due_date: item.due_date,
+          payment_date: item.payment_date,
+          paid_amount: item.paid_amount || 0,
+          payment_method: item.payment_method,
+          status: item.status,
+          notes: item.notes,
+          attachments: Array.isArray(item.attachments) ? item.attachments : [],
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        }));
+        
+        setDepositInstallments(installments);
+      } catch (error) {
+        console.error("Erro ao buscar parcelas de caução:", error);
+      } finally {
+        setLoadingInstallments(false);
+      }
+    };
+
+    fetchDepositInstallments();
+  }, [rental.id]);
 
   // Badge de status
   const getStatusBadge = useCallback((status: string) => {
@@ -290,31 +336,36 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
                 </div>
               )}
 
-              {/* Botão Recibo */}
-              {property && tenant && rental.depositPaymentDate && (rental.depositAmount || rental.depositInstallment1) && (
-                <div className="flex justify-end mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDepositReceipt(true)}
-                    className="gap-2"
-                  >
-                    <svg 
-                      className="h-4 w-4" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                      />
-                    </svg>
-                    Recibo
-                  </Button>
+              {/* Botões de Recebimento por Parcela */}
+              {depositInstallments.length > 0 && (
+                <div className="flex flex-col gap-2 mt-3">
+                  <p className="text-xs font-medium text-slate-600">Recebimentos:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {depositInstallments.map((installment) => (
+                      <Button
+                        key={installment.id}
+                        type="button"
+                        variant={installment.status === "paid" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          // Navegar para página de recebimentos com filtro dessa parcela
+                          window.location.href = `/payments?deposit=${installment.id}`;
+                        }}
+                        className="gap-2 justify-between"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Receipt className="h-3 w-3" />
+                          Parcela {installment.installment_number}/{installment.total_installments}
+                        </span>
+                        <Badge 
+                          variant={installment.status === "paid" ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {installment.status === "paid" ? "Pago" : installment.status === "overdue" ? "Atrasado" : "Pendente"}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -333,19 +384,6 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
           />
         </div>
       </CardContent>
-
-      {/* Recibo de Caução Dialog */}
-      {showDepositReceipt && property && tenant && rental.depositPaymentDate && (
-        <DepositReceipt
-          depositAmount={rental.depositInstallment1 || rental.depositAmount || 0}
-          depositPaymentDate={rental.depositPaymentDate}
-          property={property}
-          tenant={tenant}
-          contractDate={rental.startDate}
-          location={property.locationDetails}
-          onClose={() => setShowDepositReceipt(false)}
-        />
-      )}
     </Card>
   );
 });
