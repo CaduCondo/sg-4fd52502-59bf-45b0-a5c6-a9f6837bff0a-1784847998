@@ -176,8 +176,8 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Construct Payment object explicitly to help TypeScript
-  const result: Payment = {
+  // Return object and let TypeScript infer type
+  const result = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
