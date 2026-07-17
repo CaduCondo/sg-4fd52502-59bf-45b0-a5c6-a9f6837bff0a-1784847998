@@ -176,20 +176,15 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Extract values with guaranteed non-undefined types
-  const refMonth = data.reference_month ? Number(data.reference_month) : 1;
-  const refYear = data.reference_year ? Number(data.reference_year) : new Date().getFullYear();
-  const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
-  
-  // Return object with all required Payment properties
-  return {
+  // Create Payment object with explicit non-undefined values
+  const payment: Payment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: refMonth,
-    referenceYear: refYear,
-    dueDate: paymentDueDate,
+    referenceMonth: data.reference_month ? Number(data.reference_month) : 1,
+    referenceYear: data.reference_year ? Number(data.reference_year) : new Date().getFullYear(),
+    dueDate: data.due_date || new Date().toISOString().split('T')[0],
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -202,7 +197,9 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
+  
+  return payment;
 };
 
 export const update = async (
