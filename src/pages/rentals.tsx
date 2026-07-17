@@ -891,14 +891,14 @@ export default function RentalsPage() {
 
           {/* Vacant Properties Card + New Rental Button */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="h-full">
-              <CardHeader className="pb-3">
+            <Card>
+              <CardHeader className="pb-2 pt-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4" />
                   Imóveis Vagos ({loadingAvailable ? "..." : availableProperties.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-4">
                 {loadingAvailable ? (
                   <div className="h-10 bg-muted animate-pulse rounded-lg" />
                 ) : availableProperties.length === 0 ? (
@@ -933,13 +933,13 @@ export default function RentalsPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2 pt-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <User className="h-4 w-4" />
                   Inquilinos Disponíveis ({loadingAvailable ? "..." : availableTenants.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-4">
                 {loadingAvailable ? (
                   <div className="h-10 bg-muted animate-pulse rounded-lg" />
                 ) : availableTenants.length === 0 ? (
@@ -961,15 +961,15 @@ export default function RentalsPage() {
               </CardContent>
             </Card>
 
-            <Card className="h-full flex items-center justify-center cursor-pointer hover:shadow-lg transition-shadow" onClick={handleCreateNew}>
-              <CardContent className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Plus className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Nova</h3>
-                <h3 className="font-semibold text-lg">Locação</h3>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-center">
+              <Button 
+                onClick={handleCreateNew}
+                className="h-auto py-4 px-6"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Nova Locação
+              </Button>
+            </div>
           </div>
 
           {/* Filtros de Busca e Status */}
