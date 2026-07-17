@@ -176,14 +176,14 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return object literal directly - TypeScript will infer all properties
+  // Return object literal directly with guaranteed values
   return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: data.reference_month ? Number(data.reference_month) : 0,
-    referenceYear: data.reference_year ? Number(data.reference_year) : 0,
+    referenceMonth: Number(data.reference_month || "0"),
+    referenceYear: Number(data.reference_year || "0"),
     dueDate: data.due_date || "",
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,

@@ -570,6 +570,24 @@ export function DepositInstallmentsTable({
                         <SortIcon field="tenant" />
                       </div>
                     </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("partner")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Corretor Parceiro?
+                        <SortIcon field="partner" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("partnerCommission")}>
+                      <div className="flex items-center justify-end gap-1">
+                        Valor Parceiro
+                        <SortIcon field="partnerCommission" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("internalCommission")}>
+                      <div className="flex items-center justify-end gap-1">
+                        Valor Corretor
+                        <SortIcon field="internalCommission" />
+                      </div>
+                    </TableHead>
                     <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("status")}>
                       <div className="flex items-center justify-center gap-1">
                         Status
@@ -594,241 +612,74 @@ export function DepositInstallmentsTable({
                         <SortIcon field="amount" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-center">
+                      Código PIX
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedGroups.map((group) =>
-                    group.map((inst, index) => {
-                      const bgColor = inst.pix_code && inst.pix_code.trim() !== "" ? "bg-green-50" : "bg-red-50";
-                      const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-                      
-                      return (
-                      <TableRow
-                        key={inst.id}
-                      >
-                        {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
-                        {index === 0 && (
-                          <>
-                            <TableCell className="font-medium text-sm print:text-[10px]" rowSpan={group.length}>
-                              <div
-                                className="max-w-[150px] truncate"
-                                title={inst.rental?.property?.location?.name}
-                              >
-                                {inst.rental?.property?.location?.name || "-"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
-                              <div
-                                className="max-w-[100px] truncate"
-                                title={inst.rental?.property?.complement}
-                              >
-                                {inst.rental?.property?.complement || "-"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
-                              <div
-                                className="max-w-[120px] truncate"
-                                title={inst.rental?.tenant?.name}
-                              >
-                                {inst.rental?.tenant?.name || "-"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
-                              {formatCurrency(inst.rental?.rent_value || 0)}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-sm print:text-[10px]" rowSpan={group.length}>
-                              {formatCurrency(groupTotalDeposit)}
-                            </TableCell>
-                            <TableCell className="text-sm print:text-[10px]" rowSpan={group.length}>
-                              {inst.rental?.has_partner_broker ? "Sim" : "Não"}
-                            </TableCell>
-                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
-                              {editingCell?.id === inst.id &&
-                              editingCell?.field === "partner_commission" ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  defaultValue={inst.partner_commission}
-                                  onBlur={(e) =>
-                                    handleUpdateField(
-                                      inst.id,
-                                      "partner_commission",
-                                      e.target.value
-                                    )
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleUpdateField(
-                                        inst.id,
-                                        "partner_commission",
-                                        (e.target as HTMLInputElement).value
-                                      );
-                                    }
-                                  }}
-                                  autoFocus
-                                  className="w-24 h-8"
-                                />
-                              ) : (
-                                <div
-                                  className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                                  onClick={() =>
-                                    setEditingCell({
-                                      id: inst.id,
-                                      field: "partner_commission",
-                                    })
-                                  }
-                                >
-                                  <span>{formatCurrency(inst.partner_commission)}</span>
-                                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right text-sm print:text-[10px]" rowSpan={group.length}>
-                              {editingCell?.id === inst.id &&
-                              editingCell?.field === "internal_commission" ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  defaultValue={inst.internal_commission}
-                                  onBlur={(e) =>
-                                    handleUpdateField(
-                                      inst.id,
-                                      "internal_commission",
-                                      e.target.value
-                                    )
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleUpdateField(
-                                        inst.id,
-                                        "internal_commission",
-                                        (e.target as HTMLInputElement).value
-                                      );
-                                    }
-                                  }}
-                                  autoFocus
-                                  className="w-24 h-8"
-                                />
-                              ) : (
-                                <div
-                                  className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                                  onClick={() =>
-                                    setEditingCell({
-                                      id: inst.id,
-                                      field: "internal_commission",
-                                    })
-                                  }
-                                >
-                                  <span>{formatCurrency(inst.internal_commission)}</span>
-                                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                                </div>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
+                  {sortedData.map((installment) => {
+                    const rental = installment.rental;
+                    const property = rental?.property;
+                    const tenant = rental?.tenant;
+                    const location = property?.location;
 
-                        {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
-                        <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 text-sm print:text-[10px] ${bgColor}`}>
-                          {inst.installment_number}/{inst.total_installments}
+                    return (
+                      <TableRow key={installment.id} className="hover:bg-gray-50">
+                        <TableCell className="text-center font-medium">
+                          {installment.installment_number}/{installment.total_installments}
                         </TableCell>
-                        <TableCell className={`whitespace-nowrap text-sm print:text-[10px] ${bgColor}`}>
-                          {inst.payment_date
-                            ? inst.payment_date.split("T")[0].split("-").reverse().join("/")
+                        <TableCell>{location?.name || "N/A"}</TableCell>
+                        <TableCell>{property?.complement || "-"}</TableCell>
+                        <TableCell>{tenant?.name || "N/A"}</TableCell>
+                        <TableCell className="text-center">
+                          {rental?.has_partner_broker ? "Sim" : "Não"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {rental?.has_partner_broker
+                            ? formatCurrency(installment.partner_commission || 0)
                             : "-"}
                         </TableCell>
-                        <TableCell className={`text-right text-sm print:text-[10px] ${bgColor}`}>
-                          {editingCell?.id === inst.id &&
-                          editingCell?.field === "amount" ? (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              defaultValue={inst.amount}
-                              onBlur={(e) =>
-                                handleUpdateField(inst.id, "amount", e.target.value)
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleUpdateField(
-                                    inst.id,
-                                    "amount",
-                                    (e.target as HTMLInputElement).value
-                                  );
-                                }
-                              }}
-                              autoFocus
-                              className="w-28 h-8"
-                            />
-                          ) : (
-                            <div
-                              className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() =>
-                                setEditingCell({ id: inst.id, field: "amount" })
-                              }
-                            >
-                              <span className="font-semibold text-green-600">
-                                {formatCurrency(inst.amount)}
-                              </span>
-                              <Pencil className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                          )}
+                        <TableCell className="text-right">
+                          {formatCurrency(installment.internal_commission || 0)}
                         </TableCell>
-                        <TableCell className={`text-sm print:text-[10px] ${bgColor}`}>
-                          {editingCell?.id === inst.id &&
-                          editingCell?.field === "pix_code" ? (
-                            <Input
-                              type="text"
-                              defaultValue={inst.pix_code || ""}
-                              onBlur={(e) =>
-                                handleUpdateField(inst.id, "pix_code", e.target.value)
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleUpdateField(
-                                    inst.id,
-                                    "pix_code",
-                                    (e.target as HTMLInputElement).value
-                                  );
-                                }
-                              }}
-                              autoFocus
-                              className="w-32 h-8"
-                            />
-                          ) : (
-                            <div
-                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() =>
-                                setEditingCell({ id: inst.id, field: "pix_code" })
-                              }
-                            >
-                              <span className="truncate max-w-[100px]">
-                                {inst.pix_code || "-"}
-                              </span>
-                              <Pencil className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className={`text-center text-sm print:text-[10px] ${bgColor}`}>
+                        <TableCell className="text-center">
                           <Badge
                             variant="outline"
                             className={
-                              inst.status === "paid"
+                              installment.status === "paid"
                                 ? "bg-green-100 text-green-700 border-green-300"
-                                : inst.status === "overdue"
+                                : installment.status === "overdue"
                                 ? "bg-red-100 text-red-700 border-red-300"
                                 : "bg-yellow-100 text-yellow-700 border-yellow-300"
                             }
                           >
-                            {inst.status === "paid"
+                            {installment.status === "paid"
                               ? "Pago"
-                              : inst.status === "overdue"
+                              : installment.status === "overdue"
                               ? "Atrasado"
                               : "Pendente"}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-center">
+                          {installment.due_date
+                            ? new Date(installment.due_date).toLocaleDateString("pt-BR")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {installment.payment_date
+                            ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(installment.amount)}
+                        </TableCell>
+                        <TableCell className="text-center text-xs">
+                          {installment.pix_code || "-"}
+                        </TableCell>
                       </TableRow>
                     );
-                  })
-                  )}
+                  })}
                   {/* ✅ LINHA DE TOTAIS */}
                   <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
                     <TableCell colSpan={4} className="text-right pr-4 text-sm print:text-[10px]">TOTAIS</TableCell>

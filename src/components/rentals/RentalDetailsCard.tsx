@@ -282,63 +282,67 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         {hasDeposit && (
           <InfoSection icon={Coins} title="Garantia (Caução)">
             <div className="ml-6 space-y-4">
-              {rental.depositInstallments && rental.depositInstallments > 1 ? (
-                <div className="space-y-3">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    Parcelado em {rental.depositInstallments}x
-                  </Badge>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {rental.depositInstallment1 && rental.depositInstallment1 > 0 && (
-                      <DepositInstallment
-                        label="1ª Parcela"
-                        value={rental.depositInstallment1}
-                        date={rental.depositPaymentDate}
-                        pixCode={rental.depositPixCode}
-                      />
-                    )}
-                    {rental.depositInstallment2 && rental.depositInstallment2 > 0 && (
-                      <DepositInstallment
-                        label="2ª Parcela"
-                        value={rental.depositInstallment2}
-                        date={rental.depositInstallment2PaymentDate}
-                        pixCode={rental.depositInstallment2PixCode}
-                      />
-                    )}
-                    {rental.depositInstallment3 && rental.depositInstallment3 > 0 && (
-                      <DepositInstallment
-                        label="3ª Parcela"
-                        value={rental.depositInstallment3}
-                        date={rental.depositInstallment3PaymentDate}
-                        pixCode={rental.depositInstallment3PixCode}
-                      />
-                    )}
-                  </div>
+              {/* Informações do Caução */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-medium text-slate-600">Valor Total</p>
+                  <p className="text-sm font-semibold text-emerald-600">
+                    {formatCurrency(rental.depositAmount || 0)}
+                  </p>
                 </div>
-              ) : (
-                <div className="p-3 bg-white rounded border border-slate-200 text-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Banknote className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-slate-900">Pagamento à Vista</span>
+
+                {rental.depositInstallments && rental.depositInstallments > 1 && (
+                  <div>
+                    <p className="text-xs font-medium text-slate-600">Parcelamento</p>
+                    <p className="text-sm">{rental.depositInstallments}x</p>
                   </div>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <p className="flex justify-between">
-                      <span>Valor:</span>
-                      <span className="font-medium">{formatCurrency(rental.depositAmount || 0)}</span>
-                    </p>
-                    {rental.depositPaymentDate && (
-                      <p className="flex justify-between">
-                        <span>Data Pagamento:</span>
-                        <span>{safeDate(rental.depositPaymentDate)}</span>
-                      </p>
-                    )}
-                  </div>
+                )}
+              </div>
+
+              {/* Valores das Parcelas (se parcelado) */}
+              {rental.depositInstallments && rental.depositInstallments > 1 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                  {rental.depositAmount && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600">1ª Parcela</p>
+                      <p className="text-sm">{formatCurrency(rental.depositAmount)}</p>
+                      {rental.depositPaymentDate && (
+                        <p className="text-xs text-slate-500">
+                          Venc: {format(new Date(rental.depositPaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {rental.depositInstallments >= 2 && rental.depositInstallment2 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600">2ª Parcela</p>
+                      <p className="text-sm">{formatCurrency(rental.depositInstallment2)}</p>
+                      {rental.depositInstallment2PaymentDate && (
+                        <p className="text-xs text-slate-500">
+                          Venc: {format(new Date(rental.depositInstallment2PaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {rental.depositInstallments === 3 && rental.depositInstallment3 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600">3ª Parcela</p>
+                      <p className="text-sm">{formatCurrency(rental.depositInstallment3)}</p>
+                      {rental.depositInstallment3PaymentDate && (
+                        <p className="text-xs text-slate-500">
+                          Venc: {format(new Date(rental.depositInstallment3PaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Botões de Recebimento por Parcela */}
               {depositInstallments.length > 0 && (
-                <div className="flex flex-col gap-2 mt-3">
+                <div className="flex flex-col gap-2 mt-3 pt-3 border-t">
                   <p className="text-xs font-medium text-slate-600">Recebimentos:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {depositInstallments.map((installment) => (
@@ -361,7 +365,11 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
                           variant={installment.status === "paid" ? "default" : "secondary"}
                           className="text-xs"
                         >
-                          {installment.status === "paid" ? "Pago" : installment.status === "overdue" ? "Atrasado" : "Pendente"}
+                          {installment.status === "paid"
+                            ? "Pago"
+                            : installment.status === "overdue"
+                            ? "Atrasado"
+                            : "Pendente"}
                         </Badge>
                       </Button>
                     ))}
