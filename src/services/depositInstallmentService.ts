@@ -38,6 +38,7 @@ export async function createDepositInstallments(
       amount: inst.amount,
       due_date: inst.due_date,
       status: "pending",
+      pix_key: null,
     }));
 
     const { data, error } = await supabase
@@ -47,7 +48,24 @@ export async function createDepositInstallments(
 
     if (error) throw error;
 
-    return (data || []) as unknown as DepositInstallment[];
+    return (data || []).map(item => ({
+      id: item.id,
+      rental_id: item.rental_id,
+      installment_number: item.installment_number,
+      total_installments: item.installment_total,
+      amount: item.amount,
+      due_date: item.due_date,
+      payment_date: item.payment_date,
+      payment_method: item.payment_method,
+      status: item.status,
+      notes: item.notes,
+      attachments: item.attachments || [],
+      pix_key: item.pix_key,
+      partner_commission: item.partner_commission,
+      internal_commission: item.internal_commission,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    })) as DepositInstallment[];
   } catch (error) {
     console.error("Erro ao criar parcelas de caução:", error);
     throw error;
@@ -86,7 +104,24 @@ export async function getAllDepositInstallments(): Promise<DepositInstallment[]>
 
     if (error) throw error;
 
-    return (data || []) as unknown as DepositInstallment[];
+    return (data || []).map(item => ({
+      id: item.id,
+      rental_id: item.rental_id,
+      installment_number: item.installment_number,
+      total_installments: item.installment_total,
+      amount: item.amount,
+      due_date: item.due_date,
+      payment_date: item.payment_date,
+      payment_method: item.payment_method,
+      status: item.status,
+      notes: item.notes,
+      attachments: item.attachments || [],
+      pix_key: item.pix_key,
+      partner_commission: item.partner_commission,
+      internal_commission: item.internal_commission,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    })) as DepositInstallment[];
   } catch (error) {
     console.error("Erro ao buscar parcelas de caução:", error);
     throw error;
