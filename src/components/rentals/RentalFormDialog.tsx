@@ -17,6 +17,10 @@ import {
   updateFuturePayments,
   updateFuturePaymentsOnPaymentDayChange,
 } from "@/services/paymentService";
+import { 
+  createDepositInstallments, 
+  deleteDepositInstallmentsByRental 
+} from "@/services/depositInstallmentService";
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
@@ -322,6 +326,53 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
+        // ✅ Recriar parcelas de caução se houver mudanças no caução parcelado
+        if (isDepositInstallment && depositInstallmentCount) {
+          // Deletar parcelas antigas
+          await deleteDepositInstallmentsByRental(rental.id);
+          
+          const installmentsData = [];
+          const totalInstallments = parseInt(depositInstallmentCount);
+
+          // 1ª parcela
+          if (depositAmount && depositPaymentDate) {
+            installmentsData.push({
+              installment_number: 1,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositAmount),
+              due_date: depositPaymentDate,
+            });
+          }
+
+          // 2ª parcela
+          if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
+            installmentsData.push({
+              installment_number: 2,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositInstallment2),
+              due_date: depositInstallment2PaymentDate,
+            });
+          }
+
+          // 3ª parcela
+          if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
+            installmentsData.push({
+              installment_number: 3,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositInstallment3),
+              due_date: depositInstallment3PaymentDate,
+            });
+          }
+
+          if (installmentsData.length > 0) {
+            await createDepositInstallments(rental.id, installmentsData);
+            console.log(`✅ Recriadas ${installmentsData.length} parcelas de caução`);
+          }
+        } else {
+          // Se não é mais parcelado, deletar parcelas antigas
+          await deleteDepositInstallmentsByRental(rental.id);
+        }
+        
         if (Object.keys(changes).length > 0) {
           await rentalUpdateService.updatePaymentsOnRentalEdit(
             rental.id,
@@ -380,6 +431,47 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           hasGarage: mappedRental.hasGarage,
           garageValue: mappedRental.garageValue || 0,
         });
+
+        // ✅ Criar parcelas de caução se parcelado
+        if (isDepositInstallment && depositInstallmentCount) {
+          const installmentsData = [];
+          const totalInstallments = parseInt(depositInstallmentCount);
+
+          // 1ª parcela
+          if (depositAmount && depositPaymentDate) {
+            installmentsData.push({
+              installment_number: 1,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositAmount),
+              due_date: depositPaymentDate,
+            });
+          }
+
+          // 2ª parcela
+          if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
+            installmentsData.push({
+              installment_number: 2,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositInstallment2),
+              due_date: depositInstallment2PaymentDate,
+            });
+          }
+
+          // 3ª parcela
+          if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
+            installmentsData.push({
+              installment_number: 3,
+              total_installments: totalInstallments,
+              amount: parseCurrencyToNumber(depositInstallment3),
+              due_date: depositInstallment3PaymentDate,
+            });
+          }
+
+          if (installmentsData.length > 0) {
+            await createDepositInstallments(createdRental.id, installmentsData);
+            console.log(`✅ Criadas ${installmentsData.length} parcelas de caução`);
+          }
+        }
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
