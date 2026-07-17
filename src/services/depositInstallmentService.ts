@@ -1,22 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-
-export interface DepositInstallment {
-  id: string;
-  rental_id: string;
-  installment_number: number;
-  total_installments: number;
-  amount: number;
-  due_date: string;
-  payment_date: string | null;
-  paid_amount: number;
-  status: "pending" | "paid" | "partial" | "overdue";
-  payment_method: string | null;
-  pix_key: string | null;
-  notes: string | null;
-  attachments: Array<{ url: string; name: string }>;
-  created_at: string;
-  updated_at: string;
-}
+import { DepositInstallment } from "@/types";
 
 /**
  * Criar parcelas de caução para uma locação
@@ -287,7 +270,7 @@ export async function markDepositInstallmentAsPaid(
   paymentDate: string,
   paymentMethod: string,
   notes?: string,
-  attachments?: Array<{ url: string; name: string }>
+  attachments?: string[]
 ): Promise<DepositInstallment> {
   try {
     const updates: any = {

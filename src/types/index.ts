@@ -358,7 +358,7 @@ export interface DepositInstallment {
   partner_commission: number;
   internal_commission: number;
   notes: string | null;
-  attachments: Array<{ url: string; name: string }>;
+  attachments: string[];
   created_at: string;
   updated_at: string;
 }
