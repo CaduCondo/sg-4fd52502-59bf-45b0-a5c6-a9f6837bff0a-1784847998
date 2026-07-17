@@ -176,8 +176,8 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return with explicit type assertion to fix TypeScript inference
-  return {
+  // Create intermediate variable with explicit type to fix TypeScript inference
+  const result: Payment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -197,7 +197,9 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
+  
+  return result;
 };
 
 export const update = async (
