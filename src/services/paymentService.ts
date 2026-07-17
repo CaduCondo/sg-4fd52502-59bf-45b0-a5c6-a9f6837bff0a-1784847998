@@ -176,7 +176,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  const createdPayment: Payment = {
+  const createdPayment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -196,7 +196,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     installment: data.installment,
     totalInstallments: data.total_installments,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
+  } as Payment;
 
   return createdPayment;
 };
