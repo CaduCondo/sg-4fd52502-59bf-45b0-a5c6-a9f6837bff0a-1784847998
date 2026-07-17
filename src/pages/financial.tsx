@@ -879,7 +879,7 @@ export default function Financial() {
     }
   }, []);
 
-  // Função para calcular valor esperado total (breakdown + late_fee + interest - discount)
+  // Função para calcular valor esperado total (breakdown + late_fee + interest)
   const getExpectedAmount = useCallback((payment: Payment): number => {
     let baseTotal = 0;
     
@@ -908,9 +908,8 @@ export default function Financial() {
     // Adicionar late_fee e interest (que estão em campos separados)
     const lateFee = Number(payment.lateFee || 0);
     const interest = Number(payment.interest || 0);
-    const discount = Number(payment.discount || 0);
     
-    const total = baseTotal + lateFee + interest - discount;
+    const total = baseTotal + lateFee + interest;
     
     return total;
   }, []);
