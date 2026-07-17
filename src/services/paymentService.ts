@@ -176,28 +176,29 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return Payment object with type assertion to fix TypeScript inference
-  return {
-    id: data.id,
-    rentalId: data.rental_id,
-    propertyId: "",
-    tenantId: "",
-    referenceMonth: data.reference_month ? Number(data.reference_month) : 1,
-    referenceYear: data.reference_year ? Number(data.reference_year) : new Date().getFullYear(),
-    dueDate: data.due_date || new Date().toISOString().split('T')[0],
-    expectedAmount: data.expected_amount,
-    paidAmount: data.paid_amount,
-    status: data.status as "paid" | "pending" | "overdue" | "partial",
-    paymentDate: data.payment_date,
-    paymentMethod: data.payment_method,
-    notes: data.notes,
-    lateFee: data.late_fee || 0,
-    interest: data.interest || 0,
-    breakdown: data.breakdown,
-    installment: data.installment || 1,
-    totalInstallments: data.total_installments || 24,
-    attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  // Create Payment object with explicit property assignments to fix TypeScript inference
+  const newPayment = {} as Payment;
+  newPayment.id = data.id;
+  newPayment.rentalId = data.rental_id;
+  newPayment.propertyId = "";
+  newPayment.tenantId = "";
+  newPayment.referenceMonth = data.reference_month ? Number(data.reference_month) : 1;
+  newPayment.referenceYear = data.reference_year ? Number(data.reference_year) : new Date().getFullYear();
+  newPayment.dueDate = data.due_date || new Date().toISOString().split('T')[0];
+  newPayment.expectedAmount = data.expected_amount;
+  newPayment.paidAmount = data.paid_amount;
+  newPayment.status = data.status as "paid" | "pending" | "overdue" | "partial";
+  newPayment.paymentDate = data.payment_date;
+  newPayment.paymentMethod = data.payment_method;
+  newPayment.notes = data.notes;
+  newPayment.lateFee = data.late_fee || 0;
+  newPayment.interest = data.interest || 0;
+  newPayment.breakdown = data.breakdown;
+  newPayment.installment = data.installment || 1;
+  newPayment.totalInstallments = data.total_installments || 24;
+  newPayment.attachments = (data.attachments as unknown as string[]) || [];
+  
+  return newPayment;
 };
 
 export const update = async (
