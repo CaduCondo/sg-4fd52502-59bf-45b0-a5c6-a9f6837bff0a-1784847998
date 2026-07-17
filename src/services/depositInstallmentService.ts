@@ -22,9 +22,6 @@ export async function createDepositInstallments(
       due_date: inst.due_date,
       status: "pending",
       paid_amount: 0,
-      pix_key: null,
-      partner_commission: 0,
-      internal_commission: 0,
     }));
 
     const { data, error } = await supabase
@@ -47,9 +44,6 @@ export async function createDepositInstallments(
       status: item.status,
       notes: item.notes,
       attachments: Array.isArray(item.attachments) ? item.attachments : [],
-      pix_key: item.pix_key || null,
-      partner_commission: item.partner_commission || 0,
-      internal_commission: item.internal_commission || 0,
       created_at: item.created_at,
       updated_at: item.updated_at,
     })) as DepositInstallment[];
@@ -104,9 +98,6 @@ export async function getAllDepositInstallments(): Promise<DepositInstallment[]>
       status: item.status,
       notes: item.notes,
       attachments: Array.isArray(item.attachments) ? item.attachments : [],
-      pix_key: item.pix_key || null,
-      partner_commission: item.partner_commission || 0,
-      internal_commission: item.internal_commission || 0,
       created_at: item.created_at,
       updated_at: item.updated_at,
     })) as DepositInstallment[];
@@ -134,9 +125,6 @@ export async function updateDepositInstallment(
     if (updates.payment_method !== undefined) dbUpdates.payment_method = updates.payment_method;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-    if (updates.pix_key !== undefined) dbUpdates.pix_key = updates.pix_key;
-    if (updates.partner_commission !== undefined) dbUpdates.partner_commission = updates.partner_commission;
-    if (updates.internal_commission !== undefined) dbUpdates.internal_commission = updates.internal_commission;
     if (updates.attachments !== undefined) {
       dbUpdates.attachments = updates.attachments;
     }
@@ -163,9 +151,6 @@ export async function updateDepositInstallment(
       status: data.status,
       notes: data.notes,
       attachments: Array.isArray(data.attachments) ? data.attachments : [],
-      pix_key: data.pix_key || null,
-      partner_commission: data.partner_commission || 0,
-      internal_commission: data.internal_commission || 0,
       created_at: data.created_at,
       updated_at: data.updated_at,
     } as DepositInstallment;
@@ -184,7 +169,6 @@ export async function registerDepositInstallmentPayment(
     payment_date: string;
     paid_amount: number;
     payment_method?: string;
-    pix_key?: string;
     notes?: string;
   }
 ): Promise<DepositInstallment> {
@@ -214,7 +198,6 @@ export async function registerDepositInstallmentPayment(
       payment_date: payment.payment_date,
       paid_amount: payment.paid_amount,
       payment_method: payment.payment_method,
-      pix_key: payment.pix_key,
       notes: payment.notes,
       status,
     })
@@ -227,7 +210,22 @@ export async function registerDepositInstallmentPayment(
     throw error;
   }
 
-  return data as DepositInstallment;
+  return {
+    id: data.id,
+    rental_id: data.rental_id,
+    installment_number: data.installment_number,
+    total_installments: data.installment_total,
+    amount: data.amount,
+    due_date: data.due_date,
+    payment_date: data.payment_date,
+    paid_amount: data.paid_amount || 0,
+    payment_method: data.payment_method,
+    status: data.status,
+    notes: data.notes,
+    attachments: Array.isArray(data.attachments) ? data.attachments : [],
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  } as DepositInstallment;
 }
 
 /**
@@ -304,9 +302,6 @@ export async function markDepositInstallmentAsPaid(
       status: data.status,
       notes: data.notes,
       attachments: Array.isArray(data.attachments) ? data.attachments : [],
-      pix_key: data.pix_key || null,
-      partner_commission: data.partner_commission || 0,
-      internal_commission: data.internal_commission || 0,
       created_at: data.created_at,
       updated_at: data.updated_at,
     } as DepositInstallment;

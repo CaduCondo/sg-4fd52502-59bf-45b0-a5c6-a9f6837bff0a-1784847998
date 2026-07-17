@@ -354,9 +354,6 @@ export interface DepositInstallment {
   paid_amount: number;
   status: "pending" | "paid" | "partial" | "overdue";
   payment_method: string | null;
-  pix_key: string | null;
-  partner_commission: number;
-  internal_commission: number;
   notes: string | null;
   attachments: string[];
   created_at: string;
