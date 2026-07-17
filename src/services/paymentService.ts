@@ -176,8 +176,8 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Return Payment object with all required properties
-  const createdPayment = {
+  // Return Payment object - TypeScript will infer the type from the object literal
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -198,8 +198,6 @@ export const create = async (payment: Partial<Payment>) => {
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
   };
-  
-  return createdPayment as Payment;
 };
 
 export const update = async (
