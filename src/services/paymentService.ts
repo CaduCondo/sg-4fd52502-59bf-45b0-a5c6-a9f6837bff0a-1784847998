@@ -149,7 +149,7 @@ export const getById = async (id: string): Promise<Payment> => {
   };
 };
 
-export const create = async (payment: Partial<Payment>) => {
+export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   const insertData = {
     rental_id: payment.rentalId,
     expected_amount: payment.expectedAmount,
