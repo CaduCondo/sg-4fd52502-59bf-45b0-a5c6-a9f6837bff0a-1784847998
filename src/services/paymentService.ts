@@ -176,7 +176,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return the payment object and let TypeScript infer the type
+  // Return with explicit type assertion to help TypeScript
   return {
     id: data.id,
     rentalId: data.rental_id,
@@ -197,7 +197,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
+  } as Payment;
 };
 
 export const update = async (
