@@ -176,28 +176,29 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return object literal directly - TypeScript will infer all properties
-  return {
-    id: data.id,
-    rentalId: data.rental_id,
-    propertyId: "",
-    tenantId: "",
-    referenceMonth: data.reference_month ? Number(data.reference_month) : 0,
-    referenceYear: data.reference_year ? Number(data.reference_year) : 0,
-    dueDate: data.due_date || "",
-    expectedAmount: data.expected_amount,
-    paidAmount: data.paid_amount,
-    status: data.status as "paid" | "pending" | "overdue" | "partial",
-    paymentDate: data.payment_date,
-    paymentMethod: data.payment_method,
-    notes: data.notes,
-    lateFee: data.late_fee || 0,
-    interest: data.interest || 0,
-    breakdown: data.breakdown,
-    installment: data.installment || 1,
-    totalInstallments: data.total_installments || 24,
-    attachments: (data.attachments as unknown as string[]) || [],
-  };
+  // Create Payment object with explicit type cast and individual property assignments
+  const payment = {} as Payment;
+  payment.id = data.id;
+  payment.rentalId = data.rental_id;
+  payment.propertyId = "";
+  payment.tenantId = "";
+  payment.referenceMonth = data.reference_month ? Number(data.reference_month) : 0;
+  payment.referenceYear = data.reference_year ? Number(data.reference_year) : 0;
+  payment.dueDate = data.due_date || "";
+  payment.expectedAmount = data.expected_amount;
+  payment.paidAmount = data.paid_amount;
+  payment.status = data.status as "paid" | "pending" | "overdue" | "partial";
+  payment.paymentDate = data.payment_date;
+  payment.paymentMethod = data.payment_method;
+  payment.notes = data.notes;
+  payment.lateFee = data.late_fee || 0;
+  payment.interest = data.interest || 0;
+  payment.breakdown = data.breakdown;
+  payment.installment = data.installment || 1;
+  payment.totalInstallments = data.total_installments || 24;
+  payment.attachments = (data.attachments as unknown as string[]) || [];
+  
+  return payment;
 };
 
 export const update = async (
