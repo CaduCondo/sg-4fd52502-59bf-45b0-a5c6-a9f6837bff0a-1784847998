@@ -1466,8 +1466,9 @@ export default function Financial() {
     const feePercentage = config?.admin_fee_percentage ?? 5;
     const feeRate = feePercentage / 100;
     
+    // ✅ CORREÇÃO: Excluir valores negativos do cálculo de Taxa Adm
     const adminFee = paymentsToCalculate
-      .filter((p) => p.status === "paid" || p.status === "partial")
+      .filter((p) => (p.status === "paid" || p.status === "partial") && (p.paidAmount || 0) > 0)
       .reduce((sum, p) => {
         const property = p.property;
         const isExempt = property && exemptLocationIds.includes(property.locationId);
@@ -1478,8 +1479,9 @@ export default function Financial() {
     const mgmtPercentage = config?.management_fee_percentage ?? 3;
     const mgmtRate = mgmtPercentage / 100;
     
+    // ✅ CORREÇÃO: Excluir valores negativos do cálculo de Taxa Ger
     const managementFee = paymentsToCalculate
-      .filter((p) => p.status === "paid" || p.status === "partial")
+      .filter((p) => (p.status === "paid" || p.status === "partial") && (p.paidAmount || 0) > 0)
       .reduce((sum, p) => {
         const property = p.property;
         const isManagementFeeExempt = property && managementFeeExemptLocationIds.includes(property.locationId);
@@ -1950,7 +1952,9 @@ export default function Financial() {
                                   currency: "BRL",
                                 }).format(getExpectedAmount(payment))}
                               </TableCell>
-                              <TableCell className="text-right text-sm print:text-[9px] text-green-600 font-semibold col-val-pg">
+                              <TableCell className={`text-right text-sm print:text-[9px] font-semibold col-val-pg ${
+                                (payment.paidAmount || 0) < 0 ? 'text-red-600' : 'text-green-600'
+                              }`}>
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
