@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency } from "@/lib/masks";
+import { formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
 import { Download, Printer, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -206,10 +206,14 @@ export function DepositInstallmentsTable({
     try {
       const updateData: any = {};
       
-      if (field === "amount" || field === "partner_commission" || field === "internal_commission") {
-        updateData[field] = parseFloat(value.toString()) || 0;
-      } else {
-        updateData[field] = value;
+      if (field === "pix_code") {
+        updateData.pix_code = value;
+      } else if (field === "partner_commission") {
+        updateData.partner_commission = value;
+      } else if (field === "internal_commission") {
+        updateData.internal_commission = value;
+      } else if (field === "amount") {
+        updateData.amount = value;
       }
 
       const { error } = await supabase
@@ -220,24 +224,24 @@ export function DepositInstallmentsTable({
       if (error) throw error;
 
       // Atualizar estado local
-      setData((prevData) =>
-        prevData.map((item) =>
-          item.id === installmentId ? { ...item, ...updateData } : item
+      setData(prevData =>
+        prevData.map(item =>
+          item.id === installmentId
+            ? { ...item, [field]: value }
+            : item
         )
       );
 
       toast({
-        title: "Sucesso",
-        description: "Valor atualizado com sucesso!",
+        title: "Atualizado com sucesso",
+        description: `Campo ${field} foi atualizado.`,
       });
-
-      setEditingCell(null);
     } catch (error) {
-      console.error("❌ Erro ao atualizar:", error);
+      console.error("Erro ao atualizar campo:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o valor.",
         variant: "destructive",
+        title: "Erro ao atualizar",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
       });
     }
   }, [toast]);
@@ -636,12 +640,52 @@ export function DepositInstallmentsTable({
                           {rental?.has_partner_broker ? "Sim" : "Não"}
                         </TableCell>
                         <TableCell className="text-right">
-                          {rental?.has_partner_broker
-                            ? formatCurrency(installment.partner_commission || 0)
-                            : "-"}
+                          {rental?.has_partner_broker ? (
+                            editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
+                              <Input
+                                type="text"
+                                className="w-24 h-8 text-right text-sm"
+                                value={formatCurrency(installment.partner_commission || 0)}
+                                onChange={(e) => {
+                                  const value = parseCurrencyToNumber(e.target.value);
+                                  handleUpdateField(installment.id, "partner_commission", value);
+                                }}
+                                onBlur={() => setEditingCell(null)}
+                                autoFocus
+                              />
+                            ) : (
+                              <span
+                                className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                                onClick={() => setEditingCell({ id: installment.id, field: "partner_commission" })}
+                              >
+                                {formatCurrency(installment.partner_commission || 0)}
+                              </span>
+                            )
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(installment.internal_commission || 0)}
+                          {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
+                            <Input
+                              type="text"
+                              className="w-24 h-8 text-right text-sm"
+                              value={formatCurrency(installment.internal_commission || 0)}
+                              onChange={(e) => {
+                                const value = parseCurrencyToNumber(e.target.value);
+                                handleUpdateField(installment.id, "internal_commission", value);
+                              }}
+                              onBlur={() => setEditingCell(null)}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                              onClick={() => setEditingCell({ id: installment.id, field: "internal_commission" })}
+                            >
+                              {formatCurrency(installment.internal_commission || 0)}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge
@@ -672,10 +716,47 @@ export function DepositInstallmentsTable({
                             : "-"}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {formatCurrency(installment.amount)}
+                          {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
+                            <Input
+                              type="text"
+                              className="w-28 h-8 text-right text-sm font-semibold"
+                              value={formatCurrency(installment.amount)}
+                              onChange={(e) => {
+                                const value = parseCurrencyToNumber(e.target.value);
+                                handleUpdateField(installment.id, "amount", value);
+                              }}
+                              onBlur={() => setEditingCell(null)}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                              onClick={() => setEditingCell({ id: installment.id, field: "amount" })}
+                            >
+                              {formatCurrency(installment.amount)}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center text-xs">
-                          {installment.pix_code || "-"}
+                          {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
+                            <Input
+                              type="text"
+                              className="w-32 h-8 text-center text-xs"
+                              value={installment.pix_code || ""}
+                              onChange={(e) => {
+                                handleUpdateField(installment.id, "pix_code", e.target.value);
+                              }}
+                              onBlur={() => setEditingCell(null)}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                              onClick={() => setEditingCell({ id: installment.id, field: "pix_code" })}
+                            >
+                              {installment.pix_code || "-"}
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

@@ -866,73 +866,77 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
             {isDepositInstallment && depositInstallmentCount && (
               <div className="space-y-4 mt-4 pt-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="space-y-2 md:col-span-5">
-                    <Label htmlFor="depositInstallment2">Valor Caução (2ª Parcela)</Label>
+                {/* 1ª Parcela */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="depositAmount">Valor 1ª Parcela*</Label>
                     <Input
-                      id="depositInstallment2"
-                      value={depositInstallment2}
-                      onChange={(e) => setDepositInstallment2(formatCurrencyInput(e.target.value))}
+                      id="depositAmount"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(formatCurrencyInput(e.target.value))}
                       placeholder="R$ 0,00"
-                      disabled={isFieldDisabled}
+                      required={isDepositInstallment}
                     />
                   </div>
-
-                  <div className="space-y-2 md:col-span-4">
-                    <Label htmlFor="depositInstallment2PaymentDate">Data Pagamento</Label>
+                  <div>
+                    <Label htmlFor="depositPaymentDate">Data Vencimento 1ª Parcela*</Label>
                     <Input
-                      id="depositInstallment2PaymentDate"
+                      id="depositPaymentDate"
                       type="date"
-                      value={depositInstallment2PaymentDate}
-                      onChange={(e) => setDepositInstallment2PaymentDate(e.target.value)}
-                      disabled={isFieldDisabled}
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-3">
-                    <Label htmlFor="depositInstallment2PixCode">Código PIX</Label>
-                    <Input
-                      id="depositInstallment2PixCode"
-                      value={depositInstallment2PixCode}
-                      onChange={(e) => setDepositInstallment2PixCode(e.target.value)}
-                      placeholder="Código PIX"
-                      disabled={isFieldDisabled}
+                      value={depositPaymentDate}
+                      onChange={(e) => setDepositPaymentDate(e.target.value)}
+                      required={isDepositInstallment}
                     />
                   </div>
                 </div>
 
-                {depositInstallmentCount === "3" && (
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <div className="space-y-2 md:col-span-5">
-                      <Label htmlFor="depositInstallment3">Valor Caução (3ª Parcela)</Label>
+                {/* 2ª Parcela (se 2x ou 3x) */}
+                {depositInstallmentCount && parseInt(depositInstallmentCount) >= 2 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="depositInstallment2">Valor 2ª Parcela*</Label>
+                      <Input
+                        id="depositInstallment2"
+                        value={depositInstallment2}
+                        onChange={(e) => setDepositInstallment2(formatCurrencyInput(e.target.value))}
+                        placeholder="R$ 0,00"
+                        required={depositInstallmentCount && parseInt(depositInstallmentCount) >= 2}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="depositInstallment2PaymentDate">Data Vencimento 2ª Parcela*</Label>
+                      <Input
+                        id="depositInstallment2PaymentDate"
+                        type="date"
+                        value={depositInstallment2PaymentDate}
+                        onChange={(e) => setDepositInstallment2PaymentDate(e.target.value)}
+                        required={depositInstallmentCount && parseInt(depositInstallmentCount) >= 2}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 3ª Parcela (se 3x) */}
+                {depositInstallmentCount && parseInt(depositInstallmentCount) === 3 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="depositInstallment3">Valor 3ª Parcela*</Label>
                       <Input
                         id="depositInstallment3"
                         value={depositInstallment3}
                         onChange={(e) => setDepositInstallment3(formatCurrencyInput(e.target.value))}
                         placeholder="R$ 0,00"
-                        disabled={isFieldDisabled}
+                        required={depositInstallmentCount && parseInt(depositInstallmentCount) === 3}
                       />
                     </div>
-
-                    <div className="space-y-2 md:col-span-4">
-                      <Label htmlFor="depositInstallment3PaymentDate">Data Pagamento</Label>
+                    <div>
+                      <Label htmlFor="depositInstallment3PaymentDate">Data Vencimento 3ª Parcela*</Label>
                       <Input
                         id="depositInstallment3PaymentDate"
                         type="date"
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
-                        disabled={isFieldDisabled}
-                      />
-                    </div>
-
-                    <div className="space-y-2 md:col-span-3">
-                      <Label htmlFor="depositInstallment3PixCode">Código PIX</Label>
-                      <Input
-                        id="depositInstallment3PixCode"
-                        value={depositInstallment3PixCode}
-                        onChange={(e) => setDepositInstallment3PixCode(e.target.value)}
-                        placeholder="Código PIX"
-                        disabled={isFieldDisabled}
+                        required={depositInstallmentCount && parseInt(depositInstallmentCount) === 3}
                       />
                     </div>
                   </div>

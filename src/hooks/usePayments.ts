@@ -61,53 +61,58 @@ export const usePayments = () => {
       }
 
       // Converter deposit_installments para formato Payment
-      const depositPayments: Payment[] = await Promise.all(
+      const depositPayments: (Payment | null)[] = await Promise.all(
         filteredDeposits.map(async (deposit) => {
-          // Buscar dados da rental, property e tenant
-          const { data: rentalData } = await supabase
-            .from("rentals")
-            .select(`
-              *,
-              properties!rentals_property_id_fkey (*),
-              tenants!rentals_tenant_id_fkey (*)
-            `)
-            .eq("id", deposit.rental_id)
-            .single();
+          try {
+            // Buscar dados da rental, property e tenant
+            const { data: rentalData, error: rentalError } = await supabase
+              .from("rentals")
+              .select(`
+                *,
+                properties!rentals_property_id_fkey (*),
+                tenants!rentals_tenant_id_fkey (*)
+              `)
+              .eq("id", deposit.rental_id)
+              .single();
 
-          // ✅ NULL SAFETY: Se não encontrou rental, retornar null (será filtrado depois)
-          if (!rentalData) {
-            console.warn(`⚠️ Rental ${deposit.rental_id} não encontrado para deposit_installment ${deposit.id}`);
+            // ✅ NULL SAFETY: Se não encontrou rental, retornar null (será filtrado depois)
+            if (rentalError || !rentalData) {
+              console.warn(`⚠️ Rental ${deposit.rental_id} não encontrado para deposit_installment ${deposit.id}`);
+              return null;
+            }
+
+            const dueDate = new Date(deposit.due_date);
+            const depositMonth = dueDate.getMonth() + 1;
+            const depositYear = dueDate.getFullYear();
+
+            return {
+              id: deposit.id,
+              rentalId: deposit.rental_id,
+              propertyId: rentalData.property_id,
+              tenantId: rentalData.tenant_id,
+              referenceMonth: depositMonth,
+              referenceYear: depositYear,
+              dueDate: deposit.due_date,
+              expectedAmount: deposit.amount,
+              paidAmount: deposit.payment_date ? deposit.amount : 0,
+              status: deposit.status as "pending" | "paid" | "overdue" | "partial",
+              paymentDate: deposit.payment_date || null,
+              paymentMethod: deposit.payment_method || null,
+              notes: deposit.notes || null,
+              lateFee: 0,
+              interest: 0,
+              breakdown: null,
+              attachments: Array.isArray(deposit.attachments) 
+                ? deposit.attachments.map((att: any) => typeof att === 'string' ? att : att?.url || '')
+                : [],
+              installment: deposit.installment_number,
+              totalInstallments: deposit.total_installments,
+              depositType: "deposit", // Flag para identificar tipo caução
+            } as Payment;
+          } catch (error) {
+            console.error(`❌ Erro ao processar deposit_installment ${deposit.id}:`, error);
             return null;
           }
-
-          const dueDate = new Date(deposit.due_date);
-          const depositMonth = dueDate.getMonth() + 1;
-          const depositYear = dueDate.getFullYear();
-
-          return {
-            id: deposit.id,
-            rentalId: deposit.rental_id,
-            propertyId: rentalData.property_id,
-            tenantId: rentalData.tenant_id,
-            referenceMonth: depositMonth,
-            referenceYear: depositYear,
-            dueDate: deposit.due_date,
-            expectedAmount: deposit.amount,
-            paidAmount: deposit.payment_date ? deposit.amount : 0,
-            status: deposit.status as "pending" | "paid" | "overdue" | "partial",
-            paymentDate: deposit.payment_date || null,
-            paymentMethod: deposit.payment_method || null,
-            notes: deposit.notes || null,
-            lateFee: 0,
-            interest: 0,
-            breakdown: null,
-            attachments: Array.isArray(deposit.attachments) 
-              ? deposit.attachments.map((att: any) => typeof att === 'string' ? att : att.url)
-              : [],
-            installment: deposit.installment_number,
-            totalInstallments: deposit.total_installments,
-            depositType: "deposit", // Flag para identificar tipo caução
-          } as Payment;
         })
       );
 
