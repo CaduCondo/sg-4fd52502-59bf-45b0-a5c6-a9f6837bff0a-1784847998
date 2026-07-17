@@ -14,8 +14,6 @@ import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import {
   createPaymentsForRental,
-  updateFuturePayments,
-  updateFuturePaymentsOnPaymentDayChange,
 } from "@/services/paymentService";
 import { 
   createDepositInstallments, 
@@ -24,7 +22,6 @@ import {
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
-import { DepositReceipt } from "@/components/DepositReceipt";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { rentalUpdateService } from "@/services/rentalUpdateService";
 
@@ -63,7 +60,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>(locationsFromProps);
   const [showContract, setShowContract] = useState(false);
-  const [showDepositReceipt, setShowDepositReceipt] = useState(false);
   const [createdRentalData, setCreatedRentalData] = useState<{
     rental: Rental;
     property: Property;
@@ -113,11 +109,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     depositInstallment3PaymentDate,
     setDepositInstallment3PaymentDate,
     
-    depositInstallment2PixCode,
-    setDepositInstallment2PixCode,
-    depositInstallment3PixCode,
-    setDepositInstallment3PixCode,
-    
     attachments,
     setAttachments,
     proportionalRentInfo,
@@ -135,7 +126,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     locations,
   });
 
-  // ✅ TODOS OS useEffect NO TOPO - ANTES DE QUALQUER RETURN!
   useEffect(() => {
     if (locationsFromProps.length > 0) {
       setLocations(locationsFromProps);
@@ -157,7 +147,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     fetchLocations();
   }, [open, locations.length]);
 
-  // ✅ Pré-preencher campos quando modal abrir com valores selecionados dos combos
   useEffect(() => {
     if (open && !rental && preselectedPropertyId) {
       setSelectedPropertyId(preselectedPropertyId);
@@ -263,78 +252,33 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         if (parseInt(depositInstallmentCount) >= 2) {
           depositData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
           depositData.depositInstallment2PaymentDate = depositInstallment2PaymentDate || null;
-          depositData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
 
         if (parseInt(depositInstallmentCount) === 3) {
           depositData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
           depositData.depositInstallment3PaymentDate = depositInstallment3PaymentDate || null;
-          depositData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
       }
 
       const fullUpdateData = { ...commonData, ...depositData };
 
       if (rental) {
-        console.log("🔄 Editando locação existente...");
-        console.log("📅 Data final ANTIGA:", rental.endDate);
-        console.log("📅 Data final NOVA:", endDate);
-        
-        // Detectar mudanças que afetam recebimentos
         const changes: any = {};
-        if (startDate !== rental.startDate) {
-          changes.startDate = startDate;
-          console.log("📅 Mudança detectada: Data de início");
-          console.log("   ANTES:", rental.startDate);
-          console.log("   DEPOIS:", startDate);
-        }
-        if (endDate !== rental.endDate) {
-          changes.endDate = endDate;
-          console.log("📅 Mudança detectada: Data de término");
-          console.log("   ANTES:", rental.endDate);
-          console.log("   DEPOIS:", endDate);
-        }
-        if (baseRent !== rental.monthlyRent) {
-          changes.monthlyRent = baseRent;
-          console.log("💰 Mudança detectada: Valor do aluguel");
-          console.log("   ANTES: R$", rental.monthlyRent?.toFixed(2) || "0.00");
-          console.log("   DEPOIS: R$", baseRent.toFixed(2));
-          console.log("   DIFERENÇA: R$", (baseRent - (rental.monthlyRent || 0)).toFixed(2));
-        }
-        if (parseInt(paymentDay) !== rental.paymentDay) {
-          changes.paymentDay = parseInt(paymentDay);
-          console.log("📆 Mudança detectada: Dia de pagamento");
-          console.log("   ANTES:", rental.paymentDay);
-          console.log("   DEPOIS:", paymentDay);
-        }
-        if (hasGarage !== rental.hasGarage) {
-          changes.hasGarage = hasGarage;
-          console.log("🚗 Mudança detectada: Garagem");
-          console.log("   ANTES:", rental.hasGarage ? "Sim" : "Não");
-          console.log("   DEPOIS:", hasGarage ? "Sim" : "Não");
-        }
-        if (hasGarage && garageAmount !== (rental.garageValue || 0)) {
-          changes.garageValue = garageAmount;
-          console.log("💰 Mudança detectada: Valor da garagem");
-          console.log("   ANTES: R$", (rental.garageValue || 0).toFixed(2));
-          console.log("   DEPOIS: R$", garageAmount.toFixed(2));
-        }
+        if (startDate !== rental.startDate) changes.startDate = startDate;
+        if (endDate !== rental.endDate) changes.endDate = endDate;
+        if (baseRent !== rental.monthlyRent) changes.monthlyRent = baseRent;
+        if (parseInt(paymentDay) !== rental.paymentDay) changes.paymentDay = parseInt(paymentDay);
+        if (hasGarage !== rental.hasGarage) changes.hasGarage = hasGarage;
+        if (hasGarage && garageAmount !== (rental.garageValue || 0)) changes.garageValue = garageAmount;
 
-        console.log("🔍 Total de mudanças detectadas:", Object.keys(changes).length);
-        console.log("📋 Resumo das mudanças:", changes);
-
-        // Atualizar locação
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
-        // ✅ Recriar parcelas de caução se houver mudanças no caução parcelado
         if (isDepositInstallment && depositInstallmentCount) {
-          // Deletar parcelas antigas
           await deleteDepositInstallmentsByRental(rental.id);
           
           const installmentsData = [];
           const totalInstallments = parseInt(depositInstallmentCount);
 
-          // 1ª parcela
           if (depositAmount && depositPaymentDate) {
             installmentsData.push({
               installment_number: 1,
@@ -344,7 +288,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             });
           }
 
-          // 2ª parcela
           if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
             installmentsData.push({
               installment_number: 2,
@@ -354,7 +297,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             });
           }
 
-          // 3ª parcela
           if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
             installmentsData.push({
               installment_number: 3,
@@ -366,10 +308,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
           if (installmentsData.length > 0) {
             await createDepositInstallments(rental.id, installmentsData);
-            console.log(`✅ Recriadas ${installmentsData.length} parcelas de caução`);
           }
         } else {
-          // Se não é mais parcelado, deletar parcelas antigas
           await deleteDepositInstallmentsByRental(rental.id);
         }
         
@@ -386,16 +326,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           ...updatedRental,
           status: isViewMode ? "active" : (updatedRental.status || "active"),
           value: Number(updatedRental.value || 0),
-          depositInstallments: Number(depositData.depositInstallments),
-          depositInstallment1: Number(depositData.depositInstallment1),
-          depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
-          depositInstallment3: depositData.depositInstallment3 ? Number(depositData.depositInstallment3) : undefined,
-          depositPaymentDate: depositData.depositPaymentDate,
-          depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
-          depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
-          depositPixCode: depositData.depositPixCode,
-          depositInstallment2PixCode: depositData.depositInstallment2PixCode,
-          depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
         
         setCreatedRentalData({
@@ -432,12 +362,10 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           garageValue: mappedRental.garageValue || 0,
         });
 
-        // ✅ Criar parcelas de caução se parcelado
         if (isDepositInstallment && depositInstallmentCount) {
           const installmentsData = [];
           const totalInstallments = parseInt(depositInstallmentCount);
 
-          // 1ª parcela
           if (depositAmount && depositPaymentDate) {
             installmentsData.push({
               installment_number: 1,
@@ -447,7 +375,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             });
           }
 
-          // 2ª parcela
           if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
             installmentsData.push({
               installment_number: 2,
@@ -457,7 +384,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             });
           }
 
-          // 3ª parcela
           if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
             installmentsData.push({
               installment_number: 3,
@@ -469,7 +395,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
           if (installmentsData.length > 0) {
             await createDepositInstallments(createdRental.id, installmentsData);
-            console.log(`✅ Criadas ${installmentsData.length} parcelas de caução`);
           }
         }
 
@@ -500,12 +425,11 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       setLoading(false);
     }
   }, [
-    selectedPropertyId, selectedTenantId, startDate, paymentDay, properties, tenants, 
+    selectedPropertyId, selectedTenantId, startDate, paymentDay, 
     hasGarage, garageValue, isDepositInstallment, depositInstallmentCount, 
     depositInstallment2, depositInstallment3, depositAmount, endDate, 
     hasPartnerBroker, attachments, depositPaymentDate, depositPixCode, 
-    depositInstallment2PaymentDate, depositInstallment2PixCode, 
-    depositInstallment3PaymentDate, depositInstallment3PixCode, 
+    depositInstallment2PaymentDate, depositInstallment3PaymentDate, 
     rental, isViewMode, locations, toast
   ]);
 
@@ -519,11 +443,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     return total;
   }, [depositAmount, isDepositInstallment, depositInstallmentCount, depositInstallment2, depositInstallment3]);
 
-  // ✅ GARANTIR QUE O IMÓVEL E INQUILINO ATUAIS ESTEJAM NAS LISTAS
   const propertiesToDisplay = useMemo(() => {
     const baseList = rental ? properties : availableProperties;
     if (rental && rental.property && !baseList.find(p => p.id === rental.propertyId)) {
-      console.log("➕ Adicionando imóvel atual à lista:", rental.property);
       return [...baseList, rental.property as Property];
     }
     return baseList;
@@ -532,7 +454,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   const tenantsToDisplay = useMemo(() => {
     const baseList = rental ? tenants : availableTenants;
     if (rental && rental.tenant && !baseList.find(t => t.id === rental.tenantId)) {
-      console.log("➕ Adicionando inquilino atual à lista:", rental.tenant);
       return [...baseList, rental.tenant as Tenant];
     }
     return baseList;
@@ -732,7 +653,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </div>
 
           <div className="space-y-4 p-4 border rounded-md bg-muted/20">
-            <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações da Caução</h3>
+            <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações do Caução</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-4">
@@ -748,8 +669,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="rental-deposit-date">Data Pagamento *</Label>
+              <div className="space-y-2 md:col-span-4">
+                <Label htmlFor="rental-deposit-date">Data Vencimento *</Label>
                 <Input
                   id="rental-deposit-date"
                   type="date"
@@ -759,7 +680,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="rental-deposit-pix">Código PIX</Label>
                 <Input
                   id="rental-deposit-pix"
@@ -769,52 +690,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   disabled={isFieldDisabled}
                 />
               </div>
-
-              {/* Botão Recibo - sempre habilitado, na mesma linha */}
-              {rental && depositAmount && depositPaymentDate && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>&nbsp;</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="default"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      
-                      // Preparar dados para o recibo
-                      const selectedProperty = propertiesToDisplay.find((p) => p.id === selectedPropertyId);
-                      const selectedTenant = tenantsToDisplay.find((t) => t.id === selectedTenantId);
-                      
-                      if (selectedProperty && selectedTenant) {
-                        setCreatedRentalData({
-                          rental: rental,
-                          property: selectedProperty,
-                          tenant: selectedTenant,
-                          location: locations.find((loc) => loc.id === selectedProperty.locationId),
-                        });
-                        setShowDepositReceipt(true);
-                      }
-                    }}
-                    className="gap-2 w-full"
-                  >
-                    <svg 
-                      className="h-4 w-4" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                      />
-                    </svg>
-                    Recibo
-                  </Button>
-                </div>
-              )}
             </div>
 
             <div className="flex items-center gap-4 mt-4">
@@ -866,31 +741,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
             {isDepositInstallment && depositInstallmentCount && (
               <div className="space-y-4 mt-4 pt-4 border-t">
-                {/* 1ª Parcela */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="depositAmount">Valor 1ª Parcela*</Label>
-                    <Input
-                      id="depositAmount"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(formatCurrencyInput(e.target.value))}
-                      placeholder="R$ 0,00"
-                      required={isDepositInstallment}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="depositPaymentDate">Data Vencimento 1ª Parcela*</Label>
-                    <Input
-                      id="depositPaymentDate"
-                      type="date"
-                      value={depositPaymentDate}
-                      onChange={(e) => setDepositPaymentDate(e.target.value)}
-                      required={isDepositInstallment}
-                    />
-                  </div>
-                </div>
-
-                {/* 2ª Parcela (se 2x ou 3x) */}
                 {depositInstallmentCount && parseInt(depositInstallmentCount) >= 2 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -916,7 +766,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   </div>
                 )}
 
-                {/* 3ª Parcela (se 3x) */}
                 {depositInstallmentCount && parseInt(depositInstallmentCount) === 3 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1145,40 +994,10 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           location={createdRentalData.location}
           onClose={() => {
             setShowContract(false);
-            // Se for nova locação (não é edição), mostrar recibo de caução
-            if (!rental) {
-              setShowDepositReceipt(true);
-            } else {
-              setCreatedRentalData(null);
-              resetForm();
-              onOpenChange(false);
-              onSuccess();
-            }
-          }}
-        />
-      )}
-
-      {showDepositReceipt && createdRentalData && depositAmount && depositPaymentDate && (
-        <DepositReceipt
-          depositAmount={parseCurrencyToNumber(depositAmount)}
-          depositPaymentDate={depositPaymentDate}
-          property={createdRentalData.property}
-          tenant={createdRentalData.tenant}
-          contractDate={createdRentalData.rental.startDate}
-          location={createdRentalData.location}
-          onClose={() => {
-            setShowDepositReceipt(false);
-            
-            // Se foi aberto via botão "Recibo" (rental já existe), apenas fechar o recibo
-            if (rental) {
-              setCreatedRentalData(null);
-            } else {
-              // Se foi aberto após criar nova locação, fechar tudo
-              setCreatedRentalData(null);
-              resetForm();
-              onOpenChange(false);
-              onSuccess();
-            }
+            setCreatedRentalData(null);
+            resetForm();
+            onOpenChange(false);
+            onSuccess();
           }}
         />
       )}
