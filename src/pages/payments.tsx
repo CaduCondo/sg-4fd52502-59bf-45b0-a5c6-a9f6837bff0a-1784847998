@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { SortableTable } from "@/components/ui/sortable-table";
 import { supabase } from "@/integrations/supabase/client";
+import { getAllDepositInstallments } from "@/services/depositInstallmentService";
 import {
   AlertDialog,
   AlertDialogAction,
