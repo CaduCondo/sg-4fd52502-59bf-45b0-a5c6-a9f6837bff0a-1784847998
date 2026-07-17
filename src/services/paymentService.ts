@@ -177,7 +177,7 @@ export const create = async (payment: Partial<Payment>) => {
   if (error) throw error;
   
   // Create Payment object with explicit non-undefined values
-  const payment: Payment = {
+  const createdPayment: Payment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -199,28 +199,28 @@ export const create = async (payment: Partial<Payment>) => {
     attachments: (data.attachments as unknown as string[]) || [],
   };
   
-  return payment;
+  return createdPayment;
 };
 
 export const update = async (
   id: string,
-  payment: Partial<Payment>
+  updatePaymentData: Partial<Payment>
 ): Promise<Payment> => {
   const updateData: any = {
-    expected_amount: payment.expectedAmount,
-    paid_amount: payment.paidAmount,
-    due_date: payment.dueDate,
-    payment_date: payment.paymentDate,
-    status: payment.status,
-    reference_month: payment.referenceMonth ? String(payment.referenceMonth) : undefined,
-    reference_year: payment.referenceYear ? String(payment.referenceYear) : undefined,
-    late_fee: payment.lateFee,
-    interest: payment.interest,
-    notes: payment.notes,
-    payment_method: payment.paymentMethod,
-    breakdown: payment.breakdown,
-    installment: payment.installment,
-    total_installments: payment.totalInstallments,
+    expected_amount: updatePaymentData.expectedAmount,
+    paid_amount: updatePaymentData.paidAmount,
+    due_date: updatePaymentData.dueDate,
+    payment_date: updatePaymentData.paymentDate,
+    status: updatePaymentData.status,
+    reference_month: updatePaymentData.referenceMonth ? String(updatePaymentData.referenceMonth) : undefined,
+    reference_year: updatePaymentData.referenceYear ? String(updatePaymentData.referenceYear) : undefined,
+    late_fee: updatePaymentData.lateFee,
+    interest: updatePaymentData.interest,
+    notes: updatePaymentData.notes,
+    payment_method: updatePaymentData.paymentMethod,
+    breakdown: updatePaymentData.breakdown,
+    installment: updatePaymentData.installment,
+    total_installments: updatePaymentData.totalInstallments,
   };
 
   Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
