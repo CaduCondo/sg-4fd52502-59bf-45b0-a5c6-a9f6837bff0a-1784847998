@@ -180,6 +180,8 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   const createdPayment: Payment = {
     id: data.id,
     rentalId: data.rental_id,
+    propertyId: "",
+    tenantId: "",
     referenceMonth: Number(data.reference_month),
     referenceYear: Number(data.reference_year),
     dueDate: data.due_date,
@@ -194,8 +196,6 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     breakdown: data.breakdown,
     installment: data.installment,
     totalInstallments: data.total_installments,
-    propertyId: "",
-    tenantId: "",
     attachments: (data.attachments as unknown as string[]) || [],
   };
 

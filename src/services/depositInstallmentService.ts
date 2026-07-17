@@ -38,7 +38,10 @@ export async function createDepositInstallments(
       amount: inst.amount,
       due_date: inst.due_date,
       status: "pending",
+      paid_amount: 0,
       pix_key: null,
+      partner_commission: 0,
+      internal_commission: 0,
     }));
 
     const { data, error } = await supabase
@@ -56,13 +59,14 @@ export async function createDepositInstallments(
       amount: item.amount,
       due_date: item.due_date,
       payment_date: item.payment_date,
+      paid_amount: item.paid_amount || 0,
       payment_method: item.payment_method,
       status: item.status,
       notes: item.notes,
-      attachments: item.attachments || [],
-      pix_key: item.pix_key,
-      partner_commission: item.partner_commission,
-      internal_commission: item.internal_commission,
+      attachments: Array.isArray(item.attachments) ? item.attachments : [],
+      pix_key: item.pix_key || null,
+      partner_commission: item.partner_commission || 0,
+      internal_commission: item.internal_commission || 0,
       created_at: item.created_at,
       updated_at: item.updated_at,
     })) as DepositInstallment[];
@@ -116,7 +120,7 @@ export async function getAllDepositInstallments(): Promise<DepositInstallment[]>
       payment_method: item.payment_method,
       status: item.status,
       notes: item.notes,
-      attachments: item.attachments || [],
+      attachments: Array.isArray(item.attachments) ? item.attachments : [],
       pix_key: item.pix_key || null,
       partner_commission: item.partner_commission || 0,
       internal_commission: item.internal_commission || 0,
@@ -143,11 +147,14 @@ export async function updateDepositInstallment(
     if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
     if (updates.due_date !== undefined) dbUpdates.due_date = updates.due_date;
     if (updates.payment_date !== undefined) dbUpdates.payment_date = updates.payment_date;
+    if (updates.paid_amount !== undefined) dbUpdates.paid_amount = updates.paid_amount;
     if (updates.payment_method !== undefined) dbUpdates.payment_method = updates.payment_method;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.pix_key !== undefined) dbUpdates.pix_key = updates.pix_key;
+    if (updates.partner_commission !== undefined) dbUpdates.partner_commission = updates.partner_commission;
+    if (updates.internal_commission !== undefined) dbUpdates.internal_commission = updates.internal_commission;
     if (updates.attachments !== undefined) {
-      // Convert attachment objects to strings if needed
       dbUpdates.attachments = updates.attachments;
     }
 
@@ -160,7 +167,25 @@ export async function updateDepositInstallment(
 
     if (error) throw error;
 
-    return data as unknown as DepositInstallment;
+    return {
+      id: data.id,
+      rental_id: data.rental_id,
+      installment_number: data.installment_number,
+      total_installments: data.installment_total,
+      amount: data.amount,
+      due_date: data.due_date,
+      payment_date: data.payment_date,
+      paid_amount: data.paid_amount || 0,
+      payment_method: data.payment_method,
+      status: data.status,
+      notes: data.notes,
+      attachments: Array.isArray(data.attachments) ? data.attachments : [],
+      pix_key: data.pix_key || null,
+      partner_commission: data.partner_commission || 0,
+      internal_commission: data.internal_commission || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    } as DepositInstallment;
   } catch (error) {
     console.error("Erro ao atualizar parcela de caução:", error);
     throw error;
@@ -283,7 +308,25 @@ export async function markDepositInstallmentAsPaid(
 
     if (error) throw error;
 
-    return data as unknown as DepositInstallment;
+    return {
+      id: data.id,
+      rental_id: data.rental_id,
+      installment_number: data.installment_number,
+      total_installments: data.installment_total,
+      amount: data.amount,
+      due_date: data.due_date,
+      payment_date: data.payment_date,
+      paid_amount: data.paid_amount || 0,
+      payment_method: data.payment_method,
+      status: data.status,
+      notes: data.notes,
+      attachments: Array.isArray(data.attachments) ? data.attachments : [],
+      pix_key: data.pix_key || null,
+      partner_commission: data.partner_commission || 0,
+      internal_commission: data.internal_commission || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    } as DepositInstallment;
   } catch (error) {
     console.error("Erro ao marcar parcela como paga:", error);
     throw error;
