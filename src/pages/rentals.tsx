@@ -84,6 +84,10 @@ export default function RentalsPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // States para rastrear seleções dos combos
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
+  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
+
   // Permissions helper
   const permissions = useMemo(() => ({
     canViewContract: true, // Todos podem ver contrato
@@ -882,15 +886,11 @@ export default function RentalsPage() {
                   Lista
                 </Button>
               </div>
-              <Button id="rentals-new-button" onClick={handleCreateNew} disabled={!canCreateRental}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Locação
-              </Button>
             </div>
           </div>
 
-          {/* Vacant Properties Card */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Vacant Properties Card + New Rental Button */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card className="h-full">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -904,7 +904,7 @@ export default function RentalsPage() {
                 ) : availableProperties.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
                 ) : (
-                  <Select>
+                  <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um imóvel vago" />
                     </SelectTrigger>
@@ -945,7 +945,7 @@ export default function RentalsPage() {
                 ) : availableTenants.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
                 ) : (
-                  <Select>
+                  <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um inquilino disponível" />
                     </SelectTrigger>
@@ -958,6 +958,16 @@ export default function RentalsPage() {
                     </SelectContent>
                   </Select>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card className="h-full flex items-center justify-center cursor-pointer hover:shadow-lg transition-shadow" onClick={handleCreateNew}>
+              <CardContent className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <Plus className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg">Nova</h3>
+                <h3 className="font-semibold text-lg">Locação</h3>
               </CardContent>
             </Card>
           </div>
@@ -1235,6 +1245,8 @@ export default function RentalsPage() {
           rental={selectedRental}
           isViewMode={isViewMode}
           isLoadingData={loadingAdditionalData}
+          preselectedPropertyId={selectedPropertyId}
+          preselectedTenantId={selectedTenantId}
         />
 
         <RentalTerminationDialog
