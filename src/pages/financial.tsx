@@ -28,6 +28,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -45,7 +59,8 @@ import {
   X,
   Edit2,
   Wallet,
-  MapPin
+  MapPin,
+  ChevronDown
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -517,7 +532,7 @@ export default function Financial() {
   } | null>(null);
   
   const [showExpensesDialog, setShowExpensesDialog] = useState(false);
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -809,11 +824,13 @@ export default function Financial() {
 
   // Filtrar pagamentos por localização selecionada
   const locationFilteredPayments = useMemo(() => {
-    if (selectedLocationId === "all") {
+    if (selectedLocationIds.length === 0) {
       return payments;
     }
-    return payments.filter(payment => payment.property?.locationId === selectedLocationId);
-  }, [payments, selectedLocationId]);
+    return payments.filter(payment => 
+      payment.property?.locationId && selectedLocationIds.includes(payment.property.locationId)
+    );
+  }, [payments, selectedLocationIds]);
 
   // Memoizar função de obter detalhes do pagamento
   const getPaymentDetails = useCallback((payment: Payment) => {
@@ -1053,7 +1070,7 @@ export default function Financial() {
     });
   };
 
-  const handleShowExpenses = async (locationId: string) => {
+  const handleShowExpenses = async (locationIds: string[]) => {
     try {
       // Buscar despesas da localização e mês selecionados
       let query = supabase
@@ -1065,12 +1082,16 @@ export default function Financial() {
         .eq("reference_month", selectedMonth)
         .eq("reference_year", selectedYear);
 
-      // Se não for "all", filtrar por location_id
-      if (locationId !== "all") {
-        query = query.eq("location_id", locationId);
-      } else if (isFinancial && allowedLocationIds.length > 0) {
-        // Para usuários financeiros com "Todos os Locais", filtrar pelos locais permitidos
-        query = query.in("location_id", allowedLocationIds);
+      // Se nenhum local selecionado
+      if (locationIds.length === 0) {
+        if (isFinancial && allowedLocationIds.length > 0) {
+          // Para usuários financeiros, filtrar pelos locais permitidos
+          query = query.in("location_id", allowedLocationIds);
+        }
+        // Para admin/broker, busca todos
+      } else {
+        // Locais específicos selecionados
+        query = query.in("location_id", locationIds);
       }
 
       const { data, error } = await query;
@@ -1092,7 +1113,9 @@ export default function Financial() {
         return;
       }
 
-      const locationName = locationId === "all" ? "Todos os Locais" : (expenses[0]?.location_name || "Local");
+      const locationName = locationIds.length === 0 ? "Todos os Locais" : 
+                          locationIds.length === 1 ? (expenses[0]?.location_name || "Local") :
+                          `${locationIds.length} Locais`;
       const monthName = months[selectedMonth - 1];
       const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -1417,8 +1440,8 @@ export default function Financial() {
     // ✅ CORREÇÃO: Filtrar despesas considerando permissões do usuário financeiro
     let filteredExpenses = locationExpensesData;
     
-    if (selectedLocationId === "all") {
-      // Quando "Todos os Locais", para financeiros filtrar pelos permitidos
+    if (selectedLocationIds.length === 0) {
+      // Quando nenhum local selecionado, para financeiros filtrar pelos permitidos
       if (isFinancial && allowedLocationIds.length > 0) {
         filteredExpenses = locationExpensesData.filter(expense => 
           allowedLocationIds.includes(expense.location_id)
@@ -1426,9 +1449,9 @@ export default function Financial() {
       }
       // Para admin/broker, usa todos
     } else {
-      // Local específico selecionado
+      // Locais específicos selecionados
       filteredExpenses = locationExpensesData.filter(expense => 
-        expense.location_id === selectedLocationId
+        selectedLocationIds.includes(expense.location_id)
       );
     }
     
@@ -1479,7 +1502,7 @@ export default function Financial() {
       totalPaid,
       locationExpenses: totalLocationExpenses,
     };
-  }, [locationFilteredPayments, config, exemptLocationIds, managementFeeExemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount, isFinancial, allowedLocationIds]);
+  }, [locationFilteredPayments, config, exemptLocationIds, managementFeeExemptLocationIds, locationExpensesData, selectedLocationIds, getExpectedAmount, isFinancial, allowedLocationIds]);
 
   const filteredPayments = getSortedPayments;
 
@@ -1500,10 +1523,10 @@ export default function Financial() {
   
   // Filtrar despesas detalhadas por localização
   const filteredExpensesDetails = useMemo(() => {
-    let filtered = selectedLocationId === "all" 
+    let filtered = selectedLocationIds.includes("all") && selectedLocationIds.length === 1 
       ? expensesDetails 
       : expensesDetails.filter(expense => 
-          locationsMap.get(expense.location_id) === locationsMap.get(selectedLocationId)
+          locationsMap.get(expense.location_id) === locationsMap.get(selectedLocationIds[0])
         );
     
     // Aplicar ordenação
@@ -1536,7 +1559,7 @@ export default function Financial() {
     }
     
     return filtered;
-  }, [expensesDetails, selectedLocationId, locationsMap, expenseSortField, expenseSortDirection]);
+  }, [expensesDetails, selectedLocationIds, locationsMap, expenseSortField, expenseSortDirection]);
 
   if (!mounted) return null;
 
@@ -1669,7 +1692,7 @@ export default function Financial() {
               <Card 
                 id="financial-expenses-card" 
                 className="border-l-4 border-l-red-500 card cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleShowExpenses(selectedLocationId)}
+                onClick={() => handleShowExpenses(selectedLocationIds)}
               >
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
@@ -1714,20 +1737,81 @@ export default function Financial() {
                     Detalhamento de Locações - {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
                   </CardTitle>
                   <div className="flex gap-2 w-full sm:w-auto flex-wrap">
-                    <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                      <SelectTrigger id="financial-location-filter" className="w-full sm:w-[200px] h-8 sm:h-9">
-                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                        <SelectValue placeholder="Todos os Locais" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os Locais</SelectItem>
-                        {locationOptions.map(location => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="financial-location-filter"
+                          variant="outline"
+                          className="w-full sm:w-[200px] justify-between h-8 sm:h-9"
+                        >
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="truncate">
+                              {selectedLocationIds.length === 0
+                                ? "Todos os Locais"
+                                : selectedLocationIds.length === 1
+                                ? locationsMap.get(selectedLocationIds[0])
+                                : `${selectedLocationIds.length} Locais`}
+                            </span>
+                          </div>
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar local..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum local encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {/* Opção "Todos os Locais" */}
+                              <CommandItem
+                                onSelect={() => {
+                                  setSelectedLocationIds([]);
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <Checkbox
+                                  checked={selectedLocationIds.length === 0}
+                                  onCheckedChange={() => {
+                                    setSelectedLocationIds([]);
+                                  }}
+                                />
+                                <span>Todos os Locais</span>
+                              </CommandItem>
+                              
+                              {/* Lista de locais com checkboxes */}
+                              {locationOptions.map(location => (
+                                <CommandItem
+                                  key={location.id}
+                                  onSelect={() => {
+                                    setSelectedLocationIds(prev => {
+                                      if (prev.includes(location.id)) {
+                                        return prev.filter(id => id !== location.id);
+                                      } else {
+                                        return [...prev, location.id];
+                                      }
+                                    });
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Checkbox
+                                    checked={selectedLocationIds.includes(location.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedLocationIds(prev => [...prev, location.id]);
+                                      } else {
+                                        setSelectedLocationIds(prev => prev.filter(id => id !== location.id));
+                                      }
+                                    }}
+                                  />
+                                  <span>{location.name}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     
                     <Button
                       id="financial-print-button"
@@ -1756,7 +1840,8 @@ export default function Financial() {
               {/* Título para impressão */}
               <div className="hidden print:block print-title p-4">
                 Detalhamento de Locações - {format(new Date(filterYear, filterMonth - 1), "MMMM yyyy", { locale: ptBR })}
-                {selectedLocationId !== "all" && ` - ${locationsMap.get(selectedLocationId)}`}
+                {selectedLocationIds.length === 1 && ` - ${locationsMap.get(selectedLocationIds[0])}`}
+                {selectedLocationIds.length > 1 && ` - ${selectedLocationIds.length} Locais Selecionados`}
               </div>
               
               <CardContent className="p-0">
