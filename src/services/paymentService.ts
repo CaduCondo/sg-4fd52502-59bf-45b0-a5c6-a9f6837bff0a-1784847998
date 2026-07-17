@@ -176,15 +176,15 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return object and let TypeScript infer type
-  const result = {
+  // Return with explicit default values to ensure all required properties are present
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: Number(data.reference_month),
-    referenceYear: Number(data.reference_year),
-    dueDate: data.due_date,
+    referenceMonth: data.reference_month ? Number(data.reference_month) : 0,
+    referenceYear: data.reference_year ? Number(data.reference_year) : 0,
+    dueDate: data.due_date || "",
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -197,9 +197,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
-  
-  return result;
+  } as Payment;
 };
 
 export const update = async (
