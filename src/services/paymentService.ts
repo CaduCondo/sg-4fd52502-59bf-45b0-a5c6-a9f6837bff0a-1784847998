@@ -176,15 +176,20 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
+  // Ensure all required fields are present with guaranteed values
+  const referenceMonth = data.reference_month ? Number(data.reference_month) : 0;
+  const referenceYear = data.reference_year ? Number(data.reference_year) : 0;
+  const dueDate = data.due_date || "";
+  
   // Construct Payment object with explicit property declarations
   const result: Payment = {} as Payment;
   result.id = data.id;
   result.rentalId = data.rental_id;
   result.propertyId = "";
   result.tenantId = "";
-  result.referenceMonth = data.reference_month ? Number(data.reference_month) : 0;
-  result.referenceYear = data.reference_year ? Number(data.reference_year) : 0;
-  result.dueDate = data.due_date || "";
+  result.referenceMonth = referenceMonth;
+  result.referenceYear = referenceYear;
+  result.dueDate = dueDate;
   result.expectedAmount = data.expected_amount;
   result.paidAmount = data.paid_amount;
   result.status = data.status as "paid" | "pending" | "overdue" | "partial";
