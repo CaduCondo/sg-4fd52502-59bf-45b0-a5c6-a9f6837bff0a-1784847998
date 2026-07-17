@@ -176,15 +176,15 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
 
   if (error) throw error;
   
-  // Return object literal directly with guaranteed values
-  return {
+  // Construct Payment object with all required properties
+  const newPayment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: Number(data.reference_month || "0"),
-    referenceYear: Number(data.reference_year || "0"),
-    dueDate: data.due_date || "",
+    referenceMonth: data.reference_month ? Number(data.reference_month) : 1,
+    referenceYear: data.reference_year ? Number(data.reference_year) : new Date().getFullYear(),
+    dueDate: data.due_date || new Date().toISOString().split('T')[0],
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -198,6 +198,8 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
   };
+  
+  return newPayment;
 };
 
 export const update = async (

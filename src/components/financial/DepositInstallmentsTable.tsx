@@ -618,7 +618,7 @@ export function DepositInstallmentsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((installment) => {
+                  {visibleData.map((installment) => {
                     const rental = installment.rental;
                     const property = rental?.property;
                     const tenant = rental?.tenant;
