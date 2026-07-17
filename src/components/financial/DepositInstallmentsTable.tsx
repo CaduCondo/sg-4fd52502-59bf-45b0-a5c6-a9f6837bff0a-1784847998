@@ -373,6 +373,49 @@ export function DepositInstallmentsTable({
   // Achatar os grupos para cálculo de totais (MEMOIZADO)
   const visibleData = useMemo(() => sortedGroups.flatMap(group => group), [sortedGroups]);
 
+  // Calcular rowSpan para cada linha (para mesclar células da mesma locação)
+  const rowSpanMap = useMemo(() => {
+    const map = new Map<string, { start: number; count: number }>();
+    const grouped = new Map<string, number[]>();
+
+    // Agrupar índices por rental_id
+    visibleData.forEach((item, index) => {
+      const rentalId = item.rental_id;
+      if (!grouped.has(rentalId)) {
+        grouped.set(rentalId, []);
+      }
+      grouped.get(rentalId)!.push(index);
+    });
+
+    // Calcular rowSpan para cada grupo
+    grouped.forEach((indices, rentalId) => {
+      if (indices.length > 0) {
+        map.set(rentalId, {
+          start: indices[0],
+          count: indices.length,
+        });
+      }
+    });
+
+    return map;
+  }, [visibleData]);
+
+  // Helper para verificar se deve renderizar a célula
+  const shouldRenderCell = useCallback((rentalId: string, currentIndex: number): boolean => {
+    const info = rowSpanMap.get(rentalId);
+    if (!info) return true;
+    return info.start === currentIndex;
+  }, [rowSpanMap]);
+
+  // Helper para obter rowSpan
+  const getRowSpan = useCallback((rentalId: string): number => {
+    const info = rowSpanMap.get(rentalId);
+    return info ? info.count : 1;
+  }, [rowSpanMap]);
+
+  const sortedData = useMemo(() => {
+  }, [visibleData]);
+
   const { totalExpected, totalReceived, totalPartnerCommission, totalInternalCommission, totalCommission, netRevenue } = useMemo(() => {
     const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const totalReceived = visibleData
@@ -548,14 +591,8 @@ export function DepositInstallmentsTable({
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("installment")}>
-                      <div className="flex items-center justify-center gap-1">
-                        Parcela
-                        <SortIcon field="installment" />
-                      </div>
-                    </TableHead>
                     <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("location")}>
                       <div className="flex items-center gap-1">
                         Local
@@ -592,6 +629,12 @@ export function DepositInstallmentsTable({
                         <SortIcon field="internalCommission" />
                       </div>
                     </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("installment")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Parcela
+                        <SortIcon field="installment" />
+                      </div>
+                    </TableHead>
                     <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("status")}>
                       <div className="flex items-center justify-center gap-1">
                         Status
@@ -622,33 +665,84 @@ export function DepositInstallmentsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleData.map((installment) => {
+                  {visibleData.map((installment, index) => {
                     const rental = installment.rental;
                     const property = rental?.property;
                     const tenant = rental?.tenant;
                     const location = property?.location;
+                    const rentalId = installment.rental_id;
 
                     return (
                       <TableRow key={installment.id} className="hover:bg-gray-50">
-                        <TableCell className="text-center font-medium">
-                          {installment.installment_number}/{installment.total_installments}
-                        </TableCell>
-                        <TableCell>{location?.name || "N/A"}</TableCell>
-                        <TableCell>{property?.complement || "-"}</TableCell>
-                        <TableCell>{tenant?.name || "N/A"}</TableCell>
-                        <TableCell className="text-center">
-                          {rental?.has_partner_broker ? "Sim" : "Não"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {rental?.has_partner_broker ? (
-                            editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
+                        {/* Local - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {location?.name || "N/A"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Complemento - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {property?.complement || "-"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Inquilino - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {tenant?.name || "N/A"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Corretor Parceiro - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-center" rowSpan={getRowSpan(rentalId)}>
+                            {rental?.has_partner_broker ? "Sim" : "Não"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Valor Parceiro - mesclado e editável */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {rental?.has_partner_broker ? (
+                              editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
+                                <Input
+                                  type="text"
+                                  className="w-24 h-8 text-right text-sm"
+                                  value={formatCurrency(installment.partner_commission || 0)}
+                                  onChange={(e) => {
+                                    const value = parseCurrencyToNumber(e.target.value);
+                                    handleUpdateField(installment.id, "partner_commission", value);
+                                  }}
+                                  onBlur={() => setEditingCell(null)}
+                                  autoFocus
+                                />
+                              ) : (
+                                <span
+                                  className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                                  onClick={() => setEditingCell({ id: installment.id, field: "partner_commission" })}
+                                >
+                                  {formatCurrency(installment.partner_commission || 0)}
+                                </span>
+                              )
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                        )}
+                        
+                        {/* Valor Corretor - mesclado e editável */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
                               <Input
                                 type="text"
                                 className="w-24 h-8 text-right text-sm"
-                                value={formatCurrency(installment.partner_commission || 0)}
+                                value={formatCurrency(installment.internal_commission || 0)}
                                 onChange={(e) => {
                                   const value = parseCurrencyToNumber(e.target.value);
-                                  handleUpdateField(installment.id, "partner_commission", value);
+                                  handleUpdateField(installment.id, "internal_commission", value);
                                 }}
                                 onBlur={() => setEditingCell(null)}
                                 autoFocus
@@ -656,37 +750,20 @@ export function DepositInstallmentsTable({
                             ) : (
                               <span
                                 className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                                onClick={() => setEditingCell({ id: installment.id, field: "partner_commission" })}
+                                onClick={() => setEditingCell({ id: installment.id, field: "internal_commission" })}
                               >
-                                {formatCurrency(installment.partner_commission || 0)}
+                                {formatCurrency(installment.internal_commission || 0)}
                               </span>
-                            )
-                          ) : (
-                            "-"
-                          )}
+                            )}
+                          </TableCell>
+                        )}
+
+                        {/* Parcela - NÃO mesclado */}
+                        <TableCell className="text-center font-medium">
+                          {installment.installment_number}/{installment.total_installments}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
-                            <Input
-                              type="text"
-                              className="w-24 h-8 text-right text-sm"
-                              value={formatCurrency(installment.internal_commission || 0)}
-                              onChange={(e) => {
-                                const value = parseCurrencyToNumber(e.target.value);
-                                handleUpdateField(installment.id, "internal_commission", value);
-                              }}
-                              onBlur={() => setEditingCell(null)}
-                              autoFocus
-                            />
-                          ) : (
-                            <span
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => setEditingCell({ id: installment.id, field: "internal_commission" })}
-                            >
-                              {formatCurrency(installment.internal_commission || 0)}
-                            </span>
-                          )}
-                        </TableCell>
+
+                        {/* Status - NÃO mesclado */}
                         <TableCell className="text-center">
                           <Badge
                             variant="outline"
@@ -705,16 +782,22 @@ export function DepositInstallmentsTable({
                               : "Pendente"}
                           </Badge>
                         </TableCell>
+                        
+                        {/* Data Vencimento - NÃO mesclado */}
                         <TableCell className="text-center">
                           {installment.due_date
                             ? new Date(installment.due_date).toLocaleDateString("pt-BR")
                             : "-"}
                         </TableCell>
+                        
+                        {/* Data Pagamento - NÃO mesclado */}
                         <TableCell className="text-center">
                           {installment.payment_date
                             ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
                             : "-"}
                         </TableCell>
+                        
+                        {/* Valor - NÃO mesclado e editável */}
                         <TableCell className="text-right font-semibold">
                           {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
                             <Input
@@ -737,6 +820,8 @@ export function DepositInstallmentsTable({
                             </span>
                           )}
                         </TableCell>
+                        
+                        {/* Código PIX - NÃO mesclado e editável */}
                         <TableCell className="text-center text-xs">
                           {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
                             <Input
@@ -761,18 +846,6 @@ export function DepositInstallmentsTable({
                       </TableRow>
                     );
                   })}
-                  {/* ✅ LINHA DE TOTAIS */}
-                  <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
-                    <TableCell colSpan={4} className="text-right pr-4 text-sm print:text-[10px]">TOTAIS</TableCell>
-                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalExpected)}</TableCell>
-                    <TableCell className="text-sm print:text-[10px]"></TableCell>
-                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalPartnerCommission)}</TableCell>
-                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalInternalCommission)}</TableCell>
-                    <TableCell className="border-l border-l-2 border-gray-300 text-sm print:text-[10px]"></TableCell>
-                    <TableCell className="text-sm print:text-[10px]"></TableCell>
-                    <TableCell className="text-right text-sm print:text-[10px]">{formatCurrency(totalExpected)}</TableCell>
-                    <TableCell className="text-sm print:text-[10px]"></TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </div>
