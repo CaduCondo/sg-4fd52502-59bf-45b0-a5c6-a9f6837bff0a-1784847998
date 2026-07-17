@@ -36,6 +36,8 @@ interface RentalFormDialogProps {
   rental?: Rental | null;
   isViewMode?: boolean;
   isLoadingData?: boolean;
+  preselectedPropertyId?: string;
+  preselectedTenantId?: string;
 }
 
 export const RentalFormDialog = memo(function RentalFormDialog({
@@ -50,6 +52,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   rental = null,
   isViewMode = false,
   isLoadingData = false,
+  preselectedPropertyId = "",
+  preselectedTenantId = "",
 }: RentalFormDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -148,6 +152,19 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     
     fetchLocations();
   }, [open, locations.length]);
+
+  // ✅ Pré-preencher campos quando modal abrir com valores selecionados dos combos
+  useEffect(() => {
+    if (open && !rental && preselectedPropertyId) {
+      setSelectedPropertyId(preselectedPropertyId);
+    }
+  }, [open, rental, preselectedPropertyId]);
+
+  useEffect(() => {
+    if (open && !rental && preselectedTenantId) {
+      setSelectedTenantId(preselectedTenantId);
+    }
+  }, [open, rental, preselectedTenantId]);
 
   const onFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
