@@ -892,7 +892,7 @@ export default function RentalsPage() {
           {/* Vacant Properties Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card className="h-full">
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4" />
                   Imóveis Vagos ({loadingAvailable ? "..." : availableProperties.length})
@@ -900,44 +900,40 @@ export default function RentalsPage() {
               </CardHeader>
               <CardContent>
                 {loadingAvailable ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
+                  <div className="h-10 bg-muted animate-pulse rounded-lg" />
                 ) : availableProperties.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
                 ) : (
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {availableProperties.map((property) => {
-                      const location = locations.find(loc => loc.id === property.locationId);
-                      const displayName = location?.name || property.location || "Local não encontrado";
-                      const fullText = property.complement ? `${displayName} - ${property.complement}` : displayName;
-                      
-                      return (
-                        <div
-                          key={property.id}
-                          className="flex items-center justify-between p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <p className="text-sm font-medium truncate flex-1">
-                              {fullText}
-                            </p>
-                          </div>
-                          <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
-                            {formatCurrency(property.value || property.monthlyRent || 0)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um imóvel vago" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProperties.map((property) => {
+                        const location = locations.find(loc => loc.id === property.locationId);
+                        const displayName = location?.name || property.location || "Local não encontrado";
+                        const fullText = property.complement ? `${displayName} - ${property.complement}` : displayName;
+                        const value = formatCurrency(property.value || property.monthlyRent || 0);
+                        
+                        return (
+                          <SelectItem key={property.id} value={property.id}>
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span className="flex-1 truncate">{fullText}</span>
+                              <span className="font-semibold text-emerald-600 whitespace-nowrap">
+                                {value}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <User className="h-4 w-4" />
                   Inquilinos Disponíveis ({loadingAvailable ? "..." : availableTenants.length})
@@ -945,25 +941,22 @@ export default function RentalsPage() {
               </CardHeader>
               <CardContent>
                 {loadingAvailable ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
+                  <div className="h-10 bg-muted animate-pulse rounded-lg" />
                 ) : availableTenants.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
                 ) : (
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {availableTenants.map((tenant) => (
-                      <div
-                        key={tenant.id}
-                        className="flex items-center gap-2 p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                      >
-                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <p className="text-sm font-medium truncate flex-1">{tenant.name}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <Select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um inquilino disponível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTenants.map((tenant) => (
+                        <SelectItem key={tenant.id} value={tenant.id}>
+                          {tenant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </CardContent>
             </Card>
