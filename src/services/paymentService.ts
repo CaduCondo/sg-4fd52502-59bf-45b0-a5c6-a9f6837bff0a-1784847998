@@ -176,15 +176,23 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Return Payment object with explicit type cast to fix TypeScript inference
-  return {
+  // Construct return object step by step to ensure TypeScript recognizes all properties
+  const result = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
+  };
+  
+  // Add required properties separately
+  Object.assign(result, {
     referenceMonth: data.reference_month ? Number(data.reference_month) : 1,
     referenceYear: data.reference_year ? Number(data.reference_year) : new Date().getFullYear(),
     dueDate: data.due_date || new Date().toISOString().split('T')[0],
+  });
+  
+  // Add remaining properties
+  Object.assign(result, {
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -197,7 +205,9 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  });
+  
+  return result as Payment;
 };
 
 export const update = async (
