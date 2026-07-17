@@ -177,28 +177,28 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   if (error) throw error;
   
   // Create Payment object with explicit type cast and individual property assignments
-  const payment = {} as Payment;
-  payment.id = data.id;
-  payment.rentalId = data.rental_id;
-  payment.propertyId = "";
-  payment.tenantId = "";
-  payment.referenceMonth = data.reference_month ? Number(data.reference_month) : 0;
-  payment.referenceYear = data.reference_year ? Number(data.reference_year) : 0;
-  payment.dueDate = data.due_date || "";
-  payment.expectedAmount = data.expected_amount;
-  payment.paidAmount = data.paid_amount;
-  payment.status = data.status as "paid" | "pending" | "overdue" | "partial";
-  payment.paymentDate = data.payment_date;
-  payment.paymentMethod = data.payment_method;
-  payment.notes = data.notes;
-  payment.lateFee = data.late_fee || 0;
-  payment.interest = data.interest || 0;
-  payment.breakdown = data.breakdown;
-  payment.installment = data.installment || 1;
-  payment.totalInstallments = data.total_installments || 24;
-  payment.attachments = (data.attachments as unknown as string[]) || [];
+  const createdPayment = {} as Payment;
+  createdPayment.id = data.id;
+  createdPayment.rentalId = data.rental_id;
+  createdPayment.propertyId = "";
+  createdPayment.tenantId = "";
+  createdPayment.referenceMonth = data.reference_month ? Number(data.reference_month) : 0;
+  createdPayment.referenceYear = data.reference_year ? Number(data.reference_year) : 0;
+  createdPayment.dueDate = data.due_date || "";
+  createdPayment.expectedAmount = data.expected_amount;
+  createdPayment.paidAmount = data.paid_amount;
+  createdPayment.status = data.status as "paid" | "pending" | "overdue" | "partial";
+  createdPayment.paymentDate = data.payment_date;
+  createdPayment.paymentMethod = data.payment_method;
+  createdPayment.notes = data.notes;
+  createdPayment.lateFee = data.late_fee || 0;
+  createdPayment.interest = data.interest || 0;
+  createdPayment.breakdown = data.breakdown;
+  createdPayment.installment = data.installment || 1;
+  createdPayment.totalInstallments = data.total_installments || 24;
+  createdPayment.attachments = (data.attachments as unknown as string[]) || [];
   
-  return payment;
+  return createdPayment;
 };
 
 export const update = async (
@@ -233,7 +233,7 @@ export const update = async (
 
   if (error) throw error;
   
-  return { 
+  const updatedPayment: Payment = { 
     id: data.id,
     rentalId: data.rental_id,
     expectedAmount: data.expected_amount,
@@ -253,7 +253,9 @@ export const update = async (
     propertyId: "",
     tenantId: "",
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
+  
+  return updatedPayment;
 };
 
 export const remove = async (id: string): Promise<void> => {
