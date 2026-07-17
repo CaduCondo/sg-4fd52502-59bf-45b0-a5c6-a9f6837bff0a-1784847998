@@ -1414,10 +1414,23 @@ export default function Financial() {
   const kpiCalculations = useMemo(() => {
     const paymentsToCalculate = locationFilteredPayments;
     
-    // ✅ CORREÇÃO: Filtrar despesas de localização pelo filtro selecionado
-    const filteredExpenses = selectedLocationId === "all" 
-      ? locationExpensesData 
-      : locationExpensesData.filter(expense => expense.location_id === selectedLocationId);
+    // ✅ CORREÇÃO: Filtrar despesas considerando permissões do usuário financeiro
+    let filteredExpenses = locationExpensesData;
+    
+    if (selectedLocationId === "all") {
+      // Quando "Todos os Locais", para financeiros filtrar pelos permitidos
+      if (isFinancial && allowedLocationIds.length > 0) {
+        filteredExpenses = locationExpensesData.filter(expense => 
+          allowedLocationIds.includes(expense.location_id)
+        );
+      }
+      // Para admin/broker, usa todos
+    } else {
+      // Local específico selecionado
+      filteredExpenses = locationExpensesData.filter(expense => 
+        expense.location_id === selectedLocationId
+      );
+    }
     
     const totalLocationExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     
@@ -1466,7 +1479,7 @@ export default function Financial() {
       totalPaid,
       locationExpenses: totalLocationExpenses,
     };
-  }, [locationFilteredPayments, config, exemptLocationIds, managementFeeExemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount]);
+  }, [locationFilteredPayments, config, exemptLocationIds, managementFeeExemptLocationIds, locationExpensesData, selectedLocationId, getExpectedAmount, isFinancial, allowedLocationIds]);
 
   const filteredPayments = getSortedPayments;
 
