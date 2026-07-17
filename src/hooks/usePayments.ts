@@ -1,319 +1,314 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { Payment, Rental, Property, Tenant } from "@/types";
+import { Payment, Rental, Property, Tenant } from "@/types";
+import { getAllDepositInstallments } from "@/services/depositInstallmentService";
 
-export function usePayments() {
-  const { toast } = useToast();
+export const usePayments = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const loadingRef = useRef(false);
 
-  const loadPayments = useCallback(async (month?: string, year?: string) => {
+  const loadPayments = useCallback(async (month: string = "all", year: string = "all") => {
+    if (loadingRef.current) return;
+    
     try {
+      loadingRef.current = true;
       setLoading(true);
-      console.log(`🔄 [usePayments] Carregando recebimentos - mês: ${month}, ano: ${year}`);
 
-      // Query DIRETA e SIMPLES - buscar payments com JOINs
-      let query = supabase
+      // Buscar payments regulares (tipo 1 - aluguel)
+      let paymentsQuery = supabase
         .from("payments")
         .select(`
           *,
           rentals!payments_rental_id_fkey (
-            id,
-            property_id,
-            tenant_id,
-            rent_value,
-            garage_value,
-            has_garage,
-            rent_due_day,
-            deposit_value,
-            start_date,
-            end_date,
-            properties!rentals_property_id_fkey (
-              id,
-              complement,
-              rooms,
-              bathrooms,
-              area,
-              status,
-              value,
-              locations!properties_location_id_fkey (
-                id,
-                name,
-                street,
-                number,
-                neighborhood,
-                city,
-                state,
-                zip_code
-              )
-            ),
-            tenants!rentals_tenant_id_fkey (
-              id,
-              name,
-              email,
-              phone,
-              document_type,
-              document,
-              cpf
-            )
+            *,
+            properties!rentals_property_id_fkey (*),
+            tenants!rentals_tenant_id_fkey (*)
           )
-        `)
-        .order("due_date", { ascending: true });
+        `);
 
-      // Aplicar filtros de mês/ano SE fornecidos
-      if (month && month !== "all") {
-        const monthStr = month.toString().padStart(2, '0');
-        query = query.eq("reference_month", monthStr);
+      if (month !== "all") {
+        paymentsQuery = paymentsQuery.eq("reference_month", month.padStart(2, "0"));
       }
-      if (year && year !== "all") {
-        query = query.eq("reference_year", year.toString());
+      if (year !== "all") {
+        paymentsQuery = paymentsQuery.eq("reference_year", year);
       }
 
-      const { data, error } = await query;
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+      if (paymentsError) throw paymentsError;
 
-      if (error) {
-        console.error("❌ [usePayments] Erro ao carregar:", error);
-        throw error;
+      // Buscar deposit_installments (tipo 2 - caução)
+      const depositInstallments = await getAllDepositInstallments();
+      
+      // Filtrar deposit_installments por mês/ano se necessário
+      let filteredDeposits = depositInstallments;
+      if (month !== "all" || year !== "all") {
+        filteredDeposits = depositInstallments.filter(deposit => {
+          const dueDate = new Date(deposit.due_date);
+          const depositMonth = (dueDate.getMonth() + 1).toString().padStart(2, "0");
+          const depositYear = dueDate.getFullYear().toString();
+          
+          const monthMatch = month === "all" || depositMonth === month.padStart(2, "0");
+          const yearMatch = year === "all" || depositYear === year;
+          
+          return monthMatch && yearMatch;
+        });
       }
 
-      console.log(`✅ [usePayments] Carregou ${data?.length || 0} recebimentos`);
+      // Converter deposit_installments para formato Payment
+      const depositPayments: Payment[] = await Promise.all(
+        filteredDeposits.map(async (deposit) => {
+          // Buscar dados da rental, property e tenant
+          const { data: rentalData } = await supabase
+            .from("rentals")
+            .select(`
+              *,
+              properties!rentals_property_id_fkey (*),
+              tenants!rentals_tenant_id_fkey (*)
+            `)
+            .eq("id", deposit.rental_id)
+            .single();
 
-      if (!data || data.length === 0) {
-        setPayments([]);
-        setRentals([]);
-        setProperties([]);
-        setTenants([]);
-        return;
-      }
+          if (!rentalData) return null;
 
-      // Processar dados
-      const rentalsMap = new Map<string, Rental>();
-      const propertiesMap = new Map<string, Property>();
-      const tenantsMap = new Map<string, Tenant>();
+          const dueDate = new Date(deposit.due_date);
+          const depositMonth = dueDate.getMonth() + 1;
+          const depositYear = dueDate.getFullYear();
 
-      const processedPayments: Payment[] = data.map((p: any) => {
-        const rental = p.rentals;
-        
-        if (rental) {
-          // Processar rental
-          if (!rentalsMap.has(rental.id)) {
-            rentalsMap.set(rental.id, {
-              id: rental.id,
-              propertyId: rental.property_id,
-              tenantId: rental.tenant_id,
-              value: rental.rent_value,
-              monthlyRent: rental.rent_value,
-              garageValue: rental.garage_value || 0,
-              hasGarage: rental.has_garage || false,
-              paymentDay: rental.rent_due_day,
-              depositAmount: rental.deposit_value || 0,
-              startDate: rental.start_date || "",
-              endDate: rental.end_date || "",
-              status: "active",
-              isActive: true,
-              attachments: [],
-              contractAttachments: [],
-              hasPartnerBroker: false,
-              pixCode: "",
-            });
-          }
+          return {
+            id: deposit.id,
+            rentalId: deposit.rental_id,
+            propertyId: rentalData.property_id,
+            tenantId: rentalData.tenant_id,
+            referenceMonth: depositMonth,
+            referenceYear: depositYear,
+            dueDate: deposit.due_date,
+            expectedAmount: deposit.amount,
+            paidAmount: deposit.payment_date ? deposit.amount : 0,
+            status: deposit.status as "pending" | "paid" | "overdue" | "partial",
+            paymentDate: deposit.payment_date || null,
+            paymentMethod: deposit.payment_method || null,
+            notes: deposit.notes || null,
+            lateFee: 0,
+            interest: 0,
+            breakdown: null,
+            attachments: deposit.attachments || [],
+            installment: deposit.installment_number,
+            totalInstallments: deposit.total_installments,
+            depositType: "deposit", // Flag para identificar tipo caução
+          } as Payment;
+        })
+      );
 
-          // Processar property
-          const property = rental.properties;
-          if (property && !propertiesMap.has(property.id)) {
-            const location = property.locations;
-            propertiesMap.set(property.id, {
-              id: property.id,
-              locationId: location?.id || "",
-              location: location?.name || "",
-              address: location?.street || "",
-              number: location?.number || "",
-              complement: property.complement || "",
-              neighborhood: location?.neighborhood || "",
-              city: location?.city || "",
-              state: location?.state || "",
-              zipCode: location?.zip_code || "",
-              rooms: property.rooms || 0,
-              bathrooms: property.bathrooms || 0,
-              area: property.area || 0,
-              status: property.status || "available",
-              value: property.value || 0,
-              propertyIdentifier: "",
-              description: "",
-              hasGarage: false,
-              hasFurniture: false,
-              acceptsPets: false,
-              images: [],
-              features: [],
-              createdAt: new Date().toISOString(),
-            });
-          }
+      // Remover nulls
+      const validDepositPayments = depositPayments.filter(p => p !== null) as Payment[];
 
-          // Processar tenant
-          const tenant = rental.tenants;
-          if (tenant && !tenantsMap.has(tenant.id)) {
-            tenantsMap.set(tenant.id, {
-              id: tenant.id,
-              name: tenant.name || "",
-              email: tenant.email || "",
-              phone: tenant.phone || "",
-              documentType: tenant.document_type || "cpf",
-              document: tenant.document || "",
-              cpf: tenant.cpf || "",
-              rg: "",
-              status: "rented",
-            });
-          }
-        }
+      // Processar payments regulares
+      const processedPayments = (paymentsData || []).map((payment: any) => {
+        const rental = payment.rentals;
+        const property = rental?.properties;
+        const tenant = rental?.tenants;
 
         return {
-          id: p.id,
-          rentalId: p.rental_id,
-          propertyId: "",
-          tenantId: "",
-          dueDate: p.due_date,
-          expectedAmount: p.expected_amount,
-          paidAmount: p.paid_amount || 0,
-          paymentDate: p.payment_date || undefined,
-          status: p.status as "paid" | "pending" | "overdue" | "partial",
-          paymentMethod: p.payment_method || "",
-          notes: "",
-          referenceMonth: parseInt(p.reference_month),
-          referenceYear: parseInt(p.reference_year),
-          attachments: p.attachments || [],
-          lateFee: p.late_fee || 0,
-          interest: p.interest || 0,
-          installment: p.installment || undefined,
-          totalInstallments: p.total_installments || undefined,
-          discount: 0,
-          receiptUrl: "",
-          breakdown: p.breakdown || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+          id: payment.id,
+          rentalId: payment.rental_id,
+          propertyId: rental?.property_id || "",
+          tenantId: rental?.tenant_id || "",
+          referenceMonth: Number(payment.reference_month),
+          referenceYear: Number(payment.reference_year),
+          dueDate: payment.due_date,
+          expectedAmount: payment.expected_amount,
+          paidAmount: payment.paid_amount || 0,
+          status: payment.status as "pending" | "paid" | "overdue" | "partial",
+          paymentDate: payment.payment_date || null,
+          paymentMethod: payment.payment_method || null,
+          notes: payment.notes || null,
+          lateFee: payment.late_fee || 0,
+          interest: payment.interest || 0,
+          breakdown: payment.breakdown,
+          attachments: payment.attachments || [],
+          installment: payment.installment || 1,
+          totalInstallments: payment.total_installments || 24,
+          pixCode: payment.pix_code,
+          paymentTime: payment.payment_time,
+          rental: rental ? {
+            id: rental.id,
+            propertyId: rental.property_id,
+            property_id: rental.property_id,
+            tenantId: rental.tenant_id,
+            tenant_id: rental.tenant_id,
+            startDate: rental.start_date,
+            start_date: rental.start_date,
+            endDate: rental.end_date,
+            end_date: rental.end_date,
+            value: rental.rent_value || 0,
+            monthlyRent: rental.rent_value || 0,
+            monthly_rent: rental.rent_value || 0,
+            paymentDay: rental.rent_due_day || 10,
+            depositAmount: rental.security_deposit || 0,
+            deposit_amount: rental.security_deposit || 0,
+            security_deposit: rental.security_deposit || 0,
+            status: rental.status as "active" | "ended" | "terminated",
+            isActive: rental.status === "active",
+            is_active: rental.status === "active",
+            attachments: [],
+            contractAttachments: [],
+            contract_attachments: [],
+            hasGarage: rental.has_garage || false,
+            has_garage: rental.has_garage || false,
+            garageValue: rental.garage_value || 0,
+            garage_value: rental.garage_value || 0,
+            hasPartnerBroker: false,
+            has_partner_broker: false,
+            installments: 24,
+            totalInstallments: 24,
+          } : undefined,
+          property: property ? {
+            id: property.id,
+            locationId: property.location_id,
+            location_id: property.location_id,
+            location: property.location || "",
+            propertyIdentifier: property.property_identifier || "",
+            property_identifier: property.property_identifier || "",
+            complement: property.complement || "",
+            description: property.description || "",
+            rooms: property.rooms || 0,
+            bathrooms: property.bathrooms || 0,
+            area: property.area || 0,
+            value: property.value || 0,
+            hasGarage: property.has_garage || false,
+            has_garage: property.has_garage || false,
+            hasFurniture: property.has_furniture || false,
+            has_furniture: property.has_furniture || false,
+            acceptsPets: property.accepts_pets || false,
+            accepts_pets: property.accepts_pets || false,
+            status: property.status as "available" | "occupied" | "unavailable",
+            images: [],
+            createdAt: property.created_at,
+            created_at: property.created_at,
+            address: "",
+            features: [],
+            type: "apartment" as const,
+            monthlyRent: 0,
+            number: "",
+            neighborhood: "",
+            city: "",
+            state: "",
+            zipCode: "",
+          } : undefined,
+          tenant: tenant ? {
+            id: tenant.id,
+            name: tenant.name,
+            email: tenant.email,
+            phone: tenant.phone,
+            cpf: tenant.cpf || tenant.document || "",
+            rg: tenant.rg || "",
+            createdAt: tenant.created_at,
+            document: tenant.document || tenant.cpf || "",
+            status: tenant.status as "new" | "inactive" | "rented",
+          } : undefined,
+          depositType: "rent", // Flag para identificar tipo aluguel
+        } as Payment;
       });
 
-      // Atualizar estados DIRETAMENTE
-      setPayments(processedPayments);
-      setRentals(Array.from(rentalsMap.values()));
-      setProperties(Array.from(propertiesMap.values()));
-      setTenants(Array.from(tenantsMap.values()));
+      // Unificar payments regulares com deposit installments
+      const allPayments = [...processedPayments, ...validDepositPayments];
 
-      console.log(`✅ [usePayments] Estados atualizados:`, {
-        payments: processedPayments.length,
-        rentals: rentalsMap.size,
-        properties: propertiesMap.size,
-        tenants: tenantsMap.size,
+      // Extrair rentals, properties, tenants únicos
+      const uniqueRentals: Rental[] = [];
+      const uniqueProperties: Property[] = [];
+      const uniqueTenants: Tenant[] = [];
+
+      allPayments.forEach(payment => {
+        if (payment.rental && !uniqueRentals.find(r => r.id === payment.rental!.id)) {
+          uniqueRentals.push(payment.rental);
+        }
+        if (payment.property && !uniqueProperties.find(p => p.id === payment.property!.id)) {
+          uniqueProperties.push(payment.property);
+        }
+        if (payment.tenant && !uniqueTenants.find(t => t.id === payment.tenant!.id)) {
+          uniqueTenants.push(payment.tenant);
+        }
       });
-    } catch (error: any) {
-      console.error("❌ [usePayments] Erro:", error);
+
+      setPayments(allPayments);
+      setRentals(uniqueRentals);
+      setProperties(uniqueProperties);
+      setTenants(uniqueTenants);
+
+    } catch (error) {
+      console.error("Error loading payments:", error);
       toast({
-        title: "Erro",
-        description: "Erro ao carregar recebimentos. Tente novamente.",
         variant: "destructive",
+        title: "Erro ao carregar recebimentos",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
       });
-      
-      // Limpar estados em caso de erro
-      setPayments([]);
-      setRentals([]);
-      setProperties([]);
-      setTenants([]);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [toast]);
 
   const handleCancelPayment = useCallback(async (paymentId: string) => {
     try {
-      const { error } = await supabase
-        .from("payments")
-        .update({
-          status: "pending",
-          payment_date: null,
-          paid_amount: 0,
-          payment_method: null,
-          attachments: [],
-        })
-        .eq("id", paymentId);
+      // Verificar se é deposit_installment ou payment regular
+      const payment = payments.find(p => p.id === paymentId);
+      
+      if (payment?.depositType === "deposit") {
+        // Cancelar deposit_installment
+        const { error } = await supabase
+          .from("deposit_installments")
+          .update({
+            status: "pending",
+            payment_date: null,
+            payment_method: null,
+            notes: null,
+            attachments: null,
+          })
+          .eq("id", paymentId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Cancelar payment regular
+        const { error } = await supabase
+          .from("payments")
+          .update({
+            status: "pending",
+            payment_date: null,
+            payment_time: null,
+            paid_amount: 0,
+            payment_method: null,
+            attachments: null,
+          })
+          .eq("id", paymentId);
+
+        if (error) throw error;
+      }
 
       toast({
-        title: "Sucesso",
-        description: "Recebimento cancelado com sucesso",
+        title: "Recebimento cancelado",
+        description: "O recebimento foi cancelado com sucesso.",
       });
 
-      // Recarregar lista
-      await loadPayments();
-    } catch (error: any) {
-      console.error("❌ Erro ao cancelar recebimento:", error);
+    } catch (error) {
+      console.error("Error canceling payment:", error);
       toast({
-        title: "Erro",
-        description: "Erro ao cancelar recebimento. Tente novamente.",
         variant: "destructive",
+        title: "Erro ao cancelar recebimento",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
       });
       throw error;
     }
-  }, [toast, loadPayments]);
+  }, [payments, toast]);
 
-  const getPropertyInfo = useCallback((rentalId: string) => {
-    const rental = rentals.find(r => r.id === rentalId);
-    if (!rental) return null;
-    return properties.find(p => p.id === rental.propertyId) || null;
-  }, [rentals, properties]);
-
-  const getTenantInfo = useCallback((rentalId: string) => {
-    const rental = rentals.find(r => r.id === rentalId);
-    if (!rental) return null;
-    return tenants.find(t => t.id === rental.tenantId) || null;
-  }, [rentals, tenants]);
-
-  const getExpectedAmount = useCallback((payment: Payment) => {
-    if (payment.breakdown) {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : payment.breakdown;
-        
-        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-          const breakdownTotal = breakdownData.reduce((sum: number, item: any) => {
-            return sum + (item.value || item.amount || 0);
-          }, 0);
-          
-          return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
-        }
-        
-        if (typeof breakdownData === 'object' && !Array.isArray(breakdownData)) {
-          let breakdownTotal = 0;
-          Object.values(breakdownData).forEach((value: any) => {
-            if (value && typeof value === 'object') {
-              breakdownTotal += (value.value || value.amount || 0);
-            }
-          });
-          
-          if (breakdownTotal > 0 || breakdownTotal < 0) {
-            return breakdownTotal + (payment.lateFee || 0) + (payment.interest || 0);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao processar breakdown:", error);
-      }
-    }
-    
-    return payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
-  }, []);
-
-  const getPaymentInstallment = useCallback((payment: Payment) => {
-    if (!payment.installment || !payment.totalInstallments) {
-      return "N/A";
-    }
-    
-    return `${payment.installment}/${payment.totalInstallments}`;
-  }, []);
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
 
   return {
     payments,
@@ -321,17 +316,7 @@ export function usePayments() {
     properties,
     tenants,
     loading,
-    loadPayments,
     handleCancelPayment,
-    getPropertyInfo,
-    getTenantInfo,
-    getExpectedAmount,
-    getPaymentInstallment,
-    fetchPayments: loadPayments,
+    loadPayments,
   };
-}
-
-// Função auxiliar para invalidar cache (não faz nada agora, mas mantém compatibilidade)
-export function invalidatePaymentsCache() {
-  console.log("ℹ️ Cache de payments invalidado (sem efeito no novo código simplificado)");
-}
+};

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Printer, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface DepositInstallment {
   id: string;
@@ -544,41 +545,53 @@ export function DepositInstallmentsTable({
               <Table>
                 <TableHeader style={{ backgroundColor: '#f8f9fa' }}>
                   <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("location")}>
-                      Local {getSortIcon("location")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("installment")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Parcela
+                        <SortIcon field="installment" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("complement")}>
-                      Complemento {getSortIcon("complement")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("location")}>
+                      <div className="flex items-center gap-1">
+                        Local
+                        <SortIcon field="location" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("tenant")}>
-                      Inquilino {getSortIcon("tenant")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("complement")}>
+                      <div className="flex items-center gap-1">
+                        Complemento
+                        <SortIcon field="complement" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("rent")}>
-                      Valor Aluguel {getSortIcon("rent")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("tenant")}>
+                      <div className="flex items-center gap-1">
+                        Inquilino
+                        <SortIcon field="tenant" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("deposit")}>
-                      Valor Total Caução {getSortIcon("deposit")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("status")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Status
+                        <SortIcon field="status" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("partner")}>
-                      Corretor Parceiro {getSortIcon("partner")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("dueDate")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Data Vencimento
+                        <SortIcon field="dueDate" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("partnerCommission")}>
-                      Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("paymentDate")}>
+                      <div className="flex items-center justify-center gap-1">
+                        Data Pagamento
+                        <SortIcon field="paymentDate" />
+                      </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("internalCommission")}>
-                      Valor Pg Corretor Interno {getSortIcon("internalCommission")}
-                    </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-sm print:text-[10px]" onClick={() => handleSort("installment")}>
-                      Parcela {getSortIcon("installment")}
-                    </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("date")}>
-                      Data Pagamento {getSortIcon("date")}
-                    </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[10px]" onClick={() => handleSort("amount")}>
-                      Valor Parcela {getSortIcon("amount")}
-                    </TableHead>
-                    <TableHead className="cursor-pointer hover:bg-gray-100 text-sm print:text-[10px]" onClick={() => handleSort("pix")}>
-                      Código PIX {getSortIcon("pix")}
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("amount")}>
+                      <div className="flex items-center justify-end gap-1">
+                        Valor
+                        <SortIcon field="amount" />
+                      </div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -792,6 +805,24 @@ export function DepositInstallmentsTable({
                               <Pencil className="h-3 w-3 text-muted-foreground" />
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className={`text-center text-sm print:text-[10px] ${bgColor}`}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              inst.status === "paid"
+                                ? "bg-green-100 text-green-700 border-green-300"
+                                : inst.status === "overdue"
+                                ? "bg-red-100 text-red-700 border-red-300"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                            }
+                          >
+                            {inst.status === "paid"
+                              ? "Pago"
+                              : inst.status === "overdue"
+                              ? "Atrasado"
+                              : "Pendente"}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     );
