@@ -68,7 +68,7 @@ export function DepositInstallmentsTable({
 }: DepositInstallmentsTableProps) {
   const [data, setData] = useState<DepositInstallment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);

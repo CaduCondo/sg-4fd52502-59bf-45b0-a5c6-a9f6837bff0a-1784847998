@@ -341,7 +341,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
               )}
 
               {/* Botões de Recebimento por Parcela */}
-              {!loadingInstallments && depositInstallments.length > 0 && (
+              {depositInstallments.length > 0 && (
                 <div className="flex flex-col gap-2 mt-3 pt-3 border-t">
                   <p className="text-xs font-medium text-slate-600">Recebimentos:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
