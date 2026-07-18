@@ -42,6 +42,9 @@ interface DepositInstallment {
     security_deposit: number;
     has_partner_broker: boolean;
     status: string;
+    deposit_payment_date?: string;
+    deposit_installment2_payment_date?: string;
+    deposit_installment3_payment_date?: string;
     tenant: {
       name: string;
     };
