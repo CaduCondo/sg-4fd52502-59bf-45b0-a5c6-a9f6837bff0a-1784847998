@@ -305,10 +305,6 @@ export const usePayments = () => {
     }
   }, [toast]);
 
-  useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
-
   return {
     payments,
     rentals,
