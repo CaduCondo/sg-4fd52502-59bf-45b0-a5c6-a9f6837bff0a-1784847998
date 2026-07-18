@@ -519,8 +519,21 @@ export function generateExpectedPayments(params: {
   }
 
   // **ETAPA 2: Criar o primeiro recebimento (sempre parcela 1/XX)**
-  // ✅ CORREÇÃO CRÍTICA: Usar getValidDueDate para calcular a data correta
+  // ✅ CORREÇÃO CRÍTICA: Calcular due_date PRIMEIRO, depois extrair reference dela
   const firstPaymentDueDate = getValidDueDate(paymentDay, firstPaymentYear, firstPaymentMonth);
+  
+  // ✅ CORREÇÃO CRÍTICA: Extrair reference_month/year DA DUE_DATE final
+  // Isso garante 100% de sincronia entre filtro e vencimento
+  const dueDateObj = new Date(firstPaymentDueDate);
+  const referenceMonth = dueDateObj.getMonth() + 1; // getMonth() retorna 0-11
+  const referenceYear = dueDateObj.getFullYear();
+  
+  console.log("✅ Reference extraído da due_date:", {
+    due_date: firstPaymentDueDate,
+    reference_month: referenceMonth,
+    reference_year: referenceYear,
+    explanation: "Agora reference é SEMPRE igual ao mês/ano da due_date"
+  });
   
   // ✅ CORREÇÃO CRÍTICA: Garantir que aluguel e garagem usem os MESMOS dias
   const proportionalRent = (rentValue / 30) * daysToChargeFirstPayment;
@@ -543,20 +556,10 @@ export function generateExpectedPayments(params: {
     });
   }
 
-  // ✅ CORREÇÃO CRÍTICA: reference_month/year devem ser do MÊS/ANO DA DUE_DATE
-  // Isso garante que o recebimento apareça no filtro correto para o usuário
-  // Exemplo: início 18/07, vencimento dia 10 → due_date 10/08 → reference deve ser AGOSTO
-  console.log("✅ Primeiro recebimento - MÊS/ANO DA DUE_DATE:", {
-    reference_month: firstPaymentMonth,
-    reference_year: firstPaymentYear,
-    due_date: firstPaymentDueDate,
-    explanation: `O filtro usa reference_month, então deve ser o mês do vencimento`
-  });
-
   paymentsToCreate.push({
     rental_id: rentalId,
-    reference_month: String(firstPaymentMonth).padStart(2, '0'), // ✅ CORRETO: mês do vencimento
-    reference_year: String(firstPaymentYear), // ✅ CORRETO: ano do vencimento
+    reference_month: String(referenceMonth).padStart(2, '0'), // ✅ CORRETO: extraído da due_date
+    reference_year: String(referenceYear), // ✅ CORRETO: extraído da due_date
     due_date: firstPaymentDueDate,
     expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
     status: "pending",
