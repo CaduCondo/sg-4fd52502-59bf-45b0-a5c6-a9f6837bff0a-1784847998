@@ -149,7 +149,7 @@ export const getById = async (id: string): Promise<Payment> => {
   };
 };
 
-export const create = async (payment: Partial<Payment>): Promise<Payment> => {
+export const create = async (payment: Partial<Payment>) => {
   const insertData = {
     rental_id: payment.rentalId,
     expected_amount: payment.expectedAmount,
@@ -181,7 +181,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Return Payment object with explicit type assertion
+  // Return Payment object - TypeScript will infer the return type
   return {
     id: data.id,
     rentalId: data.rental_id,
@@ -202,7 +202,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
 };
 
 export const update = async (
