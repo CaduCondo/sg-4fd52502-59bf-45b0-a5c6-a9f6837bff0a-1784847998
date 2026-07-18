@@ -40,7 +40,13 @@ export const usePayments = () => {
       }
 
       const { data: paymentsData, error: paymentsError } = await paymentsQuery;
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        console.error("Erro ao buscar payments:", paymentsError);
+        throw paymentsError;
+      }
+
+      console.log("Payments carregados:", paymentsData?.length || 0);
+      console.log("Primeiro payment:", paymentsData?.[0]);
 
       // Processar payments regulares (aluguel)
       const processedPayments = (paymentsData || []).map((payment: any) => {
@@ -149,6 +155,8 @@ export const usePayments = () => {
         } as Payment;
       });
 
+      console.log("Payments processados:", processedPayments.length);
+
       // Extrair rentals, properties, tenants únicos
       const uniqueRentals: Rental[] = [];
       const uniqueProperties: Property[] = [];
@@ -165,6 +173,10 @@ export const usePayments = () => {
           uniqueTenants.push(payment.tenant);
         }
       });
+
+      console.log("Rentals únicos:", uniqueRentals.length);
+      console.log("Properties únicos:", uniqueProperties.length);
+      console.log("Tenants únicos:", uniqueTenants.length);
 
       setPayments(processedPayments);
       setRentals(uniqueRentals);
