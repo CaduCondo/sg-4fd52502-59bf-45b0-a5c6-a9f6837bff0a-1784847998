@@ -73,10 +73,23 @@ export const usePayments = () => {
       const propertyIds = [...new Set(rentalsData?.map(r => r.property_id).filter(Boolean) || [])];
       console.log("📋 [usePayments] Buscando", propertyIds.length, "properties...");
 
-      // Buscar properties separadamente
+      // Buscar properties separadamente COM JOIN para locations
       const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
-        .select("*")
+        .select(`
+          *,
+          locations:location_id (
+            id,
+            name,
+            street,
+            number,
+            complement,
+            neighborhood,
+            city,
+            state,
+            zip_code
+          )
+        `)
         .in("id", propertyIds);
 
       if (propertiesError) {
@@ -108,6 +121,9 @@ export const usePayments = () => {
         const rental = rentalsData?.find(r => r.id === payment.rental_id);
         const property = rental ? propertiesData?.find(p => p.id === rental.property_id) : null;
         const tenant = rental ? tenantsData?.find(t => t.id === rental.tenant_id) : null;
+        
+        // Extrair dados da location do JOIN
+        const locationData = property ? (property.locations as any) : null;
 
         return {
           id: payment.id,
@@ -167,7 +183,7 @@ export const usePayments = () => {
             id: property.id,
             locationId: property.location_id,
             location_id: property.location_id,
-            location: property.location || "",
+            location: locationData?.name || "",
             propertyIdentifier: property.property_identifier || "",
             property_identifier: property.property_identifier || "",
             complement: property.complement || "",
@@ -186,15 +202,15 @@ export const usePayments = () => {
             images: [],
             createdAt: property.created_at,
             created_at: property.created_at,
-            address: "",
+            address: locationData?.street || "",
             features: [],
             type: "apartment" as const,
             monthlyRent: 0,
-            number: "",
-            neighborhood: "",
-            city: "",
-            state: "",
-            zipCode: "",
+            number: locationData?.number || "",
+            neighborhood: locationData?.neighborhood || "",
+            city: locationData?.city || "",
+            state: locationData?.state || "",
+            zipCode: locationData?.zip_code || "",
           } : undefined,
           tenant: tenant ? {
             id: tenant.id,
