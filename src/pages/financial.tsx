@@ -59,7 +59,6 @@ import {
   TrendingUp,
   Users,
   X,
-  Shield,
   Wallet,
   Percent,
   Settings,
@@ -1645,15 +1644,10 @@ export default function Financial() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1 no-print">
               <TabsTrigger id="financial-tab-rentals" value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
-                <Card className="shadow-lg border-t-4 border-t-primary">
-                  <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
+                <Card>
+                  <CardHeader>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Shield className="h-6 w-6 text-primary" />
-                        </div>
-                        <CardTitle className="text-2xl font-bold">Locações</CardTitle>
-                      </div>
+                      <CardTitle>Locações</CardTitle>
                     </div>
                   </CardHeader>
                 </Card>
@@ -1933,15 +1927,15 @@ export default function Financial() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-100 hover:to-gray-50">
-                          <TableHead className="text-center font-semibold">Local</TableHead>
-                          <TableHead className="text-center font-semibold">Complemento</TableHead>
-                          <TableHead className="text-center font-semibold">Inquilino</TableHead>
-                          <TableHead className="text-center font-semibold">Mês/Ano</TableHead>
-                          <TableHead className="text-center font-semibold">Vencimento</TableHead>
-                          <TableHead className="text-center font-semibold">Status</TableHead>
-                          <TableHead className="text-center font-semibold">Valor</TableHead>
-                          <TableHead className="text-center font-semibold">Código PIX</TableHead>
+                        <TableRow>
+                          <TableHead className="text-center">Local</TableHead>
+                          <TableHead className="text-center">Complemento</TableHead>
+                          <TableHead className="text-center">Inquilino</TableHead>
+                          <TableHead className="text-center">Mês/Ano</TableHead>
+                          <TableHead className="text-center">Vencimento</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          <TableHead className="text-center">Valor</TableHead>
+                          <TableHead className="text-center">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
