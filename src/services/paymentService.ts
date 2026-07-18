@@ -176,8 +176,8 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Create Payment object with explicit type annotation (same approach as update function)
-  const createdPayment: Payment = {
+  // Return Payment object with type assertion
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -197,9 +197,7 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
-  
-  return createdPayment;
+  } as Payment;
 };
 
 export const update = async (
