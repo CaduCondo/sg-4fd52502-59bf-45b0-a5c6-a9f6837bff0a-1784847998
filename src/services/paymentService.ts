@@ -181,7 +181,7 @@ export const create = async (payment: Partial<Payment>) => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Create and return Payment object with all required properties
+  // Return Payment object with type assertion
   return {
     id: data.id,
     rentalId: data.rental_id,
