@@ -731,52 +731,80 @@ export function DepositInstallmentsTable({
                     const totalDepositValue = allInstallmentsForRental.reduce((sum, i) => sum + (i.amount || 0), 0);
 
                     return (
-                      <TableRow key={installment.id} className="hover:bg-gray-50">
+                      <TableRow 
+                        key={installment.id} 
+                        className={`hover:bg-gray-50 ${
+                          installment.pix_code 
+                            ? 'bg-green-50' 
+                            : 'bg-red-50'
+                        }`}
+                      >
                         {/* Local - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            rowSpan={getRowSpan(rentalId)}
+                            className={installment.pix_code ? 'bg-green-50' : 'bg-red-50'}
+                          >
                             {location?.name || "N/A"}
                           </TableCell>
                         )}
                         
                         {/* Complemento - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            rowSpan={getRowSpan(rentalId)}
+                            className={installment.pix_code ? 'bg-green-50' : 'bg-red-50'}
+                          >
                             {property?.complement || "-"}
                           </TableCell>
                         )}
                         
                         {/* Inquilino - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            rowSpan={getRowSpan(rentalId)}
+                            className={installment.pix_code ? 'bg-green-50' : 'bg-red-50'}
+                          >
                             {tenant?.name || "N/A"}
                           </TableCell>
                         )}
 
                         {/* Valor Aluguel - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            className={`text-right ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                            rowSpan={getRowSpan(rentalId)}
+                          >
                             {formatCurrency(rental?.rent_value || 0)}
                           </TableCell>
                         )}
 
                         {/* Valor Total Caução - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right font-semibold" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            className={`text-right font-semibold ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                            rowSpan={getRowSpan(rentalId)}
+                          >
                             {formatCurrency(totalDepositValue)}
                           </TableCell>
                         )}
                         
                         {/* Corretor Parceiro - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-center" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                            rowSpan={getRowSpan(rentalId)}
+                          >
                             {rental?.has_partner_broker ? "Sim" : "Não"}
                           </TableCell>
                         )}
                         
                         {/* Valor Parceiro - mesclado com edição inline */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            className={`text-right ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                            rowSpan={getRowSpan(rentalId)}
+                          >
                             {rental?.has_partner_broker ? (
                               editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
                                 <Input
@@ -807,7 +835,10 @@ export function DepositInstallmentsTable({
                         
                         {/* Valor Corretor - mesclado com edição inline */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell 
+                            className={`text-right ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                            rowSpan={getRowSpan(rentalId)}
+                          >
                             {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
                               <Input
                                 type="text"
@@ -832,12 +863,14 @@ export function DepositInstallmentsTable({
                           </TableCell>
                         )}
 
-                        {/* Parcela - NÃO mesclado */}
-                        <TableCell className="text-center font-medium">
+                        {/* Parcela - NÃO mesclado - COM COLORAÇÃO */}
+                        <TableCell 
+                          className={`text-center font-medium ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                        >
                           {installment.installment_number}/{installment.total_installments}
                         </TableCell>
 
-                        {/* Status - NÃO mesclado */}
+                        {/* Status - NÃO mesclado - SEM COLORAÇÃO */}
                         <TableCell className="text-center">
                           <Badge
                             variant="outline"
@@ -857,7 +890,7 @@ export function DepositInstallmentsTable({
                           </Badge>
                         </TableCell>
                         
-                        {/* Data Vencimento - NÃO mesclado - LÓGICA CORRETA */}
+                        {/* Data Vencimento - NÃO mesclado - SEM COLORAÇÃO - LÓGICA CORRETA */}
                         <TableCell className="text-center">
                           {(() => {
                             // REGRA:
@@ -886,14 +919,14 @@ export function DepositInstallmentsTable({
                           })()}
                         </TableCell>
                         
-                        {/* Data Pagamento - NÃO mesclado */}
+                        {/* Data Pagamento - NÃO mesclado - SEM COLORAÇÃO */}
                         <TableCell className="text-center">
                           {installment.payment_date
                             ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
                             : "-"}
                         </TableCell>
                         
-                        {/* Valor - NÃO mesclado - COR VERDE - edição inline */}
+                        {/* Valor - NÃO mesclado - COR VERDE - SEM COLORAÇÃO DE FUNDO - edição inline */}
                         <TableCell className="text-right font-semibold text-green-600">
                           {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
                             <Input
@@ -918,7 +951,7 @@ export function DepositInstallmentsTable({
                           )}
                         </TableCell>
                         
-                        {/* Código PIX - NÃO mesclado - edição inline */}
+                        {/* Código PIX - NÃO mesclado - SEM COLORAÇÃO - edição inline */}
                         <TableCell className="text-center text-xs">
                           {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
                             <Input
