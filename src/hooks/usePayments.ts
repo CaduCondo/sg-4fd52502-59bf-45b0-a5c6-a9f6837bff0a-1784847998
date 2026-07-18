@@ -20,6 +20,8 @@ export const usePayments = () => {
       loadingRef.current = true;
       setLoading(true);
 
+      console.log("🔍 [usePayments] Iniciando busca de payments com filtros:", { month, year });
+
       // Buscar APENAS payments regulares (tipo 1 - aluguel)
       let paymentsQuery = supabase
         .from("payments")
@@ -40,13 +42,39 @@ export const usePayments = () => {
       }
 
       const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+      
       if (paymentsError) {
-        console.error("Erro ao buscar payments:", paymentsError);
+        console.error("❌ [usePayments] Erro ao buscar payments:", paymentsError);
         throw paymentsError;
       }
 
-      console.log("Payments carregados:", paymentsData?.length || 0);
-      console.log("Primeiro payment:", paymentsData?.[0]);
+      console.log("✅ [usePayments] Payments carregados do banco:", paymentsData?.length || 0);
+      
+      if (paymentsData && paymentsData.length > 0) {
+        console.log("📄 [usePayments] Primeiro payment:", paymentsData[0]);
+      } else {
+        console.warn("⚠️ [usePayments] Nenhum payment encontrado com os filtros:", { month, year });
+        
+        // Se não encontrou resultados com filtro de mês/ano, tentar sem filtros
+        if (month !== "all" || year !== "all") {
+          console.log("🔄 [usePayments] Tentando buscar todos os payments sem filtro...");
+          const { data: allPaymentsData, error: allPaymentsError } = await supabase
+            .from("payments")
+            .select(`
+              *,
+              rentals!payments_rental_id_fkey (
+                *,
+                properties!rentals_property_id_fkey (*),
+                tenants!rentals_tenant_id_fkey (*)
+              )
+            `);
+            
+          if (!allPaymentsError && allPaymentsData && allPaymentsData.length > 0) {
+            console.log("✅ [usePayments] Encontrados", allPaymentsData.length, "payments sem filtro");
+            console.log("ℹ️ [usePayments] Sugestão: Altere o filtro de mês/ano para 'Todos' para ver todos os recebimentos");
+          }
+        }
+      }
 
       // Processar payments regulares (aluguel)
       const processedPayments = (paymentsData || []).map((payment: any) => {
@@ -155,7 +183,7 @@ export const usePayments = () => {
         } as Payment;
       });
 
-      console.log("Payments processados:", processedPayments.length);
+      console.log("✅ [usePayments] Payments processados:", processedPayments.length);
 
       // Extrair rentals, properties, tenants únicos
       const uniqueRentals: Rental[] = [];
@@ -174,17 +202,21 @@ export const usePayments = () => {
         }
       });
 
-      console.log("Rentals únicos:", uniqueRentals.length);
-      console.log("Properties únicos:", uniqueProperties.length);
-      console.log("Tenants únicos:", uniqueTenants.length);
+      console.log("✅ [usePayments] Dados extraídos:", {
+        rentals: uniqueRentals.length,
+        properties: uniqueProperties.length,
+        tenants: uniqueTenants.length
+      });
 
       setPayments(processedPayments);
       setRentals(uniqueRentals);
       setProperties(uniqueProperties);
       setTenants(uniqueTenants);
+      
+      console.log("✅ [usePayments] Estado atualizado com sucesso");
 
     } catch (error) {
-      console.error("Error loading payments:", error);
+      console.error("❌ [usePayments] Erro ao carregar recebimentos:", error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar recebimentos",
@@ -193,6 +225,7 @@ export const usePayments = () => {
     } finally {
       setLoading(false);
       loadingRef.current = false;
+      console.log("🏁 [usePayments] Carregamento finalizado");
     }
   }, [toast]);
 
