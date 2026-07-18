@@ -2005,50 +2005,6 @@ export default function Financial() {
                                   currency: "BRL",
                                 }).format(payment.paidAmount || 0)}
                               </TableCell>
-                              <TableCell className="text-sm print:text-[9px] col-pix">
-                                {editingPixCode?.id === payment.id ? (
-                                  <div className="flex gap-1 items-center min-w-[200px] no-print">
-                                    <Input
-                                      id="financial-pix-input"
-                                      value={editingPixCode.value}
-                                      onChange={(e) => setEditingPixCode({ id: payment.id, value: e.target.value })}
-                                      className="h-7 text-sm"
-                                      autoFocus
-                                    />
-                                    <Button
-                                      id="financial-pix-save"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 w-7 p-0"
-                                      onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
-                                    >
-                                      <Check className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                    <Button
-                                      id="financial-pix-cancel"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 w-7 p-0"
-                                      onClick={() => setEditingPixCode(null)}
-                                    >
-                                      <X className="h-4 w-4 text-red-600" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex gap-1 items-center group min-w-[150px]">
-                                    <span className="text-sm print:text-[9px] break-all">{details.pixCode || "-"}</span>
-                                    <Button
-                                      id={`financial-pix-edit-${payment.id}`}
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                      onClick={() => setEditingPixCode({ id: payment.id, value: details.pixCode || "" })}
-                                    >
-                                      <Edit2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                )}
-                              </TableCell>
                               <TableCell className="text-center text-xs">
                                 {editingPixCell?.id === payment.id ? (
                                   <Input
