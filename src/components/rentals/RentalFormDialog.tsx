@@ -748,10 +748,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   checked={hasPartnerBroker}
                   onCheckedChange={(checked) => {
                     setHasPartnerBroker(checked as boolean);
-                    if (!checked) {
-                      setPartnerBrokerCommission("");
-                      setInternalBrokerCommission("");
-                    }
                   }}
                   disabled={isFieldDisabled}
                 />

@@ -181,7 +181,7 @@ export const create = async (payment: Partial<Payment>) => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Create Payment object with explicit property assignments to fix TypeScript inference
+  // Create Payment object with explicit property assignments
   const result = {} as Payment;
   result.id = data.id;
   result.rentalId = data.rental_id;
