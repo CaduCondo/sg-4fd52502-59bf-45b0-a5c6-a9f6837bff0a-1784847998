@@ -181,12 +181,15 @@ export const create = async (payment: Partial<Payment>) => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Construct base object
-  const basePayment = {
+  // Return complete Payment object without spread operator
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
+    referenceMonth: refMonth,
+    referenceYear: refYear,
+    dueDate: paymentDueDate,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -199,14 +202,6 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
-  
-  // Return complete Payment object by spreading base and adding required properties
-  return {
-    ...basePayment,
-    referenceMonth: refMonth,
-    referenceYear: refYear,
-    dueDate: paymentDueDate,
   } as Payment;
 };
 
