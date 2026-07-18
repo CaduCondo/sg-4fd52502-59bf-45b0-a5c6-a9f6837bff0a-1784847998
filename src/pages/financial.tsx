@@ -46,6 +46,8 @@ import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Download,
   Eye,
   FileText,
@@ -58,6 +60,14 @@ import {
   Users,
   X,
   Shield,
+  Wallet,
+  Percent,
+  Settings,
+  Receipt,
+  MapPin,
+  ChevronDown,
+  Check,
+  Edit2,
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

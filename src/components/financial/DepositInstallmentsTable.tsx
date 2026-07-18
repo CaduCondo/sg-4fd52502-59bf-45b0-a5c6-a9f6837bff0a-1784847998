@@ -749,30 +749,31 @@ export function DepositInstallmentsTable({
                           {shouldRenderCell(rentalId, index) && (
                             <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
                               {rental?.has_partner_broker ? (
-                                <Input
-                                  type="text"
-                                  className="w-full h-9 text-right text-sm border-blue-500"
-                                  value={editingValue}
-                                  onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
-                                  onBlur={handleSaveEdit}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleSaveEdit();
-                                    if (e.key === "Escape") handleCancelEdit();
-                                  }}
-                                  autoFocus
-                                />
+                                editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
+                                  <Input
+                                    type="text"
+                                    className="w-full h-9 text-right text-sm border-blue-500"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
+                                    onBlur={handleSaveEdit}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSaveEdit();
+                                      if (e.key === "Escape") handleCancelEdit();
+                                    }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span
+                                    className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
+                                    onClick={() => handleStartEdit(installment, "partner_commission")}
+                                  >
+                                    {formatCurrency(installment.partner_commission || 0)}
+                                  </span>
+                                )
                               ) : (
-                                <span
-                                  className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                  onClick={() => handleStartEdit(installment, "partner_commission")}
-                                >
-                                  {formatCurrency(installment.partner_commission || 0)}
-                                </span>
-                              )
-                            ) : (
-                              "-"
-                            )}
-                          </TableCell>
+                                "-"
+                              )}
+                            </TableCell>
                           )}
                           
                           {/* Valor Corretor - mesclado com edição inline - SEM COLORAÇÃO */}
