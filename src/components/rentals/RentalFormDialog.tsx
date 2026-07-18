@@ -568,7 +568,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </div>
 
           {/* Dados do Contrato */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="rental-start-date">Data Início*</Label>
               <Input
@@ -593,59 +593,70 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="rental-payment-day">Dia Pagamento*</Label>
-                <Select
-                  value={paymentDay}
-                  onValueChange={setPaymentDay}
-                  disabled={isFieldDisabled}
-                >
-                  <SelectTrigger id="rental-payment-day">
-                    <SelectValue placeholder="Dia" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="rental-payment-day">Dia Pagamento*</Label>
+              <Select
+                value={paymentDay}
+                onValueChange={setPaymentDay}
+                disabled={isFieldDisabled}
+              >
+                <SelectTrigger id="rental-payment-day">
+                  <SelectValue placeholder="Dia" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <SelectItem key={day} value={String(day)}>
+                      {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="flex items-end">
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="rental-has-garage"
-                      checked={hasGarage}
-                      onCheckedChange={(checked) => {
-                        setHasGarage(checked as boolean);
-                        if (!checked) setGarageValue("");
-                      }}
-                      disabled={isFieldDisabled}
-                    />
-                    <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm">
-                      Vaga Garagem?
-                    </Label>
-                  </div>
-                  {hasGarage && (
-                    <Input
-                      id="rental-garage-value"
-                      value={garageValue}
-                      onChange={(e) => setGarageValue(formatCurrencyInput(e.target.value))}
-                      placeholder="R$ 0,00"
-                      disabled={isFieldDisabled}
-                    />
-                  )}
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rental-has-garage"
+                  checked={hasGarage}
+                  onCheckedChange={(checked) => {
+                    setHasGarage(checked as boolean);
+                    if (!checked) setGarageValue("");
+                  }}
+                  disabled={isFieldDisabled}
+                />
+                <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm">
+                  Vaga Garagem?
+                </Label>
               </div>
+              {hasGarage && (
+                <Input
+                  id="rental-garage-value"
+                  value={garageValue}
+                  onChange={(e) => setGarageValue(formatCurrencyInput(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={isFieldDisabled}
+                />
+              )}
             </div>
           </div>
 
           <div className="space-y-4 p-4 border rounded-md bg-muted/20">
-            <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações do Caução</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-muted-foreground">Informações do Caução</h3>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rental-has-partner"
+                  checked={hasPartnerBroker}
+                  onCheckedChange={(checked) => {
+                    setHasPartnerBroker(checked as boolean);
+                  }}
+                  disabled={isFieldDisabled}
+                />
+                <Label htmlFor="rental-has-partner" className="cursor-pointer font-medium text-sm">
+                  Corretor Parceiro?
+                </Label>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-4">
@@ -714,7 +725,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   disabled={isFieldDisabled}
                 />
                 <Label htmlFor="rental-deposit-installment" className="cursor-pointer font-medium">
-                  Caução Parcelado ?
+                  Caução Parcelado?
                 </Label>
               </div>
 
@@ -741,20 +752,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   </Select>
                 </div>
               )}
-
-              <div className="flex items-center space-x-2 ml-auto">
-                <Checkbox
-                  id="rental-has-partner"
-                  checked={hasPartnerBroker}
-                  onCheckedChange={(checked) => {
-                    setHasPartnerBroker(checked as boolean);
-                  }}
-                  disabled={isFieldDisabled}
-                />
-                <Label htmlFor="rental-has-partner" className="cursor-pointer font-medium">
-                  Corretor Parceiro?
-                </Label>
-              </div>
             </div>
 
             {isDepositInstallment && depositInstallmentCount && (
