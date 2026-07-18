@@ -857,16 +857,23 @@ export function DepositInstallmentsTable({
                         {/* Data Vencimento - NÃO mesclado - LÓGICA CORRETA */}
                         <TableCell className="text-center">
                           {(() => {
-                            // Lógica: 1/1 usa deposit_payment_date, 2/X usa deposit_installment2_payment_date, 3/X usa deposit_installment3_payment_date
-                            let dateToDisplay = installment.due_date;
+                            // REGRA:
+                            // - Parcela 1 (de qualquer total): usa deposit_payment_date (Data Pagamento do campo caução)
+                            // - Parcela 2: usa deposit_installment2_payment_date (Data Vencimento 2ª Parcela)
+                            // - Parcela 3: usa deposit_installment3_payment_date (Data Vencimento 3ª Parcela)
+                            
+                            let dateToDisplay = installment.due_date; // fallback
                             
                             if (rental) {
-                              if (installment.installment_number === 1 && rental.deposit_payment_date) {
-                                dateToDisplay = rental.deposit_payment_date;
-                              } else if (installment.installment_number === 2 && rental.deposit_installment2_payment_date) {
-                                dateToDisplay = rental.deposit_installment2_payment_date;
-                              } else if (installment.installment_number === 3 && rental.deposit_installment3_payment_date) {
-                                dateToDisplay = rental.deposit_installment3_payment_date;
+                              if (installment.installment_number === 1) {
+                                // Primeira parcela sempre usa Data Pagamento
+                                dateToDisplay = rental.deposit_payment_date || installment.due_date;
+                              } else if (installment.installment_number === 2) {
+                                // Segunda parcela usa Data Vencimento 2ª Parcela
+                                dateToDisplay = rental.deposit_installment2_payment_date || installment.due_date;
+                              } else if (installment.installment_number === 3) {
+                                // Terceira parcela usa Data Vencimento 3ª Parcela
+                                dateToDisplay = rental.deposit_installment3_payment_date || installment.due_date;
                               }
                             }
                             
