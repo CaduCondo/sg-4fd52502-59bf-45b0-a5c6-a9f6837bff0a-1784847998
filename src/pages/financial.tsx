@@ -1884,14 +1884,8 @@ export default function Financial() {
                           <TableHead className="cursor-pointer hover:bg-gray-100 text-center text-sm print:text-[9px] col-rec" onClick={() => handleSort("paymentDate")}>
                             Rec {sortField === "paymentDate" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
                           </TableHead>
-                          <TableHead className="text-center text-sm print:text-[9px] col-hora">Hora</TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[9px] col-val-esp" onClick={() => handleSort("expectedAmount")}>
-                            Val.Esp {sortField === "expectedAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
-                          </TableHead>
-                          <TableHead className="cursor-pointer hover:bg-gray-100 text-right text-sm print:text-[9px] col-val-pg" onClick={() => handleSort("paidAmount")}>
-                            Val.Pg {sortField === "paidAmount" && (sortDirection === "asc" ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />)}
-                          </TableHead>
-                          <TableHead className="text-sm print:text-[9px] col-pix">Código PIX</TableHead>
+                          <TableHead className="text-center">Valor</TableHead>
+                          <TableHead className="text-center">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1940,9 +1934,6 @@ export default function Financial() {
                                 {payment.paymentDate
                                   ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy")
                                   : "-"}
-                              </TableCell>
-                              <TableCell className="text-center text-sm print:text-[9px] col-hora">
-                                {details.paymentTime || "-"}
                               </TableCell>
                               <TableCell className="text-right text-sm print:text-[9px] col-val-esp">
                                 {new Intl.NumberFormat("pt-BR", {
@@ -2002,12 +1993,29 @@ export default function Financial() {
                                   </div>
                                 )}
                               </TableCell>
-                              <div className="text-xs text-muted-foreground">
-                                PIX: {payment.pixCode || "N/A"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Hora: {payment.paymentDate ? new Date(payment.paymentDate).toLocaleTimeString("pt-BR") : "N/A"}
-                              </div>
+                              <TableCell className="text-center text-xs">
+                                {editingPixCell?.id === payment.id ? (
+                                  <Input
+                                    type="text"
+                                    className="w-full h-9 text-center text-xs border-blue-500"
+                                    value={editingPixValue}
+                                    onChange={(e) => setEditingPixValue(e.target.value)}
+                                    onBlur={handleSavePixEdit}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSavePixEdit();
+                                      if (e.key === "Escape") handleCancelPixEdit();
+                                    }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span
+                                    className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
+                                    onClick={() => handleStartPixEdit(payment)}
+                                  >
+                                    {payment.pixCode || "-"}
+                                  </span>
+                                )}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
