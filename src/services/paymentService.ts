@@ -543,43 +543,20 @@ export function generateExpectedPayments(params: {
     });
   }
 
-  // ✅ BUG CRÍTICO CORRIGIDO: reference_month/year devem corresponder ao PERÍODO DE COBRANÇA, não à data de vencimento
-  // Exemplo: Se início é 01/04 e vencimento dia 5, o primeiro recebimento é:
-  //   - due_date: 05/04 (data de vencimento)
-  //   - reference_month: 4 (abril - mês que está sendo cobrado)
-  //   - reference_year: 2026
-  // ERRADO: usar firstPaymentMonth/Year (que pode ser do mês seguinte se dia_inicio > dia_vencimento)
-  // CERTO: usar o mês/ano do INÍCIO do período de cobrança
-  
-  let firstReferenceMonth: number;
-  let firstReferenceYear: number;
-  
-  if (sDay === paymentDay) {
-    // Dia início === dia vencimento → cobrando o PRÓXIMO mês completo
-    firstReferenceMonth = sMonth === 12 ? 1 : sMonth + 1;
-    firstReferenceYear = sMonth === 12 ? sYear + 1 : sYear;
-  } else if (sDay < paymentDay) {
-    // Dia início < dia vencimento → cobrando parcial do MÊS ATUAL
-    firstReferenceMonth = sMonth;
-    firstReferenceYear = sYear;
-  } else {
-    // Dia início > dia vencimento → cobrando parcial cross-month (mês atual + parte do próximo)
-    // Mas o reference é do mês onde COMEÇA a cobrança (mês atual)
-    firstReferenceMonth = sMonth;
-    firstReferenceYear = sYear;
-  }
-
-  console.log("✅ Primeiro recebimento - PERÍODO DE COBRANÇA:", {
-    reference_month: firstReferenceMonth,
-    reference_year: firstReferenceYear,
+  // ✅ CORREÇÃO CRÍTICA: reference_month/year devem ser do MÊS/ANO DA DUE_DATE
+  // Isso garante que o recebimento apareça no filtro correto para o usuário
+  // Exemplo: início 18/07, vencimento dia 10 → due_date 10/08 → reference deve ser AGOSTO
+  console.log("✅ Primeiro recebimento - MÊS/ANO DA DUE_DATE:", {
+    reference_month: firstPaymentMonth,
+    reference_year: firstPaymentYear,
     due_date: firstPaymentDueDate,
-    explanation: `Cobrando ${daysToChargeFirstPayment} dias do período ${firstReferenceMonth}/${firstReferenceYear}`
+    explanation: `O filtro usa reference_month, então deve ser o mês do vencimento`
   });
 
   paymentsToCreate.push({
     rental_id: rentalId,
-    reference_month: String(firstReferenceMonth).padStart(2, '0'), // ✅ CORRIGIDO: usar firstReferenceMonth
-    reference_year: String(firstReferenceYear), // ✅ CORRIGIDO: usar firstReferenceYear
+    reference_month: String(firstPaymentMonth).padStart(2, '0'), // ✅ CORRETO: mês do vencimento
+    reference_year: String(firstPaymentYear), // ✅ CORRETO: ano do vencimento
     due_date: firstPaymentDueDate,
     expected_amount: parseFloat(firstPaymentAmount.toFixed(2)),
     status: "pending",
@@ -591,8 +568,8 @@ export function generateExpectedPayments(params: {
 
   // **ETAPA 3: Criar recebimentos intermediários (valor integral)**
   // ✅ CORRIGIDO: Avançar a partir do PRÓXIMO mês após o reference do primeiro recebimento
-  let currentMonth = firstReferenceMonth + 1;
-  let currentYear = firstReferenceYear;
+  let currentMonth = firstPaymentMonth + 1;
+  let currentYear = firstPaymentYear;
   
   if (currentMonth > 12) {
     currentMonth = 1;
