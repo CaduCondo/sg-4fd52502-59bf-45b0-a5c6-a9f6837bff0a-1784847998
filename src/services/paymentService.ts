@@ -202,7 +202,7 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
+  } as Payment;
 };
 
 export const update = async (
