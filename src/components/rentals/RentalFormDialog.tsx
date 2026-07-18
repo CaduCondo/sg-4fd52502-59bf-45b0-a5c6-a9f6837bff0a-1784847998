@@ -568,7 +568,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </div>
 
           {/* Dados do Contrato */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="rental-start-date">Data Início*</Label>
               <Input
@@ -592,7 +592,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 disabled={isFieldDisabled}
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="rental-payment-day">Dia Pagamento*</Label>
               <Select
