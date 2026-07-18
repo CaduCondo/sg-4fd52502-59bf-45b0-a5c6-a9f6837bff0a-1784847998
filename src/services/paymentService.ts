@@ -176,14 +176,20 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
+  // Create intermediate variables with explicit types
+  const refMonth: number = Number(data.reference_month) || 1;
+  const refYear: number = Number(data.reference_year) || new Date().getFullYear();
+  const paymentDueDate: string = data.due_date || new Date().toISOString().split('T')[0];
+  
+  // Return Payment object with explicit type assertion
   return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
-    referenceMonth: Number(data.reference_month) || 1,
-    referenceYear: Number(data.reference_year) || new Date().getFullYear(),
-    dueDate: data.due_date || new Date().toISOString().split('T')[0],
+    referenceMonth: refMonth,
+    referenceYear: refYear,
+    dueDate: paymentDueDate,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
