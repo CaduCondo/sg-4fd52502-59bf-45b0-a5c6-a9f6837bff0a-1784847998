@@ -177,7 +177,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   if (error) throw error;
   
   // Create Payment object with explicit type annotation to force TypeScript validation
-  const newPayment: Payment = {
+    const newPayment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -199,7 +199,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     attachments: (data.attachments as unknown as string[]) || [],
   };
   
-  return newPayment;
+    return newPayment as Payment;
 };
 
 export const update = async (
