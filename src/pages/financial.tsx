@@ -544,15 +544,6 @@ export default function Financial() {
   const [showExpensesDialog, setShowExpensesDialog] = useState(false);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
   useEffect(() => {
     setMounted(true);
   }, []);
