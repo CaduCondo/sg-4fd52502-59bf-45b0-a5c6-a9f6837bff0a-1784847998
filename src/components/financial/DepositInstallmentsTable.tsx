@@ -611,6 +611,18 @@ export function DepositInstallmentsTable({
                         <SortIcon field="tenant" />
                       </div>
                     </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("rentValue")}>
+                      <div className="flex items-center justify-end gap-1">
+                        Valor Aluguel
+                        <SortIcon field="rentValue" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort("totalDeposit")}>
+                      <div className="flex items-center justify-end gap-1">
+                        Valor Total Caução
+                        <SortIcon field="totalDeposit" />
+                      </div>
+                    </TableHead>
                     <TableHead className="cursor-pointer hover:bg-gray-100 text-center" onClick={() => handleSort("partner")}>
                       <div className="flex items-center justify-center gap-1">
                         Corretor Parceiro?
@@ -672,6 +684,10 @@ export function DepositInstallmentsTable({
                     const location = property?.location;
                     const rentalId = installment.rental_id;
 
+                    // Calcular valor total do caução (soma de todas as parcelas desta locação)
+                    const allInstallmentsForRental = data.filter(i => i.rental_id === rentalId);
+                    const totalDepositValue = allInstallmentsForRental.reduce((sum, i) => sum + (i.amount || 0), 0);
+
                     return (
                       <TableRow key={installment.id} className="hover:bg-gray-50">
                         {/* Local - mesclado */}
@@ -694,6 +710,20 @@ export function DepositInstallmentsTable({
                             {tenant?.name || "N/A"}
                           </TableCell>
                         )}
+
+                        {/* Valor Aluguel - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {formatCurrency(rental?.rent_value || 0)}
+                          </TableCell>
+                        )}
+
+                        {/* Valor Total Caução - mesclado */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right font-semibold" rowSpan={getRowSpan(rentalId)}>
+                            {formatCurrency(totalDepositValue)}
+                          </TableCell>
+                        )}
                         
                         {/* Corretor Parceiro - mesclado */}
                         {shouldRenderCell(rentalId, index) && (
@@ -709,7 +739,7 @@ export function DepositInstallmentsTable({
                               editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
                                 <Input
                                   type="text"
-                                  className="w-24 h-8 text-right text-sm"
+                                  className="w-full h-9 text-right text-sm border-2 border-blue-500"
                                   value={formatCurrency(installment.partner_commission || 0)}
                                   onChange={(e) => {
                                     const value = parseCurrencyToNumber(e.target.value);
@@ -720,7 +750,7 @@ export function DepositInstallmentsTable({
                                 />
                               ) : (
                                 <span
-                                  className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                                  className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
                                   onClick={() => setEditingCell({ id: installment.id, field: "partner_commission" })}
                                 >
                                   {formatCurrency(installment.partner_commission || 0)}
@@ -738,7 +768,7 @@ export function DepositInstallmentsTable({
                             {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
                               <Input
                                 type="text"
-                                className="w-24 h-8 text-right text-sm"
+                                className="w-full h-9 text-right text-sm border-2 border-blue-500"
                                 value={formatCurrency(installment.internal_commission || 0)}
                                 onChange={(e) => {
                                   const value = parseCurrencyToNumber(e.target.value);
@@ -749,7 +779,7 @@ export function DepositInstallmentsTable({
                               />
                             ) : (
                               <span
-                                className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                                className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
                                 onClick={() => setEditingCell({ id: installment.id, field: "internal_commission" })}
                               >
                                 {formatCurrency(installment.internal_commission || 0)}
@@ -783,7 +813,7 @@ export function DepositInstallmentsTable({
                           </Badge>
                         </TableCell>
                         
-                        {/* Data Vencimento - NÃO mesclado */}
+                        {/* Data Vencimento - NÃO mesclado - LÓGICA CORRETA */}
                         <TableCell className="text-center">
                           {installment.due_date
                             ? new Date(installment.due_date).toLocaleDateString("pt-BR")
@@ -802,7 +832,7 @@ export function DepositInstallmentsTable({
                           {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
                             <Input
                               type="text"
-                              className="w-28 h-8 text-right text-sm font-semibold"
+                              className="w-full h-9 text-right text-sm font-semibold border-2 border-blue-500"
                               value={formatCurrency(installment.amount)}
                               onChange={(e) => {
                                 const value = parseCurrencyToNumber(e.target.value);
@@ -813,7 +843,7 @@ export function DepositInstallmentsTable({
                             />
                           ) : (
                             <span
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
                               onClick={() => setEditingCell({ id: installment.id, field: "amount" })}
                             >
                               {formatCurrency(installment.amount)}
@@ -826,7 +856,7 @@ export function DepositInstallmentsTable({
                           {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
                             <Input
                               type="text"
-                              className="w-32 h-8 text-center text-xs"
+                              className="w-full h-9 text-center text-xs border-2 border-blue-500"
                               value={installment.pix_code || ""}
                               onChange={(e) => {
                                 handleUpdateField(installment.id, "pix_code", e.target.value);
@@ -836,7 +866,7 @@ export function DepositInstallmentsTable({
                             />
                           ) : (
                             <span
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
                               onClick={() => setEditingCell({ id: installment.id, field: "pix_code" })}
                             >
                               {installment.pix_code || "-"}
