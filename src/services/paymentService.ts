@@ -176,8 +176,8 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Return Payment object with values directly in the object
-  return {
+  // Create Payment object with explicit type annotation (same approach as update function)
+  const createdPayment: Payment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -197,7 +197,9 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
+  
+  return createdPayment;
 };
 
 export const update = async (
