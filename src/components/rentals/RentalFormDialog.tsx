@@ -656,7 +656,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações do Caução</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="space-y-2 md:col-span-4">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-amount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
@@ -669,8 +669,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-4">
-                <Label htmlFor="rental-deposit-date">Data Vencimento *</Label>
+              <div className="space-y-2 md:col-span-3">
+                <Label htmlFor="rental-deposit-date">Data Pagamento *</Label>
                 <Input
                   id="rental-deposit-date"
                   type="date"
@@ -680,7 +680,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-4">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-pix">Código PIX</Label>
                 <Input
                   id="rental-deposit-pix"
@@ -689,6 +689,18 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   placeholder="Código PIX"
                   disabled={isFieldDisabled}
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-3 flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={true}
+                  className="w-full"
+                >
+                  Recebimento
+                </Button>
               </div>
             </div>
 
@@ -742,8 +754,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             {isDepositInstallment && depositInstallmentCount && (
               <div className="space-y-4 mt-4 pt-4 border-t">
                 {depositInstallmentCount && parseInt(depositInstallmentCount) >= 2 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
                       <Label htmlFor="depositInstallment2">Valor 2ª Parcela*</Label>
                       <Input
                         id="depositInstallment2"
@@ -751,9 +763,10 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         onChange={(e) => setDepositInstallment2(formatCurrencyInput(e.target.value))}
                         placeholder="R$ 0,00"
                         required={depositInstallmentCount && parseInt(depositInstallmentCount) >= 2}
+                        disabled={isFieldDisabled}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-4">
                       <Label htmlFor="depositInstallment2PaymentDate">Data Vencimento 2ª Parcela*</Label>
                       <Input
                         id="depositInstallment2PaymentDate"
@@ -761,14 +774,26 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         value={depositInstallment2PaymentDate}
                         onChange={(e) => setDepositInstallment2PaymentDate(e.target.value)}
                         required={depositInstallmentCount && parseInt(depositInstallmentCount) >= 2}
+                        disabled={isFieldDisabled}
                       />
+                    </div>
+                    <div className="md:col-span-4 flex items-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={true}
+                        className="w-full"
+                      >
+                        Recebimento
+                      </Button>
                     </div>
                   </div>
                 )}
 
                 {depositInstallmentCount && parseInt(depositInstallmentCount) === 3 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
                       <Label htmlFor="depositInstallment3">Valor 3ª Parcela*</Label>
                       <Input
                         id="depositInstallment3"
@@ -776,9 +801,10 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         onChange={(e) => setDepositInstallment3(formatCurrencyInput(e.target.value))}
                         placeholder="R$ 0,00"
                         required={depositInstallmentCount && parseInt(depositInstallmentCount) === 3}
+                        disabled={isFieldDisabled}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-4">
                       <Label htmlFor="depositInstallment3PaymentDate">Data Vencimento 3ª Parcela*</Label>
                       <Input
                         id="depositInstallment3PaymentDate"
@@ -786,7 +812,19 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
                         required={depositInstallmentCount && parseInt(depositInstallmentCount) === 3}
+                        disabled={isFieldDisabled}
                       />
+                    </div>
+                    <div className="md:col-span-4 flex items-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={true}
+                        className="w-full"
+                      >
+                        Recebimento
+                      </Button>
                     </div>
                   </div>
                 )}
