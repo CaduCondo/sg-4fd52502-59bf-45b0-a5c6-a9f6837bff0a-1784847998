@@ -149,7 +149,7 @@ export const getById = async (id: string): Promise<Payment> => {
   };
 };
 
-export const create = async (payment: Partial<Payment>) => {
+export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   const insertData = {
     rental_id: payment.rentalId,
     expected_amount: payment.expectedAmount,
@@ -176,11 +176,11 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  const refMonth = Number(data.reference_month) || 1;
-  const refYear = Number(data.reference_year) || new Date().getFullYear();
-  const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
+  const refMonth: number = Number(data.reference_month) || 1;
+  const refYear: number = Number(data.reference_year) || new Date().getFullYear();
+  const paymentDueDate: string = data.due_date || new Date().toISOString().split('T')[0];
   
-  return {
+  const createdPayment: Payment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -201,6 +201,8 @@ export const create = async (payment: Partial<Payment>) => {
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
   };
+  
+  return createdPayment;
 };
 
 export const update = async (

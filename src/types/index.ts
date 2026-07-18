@@ -245,22 +245,22 @@ export interface Payment {
   dueDate: string;
   expectedAmount: number;
   paidAmount: number;
-  status: "pending" | "paid" | "overdue" | "partial";
+  status: "paid" | "pending" | "overdue" | "partial";
   paymentDate: string | null;
   paymentMethod: string | null;
   notes: string | null;
-  lateFee?: number;
-  interest?: number;
-  breakdown?: any;
-  attachments?: string[];
+  lateFee: number;
+  interest: number;
+  breakdown: any;
   installment?: number;
   totalInstallments?: number;
+  attachments?: string[];
+  depositType?: string;
   rental?: Rental;
   property?: Property;
   tenant?: Tenant;
-  pixCode?: string;
-  paymentTime?: string;
-  depositType?: "rent" | "deposit"; // Flag para identificar tipo (aluguel ou caução)
+  receiptUrl?: string;
+  discount?: number;
 }
 
 export interface PaymentInstallment {
