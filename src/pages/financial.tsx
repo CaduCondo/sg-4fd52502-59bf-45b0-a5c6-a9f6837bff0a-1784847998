@@ -1644,13 +1644,7 @@ export default function Financial() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1 no-print">
               <TabsTrigger id="financial-tab-rentals" value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Locações</CardTitle>
-                    </div>
-                  </CardHeader>
-                </Card>
+                Locações
               </TabsTrigger>
               {(isAdmin || user?.role === "broker") && (
                 <TabsTrigger id="financial-tab-deposits" value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
