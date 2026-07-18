@@ -815,9 +815,24 @@ export function DepositInstallmentsTable({
                         
                         {/* Data Vencimento - NÃO mesclado - LÓGICA CORRETA */}
                         <TableCell className="text-center">
-                          {installment.due_date
-                            ? new Date(installment.due_date).toLocaleDateString("pt-BR")
-                            : "-"}
+                          {(() => {
+                            // Lógica: 1/1 usa deposit_payment_date, 2/X usa deposit_installment2_payment_date, 3/X usa deposit_installment3_payment_date
+                            let dateToDisplay = installment.due_date;
+                            
+                            if (rental) {
+                              if (installment.installment_number === 1 && rental.deposit_payment_date) {
+                                dateToDisplay = rental.deposit_payment_date;
+                              } else if (installment.installment_number === 2 && rental.deposit_installment2_payment_date) {
+                                dateToDisplay = rental.deposit_installment2_payment_date;
+                              } else if (installment.installment_number === 3 && rental.deposit_installment3_payment_date) {
+                                dateToDisplay = rental.deposit_installment3_payment_date;
+                              }
+                            }
+                            
+                            return dateToDisplay
+                              ? new Date(dateToDisplay).toLocaleDateString("pt-BR")
+                              : "-";
+                          })()}
                         </TableCell>
                         
                         {/* Data Pagamento - NÃO mesclado */}

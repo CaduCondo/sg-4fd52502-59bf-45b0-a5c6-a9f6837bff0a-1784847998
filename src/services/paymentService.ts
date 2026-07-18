@@ -181,15 +181,15 @@ export const create = async (payment: Partial<Payment>) => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Create Payment object with problematic properties FIRST to ensure TypeScript recognizes them
-  const result: Payment = {
-    referenceMonth: refMonth,
-    referenceYear: refYear,
-    dueDate: paymentDueDate,
+  // Return Payment object with all properties
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
     tenantId: "",
+    referenceMonth: refMonth,
+    referenceYear: refYear,
+    dueDate: paymentDueDate,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     status: data.status as "paid" | "pending" | "overdue" | "partial",
@@ -202,9 +202,7 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
-  
-  return result;
+  } as Payment;
 };
 
 export const update = async (
