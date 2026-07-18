@@ -16,8 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
+import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
 import { Download, Printer, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -76,6 +78,16 @@ export function DepositInstallmentsTable({
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const { toast } = useToast();
+
+  // Estado para dialog de edição
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingInstallment, setEditingInstallment] = useState<DepositInstallment | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    partnerCommission: "",
+    internalCommission: "",
+    amount: "",
+    pixCode: "",
+  });
 
   // 🔥 CORREÇÃO: Permitir acesso para admin E broker
   const isAdmin = userRole === "admin" || userRole === "broker";
@@ -248,6 +260,71 @@ export function DepositInstallmentsTable({
       });
     }
   }, [toast]);
+
+  const handleOpenEditDialog = useCallback((installment: DepositInstallment) => {
+    setEditingInstallment(installment);
+    setEditFormData({
+      partnerCommission: formatCurrency(installment.partner_commission || 0),
+      internalCommission: formatCurrency(installment.internal_commission || 0),
+      amount: formatCurrency(installment.amount || 0),
+      pixCode: installment.pix_code || "",
+    });
+    setIsEditDialogOpen(true);
+  }, []);
+
+  const handleCloseEditDialog = useCallback(() => {
+    setIsEditDialogOpen(false);
+    setEditingInstallment(null);
+    setEditFormData({
+      partnerCommission: "",
+      internalCommission: "",
+      amount: "",
+      pixCode: "",
+    });
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editingInstallment) return;
+
+    try {
+      const updateData = {
+        partner_commission: parseCurrencyToNumber(editFormData.partnerCommission),
+        internal_commission: parseCurrencyToNumber(editFormData.internalCommission),
+        amount: parseCurrencyToNumber(editFormData.amount),
+        pix_code: editFormData.pixCode,
+      };
+
+      const { error } = await supabase
+        .from("deposit_installments")
+        .update(updateData)
+        .eq("id", editingInstallment.id);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setData(prevData =>
+        prevData.map(item =>
+          item.id === editingInstallment.id
+            ? { ...item, ...updateData }
+            : item
+        )
+      );
+
+      toast({
+        title: "Atualizado com sucesso",
+        description: "Dados atualizados com sucesso.",
+      });
+
+      handleCloseEditDialog();
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
+      });
+    }
+  }, [editingInstallment, editFormData, toast, handleCloseEditDialog]);
 
   const exportToExcel = useCallback(() => {
     const excelData = data.map((inst) => ({
@@ -677,6 +754,9 @@ export function DepositInstallmentsTable({
                     <TableHead className="text-center">
                       Código PIX
                     </TableHead>
+                    <TableHead className="text-center">
+                      Ações
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -735,59 +815,17 @@ export function DepositInstallmentsTable({
                           </TableCell>
                         )}
                         
-                        {/* Valor Parceiro - mesclado e editável */}
+                        {/* Valor Parceiro - mesclado com botão editar */}
                         {shouldRenderCell(rentalId, index) && (
                           <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
-                            {rental?.has_partner_broker ? (
-                              editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
-                                <Input
-                                  type="text"
-                                  className="w-full h-9 text-right text-sm border-2 border-blue-500"
-                                  value={formatCurrency(installment.partner_commission || 0)}
-                                  onChange={(e) => {
-                                    const value = parseCurrencyToNumber(e.target.value);
-                                    handleUpdateField(installment.id, "partner_commission", value);
-                                  }}
-                                  onBlur={() => setEditingCell(null)}
-                                  autoFocus
-                                />
-                              ) : (
-                                <span
-                                  className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                  onClick={() => setEditingCell({ id: installment.id, field: "partner_commission" })}
-                                >
-                                  {formatCurrency(installment.partner_commission || 0)}
-                                </span>
-                              )
-                            ) : (
-                              "-"
-                            )}
+                            {rental?.has_partner_broker ? formatCurrency(installment.partner_commission || 0) : "-"}
                           </TableCell>
                         )}
                         
-                        {/* Valor Corretor - mesclado e editável */}
+                        {/* Valor Corretor - mesclado com botão editar */}
                         {shouldRenderCell(rentalId, index) && (
                           <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
-                            {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
-                              <Input
-                                type="text"
-                                className="w-full h-9 text-right text-sm border-2 border-blue-500"
-                                value={formatCurrency(installment.internal_commission || 0)}
-                                onChange={(e) => {
-                                  const value = parseCurrencyToNumber(e.target.value);
-                                  handleUpdateField(installment.id, "internal_commission", value);
-                                }}
-                                onBlur={() => setEditingCell(null)}
-                                autoFocus
-                              />
-                            ) : (
-                              <span
-                                className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                onClick={() => setEditingCell({ id: installment.id, field: "internal_commission" })}
-                              >
-                                {formatCurrency(installment.internal_commission || 0)}
-                              </span>
-                            )}
+                            {formatCurrency(installment.internal_commission || 0)}
                           </TableCell>
                         )}
 
@@ -845,51 +883,25 @@ export function DepositInstallmentsTable({
                             : "-"}
                         </TableCell>
                         
-                        {/* Valor - NÃO mesclado e editável */}
-                        <TableCell className="text-right font-semibold">
-                          {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
-                            <Input
-                              type="text"
-                              className="w-full h-9 text-right text-sm font-semibold border-2 border-blue-500"
-                              value={formatCurrency(installment.amount)}
-                              onChange={(e) => {
-                                const value = parseCurrencyToNumber(e.target.value);
-                                handleUpdateField(installment.id, "amount", value);
-                              }}
-                              onBlur={() => setEditingCell(null)}
-                              autoFocus
-                            />
-                          ) : (
-                            <span
-                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                              onClick={() => setEditingCell({ id: installment.id, field: "amount" })}
-                            >
-                              {formatCurrency(installment.amount)}
-                            </span>
-                          )}
+                        {/* Valor - NÃO mesclado - COR VERDE */}
+                        <TableCell className="text-right font-semibold text-green-600">
+                          {formatCurrency(installment.amount)}
                         </TableCell>
                         
-                        {/* Código PIX - NÃO mesclado e editável */}
+                        {/* Código PIX - NÃO mesclado */}
                         <TableCell className="text-center text-xs">
-                          {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
-                            <Input
-                              type="text"
-                              className="w-full h-9 text-center text-xs border-2 border-blue-500"
-                              value={installment.pix_code || ""}
-                              onChange={(e) => {
-                                handleUpdateField(installment.id, "pix_code", e.target.value);
-                              }}
-                              onBlur={() => setEditingCell(null)}
-                              autoFocus
-                            />
-                          ) : (
-                            <span
-                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
-                              onClick={() => setEditingCell({ id: installment.id, field: "pix_code" })}
-                            >
-                              {installment.pix_code || "-"}
-                            </span>
-                          )}
+                          {installment.pix_code || "-"}
+                        </TableCell>
+
+                        {/* Ações - Botão Editar */}
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenEditDialog(installment)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -900,6 +912,76 @@ export function DepositInstallmentsTable({
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Edição */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Parcela de Caução</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="edit-partner-commission">Valor Parceiro</Label>
+                <Input
+                  id="edit-partner-commission"
+                  value={editFormData.partnerCommission}
+                  onChange={(e) => setEditFormData(prev => ({
+                    ...prev,
+                    partnerCommission: formatCurrencyInput(e.target.value)
+                  }))}
+                  placeholder="R$ 0,00"
+                  disabled={!editingInstallment?.rental?.has_partner_broker}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-internal-commission">Valor Corretor</Label>
+                <Input
+                  id="edit-internal-commission"
+                  value={editFormData.internalCommission}
+                  onChange={(e) => setEditFormData(prev => ({
+                    ...prev,
+                    internalCommission: formatCurrencyInput(e.target.value)
+                  }))}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-amount">Valor</Label>
+                <Input
+                  id="edit-amount"
+                  value={editFormData.amount}
+                  onChange={(e) => setEditFormData(prev => ({
+                    ...prev,
+                    amount: formatCurrencyInput(e.target.value)
+                  }))}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-pix-code">Código PIX</Label>
+                <Input
+                  id="edit-pix-code"
+                  value={editFormData.pixCode}
+                  onChange={(e) => setEditFormData(prev => ({
+                    ...prev,
+                    pixCode: e.target.value
+                  }))}
+                  placeholder="Código PIX"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseEditDialog}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
