@@ -518,6 +518,7 @@ export default function Payments() {
       return p.status === "paid" && filterBySearch(p);
     });
 
+    // ✅ ORDENAÇÃO PADRÃO: Pendentes por Data de Vencimento (ascendente)
     if (sortKeyPending) {
       pending.sort((a, b) => {
         let aVal: any = "";
@@ -555,8 +556,16 @@ export default function Payments() {
         if (aVal > bVal) return sortDirectionPending === "asc" ? 1 : -1;
         return 0;
       });
+    } else {
+      // Ordenação padrão: Data de Vencimento ascendente
+      pending.sort((a, b) => {
+        const aDate = a.dueDate || "";
+        const bDate = b.dueDate || "";
+        return aDate.localeCompare(bDate);
+      });
     }
 
+    // ✅ ORDENAÇÃO PADRÃO: Pagos por Data de Pagamento (descendente - mais recentes primeiro)
     if (sortKeyPaid) {
       paid.sort((a, b) => {
         let aVal: any = "";
@@ -593,6 +602,13 @@ export default function Payments() {
         if (aVal < bVal) return sortDirectionPaid === "asc" ? -1 : 1;
         if (aVal > bVal) return sortDirectionPaid === "asc" ? 1 : -1;
         return 0;
+      });
+    } else {
+      // Ordenação padrão: Data de Pagamento descendente (mais recentes primeiro)
+      paid.sort((a, b) => {
+        const aDate = a.paymentDate || "";
+        const bDate = b.paymentDate || "";
+        return bDate.localeCompare(aDate);
       });
     }
 
@@ -683,7 +699,21 @@ export default function Payments() {
     { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
     { key: "paymentDate", label: "Pago em", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (p: Payment) => p.paymentDate ? new Date(p.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "amount", label: "Valor Pago", headerClassName: "text-center", className: "text-right", render: (p: Payment) => <span className="font-bold text-lg text-green-600">{(p.paidAmount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> },
+    { 
+      key: "amount", 
+      label: "Valor Pago", 
+      headerClassName: "text-center", 
+      className: "text-right", 
+      render: (p: Payment) => {
+        const value = p.paidAmount || 0;
+        const isNegative = value < 0;
+        return (
+          <span className={`font-bold text-lg ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
+            {value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </span>
+        );
+      }
+    },
     { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[120px]", render: (p: Payment) => (
       <div className="flex flex-col items-center gap-1">
         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewReceipt(p); }} title="Ver Recibo">Recibo</Button>
