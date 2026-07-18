@@ -181,8 +181,8 @@ export const create = async (payment: Partial<Payment>) => {
   const refYear = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
-  // Create Payment object and return with type assertion
-  return {
+  // Create and return Payment object with all required properties
+  const createdPayment = {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -202,7 +202,9 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  } as Payment;
+  };
+  
+  return createdPayment as Payment;
 };
 
 export const update = async (

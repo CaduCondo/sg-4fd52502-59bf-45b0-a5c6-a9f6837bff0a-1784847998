@@ -61,6 +61,8 @@ export const usePayments = () => {
       }
 
       // Converter deposit_installments para formato Payment
+      let validDepositPayments: Payment[] = [];
+      
       try {
         const depositPaymentsPromises = filteredDeposits.map(async (deposit) => {
           try {
@@ -118,12 +120,11 @@ export const usePayments = () => {
         const depositPayments = await Promise.all(depositPaymentsPromises);
         
         // Remover nulls do array
-        const validDepositPayments = depositPayments.filter(p => p !== null) as Payment[];
+        validDepositPayments = depositPayments.filter(p => p !== null) as Payment[];
         
-        return validDepositPayments;
       } catch (error) {
         console.error("❌ Erro ao converter deposit_installments:", error);
-        return [];
+        validDepositPayments = [];
       }
 
       // Processar payments regulares
