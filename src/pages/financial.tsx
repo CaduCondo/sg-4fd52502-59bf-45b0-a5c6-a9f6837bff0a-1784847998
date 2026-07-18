@@ -1922,13 +1922,17 @@ export default function Financial() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="text-center">Parc</TableHead>
                           <TableHead className="text-center">Local</TableHead>
-                          <TableHead className="text-center">Complemento</TableHead>
+                          <TableHead className="text-center">Compl</TableHead>
                           <TableHead className="text-center">Inquilino</TableHead>
-                          <TableHead className="text-center">Mês/Ano</TableHead>
-                          <TableHead className="text-center">Vencimento</TableHead>
+                          <TableHead className="text-center">Período</TableHead>
                           <TableHead className="text-center">Status</TableHead>
-                          <TableHead className="text-center">Valor</TableHead>
+                          <TableHead className="text-center">Venc</TableHead>
+                          <TableHead className="text-center">Rec</TableHead>
+                          <TableHead className="text-center">Hora</TableHead>
+                          <TableHead className="text-center">Val.Esp</TableHead>
+                          <TableHead className="text-center">Val.Pg</TableHead>
                           <TableHead className="text-center">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
