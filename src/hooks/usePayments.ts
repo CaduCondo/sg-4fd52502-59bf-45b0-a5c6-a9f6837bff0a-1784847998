@@ -325,6 +325,68 @@ export const usePayments = () => {
     }
   }, [payments, toast]);
 
+  const fetchPayments = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Buscar apenas payments normais (aluguel)
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          rental:rentals!inner(
+            *,
+            properties!rentals_property_id_fkey(*),
+            tenants!rentals_tenant_id_fkey(*)
+          )
+        `)
+        .order("due_date", { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+
+      // Mapear para formato Payment
+      const mappedPayments: Payment[] = (paymentsData || []).map((payment) => ({
+        id: payment.id,
+        rentalId: payment.rental_id,
+        propertyId: payment.rental?.property_id || "",
+        tenantId: payment.rental?.tenant_id || "",
+        referenceMonth: Number(payment.reference_month),
+        referenceYear: Number(payment.reference_year),
+        dueDate: payment.due_date,
+        expectedAmount: payment.expected_amount,
+        paidAmount: payment.paid_amount || 0,
+        status: payment.status as "pending" | "paid" | "overdue" | "partial",
+        paymentDate: payment.payment_date || null,
+        paymentMethod: payment.payment_method || null,
+        notes: payment.notes || null,
+        lateFee: payment.late_fee || 0,
+        interest: payment.interest || 0,
+        breakdown: payment.breakdown,
+        attachments: Array.isArray(payment.attachments) 
+          ? payment.attachments.map((att: any) => typeof att === 'string' ? att : att?.url || '')
+          : [],
+        installment: payment.installment,
+        totalInstallments: payment.total_installments,
+        rental: payment.rental as Rental,
+        property: payment.rental?.properties as Property,
+        tenant: payment.rental?.tenants as Tenant,
+      }));
+
+      setPayments(mappedPayments);
+    } catch (error) {
+      console.error("Erro ao buscar recebimentos:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar recebimentos",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, toast]);
+
   useEffect(() => {
     loadPayments();
   }, [loadPayments]);
