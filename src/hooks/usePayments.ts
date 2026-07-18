@@ -22,17 +22,10 @@ export const usePayments = () => {
 
       console.log("🔍 [usePayments] Iniciando busca de payments com filtros:", { month, year });
 
-      // Buscar APENAS payments regulares (tipo 1 - aluguel)
+      // 🔥 CORREÇÃO: Buscar APENAS payments sem JOINs complexos para evitar timeout
       let paymentsQuery = supabase
         .from("payments")
-        .select(`
-          *,
-          rentals!payments_rental_id_fkey (
-            *,
-            properties!rentals_property_id_fkey (*),
-            tenants!rentals_tenant_id_fkey (*)
-          )
-        `);
+        .select("*");
 
       if (month !== "all") {
         paymentsQuery = paymentsQuery.eq("reference_month", month.padStart(2, "0"));
@@ -50,37 +43,71 @@ export const usePayments = () => {
 
       console.log("✅ [usePayments] Payments carregados do banco:", paymentsData?.length || 0);
       
-      if (paymentsData && paymentsData.length > 0) {
-        console.log("📄 [usePayments] Primeiro payment:", paymentsData[0]);
-      } else {
+      if (!paymentsData || paymentsData.length === 0) {
         console.warn("⚠️ [usePayments] Nenhum payment encontrado com os filtros:", { month, year });
-        
-        // Se não encontrou resultados com filtro de mês/ano, tentar sem filtros
-        if (month !== "all" || year !== "all") {
-          console.log("🔄 [usePayments] Tentando buscar todos os payments sem filtro...");
-          const { data: allPaymentsData, error: allPaymentsError } = await supabase
-            .from("payments")
-            .select(`
-              *,
-              rentals!payments_rental_id_fkey (
-                *,
-                properties!rentals_property_id_fkey (*),
-                tenants!rentals_tenant_id_fkey (*)
-              )
-            `);
-            
-          if (!allPaymentsError && allPaymentsData && allPaymentsData.length > 0) {
-            console.log("✅ [usePayments] Encontrados", allPaymentsData.length, "payments sem filtro");
-            console.log("ℹ️ [usePayments] Sugestão: Altere o filtro de mês/ano para 'Todos' para ver todos os recebimentos");
-          }
-        }
+        setPayments([]);
+        setRentals([]);
+        setProperties([]);
+        setTenants([]);
+        return;
       }
 
+      // Buscar rental IDs únicos
+      const rentalIds = [...new Set(paymentsData.map(p => p.rental_id).filter(Boolean))];
+      console.log("📋 [usePayments] Buscando", rentalIds.length, "rentals...");
+
+      // Buscar rentals separadamente
+      const { data: rentalsData, error: rentalsError } = await supabase
+        .from("rentals")
+        .select("*")
+        .in("id", rentalIds);
+
+      if (rentalsError) {
+        console.error("❌ [usePayments] Erro ao buscar rentals:", rentalsError);
+        throw rentalsError;
+      }
+
+      console.log("✅ [usePayments] Rentals carregados:", rentalsData?.length || 0);
+
+      // Buscar property IDs únicos
+      const propertyIds = [...new Set(rentalsData?.map(r => r.property_id).filter(Boolean) || [])];
+      console.log("📋 [usePayments] Buscando", propertyIds.length, "properties...");
+
+      // Buscar properties separadamente
+      const { data: propertiesData, error: propertiesError } = await supabase
+        .from("properties")
+        .select("*")
+        .in("id", propertyIds);
+
+      if (propertiesError) {
+        console.error("❌ [usePayments] Erro ao buscar properties:", propertiesError);
+        throw propertiesError;
+      }
+
+      console.log("✅ [usePayments] Properties carregados:", propertiesData?.length || 0);
+
+      // Buscar tenant IDs únicos
+      const tenantIds = [...new Set(rentalsData?.map(r => r.tenant_id).filter(Boolean) || [])];
+      console.log("📋 [usePayments] Buscando", tenantIds.length, "tenants...");
+
+      // Buscar tenants separadamente
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from("tenants")
+        .select("*")
+        .in("id", tenantIds);
+
+      if (tenantsError) {
+        console.error("❌ [usePayments] Erro ao buscar tenants:", tenantsError);
+        throw tenantsError;
+      }
+
+      console.log("✅ [usePayments] Tenants carregados:", tenantsData?.length || 0);
+
       // Processar payments regulares (aluguel)
-      const processedPayments = (paymentsData || []).map((payment: any) => {
-        const rental = payment.rentals;
-        const property = rental?.properties;
-        const tenant = rental?.tenants;
+      const processedPayments = paymentsData.map((payment: any) => {
+        const rental = rentalsData?.find(r => r.id === payment.rental_id);
+        const property = rental ? propertiesData?.find(p => p.id === rental.property_id) : null;
+        const tenant = rental ? tenantsData?.find(t => t.id === rental.tenant_id) : null;
 
         return {
           id: payment.id,
