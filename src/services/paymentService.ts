@@ -182,7 +182,7 @@ export const create = async (payment: Partial<Payment>) => {
   const paymentDueDate = data.due_date || new Date().toISOString().split('T')[0];
   
   // Create and return Payment object with all required properties
-  const createdPayment = {
+  return {
     id: data.id,
     rentalId: data.rental_id,
     propertyId: "",
@@ -202,9 +202,7 @@ export const create = async (payment: Partial<Payment>) => {
     installment: data.installment || 1,
     totalInstallments: data.total_installments || 24,
     attachments: (data.attachments as unknown as string[]) || [],
-  };
-  
-  return createdPayment as Payment;
+  } as Payment;
 };
 
 export const update = async (
