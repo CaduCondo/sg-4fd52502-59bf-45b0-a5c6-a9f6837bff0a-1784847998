@@ -656,7 +656,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações do Caução</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="space-y-2 md:col-span-3">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="rental-deposit-amount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
@@ -691,7 +691,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3 flex items-end">
+              <div className="space-y-2 md:col-span-2 flex items-end">
                 <Button
                   type="button"
                   variant="outline"
