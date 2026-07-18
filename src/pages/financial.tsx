@@ -1938,21 +1938,21 @@ export default function Financial() {
                       </TableHeader>
                       <TableBody>
                         {getSortedPayments.map((payment) => {
-                          const rental = rentals.find(r => r.id === payment.rental_id);
-                          const property = rental ? properties.find(p => p.id === rental.property_id) : null;
-                          const tenant = rental ? tenants.find(t => t.id === rental.tenant_id) : null;
-                          const location = property ? locations.find(l => l.id === property.location_id) : null;
+                          const rental = payment.rental;
+                          const property = payment.property;
+                          const tenant = payment.tenant;
+                          const location = property?.location;
 
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
                               {/* Parc (Parcela) */}
                               <TableCell className="text-center text-xs">
-                                {payment.installment || 1}/{payment.total_installments || 24}
+                                {payment.installment || 1}/{payment.totalInstallments || 24}
                               </TableCell>
                               
                               {/* Local */}
                               <TableCell className="text-center text-xs">
-                                {location?.name || "N/A"}
+                                {location || "N/A"}
                               </TableCell>
                               
                               {/* Compl (Complemento) */}
@@ -1967,7 +1967,7 @@ export default function Financial() {
                               
                               {/* Período */}
                               <TableCell className="text-center text-xs">
-                                {monthNames[payment.reference_month - 1]}/{payment.reference_year}
+                                {months[payment.referenceMonth - 1]}/{payment.referenceYear}
                               </TableCell>
                               
                               {/* Status */}
@@ -1996,33 +1996,33 @@ export default function Financial() {
                               
                               {/* Venc (Vencimento) */}
                               <TableCell className="text-center text-xs">
-                                {payment.due_date
-                                  ? new Date(payment.due_date).toLocaleDateString("pt-BR")
+                                {payment.dueDate
+                                  ? new Date(payment.dueDate).toLocaleDateString("pt-BR")
                                   : "-"}
                               </TableCell>
                               
                               {/* Rec (Data Recebimento) */}
                               <TableCell className="text-center text-xs">
-                                {payment.payment_date
-                                  ? new Date(payment.payment_date).toLocaleDateString("pt-BR")
+                                {payment.paymentDate
+                                  ? new Date(payment.paymentDate).toLocaleDateString("pt-BR")
                                   : "-"}
                               </TableCell>
                               
                               {/* Hora (Hora do Pagamento) */}
                               <TableCell className="text-center text-xs">
-                                {payment.payment_time || "-"}
+                                {payment.paymentTime || "-"}
                               </TableCell>
                               
                               {/* Val.Esp (Valor Esperado) */}
                               <TableCell className="text-right text-xs">
-                                {formatCurrency(payment.expected_amount)}
+                                {formatCurrency(payment.expectedAmount)}
                               </TableCell>
                               
                               {/* Val.Pg (Valor Pago) */}
                               <TableCell className={`text-right text-xs font-semibold ${
-                                (payment.paid_amount || 0) < 0 ? 'text-red-600' : 'text-green-600'
+                                (payment.paidAmount || 0) < 0 ? 'text-red-600' : 'text-green-600'
                               }`}>
-                                {formatCurrency(payment.paid_amount || 0)}
+                                {formatCurrency(payment.paidAmount || 0)}
                               </TableCell>
                               
                               {/* Código PIX */}
@@ -2045,7 +2045,7 @@ export default function Financial() {
                                     className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded block text-center"
                                     onClick={() => handleStartPixEdit(payment)}
                                   >
-                                    {payment.pix_code || "-"}
+                                    {payment.pixCode || "-"}
                                   </span>
                                 )}
                               </TableCell>
