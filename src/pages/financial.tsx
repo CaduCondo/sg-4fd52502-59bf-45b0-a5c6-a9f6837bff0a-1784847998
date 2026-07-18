@@ -531,6 +531,10 @@ export default function Financial() {
     value: string;
   } | null>(null);
   
+  // Estados para edição inline do Código PIX na tabela Locações
+  const [editingPixCell, setEditingPixCell] = useState<{ id: string } | null>(null);
+  const [editingPixValue, setEditingPixValue] = useState<string>("");
+  
   const [showExpensesDialog, setShowExpensesDialog] = useState(false);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
@@ -1385,6 +1389,56 @@ export default function Financial() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleStartPixEdit = (payment: Payment) => {
+    setEditingPixCell({ id: payment.id });
+    setEditingPixValue(payment.pixCode || "");
+  };
+
+  const handleSavePixEdit = async () => {
+    if (!editingPixCell) return;
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update({ pix_code: editingPixValue })
+        .eq("id", editingPixCell.id);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setPayments(prevPayments =>
+        prevPayments.map(p =>
+          p.id === editingPixCell.id
+            ? { ...p, pixCode: editingPixValue }
+            : p
+        )
+      );
+
+      toast({
+        title: "Código PIX atualizado",
+        description: "O código foi atualizado com sucesso.",
+      });
+
+      setEditingPixCell(null);
+      setEditingPixValue("");
+
+      // Invalidar cache
+      financialCache = { data: null, key: "", timestamp: 0 };
+    } catch (error) {
+      console.error("Erro ao atualizar código PIX:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
+      });
+    }
+  };
+
+  const handleCancelPixEdit = () => {
+    setEditingPixCell(null);
+    setEditingPixValue("");
   };
 
   const handleExport = useCallback(() => {
