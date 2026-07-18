@@ -79,7 +79,7 @@ import * as XLSX from "xlsx";
 import { Payment, Property, Rental, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 
-type SortField = "installment" | "location" | "complement" | "tenant" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
+type SortField = "parc" | "local" | "complement" | "tenant" | "period" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
 
 type ExpenseSortField = "location_name" | "description" | "amount";
@@ -544,11 +544,6 @@ export default function Financial() {
   const [showExpensesDialog, setShowExpensesDialog] = useState(false);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
-  // Estado para ordenação da tabela de Locações
-  type SortField = "parc" | "local" | "complement" | "tenant" | "period" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -980,9 +975,8 @@ export default function Financial() {
   const getSortedPayments = useMemo(() => {
     const filtered = payments.filter(p => {
       if (selectedLocationIds.length > 0) {
-        const rental = p.rental;
-        const property = rental ? rental.properties.find(prop => prop.id === rental.propertyId) : null;
-        if (!property || property.locationId !== selectedLocationIds[0]) return false;
+        const locationId = p.property?.locationId;
+        if (!locationId || !selectedLocationIds.includes(locationId)) return false;
       }
       return true;
     });
@@ -994,11 +988,11 @@ export default function Financial() {
         let bVal: any = "";
 
         switch (sortField) {
-          case "installment":
+          case "parc":
             aVal = a.installment || 0;
             bVal = b.installment || 0;
             break;
-          case "location":
+          case "local":
             aVal = (a.property?.location || "").toLowerCase();
             bVal = (b.property?.location || "").toLowerCase();
             break;
@@ -1009,6 +1003,10 @@ export default function Financial() {
           case "tenant":
             aVal = (a.tenant?.name || "").toLowerCase();
             bVal = (b.tenant?.name || "").toLowerCase();
+            break;
+          case "period":
+            aVal = `${a.referenceYear}-${String(a.referenceMonth).padStart(2, "0")}`;
+            bVal = `${b.referenceYear}-${String(b.referenceMonth).padStart(2, "0")}`;
             break;
           case "status":
             aVal = a.status;
