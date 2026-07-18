@@ -78,16 +78,6 @@ export function DepositInstallmentsTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const { toast } = useToast();
 
-  // Estado para dialog de edição
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingInstallment, setEditingInstallment] = useState<DepositInstallment | null>(null);
-  const [editFormData, setEditFormData] = useState({
-    partnerCommission: "",
-    internalCommission: "",
-    amount: "",
-    pixCode: "",
-  });
-
   // 🔥 CORREÇÃO: Permitir acesso para admin E broker
   const isAdmin = userRole === "admin" || userRole === "broker";
 
@@ -297,71 +287,6 @@ export function DepositInstallmentsTable({
     setEditingCell(null);
     setEditingValue("");
   }, []);
-
-  const handleOpenEditDialog = useCallback((installment: DepositInstallment) => {
-    setEditingInstallment(installment);
-    setEditFormData({
-      partnerCommission: formatCurrency(installment.partner_commission || 0),
-      internalCommission: formatCurrency(installment.internal_commission || 0),
-      amount: formatCurrency(installment.amount || 0),
-      pixCode: installment.pix_code || "",
-    });
-    setIsEditDialogOpen(true);
-  }, []);
-
-  const handleCloseEditDialog = useCallback(() => {
-    setIsEditDialogOpen(false);
-    setEditingInstallment(null);
-    setEditFormData({
-      partnerCommission: "",
-      internalCommission: "",
-      amount: "",
-      pixCode: "",
-    });
-  }, []);
-
-  const handleSaveEdit = useCallback(async () => {
-    if (!editingInstallment) return;
-
-    try {
-      const updateData = {
-        partner_commission: parseCurrencyToNumber(editFormData.partnerCommission),
-        internal_commission: parseCurrencyToNumber(editFormData.internalCommission),
-        amount: parseCurrencyToNumber(editFormData.amount),
-        pix_code: editFormData.pixCode,
-      };
-
-      const { error } = await supabase
-        .from("deposit_installments")
-        .update(updateData)
-        .eq("id", editingInstallment.id);
-
-      if (error) throw error;
-
-      // Atualizar estado local
-      setData(prevData =>
-        prevData.map(item =>
-          item.id === editingInstallment.id
-            ? { ...item, ...updateData }
-            : item
-        )
-      );
-
-      toast({
-        title: "Atualizado com sucesso",
-        description: "Dados atualizados com sucesso.",
-      });
-
-      handleCloseEditDialog();
-    } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao atualizar",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
-      });
-    }
-  }, [editingInstallment, editFormData, toast, handleCloseEditDialog]);
 
   const exportToExcel = useCallback(() => {
     const excelData = data.map((inst) => ({

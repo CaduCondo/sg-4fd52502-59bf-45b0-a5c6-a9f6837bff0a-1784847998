@@ -176,7 +176,6 @@ export const create = async (payment: Partial<Payment>) => {
 
   if (error) throw error;
   
-  // Return Payment object with type assertion
   return {
     id: data.id,
     rentalId: data.rental_id,
