@@ -2002,6 +2002,12 @@ export default function Financial() {
                                   </div>
                                 )}
                               </TableCell>
+                              <div className="text-xs text-muted-foreground">
+                                PIX: {payment.pixCode || "N/A"}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Hora: {payment.paymentDate ? new Date(payment.paymentDate).toLocaleTimeString("pt-BR") : "N/A"}
+                              </div>
                             </TableRow>
                           );
                         })}

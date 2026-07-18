@@ -180,6 +180,7 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   const refYear: number = Number(data.reference_year) || new Date().getFullYear();
   const paymentDueDate: string = data.due_date || new Date().toISOString().split('T')[0];
   
+  // Create Payment object with all required properties
   const createdPayment: Payment = {
     id: data.id,
     rentalId: data.rental_id,

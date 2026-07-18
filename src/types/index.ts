@@ -261,6 +261,8 @@ export interface Payment {
   tenant?: Tenant;
   receiptUrl?: string;
   discount?: number;
+  pixCode?: string;
+  paymentTime?: string;
 }
 
 export interface PaymentInstallment {
