@@ -207,7 +207,7 @@ export const create = async (payment: Partial<Payment>) => {
     referenceMonth: refMonth,
     referenceYear: refYear,
     dueDate: paymentDueDate,
-  };
+  } as Payment;
 };
 
 export const update = async (
