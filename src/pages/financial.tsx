@@ -1938,11 +1938,6 @@ export default function Financial() {
                       </TableHeader>
                       <TableBody>
                         {getSortedPayments.map((payment) => {
-                          const rental = payment.rental;
-                          const property = payment.property;
-                          const tenant = payment.tenant;
-                          const location = property?.location;
-
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
                               {/* Parc (Parcela) */}
@@ -1952,17 +1947,17 @@ export default function Financial() {
                               
                               {/* Local */}
                               <TableCell className="text-center text-xs">
-                                {location || "N/A"}
+                                {payment.property?.location || "N/A"}
                               </TableCell>
                               
                               {/* Compl (Complemento) */}
                               <TableCell className="text-center text-xs">
-                                {property?.complement || "-"}
+                                {payment.property?.complement || "-"}
                               </TableCell>
                               
                               {/* Inquilino */}
                               <TableCell className="text-left text-sm">
-                                {tenant?.name || "N/A"}
+                                {payment.tenant?.name || "N/A"}
                               </TableCell>
                               
                               {/* Período */}
