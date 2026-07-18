@@ -1922,86 +1922,115 @@ export default function Financial() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-center">Parc</TableHead>
-                          <TableHead className="text-center">Local</TableHead>
-                          <TableHead className="text-center">Compl</TableHead>
-                          <TableHead className="text-center">Inquilino</TableHead>
-                          <TableHead className="text-center">Período</TableHead>
-                          <TableHead className="text-center">Status</TableHead>
-                          <TableHead className="text-center">Venc</TableHead>
-                          <TableHead className="text-center">Rec</TableHead>
-                          <TableHead className="text-center">Hora</TableHead>
-                          <TableHead className="text-center">Val.Esp</TableHead>
-                          <TableHead className="text-center">Val.Pg</TableHead>
-                          <TableHead className="text-center">Código PIX</TableHead>
+                          <TableHead className="text-center w-[60px]">Parc</TableHead>
+                          <TableHead className="text-center w-[100px]">Local</TableHead>
+                          <TableHead className="text-center w-[80px]">Compl</TableHead>
+                          <TableHead className="text-center min-w-[150px]">Inquilino</TableHead>
+                          <TableHead className="text-center w-[90px]">Período</TableHead>
+                          <TableHead className="text-center w-[90px]">Status</TableHead>
+                          <TableHead className="text-center w-[90px]">Venc</TableHead>
+                          <TableHead className="text-center w-[90px]">Rec</TableHead>
+                          <TableHead className="text-center w-[80px]">Hora</TableHead>
+                          <TableHead className="text-right w-[100px]">Val.Esp</TableHead>
+                          <TableHead className="text-right w-[100px]">Val.Pg</TableHead>
+                          <TableHead className="text-center w-[100px]">Código PIX</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {getSortedPayments.map((payment) => {
-                          const details = getPaymentDetails(payment);
-                          const paymentNumber = calculatePaymentNumber(payment, details.rental);
-                          
-                          const statusText = payment.status === "paid" ? "Pago" : 
-                                           payment.status === "pending" ? "Pend" : 
-                                           payment.status === "overdue" ? "Atras" : "Parc";
+                          const rental = rentals.find(r => r.id === payment.rental_id);
+                          const property = rental ? properties.find(p => p.id === rental.property_id) : null;
+                          const tenant = rental ? tenants.find(t => t.id === rental.tenant_id) : null;
+                          const location = property ? locations.find(l => l.id === property.location_id) : null;
 
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
-                              <TableCell className="font-medium text-center text-sm print:text-[9px] col-parcela">{paymentNumber}</TableCell>
-                              <TableCell className="text-sm print:text-[9px] col-local">{details.local}</TableCell>
-                              <TableCell className="text-sm print:text-[9px] col-compl">{details.complemento}</TableCell>
-                              <TableCell className="text-sm print:text-[9px] col-inquilino">{details.tenantName}</TableCell>
-                              <TableCell className="text-center text-sm print:text-[9px] col-mes">
-                                {format(new Date(filterYear, filterMonth - 1), "MMM/yyyy", { locale: ptBR })}
+                              {/* Parc (Parcela) */}
+                              <TableCell className="text-center text-xs">
+                                {payment.installment || 1}/{payment.total_installments || 24}
                               </TableCell>
-                              <TableCell className="text-center text-sm print:text-[9px] col-status">
+                              
+                              {/* Local */}
+                              <TableCell className="text-center text-xs">
+                                {location?.name || "N/A"}
+                              </TableCell>
+                              
+                              {/* Compl (Complemento) */}
+                              <TableCell className="text-center text-xs">
+                                {property?.complement || "-"}
+                              </TableCell>
+                              
+                              {/* Inquilino */}
+                              <TableCell className="text-left text-sm">
+                                {tenant?.name || "N/A"}
+                              </TableCell>
+                              
+                              {/* Período */}
+                              <TableCell className="text-center text-xs">
+                                {monthNames[payment.reference_month - 1]}/{payment.reference_year}
+                              </TableCell>
+                              
+                              {/* Status */}
+                              <TableCell className="text-center">
                                 <Badge
                                   variant="outline"
-                                  className={`text-sm print:text-[9px] no-print ${
+                                  className={
                                     payment.status === "paid"
-                                      ? "bg-green-100 text-green-700 border-green-300"
+                                      ? "bg-green-100 text-green-700 border-green-300 text-xs"
+                                      : payment.status === "overdue"
+                                      ? "bg-red-100 text-red-700 border-red-300 text-xs"
                                       : payment.status === "partial"
-                                      ? "bg-yellow-100 text-yellow-700 border-yellow-300"
-                                      : "bg-red-100 text-red-700 border-red-300"
-                                  }`}
+                                      ? "bg-yellow-100 text-yellow-700 border-yellow-300 text-xs"
+                                      : "bg-gray-100 text-gray-700 border-gray-300 text-xs"
+                                  }
                                 >
-                                  {statusText}
+                                  {payment.status === "paid"
+                                    ? "Pago"
+                                    : payment.status === "overdue"
+                                    ? "Atrasado"
+                                    : payment.status === "partial"
+                                    ? "Parcial"
+                                    : "Pendente"}
                                 </Badge>
-                                <span className={`hidden print:inline ${
-                                  payment.status === "paid" ? "status-paid" :
-                                  payment.status === "partial" ? "status-partial" :
-                                  "status-pending"
-                                }`}>
-                                  {statusText}
-                                </span>
                               </TableCell>
-                              <TableCell className="text-center text-sm print:text-[9px] col-venc">
-                                {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yy")}
-                              </TableCell>
-                              <TableCell className="text-center text-sm print:text-[9px] col-rec">
-                                {payment.paymentDate
-                                  ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yy")
+                              
+                              {/* Venc (Vencimento) */}
+                              <TableCell className="text-center text-xs">
+                                {payment.due_date
+                                  ? new Date(payment.due_date).toLocaleDateString("pt-BR")
                                   : "-"}
                               </TableCell>
-                              <TableCell className="text-right text-sm print:text-[9px] col-val-esp">
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(getExpectedAmount(payment))}
+                              
+                              {/* Rec (Data Recebimento) */}
+                              <TableCell className="text-center text-xs">
+                                {payment.payment_date
+                                  ? new Date(payment.payment_date).toLocaleDateString("pt-BR")
+                                  : "-"}
                               </TableCell>
-                              <TableCell className={`text-right text-sm print:text-[9px] font-semibold col-val-pg ${
-                                (payment.paidAmount || 0) < 0 ? 'text-red-600' : 'text-green-600'
+                              
+                              {/* Hora (Hora do Pagamento) */}
+                              <TableCell className="text-center text-xs">
+                                {payment.payment_time || "-"}
+                              </TableCell>
+                              
+                              {/* Val.Esp (Valor Esperado) */}
+                              <TableCell className="text-right text-xs">
+                                {formatCurrency(payment.expected_amount)}
+                              </TableCell>
+                              
+                              {/* Val.Pg (Valor Pago) */}
+                              <TableCell className={`text-right text-xs font-semibold ${
+                                (payment.paid_amount || 0) < 0 ? 'text-red-600' : 'text-green-600'
                               }`}>
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(payment.paidAmount || 0)}
+                                {formatCurrency(payment.paid_amount || 0)}
                               </TableCell>
+                              
+                              {/* Código PIX */}
                               <TableCell className="text-center text-xs">
                                 {editingPixCell?.id === payment.id ? (
                                   <Input
                                     type="text"
-                                    className="w-full h-9 text-center text-xs border-blue-500"
+                                    className="w-full h-8 text-center text-xs border-blue-500"
                                     value={editingPixValue}
                                     onChange={(e) => setEditingPixValue(e.target.value)}
                                     onBlur={handleSavePixEdit}
@@ -2013,10 +2042,10 @@ export default function Financial() {
                                   />
                                 ) : (
                                   <span
-                                    className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
+                                    className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded block text-center"
                                     onClick={() => handleStartPixEdit(payment)}
                                   >
-                                    {payment.pixCode || "-"}
+                                    {payment.pix_code || "-"}
                                   </span>
                                 )}
                               </TableCell>
