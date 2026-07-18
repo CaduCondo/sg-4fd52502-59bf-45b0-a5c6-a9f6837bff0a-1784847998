@@ -146,7 +146,7 @@ export const getById = async (id: string): Promise<Payment> => {
     propertyId: data.rental?.properties?.id || "",
     tenantId: data.rental?.tenants?.id || "",
     attachments: (data.attachments as unknown as string[]) || [],
-  };
+  } as Payment;  // ← adicionado manualmente
 };
 
 export const create = async (payment: Partial<Payment>): Promise<Payment> => {
