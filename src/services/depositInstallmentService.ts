@@ -11,6 +11,8 @@ export async function createDepositInstallments(
     total_installments: number;
     amount: number;
     due_date: string;
+    payment_date?: string | null; // ✅ NOVO: payment_date opcional (só para 1ª parcela)
+    pix_code?: string | null;
   }>
 ): Promise<DepositInstallment[]> {
   try {
@@ -20,6 +22,8 @@ export async function createDepositInstallments(
       installment_total: inst.total_installments,
       amount: inst.amount,
       due_date: inst.due_date,
+      payment_date: inst.payment_date || null, // ✅ Salva payment_date quando fornecido
+      pix_code: inst.pix_code || null,
       status: "pending",
       paid_amount: 0,
     }));
@@ -41,6 +45,7 @@ export async function createDepositInstallments(
       payment_date: item.payment_date,
       paid_amount: item.paid_amount || 0,
       payment_method: item.payment_method,
+      pix_code: item.pix_code,
       status: item.status,
       notes: item.notes,
       attachments: Array.isArray(item.attachments) ? item.attachments : [],

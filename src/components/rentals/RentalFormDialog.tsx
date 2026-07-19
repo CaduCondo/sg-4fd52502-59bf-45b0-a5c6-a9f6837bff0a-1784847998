@@ -279,30 +279,37 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           const installmentsData = [];
           const totalInstallments = parseInt(depositInstallmentCount);
 
+          // ✅ 1ª PARCELA: Salva due_date E payment_date (quando digitado)
           if (depositAmount && depositPaymentDate) {
             installmentsData.push({
               installment_number: 1,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositAmount),
               due_date: depositPaymentDate,
+              payment_date: depositPaymentDate, // ✅ NOVO: mesma data em payment_date
+              pix_code: depositPixCode || null,
             });
           }
 
+          // ✅ 2ª PARCELA: Salva APENAS due_date (payment_date será preenchido ao pagar)
           if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
             installmentsData.push({
               installment_number: 2,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositInstallment2),
               due_date: depositInstallment2PaymentDate,
+              payment_date: null, // ✅ NULL: será preenchido quando for pago
             });
           }
 
+          // ✅ 3ª PARCELA: Salva APENAS due_date (payment_date será preenchido ao pagar)
           if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
             installmentsData.push({
               installment_number: 3,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositInstallment3),
               due_date: depositInstallment3PaymentDate,
+              payment_date: null, // ✅ NULL: será preenchido quando for pago
             });
           }
 
@@ -366,30 +373,37 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           const installmentsData = [];
           const totalInstallments = parseInt(depositInstallmentCount);
 
+          // ✅ 1ª PARCELA: Salva due_date E payment_date (quando digitado)
           if (depositAmount && depositPaymentDate) {
             installmentsData.push({
               installment_number: 1,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositAmount),
               due_date: depositPaymentDate,
+              payment_date: depositPaymentDate, // ✅ NOVO: mesma data em payment_date
+              pix_code: depositPixCode || null,
             });
           }
 
+          // ✅ 2ª PARCELA: Salva APENAS due_date (payment_date será preenchido ao pagar)
           if (totalInstallments >= 2 && depositInstallment2 && depositInstallment2PaymentDate) {
             installmentsData.push({
               installment_number: 2,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositInstallment2),
               due_date: depositInstallment2PaymentDate,
+              payment_date: null, // ✅ NULL: será preenchido quando for pago
             });
           }
 
+          // ✅ 3ª PARCELA: Salva APENAS due_date (payment_date será preenchido ao pagar)
           if (totalInstallments === 3 && depositInstallment3 && depositInstallment3PaymentDate) {
             installmentsData.push({
               installment_number: 3,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositInstallment3),
               due_date: depositInstallment3PaymentDate,
+              payment_date: null, // ✅ NULL: será preenchido quando for pago
             });
           }
 
