@@ -2211,14 +2211,14 @@ export default function Financial() {
                               {/* Venc (Vencimento) */}
                               <TableCell className="text-center text-xs">
                                 {payment.dueDate
-                                  ? new Date(payment.dueDate).toLocaleDateString("pt-BR")
+                                  ? new Date(payment.dueDate + "T00:00:00").toLocaleDateString("pt-BR")
                                   : "-"}
                               </TableCell>
                               
                               {/* Rec (Data Recebimento) */}
                               <TableCell className="text-center text-xs">
                                 {payment.paymentDate
-                                  ? new Date(payment.paymentDate).toLocaleDateString("pt-BR")
+                                  ? new Date(payment.paymentDate + "T00:00:00").toLocaleDateString("pt-BR")
                                   : "-"}
                               </TableCell>
                               
