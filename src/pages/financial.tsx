@@ -1685,14 +1685,15 @@ export default function Financial() {
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
             {/* Cards de Métricas - Locações */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 print-cards">
-              <Card className="border-l-4 border-l-green-500 card">
+              {/* Card 1: AZUL - Receita Bruta */}
+              <Card className="border-l-4 border-l-blue-500 card">
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-5 w-5 text-green-500 card-icon" />
+                      <TrendingUp className="h-5 w-5 text-blue-500 card-icon" />
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Bruta</p>
                     </div>
-                    <h3 className="text-2xl font-bold text-green-500 card-value">
+                    <h3 className="text-2xl font-bold text-blue-500 card-value">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -1704,14 +1705,15 @@ export default function Financial() {
 
               {/* Para perfil Financeiro: card único de Taxas */}
               {isFinancial ? (
-                <Card className="border-l-4 border-l-indigo-500 card">
+                /* Card 2: LARANJA - Taxas (Financeiro) */
+                <Card className="border-l-4 border-l-orange-500 card">
                   <CardContent className="pt-6">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2 mb-2">
-                        <Percent className="h-5 w-5 text-indigo-500 card-icon" />
+                        <Percent className="h-5 w-5 text-orange-500 card-icon" />
                         <p className="text-sm font-medium text-muted-foreground card-title">Taxas</p>
                       </div>
-                      <h3 className="text-2xl font-bold text-indigo-500 card-value">
+                      <h3 className="text-2xl font-bold text-orange-500 card-value">
                         {new Intl.NumberFormat("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -1722,7 +1724,7 @@ export default function Financial() {
                 </Card>
               ) : (
                 <>
-                  {/* Taxa Adm - Admin e Broker */}
+                  {/* Card 2: LARANJA - Taxa Adm (Admin e Broker) */}
                   <Card className="border-l-4 border-l-orange-500 card">
                     <CardContent className="pt-6">
                       <div className="flex flex-col">
@@ -1742,17 +1744,17 @@ export default function Financial() {
                     </CardContent>
                   </Card>
 
-                  {/* Taxa Ger - Admin e Broker */}
-                  <Card className="border-l-4 border-l-blue-500 card">
+                  {/* Card 3: ROXA - Taxa Ger (Admin e Broker) */}
+                  <Card className="border-l-4 border-l-purple-500 card">
                     <CardContent className="pt-6">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-2">
-                          <Settings className="h-5 w-5 text-blue-500 card-icon" />
+                          <Settings className="h-5 w-5 text-purple-500 card-icon" />
                           <p className="text-sm font-medium text-muted-foreground card-title">
                             Taxa Ger ({config?.management_fee_percentage || 3}%)
                           </p>
                         </div>
-                        <h3 className="text-2xl font-bold text-blue-500 card-value">
+                        <h3 className="text-2xl font-bold text-purple-500 card-value">
                           {new Intl.NumberFormat("pt-BR", {
                             style: "currency",
                             currency: "BRL",
@@ -1764,7 +1766,7 @@ export default function Financial() {
                 </>
               )}
 
-              {/* Contas do Mês - Clicável para todos, com despesas filtradas por permissão */}
+              {/* Card 4: VERMELHA - Contas do Mês */}
               <Card 
                 id="financial-expenses-card" 
                 className="border-l-4 border-l-red-500 card cursor-pointer hover:shadow-lg transition-shadow"
@@ -1786,14 +1788,15 @@ export default function Financial() {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-purple-500 card">
+              {/* Card 5: VERDE - Receita Líquida */}
+              <Card className="border-l-4 border-l-green-500 card">
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="h-5 w-5 text-purple-500 card-icon" />
+                      <Wallet className="h-5 w-5 text-green-500 card-icon" />
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Líquida</p>
                     </div>
-                    <h3 className="text-2xl font-bold text-purple-500 card-value">
+                    <h3 className="text-2xl font-bold text-green-500 card-value">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -1805,7 +1808,7 @@ export default function Financial() {
             </div>
 
             {/* Tabela de Pagamentos */}
-            <Card className="overflow-hidden print-area">
+            <Card className="overflow-hidden shadow-lg border-t-4 border-t-primary print-area">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 no-print">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <CardTitle className="flex items-center text-base sm:text-lg print-title">
@@ -1938,27 +1941,6 @@ export default function Financial() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-center w-[60px]">
-                            <div className="flex items-center justify-center gap-1">
-                              Parc
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 p-0"
-                                onClick={() => handleSort("parc")}
-                              >
-                                {sortField === "parc" ? (
-                                  sortDirection === "asc" ? (
-                                    <ArrowUp className="h-3 w-3" />
-                                  ) : (
-                                    <ArrowDown className="h-3 w-3" />
-                                  )
-                                ) : (
-                                  <ArrowUpDown className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </div>
-                          </TableHead>
                           <TableHead className="text-center w-[100px]">
                             <div className="flex items-center justify-center gap-1">
                               Local
@@ -2011,6 +1993,27 @@ export default function Financial() {
                                 onClick={() => handleSort("tenant")}
                               >
                                 {sortField === "tenant" ? (
+                                  sortDirection === "asc" ? (
+                                    <ArrowUp className="h-3 w-3" />
+                                  ) : (
+                                    <ArrowDown className="h-3 w-3" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableHead>
+                          <TableHead className="text-center w-[60px]">
+                            <div className="flex items-center justify-center gap-1">
+                              Parc
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={() => handleSort("parc")}
+                              >
+                                {sortField === "parc" ? (
                                   sortDirection === "asc" ? (
                                     <ArrowUp className="h-3 w-3" />
                                   ) : (
@@ -2156,11 +2159,6 @@ export default function Financial() {
                         {getSortedPayments.map((payment) => {
                           return (
                             <TableRow key={payment.id} className="hover:bg-gray-50">
-                              {/* Parc (Parcela) */}
-                              <TableCell className="text-center text-xs">
-                                {payment.installment || 1}/{payment.totalInstallments || 24}
-                              </TableCell>
-                              
                               {/* Local */}
                               <TableCell className="text-center text-xs">
                                 {payment.property?.location || "N/A"}
@@ -2174,6 +2172,11 @@ export default function Financial() {
                               {/* Inquilino */}
                               <TableCell className="text-left text-sm">
                                 {payment.tenant?.name || "N/A"}
+                              </TableCell>
+                              
+                              {/* Parc (Parcela) - MOVIDA PARA CÁ */}
+                              <TableCell className="text-center text-xs">
+                                {payment.installment || 1}/{payment.totalInstallments || 24}
                               </TableCell>
                               
                               {/* Período */}
