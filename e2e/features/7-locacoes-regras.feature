@@ -21,20 +21,74 @@ Funcionalidade: Regras de Negócio de Locações
     E tento salvar
     Então devo ver a mensagem "Caução é obrigatória"
 
-  Cenário: Criar locação - Parcelamento de caução
+  # ✅ ATUALIZADO: Reflete nova estrutura de parcelas de caução
+  Cenário: Criar locação - Parcelamento de caução (3 parcelas)
     Quando clico no botão "Nova Locação"
-    E preencho o valor da caução com "5000.00"
+    E preencho todos os campos obrigatórios
+    E preencho o valor da caução com "6000.00"
     E marco a opção "Parcelar caução"
-    E seleciono "5 parcelas"
-    Então devo ver que cada parcela será de "1000.00"
-    E a primeira parcela deve vencer na data de início do contrato
+    E seleciono "3 parcelas"
+    E preencho:
+      | campo                           | valor      |
+      | 1ª parcela - Valor              | 2000.00    |
+      | 1ª parcela - Data Pagamento     | 01/08/2026 |
+      | 2ª parcela - Valor              | 2000.00    |
+      | 2ª parcela - Data Vencimento    | 01/09/2026 |
+      | 3ª parcela - Valor              | 2000.00    |
+      | 3ª parcela - Data Vencimento    | 01/10/2026 |
+    E salvo a locação
+    Então na aba "Cauções" da página Financeiro devo ver:
+      | Parcela | Valor   | Data Vencimento | Data Pagamento | Status   |
+      | 1/3     | 2000.00 | 01/08/2026      | 01/08/2026     | Pendente |
+      | 2/3     | 2000.00 | 01/09/2026      | (vazio)        | Pendente |
+      | 3/3     | 2000.00 | 01/10/2026      | (vazio)        | Pendente |
+
+  # ✅ NOVO: Testa que 1ª parcela salva em due_date E payment_date
+  Cenário: Criar locação - 1ª parcela de caução preenche ambas as datas
+    Quando clico no botão "Nova Locação"
+    E preencho todos os campos obrigatórios
+    E marco a opção "Parcelar caução"
+    E seleciono "2 parcelas"
+    E preencho a "Data Pagamento" da 1ª parcela com "15/08/2026"
+    E salvo a locação
+    Então no banco de dados a parcela 1 deve ter:
+      | campo        | valor      |
+      | due_date     | 15/08/2026 |
+      | payment_date | 15/08/2026 |
+    E a parcela 2 deve ter:
+      | campo        | valor      |
+      | due_date     | (preenchido)|
+      | payment_date | NULL       |
+
+  # ✅ NOVO: Testa carregamento de parcelas ao visualizar locação
+  Cenário: Visualizar locação - Carregar dados de caução da tabela
+    Dado que existe uma locação com caução parcelado em 3x:
+      | Parcela | Valor   | Data Vencimento | Código PIX |
+      | 1/3     | 2000.00 | 01/08/2026      | PIX123     |
+      | 2/3     | 2000.00 | 01/09/2026      | PIX456     |
+      | 3/3     | 2000.00 | 01/10/2026      |            |
+    Quando abro a locação em modo "Visualizar"
+    Então no bloco "Informações do Caução" devo ver:
+      | campo                        | valor      |
+      | 1ª parcela - Valor           | 2000.00    |
+      | 1ª parcela - Data Pagamento  | 01/08/2026 |
+      | 1ª parcela - Código PIX      | PIX123     |
+      | 2ª parcela - Valor           | 2000.00    |
+      | 2ª parcela - Data Vencimento | 01/09/2026 |
+      | 2ª parcela - Código PIX      | PIX456     |
+      | 3ª parcela - Valor           | 2000.00    |
+      | 3ª parcela - Data Vencimento | 01/10/2026 |
+      | 3ª parcela - Código PIX      | (vazio)    |
 
   Cenário: Criar locação - Caução integral
     Quando clico no botão "Nova Locação"
     E preencho o valor da caução com "5000.00"
     E NÃO marco a opção "Parcelar caução"
-    Então o valor total da caução deve ser "5000.00"
-    E deve vencer na data de início do contrato
+    E preencho a "Data Pagamento" com "01/08/2026"
+    E salvo a locação
+    Então na aba "Cauções" devo ver:
+      | Parcela | Valor   | Data Vencimento | Data Pagamento |
+      | 1/1     | 5000.00 | 01/08/2026      | 01/08/2026     |
 
   Cenário: Criar locação - Garagem opcional
     Quando clico no botão "Nova Locação"
