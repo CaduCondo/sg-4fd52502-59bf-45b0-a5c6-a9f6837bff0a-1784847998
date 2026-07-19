@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Shield, FileText } from "lucide-react";
+import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -514,13 +514,6 @@ export function DepositInstallmentsTable({
   return (
     <>
       <div id="deposits-print-content" style={{ backgroundColor: 'white', padding: '10px' }}>
-        {/* Título para impressão */}
-        <div className="mb-2">
-          <h1 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
-            Relatório de Cauções - {statusFilter === "active" ? "Locações Ativas" : statusFilter === "inactive" ? "Locações Inativas" : "Todas as Locações"}
-          </h1>
-        </div>
-        
         {/* Cards de Resumo */}
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4" style={{ marginBottom: '10px' }}>
           <Card className="border-l-4 border-l-blue-500">
@@ -528,13 +521,10 @@ export function DepositInstallmentsTable({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Valor Bruto Esperado
+                    Soma de todos os cauções esperados
                   </p>
                   <p className="text-2xl font-bold text-blue-600">
                     {formatCurrency(totalExpected)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Soma de todos os recebimentos
                   </p>
                 </div>
               </div>
@@ -545,13 +535,10 @@ export function DepositInstallmentsTable({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Valor Bruto Recebido
+                    Soma de todos os cauções recebidos
                   </p>
                   <p className="text-2xl font-bold text-green-600">
                     {formatCurrency(totalReceived)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Todos os pagamentos recebidos
                   </p>
                 </div>
               </div>
@@ -562,13 +549,10 @@ export function DepositInstallmentsTable({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Comissão
+                    Soma das comissões parceiro/corretor pagos
                   </p>
                   <p className="text-2xl font-bold text-red-600">
                     {formatCurrency(totalCommission)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Soma das comissões parceiro + interno
                   </p>
                 </div>
               </div>
@@ -579,13 +563,10 @@ export function DepositInstallmentsTable({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Receita Líquida
+                    Receita após comissões pagas
                   </p>
                   <p className="text-2xl font-bold text-purple-600">
                     {formatCurrency(netRevenue)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Receita após taxa administrativa
                   </p>
                 </div>
               </div>
@@ -595,13 +576,25 @@ export function DepositInstallmentsTable({
 
         <div className="space-y-6">
           <Card className="shadow-lg border-t-4 border-t-primary">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Shield className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-2xl font-bold">Detalhamento dos Cauções</CardTitle>
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <CardTitle className="flex items-center text-lg">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Detalhamento dos Cauções
+                </CardTitle>
+                
+                {/* Filtro de status da locação */}
+                <div className="flex gap-2 items-center">
+                  <Select value={rentalStatusFilter} onValueChange={(value: any) => setRentalStatusFilter(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Status da Locação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as Locações</SelectItem>
+                      <SelectItem value="active">Ativas</SelectItem>
+                      <SelectItem value="terminated">Encerradas</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
