@@ -585,14 +585,14 @@ export function DepositInstallmentsTable({
                 
                 {/* Filtro de status da locação */}
                 <div className="flex gap-2 items-center">
-                  <Select value={rentalStatusFilter} onValueChange={(value: any) => setRentalStatusFilter(value)}>
+                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Status da Locação" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as Locações</SelectItem>
                       <SelectItem value="active">Ativas</SelectItem>
-                      <SelectItem value="terminated">Encerradas</SelectItem>
+                      <SelectItem value="inactive">Encerradas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
