@@ -99,6 +99,12 @@ export default function Dashboard() {
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
       <div id="dashboard-page" className="p-4 md:p-6 space-y-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Visão geral do seu portfólio de locações
+          </p>
+        </div>
         <WelcomeCard userName={userName} />
 
         {loading ? (

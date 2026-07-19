@@ -1648,10 +1648,10 @@ export default function Financial() {
       
       <div id="financial-page" className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
-          <div className="flex flex-col gap-1 sm:gap-2 print-header">
-            <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Acompanhe suas receitas, despesas e fluxo de caixa
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold mb-1">Financeiro</h1>
+            <p className="text-sm text-muted-foreground">
+              Acompanhe receitas, despesas e comissões
             </p>
           </div>
         </ScrollReveal>

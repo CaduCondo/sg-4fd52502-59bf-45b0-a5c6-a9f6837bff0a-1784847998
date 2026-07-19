@@ -1014,13 +1014,13 @@ export default function RentalsPage() {
           </Card>
 
           {/* Rentals List */}
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
                 Contratos de Locação ({filteredRentals.length})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {loading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (

@@ -730,9 +730,9 @@ export default function Payments() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Recebimentos</h1>
-            <p className="text-muted-foreground">
-              Gerencie os recebimentos de aluguel
+            <h1 className="text-3xl font-bold mb-1">Recebimentos</h1>
+            <p className="text-sm text-muted-foreground">
+              Gerencie os recebimentos de aluguéis
             </p>
           </div>
           <div className="flex gap-1 border rounded-lg p-1">
