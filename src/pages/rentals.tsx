@@ -789,11 +789,11 @@ export default function RentalsPage() {
     { key: "complement", label: "Complemento", headerClassName: "text-center", render: (r: Rental) => getPropertyForRental(r)?.complement || "-" },
     { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.name || "-" },
     { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (r: Rental) => getTenantForRental(r)?.phone || "-" },
-    { key: "value", label: "Valor", headerClassName: "text-center", cellClassName: "text-center", className: "w-[90px]", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
-    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center", className: "w-[90px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center", className: "w-[90px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
-    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center", className: "w-[85px]", render: (r: Rental) => getStatusBadge(r.status) },
-    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center", className: "w-[170px]", render: (r: Rental) => {
+    { key: "value", label: "Valor", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[90px]", render: (r: Rental) => <span className="font-bold text-emerald-600">{formatCurrency(getRentalMonthlyRent(r))}</span> },
+    { key: "startDate", label: "Data Início", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[90px]", render: (r: Rental) => r.startDate ? new Date(r.startDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "endDate", label: "Data Fim", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[90px]", render: (r: Rental) => r.endDate ? new Date(r.endDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
+    { key: "status", label: "Status", headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[85px]", render: (r: Rental) => getStatusBadge(r.status) },
+    { key: "actions", label: "Ações", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-1", className: "w-[170px]", render: (r: Rental) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const isExpired = r.endDate && new Date(r.endDate) < today;
