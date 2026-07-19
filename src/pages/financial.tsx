@@ -1689,7 +1689,7 @@ export default function Financial() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="h-5 w-5 text-green-500 card-icon" />
+                      <TrendingUp className="h-5 w-5 text-green-500 card-icon" />
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Bruta</p>
                     </div>
                     <h3 className="text-2xl font-bold text-green-500 card-value">
@@ -1773,7 +1773,7 @@ export default function Financial() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
-                      <Receipt className="h-5 w-5 text-red-500 card-icon" />
+                      <FileText className="h-5 w-5 text-red-500 card-icon" />
                       <p className="text-sm font-medium text-muted-foreground card-title">Contas do Mês</p>
                     </div>
                     <h3 className="text-2xl font-bold text-red-500 card-value">
@@ -1790,7 +1790,7 @@ export default function Financial() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-5 w-5 text-purple-500 card-icon" />
+                      <Wallet className="h-5 w-5 text-purple-500 card-icon" />
                       <p className="text-sm font-medium text-muted-foreground card-title">Receita Líquida</p>
                     </div>
                     <h3 className="text-2xl font-bold text-purple-500 card-value">

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Shield } from "lucide-react";
+import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Shield, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
