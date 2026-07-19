@@ -860,8 +860,8 @@ export default function RentalsPage() {
         <div id="rentals-page" className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Locações</h1>
-              <p className="text-muted-foreground">Gerencie os contratos de locação</p>
+              <h1 className="text-3xl font-bold mb-1">Locações</h1>
+              <p className="text-sm text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
             <div className="flex gap-3">
               <div className="flex border rounded-lg overflow-hidden">
@@ -1016,7 +1016,7 @@ export default function RentalsPage() {
           {/* Rentals List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-4xl font-bold">
+              <CardTitle className="text-lg font-semibold">
                 Contratos de Locação ({filteredRentals.length})
               </CardTitle>
             </CardHeader>
