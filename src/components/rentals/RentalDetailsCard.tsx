@@ -100,6 +100,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
           payment_date: item.payment_date,
           paid_amount: item.paid_amount || 0,
           payment_method: item.payment_method,
+          pix_code: item.pix_code, // ✅ ADICIONADO: campo pix_code
           status: item.status as "pending" | "paid" | "partial" | "overdue",
           notes: item.notes,
           attachments: Array.isArray(item.attachments) ? item.attachments : [],
