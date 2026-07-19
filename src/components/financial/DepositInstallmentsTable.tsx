@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
+import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, FileText, Wallet, HandCoins, TrendingUp } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +71,7 @@ export function DepositInstallmentsTable({
 }: DepositInstallmentsTableProps) {
   const [data, setData] = useState<DepositInstallment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active"); // ✅ CORRIGIDO: Padrão "active"
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -513,266 +513,247 @@ export function DepositInstallmentsTable({
 
   return (
     <>
-      <div id="deposits-print-content" style={{ backgroundColor: 'white', padding: '10px' }}>
-        {/* Cards de Resumo */}
-        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4" style={{ marginBottom: '10px' }}>
+      <div id="deposits-print-content" style={{ backgroundColor: 'white' }}>
+        {/* ✅ CORRIGIDO: Cards com estrutura - ícone+título ACIMA, valor MEIO, descrição ABAIXO */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Soma de todos os cauções esperados
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(totalExpected)}
-                  </p>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="h-5 w-5 text-blue-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Cauções Esperados</p>
                 </div>
+                <h3 className="text-2xl font-bold text-blue-500">
+                  {formatCurrency(totalExpected)}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Soma de todos os cauções esperados
+                </p>
               </div>
             </CardContent>
           </Card>
+
           <Card className="border-l-4 border-l-green-500">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Soma de todos os cauções recebidos
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(totalReceived)}
-                  </p>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
+                  <HandCoins className="h-5 w-5 text-green-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Cauções Recebidos</p>
                 </div>
+                <h3 className="text-2xl font-bold text-green-500">
+                  {formatCurrency(totalReceived)}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Soma de todos os cauções recebidos
+                </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-red-500">
+
+          <Card className="border-l-4 border-l-orange-500">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Soma das comissões parceiro/corretor pagos
-                  </p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {formatCurrency(totalCommission)}
-                  </p>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-5 w-5 text-orange-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Comissões Pagas</p>
                 </div>
+                <h3 className="text-2xl font-bold text-orange-500">
+                  {formatCurrency(totalCommission)}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Soma das comissões parceiro/corretor pagos
+                </p>
               </div>
             </CardContent>
           </Card>
+
           <Card className="border-l-4 border-l-purple-500">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Receita após comissões pagas
-                  </p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(netRevenue)}
-                  </p>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="h-5 w-5 text-purple-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Receita Líquida</p>
                 </div>
+                <h3 className="text-2xl font-bold text-purple-500">
+                  {formatCurrency(netRevenue)}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Receita após comissões pagas
+                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="shadow-lg border-t-4 border-t-primary">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <CardTitle className="flex items-center text-lg">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Detalhamento dos Cauções
-                </CardTitle>
-                
-                {/* Filtro de status da locação */}
-                <div className="flex gap-2 items-center">
-                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Status da Locação" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as Locações</SelectItem>
-                      <SelectItem value="active">Ativas</SelectItem>
-                      <SelectItem value="inactive">Encerradas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        {/* ✅ CORRIGIDO: Removida margem extra - espaçamento padronizado */}
+        <Card className="shadow-lg border-t-4 border-t-primary mt-4">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <CardTitle className="flex items-center text-lg">
+                <FileText className="mr-2 h-5 w-5" />
+                Detalhamento dos Cauções
+              </CardTitle>
+              
+              {/* ✅ CORRIGIDO: Filtro com opções corretas e padrão "Ativas" */}
+              <div className="flex gap-2 items-center">
+                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Status da Locação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativas</SelectItem>
+                    <SelectItem value="inactive">Canceladas</SelectItem>
+                    <SelectItem value="all">Todas as Locações</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-100 hover:to-gray-50">
-                      <TableHead className="text-center font-semibold">
-                        <div className="flex items-center justify-center gap-2">
-                          Local
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleSort("location")}
-                          >
-                            {sortField === "location" ? (
-                              sortDirection === "asc" ? (
-                                <ArrowUp className="h-4 w-4" />
-                              ) : (
-                                <ArrowDown className="h-4 w-4" />
-                              )
-                            ) : (
-                              <ArrowUpDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-center font-semibold">
-                        <div className="flex items-center justify-center gap-2">
-                          Complemento
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleSort("complement")}
-                          >
-                            {sortField === "complement" ? (
-                              sortDirection === "asc" ? (
-                                <ArrowUp className="h-4 w-4" />
-                              ) : (
-                                <ArrowDown className="h-4 w-4" />
-                              )
-                            ) : (
-                              <ArrowUpDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-center font-semibold">
-                        <div className="flex items-center justify-center gap-2">
-                          Inquilino
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleSort("tenant")}
-                          >
-                            {sortField === "tenant" ? (
-                              sortDirection === "asc" ? (
-                                <ArrowUp className="h-4 w-4" />
-                              ) : (
-                                <ArrowDown className="h-4 w-4" />
-                              )
-                            ) : (
-                              <ArrowUpDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-center font-semibold">Valor Aluguel</TableHead>
-                      <TableHead className="text-center font-semibold">Valor Total Caução</TableHead>
-                      <TableHead className="text-center font-semibold">Corretor Parceiro</TableHead>
-                      <TableHead className="text-center font-semibold">Valor Parceiro</TableHead>
-                      <TableHead className="text-center font-semibold">Valor Corretor</TableHead>
-                      <TableHead className="text-center font-semibold">Parcela</TableHead>
-                      <TableHead className="text-center font-semibold">Status</TableHead>
-                      <TableHead className="text-center font-semibold">Data Vencimento</TableHead>
-                      <TableHead className="text-center font-semibold">Data Pagamento</TableHead>
-                      <TableHead className="text-center font-semibold">Valor</TableHead>
-                      <TableHead className="text-center font-semibold">Código PIX</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleData.map((installment, index) => {
-                      const rental = installment.rental;
-                      const property = rental?.property;
-                      const tenant = rental?.tenant;
-                      const location = property?.location;
-                      const rentalId = installment.rental_id;
-
-                      // Calcular valor total do caução (soma de todas as parcelas desta locação)
-                      const allInstallmentsForRental = data.filter(i => i.rental_id === rentalId);
-                      const totalDepositValue = allInstallmentsForRental.reduce((sum, i) => sum + (i.amount || 0), 0);
-
-                      return (
-                        <TableRow 
-                          key={installment.id} 
-                          className="hover:bg-gray-50"
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-100 hover:to-gray-50">
+                    <TableHead className="text-center font-semibold">
+                      <div className="flex items-center justify-center gap-2">
+                        Local
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleSort("location")}
                         >
-                          {/* Local - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell rowSpan={getRowSpan(rentalId)}>
-                              {location?.name || "N/A"}
-                            </TableCell>
+                          {sortField === "location" ? (
+                            sortDirection === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4" />
                           )}
-                          
-                          {/* Complemento - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell rowSpan={getRowSpan(rentalId)}>
-                              {property?.complement || "-"}
-                            </TableCell>
+                        </Button>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold">
+                      <div className="flex items-center justify-center gap-2">
+                        Complemento
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleSort("complement")}
+                        >
+                          {sortField === "complement" ? (
+                            sortDirection === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4" />
                           )}
-                          
-                          {/* Inquilino - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell rowSpan={getRowSpan(rentalId)}>
-                              {tenant?.name || "N/A"}
-                            </TableCell>
+                        </Button>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold">
+                      <div className="flex items-center justify-center gap-2">
+                        Inquilino
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleSort("tenant")}
+                        >
+                          {sortField === "tenant" ? (
+                            sortDirection === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4" />
                           )}
+                        </Button>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold">Valor Aluguel</TableHead>
+                    <TableHead className="text-center font-semibold">Valor Total Caução</TableHead>
+                    <TableHead className="text-center font-semibold">Corretor Parceiro</TableHead>
+                    <TableHead className="text-center font-semibold">Valor Parceiro</TableHead>
+                    <TableHead className="text-center font-semibold">Valor Corretor</TableHead>
+                    <TableHead className="text-center font-semibold">Parcela</TableHead>
+                    <TableHead className="text-center font-semibold">Status</TableHead>
+                    <TableHead className="text-center font-semibold">Data Vencimento</TableHead>
+                    <TableHead className="text-center font-semibold">Data Pagamento</TableHead>
+                    <TableHead className="text-center font-semibold">Valor</TableHead>
+                    <TableHead className="text-center font-semibold">Código PIX</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleData.map((installment, index) => {
+                    const rental = installment.rental;
+                    const property = rental?.property;
+                    const tenant = rental?.tenant;
+                    const location = property?.location;
+                    const rentalId = installment.rental_id;
 
-                          {/* Valor Aluguel - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
-                              {formatCurrency(rental?.rent_value || 0)}
-                            </TableCell>
-                          )}
+                    // Calcular valor total do caução (soma de todas as parcelas desta locação)
+                    const allInstallmentsForRental = data.filter(i => i.rental_id === rentalId);
+                    const totalDepositValue = allInstallmentsForRental.reduce((sum, i) => sum + (i.amount || 0), 0);
 
-                          {/* Valor Total Caução - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell className="text-right font-semibold" rowSpan={getRowSpan(rentalId)}>
-                              {formatCurrency(totalDepositValue)}
-                            </TableCell>
-                          )}
-                          
-                          {/* Corretor Parceiro - mesclado - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell className="text-center" rowSpan={getRowSpan(rentalId)}>
-                              {rental?.has_partner_broker ? "Sim" : "Não"}
-                            </TableCell>
-                          )}
-                          
-                          {/* Valor Parceiro - mesclado com edição inline - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
-                              {rental?.has_partner_broker ? (
-                                editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
-                                  <Input
-                                    type="text"
-                                    className="w-full h-9 text-right text-sm border-blue-500"
-                                    value={editingValue}
-                                    onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
-                                    onBlur={handleSaveEdit}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleSaveEdit();
-                                      if (e.key === "Escape") handleCancelEdit();
-                                    }}
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <span
-                                    className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                    onClick={() => handleStartEdit(installment, "partner_commission")}
-                                  >
-                                    {formatCurrency(installment.partner_commission || 0)}
-                                  </span>
-                                )
-                              ) : (
-                                "-"
-                              )}
-                            </TableCell>
-                          )}
-                          
-                          {/* Valor Corretor - mesclado com edição inline - SEM COLORAÇÃO */}
-                          {shouldRenderCell(rentalId, index) && (
-                            <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
-                              {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
+                    return (
+                      <TableRow 
+                        key={installment.id} 
+                        className="hover:bg-gray-50"
+                      >
+                        {/* Local - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {location?.name || "N/A"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Complemento - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {property?.complement || "-"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Inquilino - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell rowSpan={getRowSpan(rentalId)}>
+                            {tenant?.name || "N/A"}
+                          </TableCell>
+                        )}
+
+                        {/* Valor Aluguel - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {formatCurrency(rental?.rent_value || 0)}
+                          </TableCell>
+                        )}
+
+                        {/* Valor Total Caução - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right font-semibold" rowSpan={getRowSpan(rentalId)}>
+                            {formatCurrency(totalDepositValue)}
+                          </TableCell>
+                        )}
+                        
+                        {/* Corretor Parceiro - mesclado - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-center" rowSpan={getRowSpan(rentalId)}>
+                            {rental?.has_partner_broker ? "Sim" : "Não"}
+                          </TableCell>
+                        )}
+                        
+                        {/* Valor Parceiro - mesclado com edição inline - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {rental?.has_partner_broker ? (
+                              editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
                                 <Input
                                   type="text"
                                   className="w-full h-9 text-right text-sm border-blue-500"
@@ -788,83 +769,24 @@ export function DepositInstallmentsTable({
                               ) : (
                                 <span
                                   className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                  onClick={() => handleStartEdit(installment, "internal_commission")}
+                                  onClick={() => handleStartEdit(installment, "partner_commission")}
                                 >
-                                  {formatCurrency(installment.internal_commission || 0)}
+                                  {formatCurrency(installment.partner_commission || 0)}
                                 </span>
-                              )}
-                            </TableCell>
-                          )}
-
-                          {/* Parcela - NÃO mesclado - COM COLORAÇÃO */}
-                          <TableCell 
-                            className={`text-center font-medium ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
-                          >
-                            {installment.installment_number}/{installment.total_installments}
+                              )
+                            ) : (
+                              "-"
+                            )}
                           </TableCell>
-
-                          {/* Status - NÃO mesclado - COM COLORAÇÃO */}
-                          <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
-                            <Badge
-                              variant="outline"
-                              className={
-                                installment.status === "paid"
-                                  ? "bg-green-100 text-green-700 border-green-300"
-                                  : installment.status === "overdue"
-                                  ? "bg-red-100 text-red-700 border-red-300"
-                                  : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                              }
-                            >
-                              {installment.status === "paid"
-                                ? "Pago"
-                                : installment.status === "overdue"
-                                ? "Atrasado"
-                                : "Pendente"}
-                            </Badge>
-                          </TableCell>
-                          
-                          {/* Data Vencimento - NÃO mesclado - COM COLORAÇÃO - LÓGICA CORRETA */}
-                          <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
-                            {(() => {
-                              // REGRA:
-                              // - Parcela 1 (de qualquer total): usa deposit_payment_date (Data Pagamento do campo caução)
-                              // - Parcela 2: usa deposit_installment2_payment_date (Data Vencimento 2ª Parcela)
-                              // - Parcela 3: usa deposit_installment3_payment_date (Data Vencimento 3ª Parcela)
-                              
-                              let dateToDisplay = installment.due_date; // fallback
-                              
-                              if (rental) {
-                                if (installment.installment_number === 1) {
-                                  // Primeira parcela sempre usa Data Pagamento
-                                  dateToDisplay = rental.deposit_payment_date || installment.due_date;
-                                } else if (installment.installment_number === 2) {
-                                  // Segunda parcela usa Data Vencimento 2ª Parcela
-                                  dateToDisplay = rental.deposit_installment2_payment_date || installment.due_date;
-                                } else if (installment.installment_number === 3) {
-                                  // Terceira parcela usa Data Vencimento 3ª Parcela
-                                  dateToDisplay = rental.deposit_installment3_payment_date || installment.due_date;
-                                }
-                              }
-                              
-                              return dateToDisplay
-                                ? new Date(dateToDisplay).toLocaleDateString("pt-BR")
-                                : "-";
-                            })()}
-                          </TableCell>
-                          
-                          {/* Data Pagamento - NÃO mesclado - COM COLORAÇÃO */}
-                          <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
-                            {installment.payment_date
-                              ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
-                              : "-"}
-                          </TableCell>
-                          
-                          {/* Valor - NÃO mesclado - COM COLORAÇÃO - texto verde - edição inline */}
-                          <TableCell className={`text-right font-semibold text-green-600 ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
-                            {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
+                        )}
+                        
+                        {/* Valor Corretor - mesclado com edição inline - SEM COLORAÇÃO */}
+                        {shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                            {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
                               <Input
                                 type="text"
-                                className="w-full h-9 text-right text-sm font-semibold border-blue-500 text-green-600"
+                                className="w-full h-9 text-right text-sm border-blue-500"
                                 value={editingValue}
                                 onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
                                 onBlur={handleSaveEdit}
@@ -877,46 +799,134 @@ export function DepositInstallmentsTable({
                             ) : (
                               <span
                                 className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
-                                onClick={() => handleStartEdit(installment, "amount")}
+                                onClick={() => handleStartEdit(installment, "internal_commission")}
                               >
-                                {formatCurrency(installment.amount)}
+                                {formatCurrency(installment.internal_commission || 0)}
                               </span>
                             )}
                           </TableCell>
-                          
-                          {/* Código PIX - NÃO mesclado - COM COLORAÇÃO - edição inline */}
-                          <TableCell className={`text-center text-xs ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
-                            {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
-                              <Input
-                                type="text"
-                                className="w-full h-9 text-center text-xs border-blue-500"
-                                value={editingValue}
-                                onChange={(e) => setEditingValue(e.target.value)}
-                                onBlur={handleSaveEdit}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleSaveEdit();
-                                  if (e.key === "Escape") handleCancelEdit();
-                                }}
-                                autoFocus
-                              />
-                            ) : (
-                              <span
-                                className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
-                                onClick={() => handleStartEdit(installment, "pix_code")}
-                              >
-                                {installment.pix_code || "-"}
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                        )}
+
+                        {/* Parcela - NÃO mesclado - COM COLORAÇÃO */}
+                        <TableCell 
+                          className={`text-center font-medium ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
+                        >
+                          {installment.installment_number}/{installment.total_installments}
+                        </TableCell>
+
+                        {/* Status - NÃO mesclado - COM COLORAÇÃO */}
+                        <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              installment.status === "paid"
+                                ? "bg-green-100 text-green-700 border-green-300"
+                                : installment.status === "overdue"
+                                ? "bg-red-100 text-red-700 border-red-300"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                            }
+                          >
+                            {installment.status === "paid"
+                              ? "Pago"
+                              : installment.status === "overdue"
+                              ? "Atrasado"
+                              : "Pendente"}
+                          </Badge>
+                        </TableCell>
+                        
+                        {/* Data Vencimento - NÃO mesclado - COM COLORAÇÃO - LÓGICA CORRETA */}
+                        <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                          {(() => {
+                            // REGRA:
+                            // - Parcela 1 (de qualquer total): usa deposit_payment_date (Data Pagamento do campo caução)
+                            // - Parcela 2: usa deposit_installment2_payment_date (Data Vencimento 2ª Parcela)
+                            // - Parcela 3: usa deposit_installment3_payment_date (Data Vencimento 3ª Parcela)
+                            
+                            let dateToDisplay = installment.due_date; // fallback
+                            
+                            if (rental) {
+                              if (installment.installment_number === 1) {
+                                // Primeira parcela sempre usa Data Pagamento
+                                dateToDisplay = rental.deposit_payment_date || installment.due_date;
+                              } else if (installment.installment_number === 2) {
+                                // Segunda parcela usa Data Vencimento 2ª Parcela
+                                dateToDisplay = rental.deposit_installment2_payment_date || installment.due_date;
+                              } else if (installment.installment_number === 3) {
+                                // Terceira parcela usa Data Vencimento 3ª Parcela
+                                dateToDisplay = rental.deposit_installment3_payment_date || installment.due_date;
+                              }
+                            }
+                            
+                            return dateToDisplay
+                              ? new Date(dateToDisplay).toLocaleDateString("pt-BR")
+                              : "-";
+                          })()}
+                        </TableCell>
+                        
+                        {/* Data Pagamento - NÃO mesclado - COM COLORAÇÃO */}
+                        <TableCell className={`text-center ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                          {installment.payment_date
+                            ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
+                            : "-"}
+                        </TableCell>
+                        
+                        {/* Valor - NÃO mesclado - COM COLORAÇÃO - texto verde - edição inline */}
+                        <TableCell className={`text-right font-semibold text-green-600 ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                          {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
+                            <Input
+                              type="text"
+                              className="w-full h-9 text-right text-sm font-semibold border-blue-500 text-green-600"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
+                              onBlur={handleSaveEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveEdit();
+                                if (e.key === "Escape") handleCancelEdit();
+                              }}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
+                              onClick={() => handleStartEdit(installment, "amount")}
+                            >
+                              {formatCurrency(installment.amount)}
+                            </span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Código PIX - NÃO mesclado - COM COLORAÇÃO - edição inline */}
+                        <TableCell className={`text-center text-xs ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                          {editingCell?.id === installment.id && editingCell?.field === "pix_code" ? (
+                            <Input
+                              type="text"
+                              className="w-full h-9 text-center text-xs border-blue-500"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={handleSaveEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveEdit();
+                                if (e.key === "Escape") handleCancelEdit();
+                              }}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-center"
+                              onClick={() => handleStartEdit(installment, "pix_code")}
+                            >
+                              {installment.pix_code || "-"}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </>
   );
