@@ -597,79 +597,89 @@ export const rentalService = {
     } 
     // Se JÁ tem parcelas, verificar se precisa atualizar valores/datas
     else if (hasExistingInstallments) {
-      const depositChanged = 
-        (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== oldRental.depositInstallment1) ||
-        (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== oldRental.depositInstallment2) ||
-        (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== oldRental.depositInstallment3) ||
-        (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== oldRental.depositInstallment1DueDate) ||
-        (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== oldRental.depositInstallment2DueDate) ||
-        (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate) ||
-        (rental.depositInstallment1PaymentDate !== undefined && rental.depositInstallment1PaymentDate !== oldRental.depositInstallment1PaymentDate) ||
-        (rental.depositInstallment2PaymentDate !== undefined && rental.depositInstallment2PaymentDate !== oldRental.depositInstallment2PaymentDate) ||
-        (rental.depositInstallment3PaymentDate !== undefined && rental.depositInstallment3PaymentDate !== oldRental.depositInstallment3PaymentDate) ||
-        (rental.depositInstallment1PixCode !== undefined && rental.depositInstallment1PixCode !== oldRental.depositInstallment1PixCode) ||
-        (rental.depositInstallment2PixCode !== undefined && rental.depositInstallment2PixCode !== oldRental.depositInstallment2PixCode) ||
-        (rental.depositInstallment3PixCode !== undefined && rental.depositInstallment3PixCode !== oldRental.depositInstallment3PixCode) ||
-        (rental.depositPaymentDate !== undefined && rental.depositPaymentDate !== oldRental.depositPaymentDate) ||
-        (rental.depositPixCode !== undefined && rental.depositPixCode !== oldRental.depositPixCode);
+      // 🔥 SIMPLIFICADO: Se qualquer campo relacionado a caução foi enviado, atualizar
+      const hasDepositChanges = 
+        rental.depositInstallment1 !== undefined ||
+        rental.depositInstallment2 !== undefined ||
+        rental.depositInstallment3 !== undefined ||
+        rental.depositInstallment1DueDate !== undefined ||
+        rental.depositInstallment2DueDate !== undefined ||
+        rental.depositInstallment3DueDate !== undefined ||
+        rental.depositInstallment1PaymentDate !== undefined ||
+        rental.depositInstallment2PaymentDate !== undefined ||
+        rental.depositInstallment3PaymentDate !== undefined ||
+        rental.depositInstallment1PixCode !== undefined ||
+        rental.depositInstallment2PixCode !== undefined ||
+        rental.depositInstallment3PixCode !== undefined ||
+        rental.depositPaymentDate !== undefined ||
+        rental.depositPixCode !== undefined;
 
-      if (depositChanged) {
-        console.log("🔄 [rentalService.update] Parcelas existem mas valores/datas/pagamento mudaram - ATUALIZANDO...");
+      if (hasDepositChanges) {
+        console.log("🔄 [rentalService.update] Dados de caução presentes - ATUALIZANDO parcelas...");
         
         try {
-          // ATUALIZAR cada parcela que mudou (sem deletar)
+          // ATUALIZAR cada parcela baseado no que foi enviado
           for (const existingInstallment of existingInstallments) {
             const installmentNum = existingInstallment.installment_number;
             const updateData: any = {};
             
             // Determinar novos valores baseado no número da parcela
             if (installmentNum === 1) {
-              if (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== existingInstallment.amount) {
+              // Valores e datas
+              if (rental.depositInstallment1 !== undefined) {
                 updateData.amount = rental.depositInstallment1;
               }
-              if (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== existingInstallment.due_date) {
+              if (rental.depositInstallment1DueDate !== undefined) {
                 updateData.due_date = rental.depositInstallment1DueDate;
               }
-              // 🔥 CRÍTICO: Atualizar payment_date e pix_code (campos que estavam faltando)
-              if (rental.depositInstallment1PaymentDate !== undefined && rental.depositInstallment1PaymentDate !== existingInstallment.payment_date) {
+              
+              // 🔥 CRÍTICO: payment_date e pix_code - SEMPRE atualizar se foram enviados
+              if (rental.depositInstallment1PaymentDate !== undefined) {
                 updateData.payment_date = rental.depositInstallment1PaymentDate;
+                console.log(`📝 [rentalService.update] Atualizando payment_date da parcela 1:`, rental.depositInstallment1PaymentDate);
               }
-              if (rental.depositInstallment1PixCode !== undefined && rental.depositInstallment1PixCode !== existingInstallment.pix_code) {
+              if (rental.depositInstallment1PixCode !== undefined) {
                 updateData.pix_code = rental.depositInstallment1PixCode;
+                console.log(`📝 [rentalService.update] Atualizando pix_code da parcela 1:`, rental.depositInstallment1PixCode);
               }
+              
               // Fallback para aliases (depositPaymentDate, depositPixCode)
-              if (rental.depositPaymentDate !== undefined && rental.depositPaymentDate !== existingInstallment.payment_date) {
+              if (rental.depositPaymentDate !== undefined) {
                 updateData.payment_date = rental.depositPaymentDate;
+                console.log(`📝 [rentalService.update] Atualizando payment_date (alias) da parcela 1:`, rental.depositPaymentDate);
               }
-              if (rental.depositPixCode !== undefined && rental.depositPixCode !== existingInstallment.pix_code) {
+              if (rental.depositPixCode !== undefined) {
                 updateData.pix_code = rental.depositPixCode;
+                console.log(`📝 [rentalService.update] Atualizando pix_code (alias) da parcela 1:`, rental.depositPixCode);
               }
             } else if (installmentNum === 2) {
-              if (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== existingInstallment.amount) {
+              if (rental.depositInstallment2 !== undefined) {
                 updateData.amount = rental.depositInstallment2;
               }
-              if (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== existingInstallment.due_date) {
+              if (rental.depositInstallment2DueDate !== undefined) {
                 updateData.due_date = rental.depositInstallment2DueDate;
               }
-              // 🔥 CRÍTICO: Atualizar payment_date e pix_code
-              if (rental.depositInstallment2PaymentDate !== undefined && rental.depositInstallment2PaymentDate !== existingInstallment.payment_date) {
+              
+              // 🔥 CRÍTICO: payment_date e pix_code
+              if (rental.depositInstallment2PaymentDate !== undefined) {
                 updateData.payment_date = rental.depositInstallment2PaymentDate;
               }
-              if (rental.depositInstallment2PixCode !== undefined && rental.depositInstallment2PixCode !== existingInstallment.pix_code) {
+              if (rental.depositInstallment2PixCode !== undefined) {
                 updateData.pix_code = rental.depositInstallment2PixCode;
               }
             } else if (installmentNum === 3) {
-              if (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== existingInstallment.amount) {
+              if (rental.depositInstallment3 !== undefined) {
                 updateData.amount = rental.depositInstallment3;
               }
-              if (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== existingInstallment.due_date) {
+              if (rental.depositInstallment3DueDate !== undefined) {
                 updateData.due_date = rental.depositInstallment3DueDate;
               }
-              // 🔥 CRÍTICO: Atualizar payment_date e pix_code
-              if (rental.depositInstallment3PaymentDate !== undefined && rental.depositInstallment3PaymentDate !== existingInstallment.payment_date) {
+              
+              // 🔥 CRÍTICO: payment_date e pix_code
+              if (rental.depositInstallment3PaymentDate !== undefined) {
                 updateData.payment_date = rental.depositInstallment3PaymentDate;
               }
-              if (rental.depositInstallment3PixCode !== undefined && rental.depositInstallment3PixCode !== existingInstallment.pix_code) {
+              if (rental.depositInstallment3PixCode !== undefined) {
                 updateData.pix_code = rental.depositInstallment3PixCode;
               }
             }
@@ -678,23 +688,28 @@ export const rentalService = {
             if (Object.keys(updateData).length > 0) {
               updateData.updated_at = new Date().toISOString();
               
-              console.log(`📝 [rentalService.update] Atualizando parcela ${installmentNum}:`, updateData);
+              console.log(`📝 [rentalService.update] Atualizando parcela ${installmentNum} com:`, updateData);
               
               const { error: updateError } = await supabase
                 .from("deposit_installments")
                 .update(updateData)
                 .eq("id", existingInstallment.id);
               
-              if (updateError) throw updateError;
+              if (updateError) {
+                console.error(`❌ [rentalService.update] Erro ao atualizar parcela ${installmentNum}:`, updateError);
+                throw updateError;
+              }
+              
+              console.log(`✅ [rentalService.update] Parcela ${installmentNum} atualizada com sucesso!`);
             }
           }
           
-          console.log("✅ [rentalService.update] Parcelas de caução atualizadas com sucesso!");
+          console.log("✅ [rentalService.update] Todas as parcelas de caução atualizadas!");
         } catch (depositError) {
           console.error("❌ [rentalService.update] ERRO ao atualizar parcelas de caução:", depositError);
         }
       } else {
-        console.log("✅ [rentalService.update] Parcelas de caução já existem e sem mudanças");
+        console.log("✅ [rentalService.update] Parcelas de caução existem mas nenhum dado de caução foi enviado na atualização");
       }
     } else {
       console.log("ℹ️ [rentalService.update] Sem caução ou sem mudanças necessárias");
