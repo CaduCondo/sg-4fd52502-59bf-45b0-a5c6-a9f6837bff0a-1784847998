@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Column<T> {
   key: string;
@@ -49,52 +50,72 @@ export function SortableTable<T extends Record<string, any>>({
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => {
-              const isRightAligned = column.headerClassName?.includes("text-right");
-              const isCentered = column.headerClassName?.includes("text-center");
-              
-              return (
-                <TableHead key={column.key} className={`${column.className || ""} ${column.headerClassName || ""}`}>
-                  {column.sortable !== false ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`-ml-3 h-8 data-[state=open]:bg-accent ${
-                        isRightAligned ? "w-full justify-end" : isCentered ? "w-full justify-center" : ""
-                      }`}
-                      onClick={() => onSort(column.key)}
-                    >
+    <Card className="w-full">
+      <CardContent className="p-0">
+        <div className="relative w-full max-h-[calc(100vh-320px)] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columns.map((column) => (
+                  <TableHead
+                    key={column.key}
+                    className={cn(column.headerClassName, column.className)}
+                  >
+                    {column.sortable !== false ? (
+                      <div className="flex items-center justify-center gap-1 cursor-pointer" onClick={() => onSort(column.key)}>
+                        <span>{column.label}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                        >
+                          {sortKey === column.key ? (
+                            sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
                       <span>{column.label}</span>
-                      {getSortIcon(column.key)}
-                    </Button>
-                  ) : (
-                    column.label
-                  )}
-                </TableHead>
-              );
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item, index) => (
-            <TableRow
-              key={index}
-              onClick={() => onRowClick?.(item)}
-              className={`${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""} ${getRowClassName?.(item) || ""}`}
-            >
-              {columns.map((column) => (
-                <TableCell key={column.key} className={`${column.className || ""} ${column.cellClassName || ""}`}>
-                  {column.render ? column.render(item) : item[column.key]}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((row: any) => (
+                  <TableRow
+                    key={row.id}
+                    onClick={() => onRowClick?.(row)}
+                    className={cn(getRowClassName?.(row), onRowClick && "cursor-pointer")}
+                  >
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.key}
+                        className={cn(column.cellClassName, column.className)}
+                      >
+                        {column.render ? column.render(row) : row[column.key]}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
