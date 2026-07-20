@@ -109,6 +109,11 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     depositInstallment3PaymentDate,
     setDepositInstallment3PaymentDate,
     
+    depositInstallment2PixCode,
+    setDepositInstallment2PixCode,
+    depositInstallment3PixCode,
+    setDepositInstallment3PixCode,
+    
     attachments,
     setAttachments,
     proportionalRentInfo,
