@@ -454,6 +454,35 @@ export const rentalService = {
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
+    // 1️⃣ BUSCAR DADOS ANTIGOS PRIMEIRO (para comparação)
+    const { data: oldRentalData, error: fetchError } = await supabase
+      .from("rentals")
+      .select(`
+        *,
+        deposit_installments(
+          id, installment_number, amount, due_date, payment_date, pix_code, 
+          status, total_installments
+        )
+      `)
+      .eq("id", id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    
+    const oldRental = mapRentalData(oldRentalData);
+    
+    console.log("🔍 [rentalService.update] Dados antigos:", {
+      depositAmount: oldRental.depositAmount,
+      depositInstallments: oldRental.depositInstallments,
+      monthlyRent: oldRental.monthlyRent,
+      paymentDay: oldRental.paymentDay,
+      hasGarage: oldRental.hasGarage,
+      garageValue: oldRental.garageValue,
+      startDate: oldRental.startDate,
+      endDate: oldRental.endDate,
+    });
+
+    // 2️⃣ PREPARAR DADOS PARA ATUALIZAÇÃO NO BANCO
     const dbData: any = {};
     if (rental.propertyId !== undefined) dbData.property_id = rental.propertyId;
     if (rental.tenantId !== undefined) dbData.tenant_id = rental.tenantId;
@@ -470,10 +499,9 @@ export const rentalService = {
     if (rental.hasGarage !== undefined) dbData.has_garage = rental.hasGarage;
     if (rental.garageValue !== undefined) dbData.garage_value = rental.garageValue;
     if (rental.hasPartnerBroker !== undefined) dbData.has_partner_broker = rental.hasPartnerBroker;
-
-    // Campos do caução
     if (rental.depositInstallments !== undefined) dbData.deposit_installments = rental.depositInstallments;
 
+    // 3️⃣ ATUALIZAR RENTAL NO BANCO
     const { data, error } = await supabase
       .from("rentals")
       .update(dbData)
@@ -483,13 +511,117 @@ export const rentalService = {
 
     if (error) throw error;
 
-    // Sincronizar parcelas do caução se houver mudanças
-    if (rental.depositInstallments !== undefined) {
-      // Deposit installments are now managed separately via depositInstallmentService
-      console.log("✅ Deposit installments will be updated separately");
+    // 4️⃣ DETECTAR MUDANÇAS E ATUALIZAR PARCELAS DE CAUÇÃO (se necessário)
+    const depositChanged = 
+      (rental.depositAmount !== undefined && rental.depositAmount !== oldRental.depositAmount) ||
+      (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== oldRental.depositInstallment1DueDate) ||
+      (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== oldRental.depositInstallment2DueDate) ||
+      (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate) ||
+      (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== oldRental.depositInstallment1) ||
+      (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== oldRental.depositInstallment2) ||
+      (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== oldRental.depositInstallment3);
+
+    if (depositChanged) {
+      console.log("🔄 [rentalService.update] CAUÇÃO MUDOU - Sincronizando parcelas...");
+      
+      try {
+        // Deletar parcelas antigas
+        await deleteDepositInstallmentsByRental(id);
+        
+        // Criar novas parcelas
+        const installmentsToCreate = [];
+        const totalInstallments = rental.depositInstallments ?? oldRental.depositInstallments ?? 1;
+        const depositAmount = rental.depositAmount ?? oldRental.depositAmount ?? 0;
+        
+        if (depositAmount > 0) {
+          // 1ª Parcela
+          installmentsToCreate.push({
+            installment_number: 1,
+            total_installments: totalInstallments,
+            amount: rental.depositInstallment1 ?? oldRental.depositInstallment1 ?? depositAmount,
+            due_date: rental.depositInstallment1DueDate ?? oldRental.depositInstallment1DueDate ?? rental.startDate ?? oldRental.startDate ?? new Date().toISOString().split('T')[0],
+            payment_date: rental.depositInstallment1PaymentDate ?? oldRental.depositInstallment1PaymentDate ?? null,
+            pix_code: rental.depositInstallment1PixCode ?? oldRental.depositInstallment1PixCode ?? null,
+          });
+          
+          // 2ª Parcela (se houver)
+          if (totalInstallments >= 2) {
+            const installment2Amount = rental.depositInstallment2 ?? oldRental.depositInstallment2 ?? 0;
+            if (installment2Amount > 0) {
+              installmentsToCreate.push({
+                installment_number: 2,
+                total_installments: totalInstallments,
+                amount: installment2Amount,
+                due_date: rental.depositInstallment2DueDate ?? oldRental.depositInstallment2DueDate ?? new Date().toISOString().split('T')[0],
+                payment_date: rental.depositInstallment2PaymentDate ?? oldRental.depositInstallment2PaymentDate ?? null,
+                pix_code: rental.depositInstallment2PixCode ?? oldRental.depositInstallment2PixCode ?? null,
+              });
+            }
+          }
+          
+          // 3ª Parcela (se houver)
+          if (totalInstallments === 3) {
+            const installment3Amount = rental.depositInstallment3 ?? oldRental.depositInstallment3 ?? 0;
+            if (installment3Amount > 0) {
+              installmentsToCreate.push({
+                installment_number: 3,
+                total_installments: totalInstallments,
+                amount: installment3Amount,
+                due_date: rental.depositInstallment3DueDate ?? oldRental.depositInstallment3DueDate ?? new Date().toISOString().split('T')[0],
+                payment_date: rental.depositInstallment3PaymentDate ?? oldRental.depositInstallment3PaymentDate ?? null,
+                pix_code: rental.depositInstallment3PixCode ?? oldRental.depositInstallment3PixCode ?? null,
+              });
+            }
+          }
+          
+          console.log("📦 [rentalService.update] Criando parcelas:", installmentsToCreate);
+          
+          await createDepositInstallments(id, installmentsToCreate);
+          
+          console.log("✅ [rentalService.update] Parcelas de caução atualizadas com sucesso!");
+        }
+      } catch (depositError) {
+        console.error("❌ [rentalService.update] ERRO ao atualizar parcelas de caução:", depositError);
+        // Não fazer throw para não bloquear a atualização da locação
+      }
     }
 
-    // Sincronizar status do inquilino
+    // 5️⃣ DETECTAR MUDANÇAS E ATUALIZAR RECEBIMENTOS DE ALUGUEL (se necessário)
+    const rentPaymentsChanged = 
+      (rental.startDate !== undefined && rental.startDate !== oldRental.startDate) ||
+      (rental.endDate !== undefined && rental.endDate !== oldRental.endDate) ||
+      (rental.paymentDay !== undefined && rental.paymentDay !== oldRental.paymentDay) ||
+      (rental.hasGarage !== undefined && rental.hasGarage !== oldRental.hasGarage) ||
+      (rental.garageValue !== undefined && rental.garageValue !== oldRental.garageValue) ||
+      (rental.monthlyRent !== undefined && rental.monthlyRent !== oldRental.monthlyRent) ||
+      (rental.value !== undefined && rental.value !== oldRental.monthlyRent);
+
+    if (rentPaymentsChanged) {
+      console.log("🔄 [rentalService.update] RECEBIMENTOS MUDARAM - Sincronizando...");
+      
+      try {
+        const fullRental = await rentalService.getById(id);
+        await updatePendingPaymentsOnRentalEdit(
+          id, 
+          {
+            monthlyRent: rental.monthlyRent ?? rental.value,
+            paymentDay: rental.paymentDay,
+            hasGarage: rental.hasGarage,
+            garageValue: rental.garageValue,
+            startDate: rental.startDate,
+            endDate: rental.endDate,
+          }, 
+          fullRental
+        );
+        
+        console.log("✅ [rentalService.update] Recebimentos de aluguel atualizados com sucesso!");
+      } catch (paymentError) {
+        console.error("❌ [rentalService.update] ERRO ao atualizar recebimentos:", paymentError);
+        // Não fazer throw para não bloquear a atualização da locação
+      }
+    }
+
+    // 6️⃣ SINCRONIZAR STATUS DO INQUILINO
     if (rental.status !== undefined) {
       const tenantId = rental.tenantId || data.tenant_id;
       if (tenantId) {
@@ -501,23 +633,9 @@ export const rentalService = {
       }
     }
 
-    // Atualizar pagamentos pendentes se necessário
-    if (rental.monthlyRent || rental.paymentDay) {
-      const fullRental = await rentalService.getById(id);
-      await updatePendingPaymentsOnRentalEdit(
-        id, 
-        {
-          monthlyRent: rental.monthlyRent,
-          paymentDay: rental.paymentDay,
-          hasGarage: rental.hasGarage,
-          garageValue: rental.garageValue
-        }, 
-        fullRental
-      );
-    }
-
     // ✅ OTIMIZAÇÃO: Invalidar cache
     rentalService.invalidateCache();
+    invalidatePaymentsCache();
 
     // Buscar dados completos para retornar
     return rentalService.getById(id);
