@@ -603,10 +603,18 @@ export const rentalService = {
         (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== oldRental.depositInstallment3) ||
         (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== oldRental.depositInstallment1DueDate) ||
         (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== oldRental.depositInstallment2DueDate) ||
-        (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate);
+        (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate) ||
+        (rental.depositInstallment1PaymentDate !== undefined && rental.depositInstallment1PaymentDate !== oldRental.depositInstallment1PaymentDate) ||
+        (rental.depositInstallment2PaymentDate !== undefined && rental.depositInstallment2PaymentDate !== oldRental.depositInstallment2PaymentDate) ||
+        (rental.depositInstallment3PaymentDate !== undefined && rental.depositInstallment3PaymentDate !== oldRental.depositInstallment3PaymentDate) ||
+        (rental.depositInstallment1PixCode !== undefined && rental.depositInstallment1PixCode !== oldRental.depositInstallment1PixCode) ||
+        (rental.depositInstallment2PixCode !== undefined && rental.depositInstallment2PixCode !== oldRental.depositInstallment2PixCode) ||
+        (rental.depositInstallment3PixCode !== undefined && rental.depositInstallment3PixCode !== oldRental.depositInstallment3PixCode) ||
+        (rental.depositPaymentDate !== undefined && rental.depositPaymentDate !== oldRental.depositPaymentDate) ||
+        (rental.depositPixCode !== undefined && rental.depositPixCode !== oldRental.depositPixCode);
 
       if (depositChanged) {
-        console.log("🔄 [rentalService.update] Parcelas existem mas valores/datas mudaram - ATUALIZANDO...");
+        console.log("🔄 [rentalService.update] Parcelas existem mas valores/datas/pagamento mudaram - ATUALIZANDO...");
         
         try {
           // ATUALIZAR cada parcela que mudou (sem deletar)
@@ -622,6 +630,20 @@ export const rentalService = {
               if (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== existingInstallment.due_date) {
                 updateData.due_date = rental.depositInstallment1DueDate;
               }
+              // 🔥 CRÍTICO: Atualizar payment_date e pix_code (campos que estavam faltando)
+              if (rental.depositInstallment1PaymentDate !== undefined && rental.depositInstallment1PaymentDate !== existingInstallment.payment_date) {
+                updateData.payment_date = rental.depositInstallment1PaymentDate;
+              }
+              if (rental.depositInstallment1PixCode !== undefined && rental.depositInstallment1PixCode !== existingInstallment.pix_code) {
+                updateData.pix_code = rental.depositInstallment1PixCode;
+              }
+              // Fallback para aliases (depositPaymentDate, depositPixCode)
+              if (rental.depositPaymentDate !== undefined && rental.depositPaymentDate !== existingInstallment.payment_date) {
+                updateData.payment_date = rental.depositPaymentDate;
+              }
+              if (rental.depositPixCode !== undefined && rental.depositPixCode !== existingInstallment.pix_code) {
+                updateData.pix_code = rental.depositPixCode;
+              }
             } else if (installmentNum === 2) {
               if (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== existingInstallment.amount) {
                 updateData.amount = rental.depositInstallment2;
@@ -629,12 +651,26 @@ export const rentalService = {
               if (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== existingInstallment.due_date) {
                 updateData.due_date = rental.depositInstallment2DueDate;
               }
+              // 🔥 CRÍTICO: Atualizar payment_date e pix_code
+              if (rental.depositInstallment2PaymentDate !== undefined && rental.depositInstallment2PaymentDate !== existingInstallment.payment_date) {
+                updateData.payment_date = rental.depositInstallment2PaymentDate;
+              }
+              if (rental.depositInstallment2PixCode !== undefined && rental.depositInstallment2PixCode !== existingInstallment.pix_code) {
+                updateData.pix_code = rental.depositInstallment2PixCode;
+              }
             } else if (installmentNum === 3) {
               if (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== existingInstallment.amount) {
                 updateData.amount = rental.depositInstallment3;
               }
               if (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== existingInstallment.due_date) {
                 updateData.due_date = rental.depositInstallment3DueDate;
+              }
+              // 🔥 CRÍTICO: Atualizar payment_date e pix_code
+              if (rental.depositInstallment3PaymentDate !== undefined && rental.depositInstallment3PaymentDate !== existingInstallment.payment_date) {
+                updateData.payment_date = rental.depositInstallment3PaymentDate;
+              }
+              if (rental.depositInstallment3PixCode !== undefined && rental.depositInstallment3PixCode !== existingInstallment.pix_code) {
+                updateData.pix_code = rental.depositInstallment3PixCode;
               }
             }
             
