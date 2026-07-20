@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/masks";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RentalAttachmentsDialog } from "./RentalAttachmentsDialog";
+import { DepositPaymentDialog } from "./DepositPaymentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { DepositInstallment } from "@/types";
 
@@ -73,51 +74,53 @@ DepositInstallment.displayName = "DepositInstallment";
 export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
   const [depositInstallments, setDepositInstallments] = useState<DepositInstallment[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] = useState<DepositInstallment | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   // Buscar parcelas de caução
-  useEffect(() => {
-    const fetchDepositInstallments = async () => {
-      if (!rental.id) return;
+  const fetchDepositInstallments = useCallback(async () => {
+    if (!rental.id) return;
+    
+    setLoadingInstallments(true);
+    try {
+      const { data, error } = await supabase
+        .from("deposit_installments")
+        .select("*")
+        .eq("rental_id", rental.id)
+        .order("installment_number", { ascending: true });
+
+      if (error) throw error;
       
-      setLoadingInstallments(true);
-      try {
-        const { data, error } = await supabase
-          .from("deposit_installments")
-          .select("*")
-          .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: true });
-
-        if (error) throw error;
-        
-        // Convert database schema to DepositInstallment type
-        const installments: DepositInstallment[] = (data || []).map(item => ({
-          id: item.id,
-          rental_id: item.rental_id,
-          installment_number: item.installment_number,
-          total_installments: item.installment_total,
-          amount: item.amount,
-          due_date: item.due_date,
-          payment_date: item.payment_date,
-          paid_amount: item.paid_amount || 0,
-          payment_method: item.payment_method,
-          pix_code: item.pix_code, // ✅ ADICIONADO: campo pix_code
-          status: item.status as "pending" | "paid" | "partial" | "overdue",
-          notes: item.notes,
-          attachments: Array.isArray(item.attachments) ? item.attachments : [],
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        }));
-        
-        setDepositInstallments(installments);
-      } catch (error) {
-        console.error("Erro ao buscar parcelas de caução:", error);
-      } finally {
-        setLoadingInstallments(false);
-      }
-    };
-
-    fetchDepositInstallments();
+      // Convert database schema to DepositInstallment type
+      const installments: DepositInstallment[] = (data || []).map(item => ({
+        id: item.id,
+        rental_id: item.rental_id,
+        installment_number: item.installment_number,
+        total_installments: item.installment_total,
+        amount: item.amount,
+        due_date: item.due_date,
+        payment_date: item.payment_date,
+        paid_amount: item.paid_amount || 0,
+        payment_method: item.payment_method,
+        pix_code: item.pix_code,
+        status: item.status as "pending" | "paid" | "partial" | "overdue",
+        notes: item.notes,
+        attachments: Array.isArray(item.attachments) ? item.attachments : [],
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+      }));
+      
+      setDepositInstallments(installments);
+    } catch (error) {
+      console.error("Erro ao buscar parcelas de caução:", error);
+    } finally {
+      setLoadingInstallments(false);
+    }
   }, [rental.id]);
+
+  useEffect(() => {
+    fetchDepositInstallments();
+  }, [fetchDepositInstallments]);
 
   // Badge de status
   const getStatusBadge = useCallback((status: string) => {
@@ -353,8 +356,8 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
                         variant={installment.status === "paid" ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
-                          // Navegar para página de recebimentos com filtro dessa parcela
-                          window.location.href = `/payments?deposit=${installment.id}`;
+                          setSelectedInstallment(installment);
+                          setPaymentDialogOpen(true);
                         }}
                         className="gap-2 justify-between"
                       >
@@ -393,6 +396,17 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
           />
         </div>
       </CardContent>
+
+      {/* Dialog de Recebimento de Caução */}
+      {selectedInstallment && (
+        <DepositPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          installment={selectedInstallment}
+          rental={rental}
+          onSuccess={fetchDepositInstallments}
+        />
+      )}
     </Card>
   );
 });
