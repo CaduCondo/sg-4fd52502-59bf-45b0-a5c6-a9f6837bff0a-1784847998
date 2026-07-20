@@ -77,11 +77,9 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
   const [selectedInstallment, setSelectedInstallment] = useState<DepositInstallment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-  // Buscar parcelas de caução
-  const fetchDepositInstallments = useCallback(async () => {
+  // Função para recarregar parcelas (usada após pagamento)
+  const reloadInstallments = useCallback(async () => {
     if (!rental.id) return;
-    
-    console.log("🔍 [RentalDetailsCard] Buscando parcelas de caução para rental:", rental.id);
     
     setLoadingInstallments(true);
     try {
@@ -91,14 +89,8 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         .eq("rental_id", rental.id)
         .order("installment_number", { ascending: true });
 
-      if (error) {
-        console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log("📦 [RentalDetailsCard] Parcelas retornadas do banco:", data);
-      
-      // Convert database schema to DepositInstallment type
       const installments: DepositInstallment[] = (data || []).map(item => ({
         id: item.id,
         rental_id: item.rental_id,
@@ -117,20 +109,13 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         updated_at: item.updated_at,
       }));
       
-      console.log("✅ [RentalDetailsCard] Parcelas mapeadas:", installments);
-      
       setDepositInstallments(installments);
     } catch (error) {
-      console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas de caução:", error);
+      console.error("❌ Erro ao recarregar parcelas:", error);
     } finally {
       setLoadingInstallments(false);
     }
   }, [rental.id]);
-
-  useEffect(() => {
-    console.log("🔄 [RentalDetailsCard] useEffect disparado - rental.id:", rental.id);
-    fetchDepositInstallments();
-  }, [fetchDepositInstallments]);
 
   // Badge de status
   const getStatusBadge = useCallback((status: string) => {
@@ -414,7 +399,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
           onOpenChange={setPaymentDialogOpen}
           installment={selectedInstallment}
           rental={rental}
-          onSuccess={fetchDepositInstallments}
+          onSuccess={reloadInstallments}
         />
       )}
     </Card>
