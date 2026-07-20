@@ -242,8 +242,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       const depositData: any = {
         depositInstallments: 1,
         depositInstallment1: parseCurrencyToNumber(depositAmount),
-        depositPaymentDate: depositPaymentDate || null,
-        depositPixCode: depositPixCode || null,
+        depositInstallment1DueDate: depositPaymentDate || null,
+        depositInstallment1PaymentDate: depositPaymentDate || null,
+        depositInstallment1PixCode: depositPixCode || null,
       };
 
       if (isDepositInstallment && depositInstallmentCount) {
@@ -251,12 +252,16 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         
         if (parseInt(depositInstallmentCount) >= 2) {
           depositData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
+          depositData.depositInstallment2DueDate = depositInstallment2PaymentDate || null;
           depositData.depositInstallment2PaymentDate = depositInstallment2PaymentDate || null;
+          depositData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
 
         if (parseInt(depositInstallmentCount) === 3) {
           depositData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
+          depositData.depositInstallment3DueDate = depositInstallment3PaymentDate || null;
           depositData.depositInstallment3PaymentDate = depositInstallment3PaymentDate || null;
+          depositData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
       }
 
