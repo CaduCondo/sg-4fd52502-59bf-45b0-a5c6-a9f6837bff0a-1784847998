@@ -81,6 +81,8 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
   const fetchDepositInstallments = useCallback(async () => {
     if (!rental.id) return;
     
+    console.log("🔍 [RentalDetailsCard] Buscando parcelas de caução para rental:", rental.id);
+    
     setLoadingInstallments(true);
     try {
       const { data, error } = await supabase
@@ -89,7 +91,12 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         .eq("rental_id", rental.id)
         .order("installment_number", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas:", error);
+        throw error;
+      }
+      
+      console.log("📦 [RentalDetailsCard] Parcelas retornadas do banco:", data);
       
       // Convert database schema to DepositInstallment type
       const installments: DepositInstallment[] = (data || []).map(item => ({
@@ -110,9 +117,11 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         updated_at: item.updated_at,
       }));
       
+      console.log("✅ [RentalDetailsCard] Parcelas mapeadas:", installments);
+      
       setDepositInstallments(installments);
     } catch (error) {
-      console.error("Erro ao buscar parcelas de caução:", error);
+      console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas de caução:", error);
     } finally {
       setLoadingInstallments(false);
     }
