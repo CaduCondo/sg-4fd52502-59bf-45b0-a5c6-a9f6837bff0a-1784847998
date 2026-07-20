@@ -77,6 +77,62 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
   const [selectedInstallment, setSelectedInstallment] = useState<DepositInstallment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
+  // Buscar parcelas de caução ao montar componente
+  useEffect(() => {
+    const fetchInstallments = async () => {
+      if (!rental.id) return;
+      
+      console.log("🔍 [RentalDetailsCard] Buscando parcelas de caução para rental:", rental.id);
+      
+      setLoadingInstallments(true);
+      try {
+        const { data, error } = await supabase
+          .from("deposit_installments")
+          .select("*")
+          .eq("rental_id", rental.id)
+          .order("installment_number", { ascending: true });
+
+        if (error) {
+          console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas:", error);
+          throw error;
+        }
+        
+        console.log("📦 [RentalDetailsCard] Parcelas retornadas do banco:", data);
+        
+        // Convert database schema to DepositInstallment type
+        const installments: DepositInstallment[] = (data || []).map(item => ({
+          id: item.id,
+          rental_id: item.rental_id,
+          installment_number: item.installment_number,
+          total_installments: item.total_installments,
+          amount: item.amount,
+          due_date: item.due_date,
+          payment_date: item.payment_date,
+          paid_amount: item.paid_amount || 0,
+          payment_method: item.payment_method,
+          pix_code: item.pix_code,
+          status: item.status as "pending" | "paid" | "partial" | "overdue",
+          notes: item.notes,
+          attachments: Array.isArray(item.attachments) ? item.attachments : [],
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        }));
+        
+        console.log("✅ [RentalDetailsCard] Parcelas mapeadas:", installments);
+        console.log("✅ [RentalDetailsCard] Total de parcelas:", installments.length);
+        
+        setDepositInstallments(installments);
+      } catch (error) {
+        console.error("❌ [RentalDetailsCard] Erro ao buscar parcelas de caução:", error);
+      } finally {
+        setLoadingInstallments(false);
+      }
+    };
+
+    console.log("🔄 [RentalDetailsCard] useEffect disparado - rental.id:", rental.id);
+    fetchInstallments();
+  }, [rental.id]); // Dependência simples: apenas rental.id
+
   // Função para recarregar parcelas (usada após pagamento)
   const reloadInstallments = useCallback(async () => {
     if (!rental.id) return;
