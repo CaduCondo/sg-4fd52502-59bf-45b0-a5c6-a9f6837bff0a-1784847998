@@ -608,8 +608,6 @@ export const rentalService = {
             paymentDay: rental.paymentDay,
             hasGarage: rental.hasGarage,
             garageValue: rental.garageValue,
-            startDate: rental.startDate,
-            endDate: rental.endDate,
           }, 
           fullRental
         );
