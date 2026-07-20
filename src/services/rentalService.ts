@@ -512,15 +512,6 @@ export const rentalService = {
     if (error) throw error;
 
     // 4️⃣ ATUALIZAÇÃO INTELIGENTE DE PARCELAS DE CAUÇÃO
-    const depositChanged = 
-      (rental.depositAmount !== undefined && rental.depositAmount !== oldRental.depositAmount) ||
-      (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== oldRental.depositInstallment1DueDate) ||
-      (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== oldRental.depositInstallment2DueDate) ||
-      (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate) ||
-      (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== oldRental.depositInstallment1) ||
-      (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== oldRental.depositInstallment2) ||
-      (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== oldRental.depositInstallment3);
-
     // Buscar parcelas existentes
     const { data: existingInstallments } = await supabase
       .from("deposit_installments")
@@ -529,125 +520,148 @@ export const rentalService = {
       .order("installment_number", { ascending: true });
 
     const hasExistingInstallments = existingInstallments && existingInstallments.length > 0;
+    const depositAmount = rental.depositAmount ?? oldRental.depositAmount ?? 0;
 
     console.log("🔍 [rentalService.update] Status das parcelas:", {
-      depositChanged,
       hasExistingInstallments,
       existingCount: existingInstallments?.length || 0,
+      depositAmount,
+      oldDepositAmount: oldRental.depositAmount,
     });
 
-    if (hasExistingInstallments && depositChanged) {
-      console.log("🔄 [rentalService.update] ATUALIZANDO parcelas existentes (cirúrgico)...");
-      
-      try {
-        // ATUALIZAR cada parcela que mudou (sem deletar)
-        for (const existingInstallment of existingInstallments) {
-          const installmentNum = existingInstallment.installment_number;
-          const updateData: any = {};
-          
-          // Determinar novos valores baseado no número da parcela
-          if (installmentNum === 1) {
-            if (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== existingInstallment.amount) {
-              updateData.amount = rental.depositInstallment1;
-            }
-            if (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== existingInstallment.due_date) {
-              updateData.due_date = rental.depositInstallment1DueDate;
-            }
-          } else if (installmentNum === 2) {
-            if (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== existingInstallment.amount) {
-              updateData.amount = rental.depositInstallment2;
-            }
-            if (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== existingInstallment.due_date) {
-              updateData.due_date = rental.depositInstallment2DueDate;
-            }
-          } else if (installmentNum === 3) {
-            if (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== existingInstallment.amount) {
-              updateData.amount = rental.depositInstallment3;
-            }
-            if (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== existingInstallment.due_date) {
-              updateData.due_date = rental.depositInstallment3DueDate;
-            }
-          }
-          
-          // Se houver mudanças, atualizar
-          if (Object.keys(updateData).length > 0) {
-            updateData.updated_at = new Date().toISOString();
-            
-            console.log(`📝 [rentalService.update] Atualizando parcela ${installmentNum}:`, updateData);
-            
-            const { error: updateError } = await supabase
-              .from("deposit_installments")
-              .update(updateData)
-              .eq("id", existingInstallment.id);
-            
-            if (updateError) throw updateError;
-          }
-        }
-        
-        console.log("✅ [rentalService.update] Parcelas de caução atualizadas com sucesso!");
-      } catch (depositError) {
-        console.error("❌ [rentalService.update] ERRO ao atualizar parcelas de caução:", depositError);
-      }
-    } else if (!hasExistingInstallments && rental.depositAmount && rental.depositAmount > 0) {
-      console.log("🔄 [rentalService.update] NÃO há parcelas ainda - Criando pela primeira vez...");
+    // REGRA SIMPLIFICADA: Se NÃO tem parcelas E tem depositAmount > 0, CRIAR
+    if (!hasExistingInstallments && depositAmount > 0) {
+      console.log("🔄 [rentalService.update] NÃO há parcelas e HÁ valor de caução - CRIANDO...");
       
       try {
         const installmentsToCreate = [];
         const totalInstallments = rental.depositInstallments ?? oldRental.depositInstallments ?? 1;
-        const depositAmount = rental.depositAmount ?? oldRental.depositAmount ?? 0;
         
-        if (depositAmount > 0) {
-          // 1ª Parcela
-          installmentsToCreate.push({
-            installment_number: 1,
-            total_installments: totalInstallments,
-            amount: rental.depositInstallment1 ?? oldRental.depositInstallment1 ?? depositAmount,
-            due_date: rental.depositInstallment1DueDate ?? oldRental.depositInstallment1DueDate ?? rental.startDate ?? oldRental.startDate ?? new Date().toISOString().split('T')[0],
-            payment_date: rental.depositInstallment1PaymentDate ?? oldRental.depositInstallment1PaymentDate ?? null,
-            pix_code: rental.depositInstallment1PixCode ?? oldRental.depositInstallment1PixCode ?? null,
-          });
-          
-          // 2ª Parcela (se houver)
-          if (totalInstallments >= 2) {
-            const installment2Amount = rental.depositInstallment2 ?? oldRental.depositInstallment2 ?? 0;
-            if (installment2Amount > 0) {
-              installmentsToCreate.push({
-                installment_number: 2,
-                total_installments: totalInstallments,
-                amount: installment2Amount,
-                due_date: rental.depositInstallment2DueDate ?? oldRental.depositInstallment2DueDate ?? new Date().toISOString().split('T')[0],
-                payment_date: rental.depositInstallment2PaymentDate ?? oldRental.depositInstallment2PaymentDate ?? null,
-                pix_code: rental.depositInstallment2PixCode ?? oldRental.depositInstallment2PixCode ?? null,
-              });
-            }
+        console.log("📦 [rentalService.update] Parâmetros para criação:", {
+          totalInstallments,
+          depositAmount,
+          depositInstallment1: rental.depositInstallment1 ?? oldRental.depositInstallment1,
+          depositInstallment2: rental.depositInstallment2 ?? oldRental.depositInstallment2,
+          depositInstallment3: rental.depositInstallment3 ?? oldRental.depositInstallment3,
+        });
+        
+        // 1ª Parcela
+        installmentsToCreate.push({
+          installment_number: 1,
+          total_installments: totalInstallments,
+          amount: rental.depositInstallment1 ?? oldRental.depositInstallment1 ?? depositAmount,
+          due_date: rental.depositInstallment1DueDate ?? oldRental.depositInstallment1DueDate ?? rental.startDate ?? oldRental.startDate ?? new Date().toISOString().split('T')[0],
+          payment_date: rental.depositInstallment1PaymentDate ?? oldRental.depositInstallment1PaymentDate ?? null,
+          pix_code: rental.depositInstallment1PixCode ?? oldRental.depositInstallment1PixCode ?? null,
+        });
+        
+        // 2ª Parcela (se houver)
+        if (totalInstallments >= 2) {
+          const installment2Amount = rental.depositInstallment2 ?? oldRental.depositInstallment2 ?? 0;
+          if (installment2Amount > 0) {
+            installmentsToCreate.push({
+              installment_number: 2,
+              total_installments: totalInstallments,
+              amount: installment2Amount,
+              due_date: rental.depositInstallment2DueDate ?? oldRental.depositInstallment2DueDate ?? new Date().toISOString().split('T')[0],
+              payment_date: rental.depositInstallment2PaymentDate ?? oldRental.depositInstallment2PaymentDate ?? null,
+              pix_code: rental.depositInstallment2PixCode ?? oldRental.depositInstallment2PixCode ?? null,
+            });
           }
-          
-          // 3ª Parcela (se houver)
-          if (totalInstallments === 3) {
-            const installment3Amount = rental.depositInstallment3 ?? oldRental.depositInstallment3 ?? 0;
-            if (installment3Amount > 0) {
-              installmentsToCreate.push({
-                installment_number: 3,
-                total_installments: totalInstallments,
-                amount: installment3Amount,
-                due_date: rental.depositInstallment3DueDate ?? oldRental.depositInstallment3DueDate ?? new Date().toISOString().split('T')[0],
-                payment_date: rental.depositInstallment3PaymentDate ?? oldRental.depositInstallment3PaymentDate ?? null,
-                pix_code: rental.depositInstallment3PixCode ?? oldRental.depositInstallment3PixCode ?? null,
-              });
-            }
-          }
-          
-          console.log("📦 [rentalService.update] Criando parcelas pela primeira vez:", installmentsToCreate);
-          
-          await createDepositInstallments(id, installmentsToCreate);
-          
-          console.log("✅ [rentalService.update] Parcelas de caução criadas com sucesso!");
         }
+        
+        // 3ª Parcela (se houver)
+        if (totalInstallments === 3) {
+          const installment3Amount = rental.depositInstallment3 ?? oldRental.depositInstallment3 ?? 0;
+          if (installment3Amount > 0) {
+            installmentsToCreate.push({
+              installment_number: 3,
+              total_installments: totalInstallments,
+              amount: installment3Amount,
+              due_date: rental.depositInstallment3DueDate ?? oldRental.depositInstallment3DueDate ?? new Date().toISOString().split('T')[0],
+              payment_date: rental.depositInstallment3PaymentDate ?? oldRental.depositInstallment3PaymentDate ?? null,
+              pix_code: rental.depositInstallment3PixCode ?? oldRental.depositInstallment3PixCode ?? null,
+            });
+          }
+        }
+        
+        console.log("📦 [rentalService.update] Criando parcelas:", installmentsToCreate);
+        
+        await createDepositInstallments(id, installmentsToCreate);
+        
+        console.log("✅ [rentalService.update] Parcelas de caução criadas com sucesso!");
       } catch (depositError) {
         console.error("❌ [rentalService.update] ERRO ao criar parcelas de caução:", depositError);
+        console.error("Stack:", (depositError as any).stack);
+      }
+    } 
+    // Se JÁ tem parcelas, verificar se precisa atualizar valores/datas
+    else if (hasExistingInstallments) {
+      const depositChanged = 
+        (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== oldRental.depositInstallment1) ||
+        (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== oldRental.depositInstallment2) ||
+        (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== oldRental.depositInstallment3) ||
+        (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== oldRental.depositInstallment1DueDate) ||
+        (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== oldRental.depositInstallment2DueDate) ||
+        (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== oldRental.depositInstallment3DueDate);
+
+      if (depositChanged) {
+        console.log("🔄 [rentalService.update] Parcelas existem mas valores/datas mudaram - ATUALIZANDO...");
+        
+        try {
+          // ATUALIZAR cada parcela que mudou (sem deletar)
+          for (const existingInstallment of existingInstallments) {
+            const installmentNum = existingInstallment.installment_number;
+            const updateData: any = {};
+            
+            // Determinar novos valores baseado no número da parcela
+            if (installmentNum === 1) {
+              if (rental.depositInstallment1 !== undefined && rental.depositInstallment1 !== existingInstallment.amount) {
+                updateData.amount = rental.depositInstallment1;
+              }
+              if (rental.depositInstallment1DueDate !== undefined && rental.depositInstallment1DueDate !== existingInstallment.due_date) {
+                updateData.due_date = rental.depositInstallment1DueDate;
+              }
+            } else if (installmentNum === 2) {
+              if (rental.depositInstallment2 !== undefined && rental.depositInstallment2 !== existingInstallment.amount) {
+                updateData.amount = rental.depositInstallment2;
+              }
+              if (rental.depositInstallment2DueDate !== undefined && rental.depositInstallment2DueDate !== existingInstallment.due_date) {
+                updateData.due_date = rental.depositInstallment2DueDate;
+              }
+            } else if (installmentNum === 3) {
+              if (rental.depositInstallment3 !== undefined && rental.depositInstallment3 !== existingInstallment.amount) {
+                updateData.amount = rental.depositInstallment3;
+              }
+              if (rental.depositInstallment3DueDate !== undefined && rental.depositInstallment3DueDate !== existingInstallment.due_date) {
+                updateData.due_date = rental.depositInstallment3DueDate;
+              }
+            }
+            
+            // Se houver mudanças, atualizar
+            if (Object.keys(updateData).length > 0) {
+              updateData.updated_at = new Date().toISOString();
+              
+              console.log(`📝 [rentalService.update] Atualizando parcela ${installmentNum}:`, updateData);
+              
+              const { error: updateError } = await supabase
+                .from("deposit_installments")
+                .update(updateData)
+                .eq("id", existingInstallment.id);
+              
+              if (updateError) throw updateError;
+            }
+          }
+          
+          console.log("✅ [rentalService.update] Parcelas de caução atualizadas com sucesso!");
+        } catch (depositError) {
+          console.error("❌ [rentalService.update] ERRO ao atualizar parcelas de caução:", depositError);
+        }
+      } else {
+        console.log("✅ [rentalService.update] Parcelas de caução já existem e sem mudanças");
       }
     } else {
-      console.log("✅ [rentalService.update] Parcelas de caução sem mudanças");
+      console.log("ℹ️ [rentalService.update] Sem caução ou sem mudanças necessárias");
     }
 
     // 5️⃣ DETECTAR MUDANÇAS E ATUALIZAR RECEBIMENTOS DE ALUGUEL (se necessário)
