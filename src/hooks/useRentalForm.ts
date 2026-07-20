@@ -171,8 +171,14 @@ export function useRentalForm({
         if (firstInstallment) {
           console.log("💰 [useRentalForm] 1ª parcela:", firstInstallment);
           setDepositAmount(formatCurrency(firstInstallment.amount));
-          setDepositPaymentDate(formatDate(firstInstallment.due_date));
+          setDepositPaymentDate(formatDate(firstInstallment.due_date)); // Data de vencimento
           setDepositPixCode(firstInstallment.pix_code || "");
+          
+          // ✅ CRÍTICO: Se houver payment_date preenchido no banco, carregar também
+          if (firstInstallment.payment_date) {
+            console.log("💰 [useRentalForm] 1ª parcela - payment_date encontrado:", firstInstallment.payment_date);
+            setDepositPaymentDate(formatDate(firstInstallment.payment_date));
+          }
         }
         
         // Se tem mais de 1 parcela, marcar como parcelado
