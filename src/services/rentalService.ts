@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Rental, Attachment } from "@/types";
-import { deleteDepositInstallmentsByRental } from "./depositInstallmentService";
+import { deleteDepositInstallmentsByRental, createDepositInstallments } from "./depositInstallmentService";
 import { getAllLocations } from "./locationService";
 import { updatePendingPaymentsOnRentalEdit, createPaymentsForRental } from "./paymentService";
 
@@ -384,10 +384,57 @@ export const rentalService = {
       });
     }
 
-    // Sincronizar parcelas do caução se houver
-    if (rental.depositInstallments && rental.depositInstallments > 0) {
-      // Deposit installments are now managed separately via depositInstallmentService
-      console.log("✅ Deposit installments will be created separately");
+    // ✅ CRÍTICO: Gerar parcelas de caução se houver
+    if (rental.depositAmount && rental.depositAmount > 0) {
+      console.log("🔄 [rentalService.create] Gerando parcelas de caução...");
+      
+      try {
+        const installmentsToCreate = [];
+        const totalInstallments = rental.depositInstallments || 1;
+        
+        // 1ª Parcela
+        installmentsToCreate.push({
+          installment_number: 1,
+          total_installments: totalInstallments,
+          amount: rental.depositInstallment1 || rental.depositAmount,
+          due_date: rental.depositInstallment1DueDate || rental.depositDueDate || rental.startDate!,
+          payment_date: rental.depositInstallment1PaymentDate || rental.depositPaymentDate || null,
+          pix_code: rental.depositInstallment1PixCode || rental.depositPixCode || null,
+        });
+        
+        // 2ª Parcela (se houver)
+        if (totalInstallments >= 2 && rental.depositInstallment2 && rental.depositInstallment2 > 0) {
+          installmentsToCreate.push({
+            installment_number: 2,
+            total_installments: totalInstallments,
+            amount: rental.depositInstallment2,
+            due_date: rental.depositInstallment2DueDate!,
+            payment_date: rental.depositInstallment2PaymentDate || null,
+            pix_code: rental.depositInstallment2PixCode || null,
+          });
+        }
+        
+        // 3ª Parcela (se houver)
+        if (totalInstallments === 3 && rental.depositInstallment3 && rental.depositInstallment3 > 0) {
+          installmentsToCreate.push({
+            installment_number: 3,
+            total_installments: totalInstallments,
+            amount: rental.depositInstallment3,
+            due_date: rental.depositInstallment3DueDate!,
+            payment_date: rental.depositInstallment3PaymentDate || null,
+            pix_code: rental.depositInstallment3PixCode || null,
+          });
+        }
+        
+        console.log("📦 [rentalService.create] Criando parcelas:", installmentsToCreate);
+        
+        await createDepositInstallments(data.id, installmentsToCreate);
+        
+        console.log("✅ [rentalService.create] Parcelas de caução criadas com sucesso!");
+      } catch (depositError) {
+        console.error("❌ [rentalService.create] ERRO ao criar parcelas de caução:", depositError);
+        // Não fazer throw aqui para não bloquear a criação da locação
+      }
     }
 
     // Atualizar status do inquilino
