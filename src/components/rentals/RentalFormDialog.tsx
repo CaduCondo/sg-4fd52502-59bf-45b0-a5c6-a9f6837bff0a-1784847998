@@ -124,8 +124,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     setDepositPaymentDate,
     depositPixCode,
     setDepositPixCode,
-    depositActualPaymentDate,
-    setDepositActualPaymentDate,
     
     depositInstallment2,
     setDepositInstallment2,
@@ -275,8 +273,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       const depositData: any = {
         depositInstallments: 1,
         depositInstallment1: parseCurrencyToNumber(depositAmount),
-        depositInstallment1DueDate: depositPaymentDate || null, // Data de vencimento
-        depositInstallment1PaymentDate: depositActualPaymentDate || null, // Data de pagamento real
+        depositInstallment1DueDate: depositPaymentDate || null,
+        depositInstallment1PaymentDate: depositPaymentDate || null, // ✅ Mesma data em payment_date
         depositInstallment1PixCode: depositPixCode || null,
       };
 
@@ -285,14 +283,14 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         
         if (parseInt(depositInstallmentCount) >= 2) {
           depositData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
-          depositData.depositInstallment2DueDate = depositInstallment2PaymentDate || null; // Data de vencimento parcela 2
+          depositData.depositInstallment2DueDate = depositInstallment2PaymentDate || null;
           depositData.depositInstallment2PaymentDate = null; // Será preenchido quando for pago
           depositData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
 
         if (parseInt(depositInstallmentCount) === 3) {
           depositData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
-          depositData.depositInstallment3DueDate = depositInstallment3PaymentDate || null; // Data de vencimento parcela 3
+          depositData.depositInstallment3DueDate = depositInstallment3PaymentDate || null;
           depositData.depositInstallment3PaymentDate = null; // Será preenchido quando for pago
           depositData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
@@ -675,7 +673,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="space-y-2 md:col-span-3">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="rental-deposit-amount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
@@ -689,7 +687,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="rental-deposit-date">Data Vencimento *</Label>
+                <Label htmlFor="rental-deposit-date">Data Pagamento *</Label>
                 <Input
                   id="rental-deposit-date"
                   type="date"
@@ -699,18 +697,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="rental-deposit-actual-date">Data Pagamento</Label>
-                <Input
-                  id="rental-deposit-actual-date"
-                  type="date"
-                  value={depositActualPaymentDate}
-                  onChange={(e) => setDepositActualPaymentDate(e.target.value)}
-                  disabled={isFieldDisabled}
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-pix">Código PIX</Label>
                 <Input
                   id="rental-deposit-pix"

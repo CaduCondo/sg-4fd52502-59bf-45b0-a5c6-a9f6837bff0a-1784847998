@@ -46,7 +46,6 @@ export function useRentalForm({
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState("");
   const [depositPaymentDate, setDepositPaymentDate] = useState(""); // Data de VENCIMENTO da 1ª parcela
-  const [depositActualPaymentDate, setDepositActualPaymentDate] = useState(""); // Data de PAGAMENTO REAL da 1ª parcela
   const [depositPixCode, setDepositPixCode] = useState("");
   
   // Estados de parcelas 2 e 3
@@ -122,7 +121,6 @@ export function useRentalForm({
     setIsDepositInstallment(false);
     setDepositInstallmentCount("");
     setDepositPaymentDate("");
-    setDepositActualPaymentDate("");
     setDepositPixCode("");
     setDepositInstallment2("");
     setDepositInstallment3("");
@@ -173,8 +171,8 @@ export function useRentalForm({
         if (firstInstallment) {
           console.log("💰 [useRentalForm] 1ª parcela:", firstInstallment);
           setDepositAmount(formatCurrency(firstInstallment.amount));
-          setDepositPaymentDate(formatDate(firstInstallment.due_date)); // Data de vencimento
-          setDepositActualPaymentDate(formatDate(firstInstallment.payment_date)); // Data de pagamento real
+          // ✅ Se houver payment_date, carregar ele; senão, carregar due_date
+          setDepositPaymentDate(formatDate(firstInstallment.payment_date || firstInstallment.due_date));
           setDepositPixCode(firstInstallment.pix_code || "");
         }
         
@@ -214,7 +212,6 @@ export function useRentalForm({
         const depositValue1 = rentalData.depositInstallment1 || rentalData.depositAmount || 0;
         setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
         setDepositPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
-        setDepositActualPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
         setDepositPixCode(rentalData.depositPixCode || rentalData.depositInstallment1PixCode || "");
       }
     } catch (error) {
@@ -223,7 +220,6 @@ export function useRentalForm({
       const depositValue1 = rentalData.depositInstallment1 || rentalData.depositAmount || 0;
       setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
       setDepositPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
-      setDepositActualPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
       setDepositPixCode(rentalData.depositPixCode || rentalData.depositInstallment1PixCode || "");
     }
     
@@ -359,8 +355,6 @@ export function useRentalForm({
     
     depositPaymentDate,
     setDepositPaymentDate,
-    depositActualPaymentDate,
-    setDepositActualPaymentDate,
     depositPixCode,
     setDepositPixCode,
     
