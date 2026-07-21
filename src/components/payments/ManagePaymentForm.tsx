@@ -1019,15 +1019,81 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <PaymentAttachments
-            attachments={attachments}
-            uploadingFile={uploadingFile}
-            uploadProgress={uploadProgress}
-            isReadOnly={isReadOnly}
-            onFileChange={handleFileChange}
-            onRemoveAttachment={removeAttachment}
-            onAddAttachment={addAttachment}
-          />
+          <div className="space-y-4">
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                {attachments.map((attachment, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                    <FileText className="h-4 w-4" />
+                    <span className="flex-1 text-sm truncate">{attachment.name}</span>
+                    {!isReadOnly && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAttachment(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {!isReadOnly && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    id="payment-file-upload"
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const index = attachments.length;
+                      addAttachment();
+                      handleFileChange(e, index);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={() => document.getElementById("payment-file-upload")?.click()}
+                    disabled={uploadingFile}
+                  >
+                    <Paperclip className="mr-2 h-5 w-5" />
+                    Escolher Arquivo
+                  </Button>
+                </div>
+
+                <div className="flex-1 sm:hidden">
+                  <input
+                    id="payment-camera-capture"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const index = attachments.length;
+                      addAttachment();
+                      handleFileChange(e, index);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={() => document.getElementById("payment-camera-capture")?.click()}
+                    disabled={uploadingFile}
+                  >
+                    <Camera className="mr-2 h-5 w-5" />
+                    Tirar Foto
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
