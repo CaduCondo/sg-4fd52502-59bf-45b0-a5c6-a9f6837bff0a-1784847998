@@ -22,7 +22,7 @@ import {
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
-import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
+import { DepositPaymentDialog } from "@/components/rentals/DepositPaymentDialog";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { rentalUpdateService } from "@/services/rentalUpdateService";
 
@@ -67,6 +67,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     tenant: Tenant;
     location?: Location;
   } | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedInstallmentNumber, setSelectedInstallmentNumber] = useState<number | null>(null);
 
   const {
     isEditing,
@@ -481,17 +483,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Exibir RentalDetailsCard quando em modo de visualização (não editando) */}
-        {rental && isViewMode && !isEditing && selectedProperty && (
-          <div className="mb-4">
-            <RentalDetailsCard
-              rental={rental}
-              property={selectedProperty}
-              tenant={tenantsToDisplay.find(t => t.id === rental.tenantId) || rental.tenant!}
-            />
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -712,7 +703,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={true}
+                  disabled={isFieldDisabled || !rental}
+                  onClick={() => {
+                    if (rental) {
+                      setSelectedInstallmentNumber(1);
+                      setPaymentDialogOpen(true);
+                    }
+                  }}
                   className="w-full"
                 >
                   Recebimento
@@ -798,7 +795,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={true}
+                        disabled={isFieldDisabled || !rental}
+                        onClick={() => {
+                          if (rental) {
+                            setSelectedInstallmentNumber(2);
+                            setPaymentDialogOpen(true);
+                          }
+                        }}
                         className="w-full"
                       >
                         Recebimento
@@ -836,7 +839,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={true}
+                        disabled={isFieldDisabled || !rental}
+                        onClick={() => {
+                          if (rental) {
+                            setSelectedInstallmentNumber(3);
+                            setPaymentDialogOpen(true);
+                          }
+                        }}
                         className="w-full"
                       >
                         Recebimento
@@ -1039,6 +1048,52 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {rental && selectedInstallmentNumber && (
+        <DepositPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          installment={{
+            id: `temp-${rental.id}-${selectedInstallmentNumber}`,
+            rental_id: rental.id,
+            installment_number: selectedInstallmentNumber,
+            total_installments: rental.depositInstallments || 1,
+            amount: selectedInstallmentNumber === 1 
+              ? (rental.depositInstallment1 || rental.depositAmount || 0)
+              : selectedInstallmentNumber === 2
+              ? (rental.depositInstallment2 || 0)
+              : (rental.depositInstallment3 || 0),
+            due_date: selectedInstallmentNumber === 1
+              ? (rental.depositInstallment1DueDate || rental.depositPaymentDate || "")
+              : selectedInstallmentNumber === 2
+              ? (rental.depositInstallment2DueDate || "")
+              : (rental.depositInstallment3DueDate || ""),
+            payment_date: selectedInstallmentNumber === 1
+              ? (rental.depositInstallment1PaymentDate || null)
+              : selectedInstallmentNumber === 2
+              ? (rental.depositInstallment2PaymentDate || null)
+              : (rental.depositInstallment3PaymentDate || null),
+            paid_amount: 0,
+            payment_method: null,
+            pix_code: selectedInstallmentNumber === 1
+              ? (rental.depositInstallment1PixCode || rental.depositPixCode || null)
+              : selectedInstallmentNumber === 2
+              ? (rental.depositInstallment2PixCode || null)
+              : (rental.depositInstallment3PixCode || null),
+            status: "pending",
+            notes: null,
+            attachments: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }}
+          rental={rental}
+          onSuccess={() => {
+            setPaymentDialogOpen(false);
+            setSelectedInstallmentNumber(null);
+            onSuccess();
+          }}
+        />
+      )}
 
       {showContract && createdRentalData && (
         <RentalContract
