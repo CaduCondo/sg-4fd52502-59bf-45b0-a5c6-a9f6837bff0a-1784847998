@@ -513,11 +513,19 @@ export const rentalService = {
 
     // 4️⃣ ATUALIZAÇÃO INTELIGENTE DE PARCELAS DE CAUÇÃO
     // Buscar parcelas existentes
-    const { data: existingInstallments } = await supabase
+    console.log("🔍 [rentalService.update] Buscando parcelas existentes para rental_id:", id);
+    
+    const { data: existingInstallments, error: installmentsError } = await supabase
       .from("deposit_installments")
       .select("*")
       .eq("rental_id", id)
       .order("installment_number", { ascending: true });
+
+    if (installmentsError) {
+      console.error("❌ [rentalService.update] Erro ao buscar parcelas:", installmentsError);
+    }
+
+    console.log("📦 [rentalService.update] Parcelas encontradas no banco:", existingInstallments);
 
     const hasExistingInstallments = existingInstallments && existingInstallments.length > 0;
     const depositAmount = rental.depositAmount ?? oldRental.depositAmount ?? 0;
