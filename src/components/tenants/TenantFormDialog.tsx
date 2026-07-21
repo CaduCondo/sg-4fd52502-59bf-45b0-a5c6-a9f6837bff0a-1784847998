@@ -65,9 +65,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
   isEditing,
   onFieldChange,
   onPhoneChange,
-  onCpfChange,
-  onCnpjChange,
-  onRgChange,
+  handleCpfChange,
+  handleCnpjChange,
+  handleRgChange,
   onStatusChange,
   showStatus,
 }: {
@@ -77,9 +77,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
   isEditing: boolean;
   onFieldChange: (field: keyof FormState, value: string) => void;
   onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onCpfChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onCnpjChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRgChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCpfChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCnpjChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleRgChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onStatusChange: (value: string) => void;
   showStatus: boolean;
 }) {
@@ -130,7 +130,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
           <Input
             id="tenant-document"
             value={documentType === "cpf" ? formData.cpf : formData.cnpj}
-            onChange={documentType === "cpf" ? onCpfChange : onCnpjChange}
+            onChange={documentType === "cpf" ? handleCpfChange : handleCnpjChange}
             placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
             required
             disabled={!isEditing}
@@ -148,7 +148,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
               <Input
                 id="tenant-rg"
                 value={formData.rg}
-                onChange={onRgChange}
+                onChange={handleRgChange}
                 placeholder="00.000.000-0"
                 disabled={!isEditing || documentType === "cnpj"}
                 maxLength={12}
@@ -428,7 +428,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
     setFormData(prev => ({ ...prev, phone: masked }));
   }, []);
 
-  const onCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
     
     // Limitar a 11 dígitos
@@ -445,10 +445,10 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       value = value.replace(/(\d{3})(\d{0,3})/, "$1.$2");
     }
     
-    onFieldChange("cpf", value);
-  }, [onFieldChange]);
+    setFormData(prev => ({ ...prev, cpf: value, document: value }));
+  }, []);
 
-  const onCnpjChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCnpjChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
     
     // Limitar a 14 dígitos
@@ -467,10 +467,10 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       value = value.replace(/(\d{2})(\d{0,3})/, "$1.$2");
     }
     
-    onFieldChange("cnpj", value);
-  }, [onFieldChange]);
+    setFormData(prev => ({ ...prev, cnpj: value, document: value }));
+  }, []);
 
-  const onRgChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRgChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
     
     // Limitar a 9 dígitos
@@ -487,22 +487,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       value = value.replace(/(\d{2})(\d{0,3})/, "$1.$2");
     }
     
-    onFieldChange("rg", value);
-  }, [onFieldChange]);
-
-  const handleCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = applyCpfMask(e.target.value);
-    setFormData(prev => ({ ...prev, cpf: masked, document: masked }));
-  }, []);
-
-  const handleCnpjChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = applyCnpjMask(e.target.value);
-    setFormData(prev => ({ ...prev, cnpj: masked, document: masked }));
-  }, []);
-
-  const handleRgChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = applyRgMask(e.target.value);
-    setFormData(prev => ({ ...prev, rg: masked }));
+    setFormData(prev => ({ ...prev, rg: value }));
   }, []);
 
   const handleCepChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -595,9 +580,9 @@ export const TenantFormDialog = memo(function TenantFormDialog({
             isEditing={isEditing}
             onFieldChange={handleFieldChange}
             onPhoneChange={handlePhoneChange}
-            onCpfChange={onCpfChange}
-            onCnpjChange={onCnpjChange}
-            onRgChange={onRgChange}
+            handleCpfChange={handleCpfChange}
+            handleCnpjChange={handleCnpjChange}
+            handleRgChange={handleRgChange}
             onStatusChange={handleStatusChange}
             showStatus={!!tenant}
           />
