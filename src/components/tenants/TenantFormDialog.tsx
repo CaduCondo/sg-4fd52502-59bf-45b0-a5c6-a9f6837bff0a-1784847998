@@ -24,6 +24,9 @@ interface FormState {
   cpf: string;
   cnpj: string;
   rg: string;
+  occupation: string;
+  maritalStatus: string;
+  monthlyIncome: string;
   cep: string;
   street: string;
   number: string;
@@ -42,6 +45,9 @@ const INITIAL_FORM_STATE: FormState = {
   cpf: "",
   cnpj: "",
   rg: "",
+  occupation: "",
+  maritalStatus: "",
+  monthlyIncome: "",
   cep: "",
   street: "",
   number: "",
@@ -79,7 +85,6 @@ const PersonalDataSection = memo(function PersonalDataSection({
 }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-muted-foreground">Dados Pessoais</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="tenant-name" className="text-sm font-medium">Nome Completo *</Label>
@@ -131,17 +136,19 @@ const PersonalDataSection = memo(function PersonalDataSection({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
-          <Input
-            id="tenant-rg"
-            value={formData.rg}
-            onChange={onRgChange}
-            placeholder="00.000.000-0"
-            disabled={!isEditing}
-            className="h-11 sm:h-10 text-sm mobile-input"
-          />
-        </div>
+        {documentType === "cpf" && (
+          <div className="space-y-2">
+            <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
+            <Input
+              id="tenant-rg"
+              value={formData.rg}
+              onChange={onRgChange}
+              placeholder="00.000.000-0"
+              disabled={!isEditing}
+              className="h-11 sm:h-10 text-sm mobile-input"
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="tenant-phone" className="text-sm font-medium">Telefone *</Label>
@@ -165,6 +172,54 @@ const PersonalDataSection = memo(function PersonalDataSection({
             onChange={(e) => onFieldChange("email", e.target.value)}
             placeholder="email@exemplo.com"
             required
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="tenant-occupation" className="text-sm font-medium">Profissão</Label>
+          <Input
+            id="tenant-occupation"
+            value={formData.occupation}
+            onChange={(e) => onFieldChange("occupation", e.target.value)}
+            placeholder="Profissão"
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="tenant-marital-status" className="text-sm font-medium">Estado Civil</Label>
+          <Select
+            value={formData.maritalStatus}
+            onValueChange={(value) => onFieldChange("maritalStatus", value)}
+            disabled={!isEditing}
+          >
+            <SelectTrigger id="tenant-marital-status" className="h-11 sm:h-10">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="single">Solteiro(a)</SelectItem>
+              <SelectItem value="married">Casado(a)</SelectItem>
+              <SelectItem value="divorced">Divorciado(a)</SelectItem>
+              <SelectItem value="widowed">Viúvo(a)</SelectItem>
+              <SelectItem value="stable_union">União Estável</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="tenant-monthly-income" className="text-sm font-medium">Renda Mensal</Label>
+          <Input
+            id="tenant-monthly-income"
+            value={formData.monthlyIncome}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, "");
+              const formatted = value ? `R$ ${(parseInt(value) / 100).toFixed(2).replace(".", ",")}` : "";
+              onFieldChange("monthlyIncome", formatted);
+            }}
+            placeholder="R$ 0,00"
             disabled={!isEditing}
             className="h-11 sm:h-10 text-sm mobile-input"
           />
@@ -333,6 +388,9 @@ export const TenantFormDialog = memo(function TenantFormDialog({
         cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
         cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
         rg: tenant.rg || "",
+        occupation: tenant.occupation || "",
+        maritalStatus: tenant.maritalStatus || tenant.marital_status || "",
+        monthlyIncome: tenant.monthlyIncome || tenant.monthly_income || "",
         cep: tenant.cep || "",
         street: tenant.street || "",
         number: tenant.number || "",
@@ -414,6 +472,9 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       cnpj: formData.cnpj,
       rg: formData.rg,
       documentType,
+      occupation: formData.occupation,
+      maritalStatus: formData.maritalStatus,
+      monthlyIncome: formData.monthlyIncome,
       cep: formData.cep,
       street: formData.street,
       number: formData.number,
@@ -448,7 +509,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
               : "Novo Inquilino"}
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            {tenant ? "Atualize as informações do inquilino" : "Preencha os dados do novo inquilino"}
+            {tenant ? "Atualize as informações do inquilino" : "Preencha com os dados pessoais do novo inquilino"}
           </DialogDescription>
         </DialogHeader>
 
