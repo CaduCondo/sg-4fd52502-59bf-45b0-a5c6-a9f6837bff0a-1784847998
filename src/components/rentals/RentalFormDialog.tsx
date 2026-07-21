@@ -731,9 +731,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                     }
                   }}
                   className={`w-full h-10 ${
-                    rental?.depositInstallment1Status === "paid"
+                    rental?.depositInstallments?.find(d => d.installment_number === 1)?.status === "paid"
                       ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                      : rental?.depositInstallment1Status === "pending"
+                      : rental?.depositInstallments?.find(d => d.installment_number === 1)?.status === "pending"
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                       : ""
                   }`}
@@ -839,9 +839,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                           }
                         }}
                         className={`w-full ${
-                          rental?.depositInstallment2Status === "paid"
+                          rental?.depositInstallments?.find(d => d.installment_number === 2)?.status === "paid"
                             ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                            : rental?.depositInstallment2Status === "pending"
+                            : rental?.depositInstallments?.find(d => d.installment_number === 2)?.status === "pending"
                             ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                             : ""
                         }`}
@@ -899,9 +899,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                           }
                         }}
                         className={`w-full ${
-                          rental?.depositInstallment3Status === "paid"
+                          rental?.depositInstallments?.find(d => d.installment_number === 3)?.status === "paid"
                             ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                            : rental?.depositInstallment3Status === "pending"
+                            : rental?.depositInstallments?.find(d => d.installment_number === 3)?.status === "pending"
                             ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                             : ""
                         }`}
