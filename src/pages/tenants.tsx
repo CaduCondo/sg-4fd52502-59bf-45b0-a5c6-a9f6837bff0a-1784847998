@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Trash2, HelpCircle } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
@@ -15,6 +15,7 @@ import { SortableTable } from "@/components/ui/sortable-table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
+import { HelpDialog } from "@/components/HelpDialog";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   new: { label: "Novo", variant: "default" as const, className: "bg-green-500 text-white hover:bg-green-600" },
@@ -43,6 +44,7 @@ export default function TenantsPage() {
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]); // Não usar filtro de status
+  const [helpOpen, setHelpOpen] = useState(false);
   
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -291,6 +293,13 @@ export default function TenantsPage() {
             </div>
             <div className="flex gap-2">
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHelpOpen(true)}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+              <Button
                 id="tenants-view-grid"
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
@@ -382,6 +391,8 @@ export default function TenantsPage() {
           onConfirm={handleConfirmDelete}
           onCancel={() => setTenantToDelete(null)}
         />
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="tenants" />
       </div>
     </Layout>
   );

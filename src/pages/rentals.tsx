@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle, RefreshCw, Ban, MapPin, Eye, FileText, Calendar, Search, Wand2, RotateCw, Pencil } from "lucide-react";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle, RefreshCw, Ban, MapPin, Eye, FileText, Calendar, Search, Wand2, RotateCw, Pencil, HelpCircle } from "lucide-react";
 import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
 import { getAvailable as getAvailableProperties, update as updateProperty, getAll as getAllProperties } from "@/services/propertyService";
 import { getActive as getActiveTenants, update as updateTenant, getAll as getAllTenants } from "@/services/tenantService";
@@ -15,6 +15,7 @@ import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import { HelpDialog } from "@/components/HelpDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,7 @@ export default function RentalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -864,6 +866,13 @@ export default function RentalsPage() {
               <p className="text-sm text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
             <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHelpOpen(true)}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
               <div className="flex border rounded-lg overflow-hidden">
                 <Button
                   id="rentals-view-grid"
@@ -1427,6 +1436,8 @@ export default function RentalsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="rentals" />
       </Layout>
     </>
   );

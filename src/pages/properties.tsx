@@ -4,7 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SortableTable } from "@/components/ui/sortable-table";
-import { Building, Plus, LayoutGrid, List, Bed, Bath, Trash2, Camera } from "lucide-react";
+import { Building, Plus, LayoutGrid, List, Bed, Bath, Trash2, Camera, HelpCircle } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
@@ -16,6 +16,7 @@ import { PropertyDeleteAlert } from "@/components/properties/PropertyDeleteAlert
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { propertyService } from "@/services";
+import { HelpDialog } from "@/components/HelpDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,6 +95,7 @@ export default function PropertiesPage() {
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     if (viewMode === "grid") {
@@ -392,6 +394,14 @@ export default function PropertiesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHelpOpen(true)}
+              className="h-9"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
             <div className="flex gap-1 border rounded-lg p-1">
               <Button
                 id="properties-view-grid"
@@ -495,6 +505,8 @@ export default function PropertiesPage() {
           onConfirm={handleDelete}
           onCancel={() => setPropertyToDelete(null)}
         />
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="properties" />
       </div>
 
       <AlertDialog open={!!pendingRentAdjustment} onOpenChange={(open) => !open && handleCancelRentAdjustment()}>
