@@ -12,6 +12,8 @@ export const formatCurrency = (value: string | number): string => {
   const formatted = absoluteValue.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
   
   return isNegative ? `- ${formatted}` : formatted;
@@ -33,10 +35,10 @@ export const applyRealMask = (value: string): string => {
   
   if (isNaN(amount)) return "";
   
-  return amount.toLocaleString("pt-BR", {
+  return `R$ ${amount.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  })}`;
 };
 
 export const numberToWords = (value: number): string => {
@@ -206,10 +208,10 @@ export const formatCurrencyInput = (value: string): string => {
   const numbers = value.replace(/\D/g, "");
   const amount = parseFloat(numbers) / 100;
   if (isNaN(amount)) return "";
-  return amount.toLocaleString("pt-BR", {
+  return `R$ ${amount.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  })}`;
 };
 
 // Helpers & Aliases
@@ -257,10 +259,10 @@ export const applyMoneyMask = (value: string): string => {
   
   if (isNaN(amount)) return "";
   
-  return amount.toLocaleString("pt-BR", {
+  return `R$ ${amount.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  })}`;
 };
 
 // Remove all masks from string (keep only numbers)
