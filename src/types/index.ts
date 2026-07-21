@@ -141,13 +141,17 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  document: string; // CPF or CNPJ
-  documentType?: "cpf" | "cnpj";
-  document_type?: "cpf" | "cnpj";
-  rg?: string;
   cpf?: string;
   cnpj?: string;
-  status: "new" | "rented" | "inactive";
+  rg?: string;
+  document?: string;
+  documentType?: string;
+  document_type?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  marital_status?: string;
+  monthlyIncome?: string;
+  monthly_income?: string;
   cep?: string;
   street?: string;
   number?: string;
@@ -155,8 +159,9 @@ export interface Tenant {
   neighborhood?: string;
   city?: string;
   state?: string;
+  status: "new" | "rented" | "inactive";
   createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
 }
 
 export interface Rental {
