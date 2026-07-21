@@ -18,6 +18,7 @@ import { PaymentAttachments } from "./PaymentAttachments";
 import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
 import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
 import { invalidateCache } from "@/services/cacheService";
+import { getAllPaymentMethods } from "@/services/paymentMethodService";
 
 interface BreakdownItem {
   description?: string;
@@ -122,6 +123,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [effectiveGarageValue, setEffectiveGarageValue] = useState(0);
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
+
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const [config, setConfig] = useState<any>(null);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{code: string; name: string}>>([]);
 
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");

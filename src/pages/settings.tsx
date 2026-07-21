@@ -56,6 +56,7 @@ import {
   updateConfig 
 } from "@/services/configService";
 import * as locationService from "@/services/locationService";
+import * as paymentMethodService from "@/services/paymentMethodService";
 
 // Helpers
 import {
@@ -138,6 +139,17 @@ export default function Settings() {
   // Estados para LocationExpensesDialog
   const [isExpensesDialogOpen, setIsExpensesDialogOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  
+  // Estados para Formas de Pagamento
+  const [paymentMethods, setPaymentMethods] = useState<paymentMethodService.PaymentMethod[]>([]);
+  const [isPaymentMethodDialogOpen, setIsPaymentMethodDialogOpen] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<paymentMethodService.PaymentMethod | null>(null);
+  const [paymentMethodForm, setPaymentMethodForm] = useState({
+    name: "",
+    code: "",
+    active: true,
+    display_order: 0,
+  });
 
   // Use custom hooks for users and permissions
   const { 
@@ -171,7 +183,8 @@ export default function Settings() {
       try {
         await Promise.all([
           loadConfig(),
-          fetchLocations()
+          fetchLocations(),
+          fetchPaymentMethods()
         ]);
       } catch (err) {
         console.error("Error loading settings data:", err);
@@ -180,6 +193,19 @@ export default function Settings() {
 
     loadData();
   }, [user?.id]);
+  
+  const fetchPaymentMethods = async () => {
+    try {
+      const data = await paymentMethodService.getAllPaymentMethodsAdmin();
+      setPaymentMethods(data);
+    } catch (error) {
+      console.error("Failed to fetch payment methods:", error);
+      toast({ 
+        title: "Erro ao carregar formas de pagamento",
+        variant: "destructive" 
+      });
+    }
+  };
 
   const loadConfig = async () => {
     try {
@@ -440,7 +466,8 @@ export default function Settings() {
       try {
         await Promise.all([
           loadConfig(),
-          fetchLocations()
+          fetchLocations(),
+          fetchPaymentMethods()
         ]);
       } catch (err) {
         console.error("Error loading settings data:", err);
@@ -476,6 +503,10 @@ export default function Settings() {
             <TabsTrigger id="settings-tab-company" value="company" className="gap-2 py-3">
               <Building2 className="h-4 w-4" />
               Dados da Empresa
+            </TabsTrigger>
+            <TabsTrigger id="settings-tab-payment-methods" value="payment-methods" className="gap-2 py-3">
+              <Wallet className="h-4 w-4" />
+              Formas Pagamento
             </TabsTrigger>
             <TabsTrigger id="settings-tab-admin-fees" value="admin-fees" className="gap-2 py-3">
               <Percent className="h-4 w-4" />
@@ -593,6 +624,83 @@ export default function Settings() {
                     </Button>
                   </div>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* FORMAS DE PAGAMENTO */}
+          <TabsContent value="payment-methods">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Formas de Pagamento</CardTitle>
+                    <CardDescription>
+                      Gerencie as formas de pagamento disponíveis no sistema
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => {
+                    setEditingPaymentMethod(null);
+                    setPaymentMethodForm({ name: "", code: "", active: true, display_order: paymentMethods.length + 1 });
+                    setIsPaymentMethodDialogOpen(true);
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Forma
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {paymentMethods.map((method) => (
+                    <div key={method.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">{method.display_order}</div>
+                        <div>
+                          <div className="font-medium">{method.name}</div>
+                          <div className="text-sm text-muted-foreground">Código: {method.code}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={method.active ? "default" : "secondary"}>
+                          {method.active ? "Ativo" : "Inativo"}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingPaymentMethod(method);
+                            setPaymentMethodForm({
+                              name: method.name,
+                              code: method.code,
+                              active: method.active,
+                              display_order: method.display_order,
+                            });
+                            setIsPaymentMethodDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            if (confirm(`Deseja excluir ${method.name}?`)) {
+                              try {
+                                await paymentMethodService.deletePaymentMethod(method.id);
+                                toast({ title: "Forma de pagamento excluída" });
+                                await fetchPaymentMethods();
+                              } catch (error) {
+                                toast({ title: "Erro ao excluir", variant: "destructive" });
+                              }
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1058,6 +1166,88 @@ export default function Settings() {
             location={selectedLocation}
           />
         )}
+
+        {/* DIALOG DE FORMA DE PAGAMENTO */}
+        <Dialog open={isPaymentMethodDialogOpen} onOpenChange={setIsPaymentMethodDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingPaymentMethod ? "Editar" : "Nova"} Forma de Pagamento</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                if (editingPaymentMethod) {
+                  await paymentMethodService.updatePaymentMethod(editingPaymentMethod.id, paymentMethodForm);
+                  toast({ title: "Forma de pagamento atualizada" });
+                } else {
+                  await paymentMethodService.createPaymentMethod(paymentMethodForm);
+                  toast({ title: "Forma de pagamento criada" });
+                }
+                setIsPaymentMethodDialogOpen(false);
+                await fetchPaymentMethods();
+              } catch (error) {
+                toast({ title: "Erro ao salvar", variant: "destructive" });
+              }
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethodName">Nome *</Label>
+                <Input
+                  id="paymentMethodName"
+                  value={paymentMethodForm.name}
+                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, name: e.target.value })}
+                  placeholder="Ex: PIX, Dinheiro, Boleto"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethodCode">Código *</Label>
+                <Input
+                  id="paymentMethodCode"
+                  value={paymentMethodForm.code}
+                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, code: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                  placeholder="Ex: pix, dinheiro, boleto"
+                  required
+                  disabled={!!editingPaymentMethod}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Código único (não pode ser alterado depois)
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethodOrder">Ordem de Exibição</Label>
+                <Input
+                  id="paymentMethodOrder"
+                  type="number"
+                  value={paymentMethodForm.display_order}
+                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, display_order: parseInt(e.target.value) })}
+                  min="1"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="paymentMethodActive"
+                  checked={paymentMethodForm.active}
+                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, active: e.target.checked })}
+                  className="h-4 w-4 rounded"
+                />
+                <Label htmlFor="paymentMethodActive" className="cursor-pointer">Ativo</Label>
+              </div>
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsPaymentMethodDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  {editingPaymentMethod ? "Atualizar" : "Criar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="settings" />
 

@@ -25,6 +25,7 @@ import type { DepositInstallment, Rental } from "@/types";
 import { X, Calendar, DollarSign, FileText, Receipt, Paperclip } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getAllPaymentMethods } from "@/services/paymentMethodService";
 
 interface DepositPaymentDialogProps {
   open: boolean;
@@ -51,14 +52,32 @@ export function DepositPaymentDialog({
   const [paidAmount, setPaidAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [includeLateFee, setIncludeLateFee] = useState(true);
+  const [includeInterest, setIncludeInterest] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{code: string; name: string}>>([]);
 
-  // Carregar configurações
+  // Carregar configurações e métodos de pagamento
   useEffect(() => {
     const loadConfig = async () => {
       const { data } = await supabase.from("configs").select("*").single();
       setConfig(data);
     };
+    
+    const loadPaymentMethods = async () => {
+      try {
+        const methods = await getAllPaymentMethods();
+        setPaymentMethods(methods.map(m => ({ code: m.code, name: m.name })));
+      } catch (err) {
+        console.error("Erro ao carregar formas de pagamento:", err);
+        setPaymentMethods([
+          { code: "pix", name: "PIX" },
+          { code: "dinheiro", name: "Dinheiro" },
+        ]);
+      }
+    };
+    
     loadConfig();
+    loadPaymentMethods();
   }, []);
 
   // Inicializar campos ao abrir
@@ -90,6 +109,7 @@ export function DepositPaymentDialog({
         lateFee: 0,
         interest: 0,
         totalWithFees: installment.amount,
+        finalTotal: installment.amount,
       };
     }
 
@@ -106,14 +126,22 @@ export function DepositPaymentDialog({
     }
 
     const totalWithFees = installment.amount + lateFee + interest;
+    
+    // Calcular valor final baseado nos checkboxes
+    let finalTotal = installment.amount;
+    if (daysLate > 0) {
+      if (includeLateFee) finalTotal += lateFee;
+      if (includeInterest) finalTotal += interest;
+    }
 
     return {
       daysLate,
       lateFee,
       interest,
       totalWithFees,
+      finalTotal,
     };
-  }, [paymentDate, installment.due_date, installment.amount, config]);
+  }, [paymentDate, installment.due_date, installment.amount, config, includeLateFee, includeInterest]);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -345,14 +373,11 @@ export function DepositPaymentDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="transferencia">Transferência Bancária</SelectItem>
-                        <SelectItem value="debito">Débito em Conta</SelectItem>
-                        <SelectItem value="boleto">Boleto</SelectItem>
-                        <SelectItem value="cheque">Cheque</SelectItem>
-                        <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                        <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                        {paymentMethods.map((method) => (
+                          <SelectItem key={method.code} value={method.code}>
+                            {method.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -372,28 +397,65 @@ export function DepositPaymentDialog({
 
                 {calculations.daysLate > 0 && (
                   <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                    <div className="text-sm font-semibold text-red-700 dark:text-red-400">
-                      Atraso: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
+                    <div className="text-sm font-semibold text-red-700 dark:text-red-400 mb-3">
+                      Atraso no Pagamento: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Multa ({config?.late_fee_percentage || 2}%)</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="includeLateFee"
+                            checked={includeLateFee}
+                            onChange={(e) => setIncludeLateFee(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <label htmlFor="includeLateFee" className="text-sm cursor-pointer">
+                            Multa ({config?.late_fee_percentage || 2}%)
+                          </label>
+                        </div>
                         <span className="font-semibold text-red-600">
-                          + {formatCurrency(calculations.lateFee)}
+                          {includeLateFee ? "+ " : ""}
+                          {formatCurrency(calculations.lateFee)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Juros ({config?.interest_rate_percentage || 0.033}% ao dia)</span>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="includeInterest"
+                            checked={includeInterest}
+                            onChange={(e) => setIncludeInterest(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <label htmlFor="includeInterest" className="text-sm cursor-pointer">
+                            Juros ({config?.interest_rate_percentage || 0.033}% ao dia)
+                          </label>
+                        </div>
                         <span className="font-semibold text-red-600">
-                          + {formatCurrency(calculations.interest)}
+                          {includeInterest ? "+ " : ""}
+                          {formatCurrency(calculations.interest)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-red-300 dark:border-red-700 font-bold">
-                        <span>Total com Encargos</span>
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-red-300 dark:border-red-700 font-bold text-base">
+                        <span>VALOR TOTAL</span>
                         <span className="text-red-600">
-                          {formatCurrency(calculations.totalWithFees)}
+                          {formatCurrency(calculations.finalTotal)}
                         </span>
                       </div>
+                    </div>
+                  </div>
+                )}
+                
+                {calculations.daysLate === 0 && (
+                  <div className="space-y-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex justify-between items-center font-bold text-base">
+                      <span className="text-green-700 dark:text-green-400">VALOR TOTAL</span>
+                      <span className="text-green-600">
+                        {formatCurrency(installment.amount)}
+                      </span>
                     </div>
                   </div>
                 )}
