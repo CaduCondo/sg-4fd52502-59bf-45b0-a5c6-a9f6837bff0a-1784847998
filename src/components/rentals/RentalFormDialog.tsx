@@ -25,6 +25,7 @@ import { RentalContract } from "@/components/RentalContract";
 import { DepositPaymentDialog } from "@/components/rentals/DepositPaymentDialog";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { rentalUpdateService } from "@/services/rentalUpdateService";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -69,6 +70,28 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   } | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInstallmentNumber, setSelectedInstallmentNumber] = useState<number | null>(null);
+  const [loadedInstallment, setLoadedInstallment] = useState<any>(null);
+
+  const loadInstallmentFromDatabase = useCallback(async (rentalId: string, installmentNum: number) => {
+    try {
+      const { data, error } = await supabase
+        .from("deposit_installments")
+        .select("*")
+        .eq("rental_id", rentalId)
+        .eq("installment_number", installmentNum)
+        .single();
+
+      if (error) {
+        console.error("Erro ao buscar parcela:", error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error("Erro ao buscar parcela:", err);
+      return null;
+    }
+  }, []);
 
   const {
     isEditing,
@@ -703,11 +726,21 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={isFieldDisabled || !rental}
-                  onClick={() => {
+                  disabled={!rental}
+                  onClick={async () => {
                     if (rental) {
-                      setSelectedInstallmentNumber(1);
-                      setPaymentDialogOpen(true);
+                      const installment = await loadInstallmentFromDatabase(rental.id, 1);
+                      if (installment) {
+                        setLoadedInstallment(installment);
+                        setSelectedInstallmentNumber(1);
+                        setPaymentDialogOpen(true);
+                      } else {
+                        toast({
+                          title: "Erro",
+                          description: "Parcela não encontrada no banco de dados.",
+                          variant: "destructive",
+                        });
+                      }
                     }
                   }}
                   className="w-full"
@@ -795,11 +828,21 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={isFieldDisabled || !rental}
-                        onClick={() => {
+                        disabled={!rental}
+                        onClick={async () => {
                           if (rental) {
-                            setSelectedInstallmentNumber(2);
-                            setPaymentDialogOpen(true);
+                            const installment = await loadInstallmentFromDatabase(rental.id, 2);
+                            if (installment) {
+                              setLoadedInstallment(installment);
+                              setSelectedInstallmentNumber(2);
+                              setPaymentDialogOpen(true);
+                            } else {
+                              toast({
+                                title: "Erro",
+                                description: "Parcela não encontrada no banco de dados.",
+                                variant: "destructive",
+                              });
+                            }
                           }
                         }}
                         className="w-full"
@@ -839,11 +882,21 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={isFieldDisabled || !rental}
-                        onClick={() => {
+                        disabled={!rental}
+                        onClick={async () => {
                           if (rental) {
-                            setSelectedInstallmentNumber(3);
-                            setPaymentDialogOpen(true);
+                            const installment = await loadInstallmentFromDatabase(rental.id, 3);
+                            if (installment) {
+                              setLoadedInstallment(installment);
+                              setSelectedInstallmentNumber(3);
+                              setPaymentDialogOpen(true);
+                            } else {
+                              toast({
+                                title: "Erro",
+                                description: "Parcela não encontrada no banco de dados.",
+                                variant: "destructive",
+                              });
+                            }
                           }
                         }}
                         className="w-full"
@@ -1049,47 +1102,16 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         </form>
       </DialogContent>
 
-      {rental && selectedInstallmentNumber && (
+      {rental && selectedInstallmentNumber && loadedInstallment && (
         <DepositPaymentDialog
           open={paymentDialogOpen}
           onOpenChange={setPaymentDialogOpen}
-          installment={{
-            id: `temp-${rental.id}-${selectedInstallmentNumber}`,
-            rental_id: rental.id,
-            installment_number: selectedInstallmentNumber,
-            total_installments: rental.depositInstallments || 1,
-            amount: selectedInstallmentNumber === 1 
-              ? (rental.depositInstallment1 || rental.depositAmount || 0)
-              : selectedInstallmentNumber === 2
-              ? (rental.depositInstallment2 || 0)
-              : (rental.depositInstallment3 || 0),
-            due_date: selectedInstallmentNumber === 1
-              ? (rental.depositInstallment1DueDate || rental.depositPaymentDate || "")
-              : selectedInstallmentNumber === 2
-              ? (rental.depositInstallment2DueDate || "")
-              : (rental.depositInstallment3DueDate || ""),
-            payment_date: selectedInstallmentNumber === 1
-              ? (rental.depositInstallment1PaymentDate || null)
-              : selectedInstallmentNumber === 2
-              ? (rental.depositInstallment2PaymentDate || null)
-              : (rental.depositInstallment3PaymentDate || null),
-            paid_amount: 0,
-            payment_method: null,
-            pix_code: selectedInstallmentNumber === 1
-              ? (rental.depositInstallment1PixCode || rental.depositPixCode || null)
-              : selectedInstallmentNumber === 2
-              ? (rental.depositInstallment2PixCode || null)
-              : (rental.depositInstallment3PixCode || null),
-            status: "pending",
-            notes: null,
-            attachments: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }}
+          installment={loadedInstallment}
           rental={rental}
           onSuccess={() => {
             setPaymentDialogOpen(false);
             setSelectedInstallmentNumber(null);
+            setLoadedInstallment(null);
             onSuccess();
           }}
         />
