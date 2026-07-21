@@ -1,4 +1,4 @@
-// Currency formatting
+// Currency formatting with thousands separator
 export const formatCurrency = (value: string | number): string => {
   const numValue = typeof value === "string" ? parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) : value;
   
@@ -9,14 +9,13 @@ export const formatCurrency = (value: string | number): string => {
   const isNegative = numValue < 0;
   const absoluteValue = Math.abs(numValue);
   
+  // Format with thousands separator (.) and decimal separator (,)
   const formatted = absoluteValue.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   
-  return isNegative ? `- ${formatted}` : formatted;
+  return isNegative ? `- R$ ${formatted}` : `R$ ${formatted}`;
 };
 
 export const parseCurrency = (value: string): number => {

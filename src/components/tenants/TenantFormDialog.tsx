@@ -524,7 +524,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       cpf: formData.cpf,
       cnpj: formData.cnpj,
       rg: formData.rg,
-      documentType,
+      document_type: documentType, // ✅ CORRIGIDO: usar document_type ao invés de documentType
       occupation: formData.occupation,
       marital_status: formData.maritalStatus,
       monthly_income: formData.monthlyIncome,
