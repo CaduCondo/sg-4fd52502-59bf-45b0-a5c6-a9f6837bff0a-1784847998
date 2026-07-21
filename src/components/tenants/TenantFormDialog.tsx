@@ -87,12 +87,14 @@ const PersonalDataSection = memo(function PersonalDataSection({
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="tenant-name" className="text-sm font-medium">Nome Completo *</Label>
+          <Label htmlFor="tenant-name" className="text-sm font-medium">
+            {documentType === "cnpj" ? "Nome Fantasia *" : "Nome Completo *"}
+          </Label>
           <Input
             id="tenant-name"
             value={formData.name}
             onChange={(e) => onFieldChange("name", e.target.value)}
-            placeholder="Nome completo"
+            placeholder={documentType === "cnpj" ? "Nome Fantasia" : "Nome completo"}
             required
             disabled={!isEditing}
             className="h-11 sm:h-10 text-sm mobile-input"
@@ -132,6 +134,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
             placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
             required
             disabled={!isEditing}
+            maxLength={documentType === "cpf" ? 14 : 18}
             className="h-11 sm:h-10 text-sm mobile-input"
           />
         </div>
@@ -145,6 +148,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
               onChange={onRgChange}
               placeholder="00.000.000-0"
               disabled={!isEditing}
+              maxLength={12}
               className="h-11 sm:h-10 text-sm mobile-input"
             />
           </div>
@@ -378,7 +382,8 @@ export const TenantFormDialog = memo(function TenantFormDialog({
     setIsEditing(!isViewMode);
 
     if (tenant) {
-      const docType = tenant.document_type || tenant.documentType || "cpf";
+      const rawDocType = tenant.document_type || tenant.documentType;
+      const docType: "cpf" | "cnpj" = (rawDocType === "cnpj") ? "cnpj" : "cpf";
       
       setFormData({
         name: tenant.name || "",

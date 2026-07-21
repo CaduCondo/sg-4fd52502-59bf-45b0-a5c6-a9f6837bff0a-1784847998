@@ -259,64 +259,70 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="property-status" className="text-sm font-medium">
-              Status *
-            </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => handleFieldChange("status", value)}
-              disabled={isReadOnly}
-            >
-              <SelectTrigger id="property-status" className="h-11 sm:h-10 text-sm mobile-input">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="available">Disponível</SelectItem>
-                <SelectItem value="occupied">Ocupado</SelectItem>
-                <SelectItem value="unavailable">Indisponível</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="flex items-center space-x-3 touch-target">
-              <Checkbox
-                id="property-furniture"
-                checked={formData.hasFurniture}
-                onCheckedChange={(checked) => handleFieldChange("hasFurniture", checked)}
-                disabled={isReadOnly}
-                className="h-5 w-5"
-              />
-              <Label htmlFor="property-furniture" className="text-sm cursor-pointer font-normal">
-                Móveis Planejados
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="space-y-2 sm:col-span-1">
+              <Label htmlFor="property-status" className="text-sm font-medium">
+                Status *
               </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleFieldChange("status", value)}
+                disabled={isReadOnly}
+              >
+                <SelectTrigger id="property-status" className="h-11 sm:h-10 text-sm mobile-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Disponível</SelectItem>
+                  <SelectItem value="occupied">Ocupado</SelectItem>
+                  <SelectItem value="unavailable">Indisponível</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="flex items-center space-x-3 touch-target">
-              <Checkbox
-                id="property-pets"
-                checked={formData.acceptsPets}
-                onCheckedChange={(checked) => handleFieldChange("acceptsPets", checked)}
-                disabled={isReadOnly}
-                className="h-5 w-5"
-              />
-              <Label htmlFor="property-pets" className="text-sm cursor-pointer font-normal">
-                Aceita Pets
-              </Label>
+            <div className="flex items-end space-x-3 sm:col-span-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="property-furniture"
+                  checked={formData.hasFurniture}
+                  onCheckedChange={(checked) => handleFieldChange("hasFurniture", checked)}
+                  disabled={isReadOnly}
+                  className="h-5 w-5"
+                />
+                <Label htmlFor="property-furniture" className="text-sm cursor-pointer font-normal whitespace-nowrap">
+                  Móveis Planejados
+                </Label>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-3 touch-target">
-              <Checkbox
-                id="property-garage"
-                checked={formData.hasGarage}
-                onCheckedChange={(checked) => handleFieldChange("hasGarage", checked)}
-                disabled={isReadOnly}
-                className="h-5 w-5"
-              />
-              <Label htmlFor="property-garage" className="text-sm cursor-pointer font-normal">
-                Vaga Garagem
-              </Label>
+            <div className="flex items-end space-x-3 sm:col-span-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="property-pets"
+                  checked={formData.acceptsPets}
+                  onCheckedChange={(checked) => handleFieldChange("acceptsPets", checked)}
+                  disabled={isReadOnly}
+                  className="h-5 w-5"
+                />
+                <Label htmlFor="property-pets" className="text-sm cursor-pointer font-normal whitespace-nowrap">
+                  Aceita Pets
+                </Label>
+              </div>
+            </div>
+
+            <div className="flex items-end space-x-3 sm:col-span-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="property-garage"
+                  checked={formData.hasGarage}
+                  onCheckedChange={(checked) => handleFieldChange("hasGarage", checked)}
+                  disabled={isReadOnly}
+                  className="h-5 w-5"
+                />
+                <Label htmlFor="property-garage" className="text-sm cursor-pointer font-normal whitespace-nowrap">
+                  Vaga Garagem
+                </Label>
+              </div>
             </div>
           </div>
 

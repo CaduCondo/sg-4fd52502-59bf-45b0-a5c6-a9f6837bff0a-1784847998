@@ -626,8 +626,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="flex items-center space-x-2 md:col-span-1">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="flex items-center space-x-2 md:col-span-2">
               <Checkbox
                 id="rental-has-garage"
                 checked={hasGarage}
@@ -637,13 +637,12 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 }}
                 disabled={isFieldDisabled}
               />
-              <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm">
+              <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm whitespace-nowrap">
                 Vaga Garagem?
               </Label>
             </div>
             {hasGarage && (
-              <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="rental-garage-value">Valor Vaga Garagem</Label>
+              <div className="space-y-2 md:col-span-10">
                 <Input
                   id="rental-garage-value"
                   value={garageValue}
@@ -731,7 +730,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                       }
                     }
                   }}
-                  className="w-full"
+                  className="w-full h-9"
                 >
                   Recebimento
                 </Button>
