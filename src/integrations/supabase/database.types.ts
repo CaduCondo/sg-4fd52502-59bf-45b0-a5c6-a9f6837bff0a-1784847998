@@ -425,6 +425,36 @@ export type Database = {
           },
         ]
       }
+      payment_methods: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          display_order: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           admin_fee: number | null
