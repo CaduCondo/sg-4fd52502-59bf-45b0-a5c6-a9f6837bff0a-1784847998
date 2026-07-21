@@ -428,6 +428,68 @@ export const TenantFormDialog = memo(function TenantFormDialog({
     setFormData(prev => ({ ...prev, phone: masked }));
   }, []);
 
+  const onCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    
+    // Limitar a 11 dígitos
+    if (value.length > 11) {
+      value = value.slice(0, 11);
+    }
+    
+    // Formatar CPF: 000.000.000-00
+    if (value.length >= 10) {
+      value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
+    } else if (value.length >= 7) {
+      value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
+    } else if (value.length >= 4) {
+      value = value.replace(/(\d{3})(\d{0,3})/, "$1.$2");
+    }
+    
+    onFieldChange("cpf", value);
+  }, [onFieldChange]);
+
+  const onCnpjChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    
+    // Limitar a 14 dígitos
+    if (value.length > 14) {
+      value = value.slice(0, 14);
+    }
+    
+    // Formatar CNPJ: 00.000.000/0000-00
+    if (value.length >= 13) {
+      value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, "$1.$2.$3/$4-$5");
+    } else if (value.length >= 9) {
+      value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/, "$1.$2.$3/$4");
+    } else if (value.length >= 6) {
+      value = value.replace(/(\d{2})(\d{3})(\d{0,3})/, "$1.$2.$3");
+    } else if (value.length >= 3) {
+      value = value.replace(/(\d{2})(\d{0,3})/, "$1.$2");
+    }
+    
+    onFieldChange("cnpj", value);
+  }, [onFieldChange]);
+
+  const onRgChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    
+    // Limitar a 9 dígitos
+    if (value.length > 9) {
+      value = value.slice(0, 9);
+    }
+    
+    // Formatar RG: 00.000.000-0
+    if (value.length >= 9) {
+      value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{0,1})/, "$1.$2.$3-$4");
+    } else if (value.length >= 6) {
+      value = value.replace(/(\d{2})(\d{3})(\d{0,3})/, "$1.$2.$3");
+    } else if (value.length >= 3) {
+      value = value.replace(/(\d{2})(\d{0,3})/, "$1.$2");
+    }
+    
+    onFieldChange("rg", value);
+  }, [onFieldChange]);
+
   const handleCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCpfMask(e.target.value);
     setFormData(prev => ({ ...prev, cpf: masked, document: masked }));
@@ -533,9 +595,9 @@ export const TenantFormDialog = memo(function TenantFormDialog({
             isEditing={isEditing}
             onFieldChange={handleFieldChange}
             onPhoneChange={handlePhoneChange}
-            onCpfChange={handleCpfChange}
-            onCnpjChange={handleCnpjChange}
-            onRgChange={handleRgChange}
+            onCpfChange={onCpfChange}
+            onCnpjChange={onCnpjChange}
+            onRgChange={onRgChange}
             onStatusChange={handleStatusChange}
             showStatus={!!tenant}
           />
