@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,8 @@ import {
   Wallet,
   HelpCircle,
   FileText,
+  Calculator,
+  CreditCard,
 } from "lucide-react";
 
 // Services
@@ -57,7 +59,7 @@ import {
   updateConfig 
 } from "@/services/configService";
 import * as locationService from "@/services/locationService";
-import * as paymentMethodService from "@/services/paymentMethodService";
+import { getAllPaymentMethodsAdmin, createPaymentMethod, updatePaymentMethod, deletePaymentMethod, type PaymentMethod } from "@/services/paymentMethodService";
 
 // Helpers
 import {
@@ -142,9 +144,9 @@ export default function Settings() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   
   // Estados para Formas de Pagamento
-  const [paymentMethods, setPaymentMethods] = useState<paymentMethodService.PaymentMethod[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isPaymentMethodDialogOpen, setIsPaymentMethodDialogOpen] = useState(false);
-  const [editingPaymentMethod, setEditingPaymentMethod] = useState<paymentMethodService.PaymentMethod | null>(null);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
   const [paymentMethodForm, setPaymentMethodForm] = useState({
     name: "",
     code: "",
@@ -197,7 +199,7 @@ export default function Settings() {
   
   const fetchPaymentMethods = async () => {
     try {
-      const data = await paymentMethodService.getAllPaymentMethodsAdmin();
+      const data = await getAllPaymentMethodsAdmin();
       setPaymentMethods(data);
     } catch (error) {
       console.error("Failed to fetch payment methods:", error);
@@ -687,7 +689,7 @@ export default function Settings() {
                           onClick={async () => {
                             if (confirm(`Deseja excluir ${method.name}?`)) {
                               try {
-                                await paymentMethodService.deletePaymentMethod(method.id);
+                                await deletePaymentMethod(method.id);
                                 toast({ title: "Forma de pagamento excluída" });
                                 await fetchPaymentMethods();
                               } catch (error) {
@@ -1178,10 +1180,10 @@ export default function Settings() {
               e.preventDefault();
               try {
                 if (editingPaymentMethod) {
-                  await paymentMethodService.updatePaymentMethod(editingPaymentMethod.id, paymentMethodForm);
+                  await updatePaymentMethod(editingPaymentMethod.id, paymentMethodForm);
                   toast({ title: "Forma de pagamento atualizada" });
                 } else {
-                  await paymentMethodService.createPaymentMethod(paymentMethodForm);
+                  await createPaymentMethod(paymentMethodForm);
                   toast({ title: "Forma de pagamento criada" });
                 }
                 setIsPaymentMethodDialogOpen(false);
