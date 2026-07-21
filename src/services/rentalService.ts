@@ -541,8 +541,9 @@ export const rentalService = {
           totalInstallments,
           depositAmount,
           depositInstallment1: rental.depositInstallment1 ?? oldRental.depositInstallment1,
-          depositInstallment2: rental.depositInstallment2 ?? oldRental.depositInstallment2,
-          depositInstallment3: rental.depositInstallment3 ?? oldRental.depositInstallment3,
+          depositInstallment1DueDate: rental.depositInstallment1DueDate ?? oldRental.depositInstallment1DueDate,
+          depositInstallment1PaymentDate: rental.depositInstallment1PaymentDate ?? oldRental.depositInstallment1PaymentDate,
+          depositInstallment1PixCode: rental.depositInstallment1PixCode ?? oldRental.depositInstallment1PixCode,
         });
         
         // 1ª Parcela
