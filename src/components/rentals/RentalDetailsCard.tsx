@@ -72,6 +72,8 @@ const DepositInstallment = memo(({
 DepositInstallment.displayName = "DepositInstallment";
 
 export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
+  console.log("🎨 [RentalDetailsCard] Componente renderizado - rental.id:", rental.id);
+  
   const [depositInstallments, setDepositInstallments] = useState<DepositInstallment[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<DepositInstallment | null>(null);
