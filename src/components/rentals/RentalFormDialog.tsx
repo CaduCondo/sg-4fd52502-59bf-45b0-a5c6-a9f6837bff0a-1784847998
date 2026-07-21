@@ -22,6 +22,7 @@ import {
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
+import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { rentalUpdateService } from "@/services/rentalUpdateService";
 
@@ -479,6 +480,17 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               : "Nova Locação"}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Exibir RentalDetailsCard quando em modo de visualização (não editando) */}
+        {rental && isViewMode && !isEditing && selectedProperty && (
+          <div className="mb-4">
+            <RentalDetailsCard
+              rental={rental}
+              property={selectedProperty}
+              tenant={tenantsToDisplay.find(t => t.id === rental.tenantId) || rental.tenant!}
+            />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
