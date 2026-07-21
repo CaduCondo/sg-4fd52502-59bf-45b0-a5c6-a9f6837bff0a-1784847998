@@ -989,29 +989,34 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           )}
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Anexos</Label>
-              <div className="flex gap-2">
+            <Label>Anexos</Label>
+            
+            {attachments.length > 0 && (
+              <AttachmentViewer attachments={attachments} onRemove={removeAttachment} />
+            )}
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <input
+                  id="rentalFileUpload"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={onFileInputChange}
+                />
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("rentalCameraCapture")?.click()}
-                  disabled={isFieldDisabled}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Tirar Foto
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  className="w-full h-12"
                   onClick={() => document.getElementById("rentalFileUpload")?.click()}
                   disabled={isFieldDisabled}
                 >
-                  <Paperclip className="mr-2 h-4 w-4" />
-                  Anexar Arquivo
+                  <Paperclip className="mr-2 h-5 w-5" />
+                  Escolher Arquivo
                 </Button>
+              </div>
+
+              <div className="flex-1 sm:hidden">
                 <input
                   id="rentalCameraCapture"
                   type="file"
@@ -1020,19 +1025,18 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   className="hidden"
                   onChange={onFileInputChange}
                 />
-                <input
-                  id="rentalFileUpload"
-                  type="file"
-                  accept="image/*,.pdf,.doc,.docx"
-                  className="hidden"
-                  onChange={onFileInputChange}
-                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => document.getElementById("rentalCameraCapture")?.click()}
+                  disabled={isFieldDisabled}
+                >
+                  <Camera className="mr-2 h-5 w-5" />
+                  Tirar Foto
+                </Button>
               </div>
             </div>
-
-            {attachments.length > 0 && (
-              <AttachmentViewer attachments={attachments} onRemove={removeAttachment} />
-            )}
           </div>
 
           <DialogFooter>

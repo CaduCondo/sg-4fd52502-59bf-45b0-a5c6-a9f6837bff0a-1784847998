@@ -351,42 +351,47 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
                 isReadOnly={false}
               />
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => triggerFileInput("photo-upload")}
-                  className="h-11 sm:h-10 text-sm touch-target"
-                >
-                  <ImageIcon className="h-4 w-4 mr-2" />
-                  Selecionar Fotos
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => triggerFileInput("camera-capture")}
-                  className="h-11 sm:h-10 text-sm touch-target"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Tirar Foto
-                </Button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={() => triggerFileInput("photo-upload")}
+                  >
+                    <ImageIcon className="mr-2 h-5 w-5" />
+                    Escolher Arquivo
+                  </Button>
+                </div>
+
+                <div className="flex-1 sm:hidden">
+                  <input
+                    id="camera-capture"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={() => triggerFileInput("camera-capture")}
+                  >
+                    <Camera className="mr-2 h-5 w-5" />
+                    Tirar Foto
+                  </Button>
+                </div>
               </div>
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <input
-                id="camera-capture"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
             </div>
           )}
 
