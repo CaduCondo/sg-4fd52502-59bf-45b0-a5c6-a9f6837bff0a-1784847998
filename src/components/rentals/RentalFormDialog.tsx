@@ -673,7 +673,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="space-y-2 md:col-span-4">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-amount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
@@ -686,7 +686,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-date">Data Pagamento *</Label>
                 <Input
                   id="rental-deposit-date"
@@ -708,7 +708,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3 flex items-end">
+              <div className="space-y-2 md:col-span-3 flex flex-col justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -730,7 +730,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                       }
                     }
                   }}
-                  className="w-full h-9"
+                  className="w-full h-10"
                 >
                   Recebimento
                 </Button>
@@ -995,47 +995,25 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               <AttachmentViewer attachments={attachments} onRemove={removeAttachment} />
             )}
             
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <input
-                  id="rentalFileUpload"
-                  type="file"
-                  accept="image/*,.pdf,.doc,.docx"
-                  className="hidden"
-                  onChange={onFileInputChange}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12"
-                  onClick={() => document.getElementById("rentalFileUpload")?.click()}
-                  disabled={isFieldDisabled}
-                >
-                  <Paperclip className="mr-2 h-5 w-5" />
-                  Escolher Arquivo
-                </Button>
-              </div>
-
-              <div className="flex-1 sm:hidden">
-                <input
-                  id="rentalCameraCapture"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={onFileInputChange}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12"
-                  onClick={() => document.getElementById("rentalCameraCapture")?.click()}
-                  disabled={isFieldDisabled}
-                >
-                  <Camera className="mr-2 h-5 w-5" />
-                  Tirar Foto
-                </Button>
-              </div>
+            <div className="w-full">
+              <input
+                id="rentalFileUpload"
+                type="file"
+                accept="image/*,.pdf,.doc,.docx"
+                capture="environment"
+                className="hidden"
+                onChange={onFileInputChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12"
+                onClick={() => document.getElementById("rentalFileUpload")?.click()}
+                disabled={isFieldDisabled}
+              >
+                <Paperclip className="mr-2 h-5 w-5" />
+                Escolher Arquivo
+              </Button>
             </div>
           </div>
 

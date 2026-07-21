@@ -139,20 +139,24 @@ const PersonalDataSection = memo(function PersonalDataSection({
           />
         </div>
 
-        {documentType === "cpf" && (
-          <div className="space-y-2">
-            <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
-            <Input
-              id="tenant-rg"
-              value={formData.rg}
-              onChange={onRgChange}
-              placeholder="00.000.000-0"
-              disabled={!isEditing}
-              maxLength={12}
-              className="h-11 sm:h-10 text-sm mobile-input"
-            />
-          </div>
-        )}
+        <div className={`space-y-2 ${documentType === "cnpj" ? "sm:col-span-2" : ""}`}>
+          {documentType === "cpf" ? (
+            <>
+              <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
+              <Input
+                id="tenant-rg"
+                value={formData.rg}
+                onChange={onRgChange}
+                placeholder="00.000.000-0"
+                disabled={!isEditing}
+                maxLength={12}
+                className="h-11 sm:h-10 text-sm mobile-input"
+              />
+            </>
+          ) : (
+            <div className="h-[68px]"></div>
+          )}
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="tenant-phone" className="text-sm font-medium">Telefone *</Label>
@@ -478,8 +482,8 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       rg: formData.rg,
       documentType,
       occupation: formData.occupation,
-      maritalStatus: formData.maritalStatus,
-      monthlyIncome: formData.monthlyIncome,
+      marital_status: formData.maritalStatus,
+      monthly_income: formData.monthlyIncome,
       cep: formData.cep,
       street: formData.street,
       number: formData.number,
