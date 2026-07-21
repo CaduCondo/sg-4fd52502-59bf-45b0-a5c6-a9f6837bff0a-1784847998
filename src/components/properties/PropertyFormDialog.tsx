@@ -259,7 +259,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4 items-center">
             <div className="space-y-2">
               <Label htmlFor="property-status" className="text-sm font-medium">
                 Status *
@@ -280,7 +280,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2 pb-2">
+            <div className="flex items-center space-x-2 h-[68px] sm:h-[60px]">
               <Checkbox
                 id="property-furniture"
                 checked={formData.hasFurniture}
@@ -293,7 +293,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2 pb-2">
+            <div className="flex items-center space-x-2 h-[68px] sm:h-[60px]">
               <Checkbox
                 id="property-pets"
                 checked={formData.acceptsPets}
@@ -306,7 +306,7 @@ export const PropertyFormDialog = memo(function PropertyFormDialog({
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2 pb-2">
+            <div className="flex items-center space-x-2 h-[68px] sm:h-[60px]">
               <Checkbox
                 id="property-garage"
                 checked={formData.hasGarage}

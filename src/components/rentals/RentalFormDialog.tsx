@@ -650,7 +650,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="flex items-center space-x-2 md:col-span-2">
+            <div className="flex items-center space-x-2 md:col-span-3">
               <Checkbox
                 id="rental-has-garage"
                 checked={hasGarage}
@@ -665,7 +665,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               </Label>
             </div>
             {hasGarage && (
-              <div className="space-y-2 md:col-span-10">
+              <div className="space-y-2 md:col-span-3">
                 <Input
                   id="rental-garage-value"
                   value={garageValue}
@@ -698,7 +698,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rental-deposit-amount">
-                  {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
+                  {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista) *"}
                 </Label>
                 <Input
                   id="rental-deposit-amount"

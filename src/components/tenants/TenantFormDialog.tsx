@@ -142,15 +142,18 @@ const PersonalDataSection = memo(function PersonalDataSection({
         <div className={`space-y-2 ${documentType === "cnpj" ? "sm:col-span-2" : ""}`}>
           {documentType === "cpf" ? (
             <>
-              <Label htmlFor="tenant-rg" className="text-sm font-medium">RG</Label>
+              <Label htmlFor="tenant-rg" className="text-sm font-medium" style={{ visibility: documentType === "cnpj" ? "hidden" : "visible" }}>
+                RG
+              </Label>
               <Input
                 id="tenant-rg"
                 value={formData.rg}
                 onChange={onRgChange}
                 placeholder="00.000.000-0"
-                disabled={!isEditing}
+                disabled={!isEditing || documentType === "cnpj"}
                 maxLength={12}
                 className="h-11 sm:h-10 text-sm mobile-input"
+                style={{ visibility: documentType === "cnpj" ? "hidden" : "visible" }}
               />
             </>
           ) : (

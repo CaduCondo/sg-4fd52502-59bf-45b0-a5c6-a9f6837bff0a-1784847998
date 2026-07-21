@@ -267,145 +267,150 @@ export function DepositPaymentDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informações do Caução */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Informações do Caução
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-muted-foreground">Parcela</span>
-                <span className="font-semibold">
-                  {installment.installment_number}/{installment.total_installments}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-muted-foreground">Valor da Parcela</span>
-                <span className="font-bold text-green-600">{formatCurrency(installment.amount)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-muted-foreground">Data de Vencimento</span>
-                <span className="font-medium">
-                  {installment.due_date
-                    ? format(new Date(installment.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                    : "-"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-muted-foreground">Status</span>
-                <Badge
-                  variant={
-                    installment.status === "paid"
-                      ? "default"
+          {/* Layout lado a lado: Informações (col-1) + Dados do Recebimento (col-2) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Informações do Caução */}
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Informações do Caução
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Parcela</span>
+                  <span className="font-semibold">
+                    {installment.installment_number}/{installment.total_installments}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Valor da Parcela</span>
+                  <span className="font-bold text-green-600">{formatCurrency(installment.amount)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Data de Vencimento</span>
+                  <span className="font-medium">
+                    {installment.due_date
+                      ? format(new Date(installment.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge
+                    variant={
+                      installment.status === "paid"
+                        ? "default"
+                        : installment.status === "overdue"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                  >
+                    {installment.status === "paid"
+                      ? "Pago"
                       : installment.status === "overdue"
-                      ? "destructive"
-                      : "secondary"
-                  }
-                >
-                  {installment.status === "paid"
-                    ? "Pago"
-                    : installment.status === "overdue"
-                    ? "Atrasado"
-                    : "Pendente"}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+                      ? "Atrasado"
+                      : "Pendente"}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Dados do Recebimento do Caução */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Dados do Recebimento do Caução
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="paymentDate">Data do Recebimento *</Label>
-                  <Input
-                    id="paymentDate"
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="paymentMethod">Forma de Pagamento *</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="transferencia">Transferência Bancária</SelectItem>
-                      <SelectItem value="debito">Débito em Conta</SelectItem>
-                      <SelectItem value="boleto">Boleto</SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
-                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="paidAmount">Valor Pago *</Label>
-                  <Input
-                    id="paidAmount"
-                    type="text"
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(formatCurrencyInput(e.target.value))}
-                    placeholder="R$ 0,00"
-                    required
-                  />
-                </div>
-              </div>
-
-              {calculations.daysLate > 0 && (
-                <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <div className="text-sm font-semibold text-red-700 dark:text-red-400">
-                    Atraso: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
+            {/* Dados do Recebimento do Caução */}
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Dados do Recebimento do Caução
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="paymentDate">Data do Recebimento *</Label>
+                    <Input
+                      id="paymentDate"
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      required
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Multa ({config?.late_fee_percentage || 2}%)</span>
-                      <span className="font-semibold text-red-600">
-                        + {formatCurrency(calculations.lateFee)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Juros ({config?.interest_rate_percentage || 0.033}% ao dia)</span>
-                      <span className="font-semibold text-red-600">
-                        + {formatCurrency(calculations.interest)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-red-300 dark:border-red-700 font-bold">
-                      <span>Total com Encargos</span>
-                      <span className="text-red-600">
-                        {formatCurrency(calculations.totalWithFees)}
-                      </span>
-                    </div>
+                  
+                  <div>
+                    <Label htmlFor="paymentMethod">Forma de Pagamento *</Label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="transferencia">Transferência Bancária</SelectItem>
+                        <SelectItem value="debito">Débito em Conta</SelectItem>
+                        <SelectItem value="boleto">Boleto</SelectItem>
+                        <SelectItem value="cheque">Cheque</SelectItem>
+                        <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                        <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="paidAmount">Valor Pago *</Label>
+                    <Input
+                      id="paidAmount"
+                      type="text"
+                      value={paidAmount}
+                      onChange={(e) => setPaidAmount(formatCurrencyInput(e.target.value))}
+                      placeholder="R$ 0,00"
+                      required
+                    />
                   </div>
                 </div>
-              )}
 
-              <div>
-                <Label htmlFor="notes">Observações</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Observações adicionais sobre o recebimento..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                {calculations.daysLate > 0 && (
+                  <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <div className="text-sm font-semibold text-red-700 dark:text-red-400">
+                      Atraso: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Multa ({config?.late_fee_percentage || 2}%)</span>
+                        <span className="font-semibold text-red-600">
+                          + {formatCurrency(calculations.lateFee)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Juros ({config?.interest_rate_percentage || 0.033}% ao dia)</span>
+                        <span className="font-semibold text-red-600">
+                          + {formatCurrency(calculations.interest)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-red-300 dark:border-red-700 font-bold">
+                        <span>Total com Encargos</span>
+                        <span className="text-red-600">
+                          {formatCurrency(calculations.totalWithFees)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Observações adicionais sobre o recebimento..."
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Anexos */}
           <Card>
