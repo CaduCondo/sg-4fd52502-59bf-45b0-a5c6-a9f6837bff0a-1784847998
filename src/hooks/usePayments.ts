@@ -27,11 +27,13 @@ export const usePayments = () => {
         .from("payments")
         .select("*");
 
+      // ✅ CORREÇÃO CRÍTICA: Garantir que month sempre tenha padding (01-12)
       if (month !== "all") {
-        paymentsQuery = paymentsQuery.eq("reference_month", month.padStart(2, "0"));
+        const paddedMonth = String(month).padStart(2, "0");
+        paymentsQuery = paymentsQuery.eq("reference_month", paddedMonth);
       }
       if (year !== "all") {
-        paymentsQuery = paymentsQuery.eq("reference_year", year);
+        paymentsQuery = paymentsQuery.eq("reference_year", String(year));
       }
 
       const { data: paymentsData, error: paymentsError } = await paymentsQuery;

@@ -11,18 +11,48 @@ export async function createDepositInstallments(
     total_installments: number;
     amount: number;
     due_date: string;
-    payment_date?: string | null; // ✅ NOVO: payment_date opcional (só para 1ª parcela)
+    payment_date?: string | null;
     pix_code?: string | null;
   }>
 ): Promise<DepositInstallment[]> {
   try {
+    // ✅ CORREÇÃO CRÍTICA: Verificar se já existem parcelas antes de criar
+    const { data: existing, error: checkError } = await supabase
+      .from("deposit_installments")
+      .select("id, installment_number")
+      .eq("rental_id", rentalId);
+
+    if (checkError) throw checkError;
+
+    // Se já existem parcelas, não criar duplicatas
+    if (existing && existing.length > 0) {
+      console.warn(`⚠️ Parcelas de caução já existem para rental_id ${rentalId}. Não criando duplicatas.`);
+      return existing.map(item => ({
+        id: item.id,
+        rental_id: rentalId,
+        installment_number: item.installment_number,
+        total_installments: installments.length,
+        amount: 0,
+        due_date: "",
+        payment_date: null,
+        paid_amount: 0,
+        payment_method: null,
+        pix_code: null,
+        status: "pending",
+        notes: null,
+        attachments: [],
+        created_at: "",
+        updated_at: "",
+      })) as DepositInstallment[];
+    }
+
     const installmentsData = installments.map(inst => ({
       rental_id: rentalId,
       installment_number: inst.installment_number,
       installment_total: inst.total_installments,
       amount: inst.amount,
       due_date: inst.due_date,
-      payment_date: inst.payment_date || null, // ✅ Salva payment_date quando fornecido
+      payment_date: inst.payment_date || null,
       pix_code: inst.pix_code || null,
       status: "pending",
       paid_amount: 0,

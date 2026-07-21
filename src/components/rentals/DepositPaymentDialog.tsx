@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -172,32 +172,50 @@ export function DepositPaymentDialog({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!paymentDate) {
+    
+    if (!installment) {
       toast({
         title: "Erro",
-        description: "Informe a data de pagamento",
+        description: "Parcela não encontrada",
         variant: "destructive",
       });
       return;
     }
 
-    const paidValue = parseCurrencyToNumber(paidAmount);
-    if (paidValue <= 0) {
-      toast({
-        title: "Erro",
-        description: "Informe um valor válido",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
     try {
+      setLoading(true);
+
+      // ✅ CORREÇÃO: Buscar parcela do banco para garantir que existe
+      const { data: dbInstallment, error: fetchError } = await supabase
+        .from("deposit_installments")
+        .select("*")
+        .eq("id", installment.id)
+        .single();
+
+      if (fetchError || !dbInstallment) {
+        console.error("Erro ao buscar parcela:", fetchError);
+        toast({
+          title: "Erro",
+          description: "Parcela não encontrada no banco de dados. Por favor, recarregue a página.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const paidValue = parseCurrencyToNumber(paidAmount);
+      if (paidValue <= 0) {
+        toast({
+          title: "Erro",
+          description: "Informe um valor válido",
+          variant: "destructive",
+        });
+        return;
+      }
+
       let status: "pending" | "paid" | "partial" | "overdue" = "pending";
-      if (paidValue >= installment.amount) {
+      if (paidValue >= dbInstallment.amount) {
         status = "paid";
       } else if (paidValue > 0) {
         status = "partial";
@@ -238,7 +256,7 @@ export function DepositPaymentDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentDate, paymentMethod, paidAmount, notes, attachments, calculations, installment, onSuccess, onOpenChange]);
 
   const handleDelete = async () => {
     if (!confirm("Deseja realmente excluir este recebimento? O status voltará para Pendente.")) {
