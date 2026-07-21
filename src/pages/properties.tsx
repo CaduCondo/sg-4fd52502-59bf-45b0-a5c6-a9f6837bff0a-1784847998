@@ -385,8 +385,8 @@ export default function PropertiesPage() {
   return (
     <Layout>
       <SEO title="Imóveis - Gerenciador de Locações" />
-      <div id="properties-page" className="space-y-6 w-full max-w-full overflow-x-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full sm:w-auto">
             <h1 className="text-3xl font-bold mb-1">Imóveis</h1>
             <p className="text-sm text-muted-foreground">

@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List, Trash2, HelpCircle } from "lucide-react";
+import { Plus, LayoutGrid, List, Trash2, HelpCircle, Users } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
@@ -14,7 +14,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { SortableTable } from "@/components/ui/sortable-table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpDialog } from "@/components/HelpDialog";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
@@ -325,57 +325,65 @@ export default function TenantsPage() {
           </div>
         </ScrollReveal>
 
+        <TenantFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          sortBy="alphabetical"
+          onSortChange={() => {}}
+          totalCount={filteredTenants.length}
+        />
+
         <Card>
-          <CardContent className="py-4">
-            <TenantFilters
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              sortBy="alphabetical"
-              onSortChange={() => {}}
-              totalCount={filteredTenants.length}
-            />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Lista de Inquilinos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              {filteredTenants.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    {searchTerm || statusFilter.length > 0
+                      ? "Nenhum inquilino encontrado com os filtros aplicados." 
+                      : "Nenhum inquilino encontrado."}
+                  </p>
+                  {!searchTerm && statusFilter.length === 0 && (
+                    <Button id="tenants-create-first" onClick={handleCreateNew} className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeiro Inquilino
+                    </Button>
+                  )}
+                </div>
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTenants.map((tenant) => (
+                    <TenantCard
+                      key={tenant.id}
+                      tenant={tenant}
+                      onClick={() => handleViewTenant(tenant)}
+                      onDelete={() => handleDelete(tenant.id)}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <SortableTable
+                  data={filteredTenants}
+                  columns={tenantColumns}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  onRowClick={handleViewTenant}
+                  emptyMessage={searchTerm || statusFilter.length > 0 ? "Nenhum inquilino encontrado com os filtros aplicados." : "Nenhum inquilino encontrado."}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
-
-        {filteredTenants.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchTerm || statusFilter.length > 0
-                ? "Nenhum inquilino encontrado com os filtros aplicados." 
-                : "Nenhum inquilino encontrado."}
-            </p>
-            {!searchTerm && statusFilter.length === 0 && (
-              <Button id="tenants-create-first" onClick={handleCreateNew} className="mt-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Inquilino
-              </Button>
-            )}
-          </div>
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTenants.map((tenant) => (
-              <TenantCard
-                key={tenant.id}
-                tenant={tenant}
-                onClick={() => handleViewTenant(tenant)}
-                onDelete={() => handleDelete(tenant.id)}
-                viewMode={viewMode}
-              />
-            ))}
-          </div>
-        ) : (
-          <SortableTable
-            data={filteredTenants}
-            columns={tenantColumns}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onRowClick={handleViewTenant}
-            emptyMessage={searchTerm || statusFilter.length > 0 ? "Nenhum inquilino encontrado com os filtros aplicados." : "Nenhum inquilino encontrado."}
-          />
-        )}
 
         <TenantFormDialog
           open={dialogState.isOpen}

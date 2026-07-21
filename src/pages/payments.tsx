@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Grid3x3, List, Search, HelpCircle } from "lucide-react";
+import { Grid3x3, List, Search, HelpCircle, Receipt } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { Payment, Rental, Property, Tenant } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
@@ -728,9 +728,9 @@ export default function Payments() {
 
   return (
     <Layout>
-      <div id="payments-page" className="space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-1">Recebimentos</h1>
             <p className="text-sm text-muted-foreground">

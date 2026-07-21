@@ -856,589 +856,586 @@ export default function RentalsPage() {
   ], [getPropertyForRental, getTenantForRental, getRentalMonthlyRent, getStatusBadge, handleOpenDeleteDialog]);
 
   return (
-    <>
-      <SEO title="Locações - Gerenciador de Locações" />
-      <Layout>
-        <div id="rentals-page" className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold mb-1">Locações</h1>
-              <p className="text-sm text-muted-foreground">Gerencie os contratos de locação</p>
-            </div>
-            <div className="flex gap-3">
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">Locações</h1>
+            <p className="text-sm text-muted-foreground">Gerencie os contratos de locação</p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+            <div className="flex border rounded-lg overflow-hidden">
               <Button
-                variant="outline"
+                id="rentals-view-grid"
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setHelpOpen(true)}
+                onClick={() => setViewMode("grid")}
+                className="rounded-none"
               >
-                <HelpCircle className="h-4 w-4" />
+                <Grid3x3 className="h-4 w-4 mr-1.5" />
+                Grade
               </Button>
-              <div className="flex border rounded-lg overflow-hidden">
-                <Button
-                  id="rentals-view-grid"
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="rounded-none"
-                >
-                  <Grid3x3 className="h-4 w-4 mr-1.5" />
-                  Grade
-                </Button>
-                <Button
-                  id="rentals-view-table"
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="rounded-none"
-                >
-                  <List className="h-4 w-4 mr-1.5" />
-                  Lista
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Vacant Properties Card + New Rental Button */}
-          <div className="flex gap-[1%] mb-6">
-            <Card className="w-[39%]">
-              <CardHeader className="pb-2 pt-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Home className="h-4 w-4" />
-                  Imóveis Vagos ({loadingAvailable ? "..." : availableProperties.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-4">
-                {loadingAvailable ? (
-                  <div className="h-10 bg-muted animate-pulse rounded-lg" />
-                ) : availableProperties.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
-                ) : (
-                  <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um imóvel vago" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProperties.map((property) => {
-                        const location = locations.find(loc => loc.id === property.locationId);
-                        const displayName = location?.name || property.location || "Local não encontrado";
-                        const fullText = property.complement ? `${displayName} - ${property.complement}` : displayName;
-                        const value = formatCurrency(property.value || property.monthlyRent || 0);
-                        
-                        return (
-                          <SelectItem key={property.id} value={property.id}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <span className="flex-1 truncate">{fullText}</span>
-                              <span className="font-semibold text-emerald-600 whitespace-nowrap">
-                                {value}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="w-[39%]">
-              <CardHeader className="pb-2 pt-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="h-4 w-4" />
-                  Inquilinos Disponíveis ({loadingAvailable ? "..." : availableTenants.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-4">
-                {loadingAvailable ? (
-                  <div className="h-10 bg-muted animate-pulse rounded-lg" />
-                ) : availableTenants.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
-                ) : (
-                  <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um inquilino disponível" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTenants.map((tenant) => (
-                        <SelectItem key={tenant.id} value={tenant.id}>
-                          {tenant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="w-[20%] flex items-center justify-center">
-              <Button 
-                onClick={handleCreateNew}
-                className="h-auto py-4 px-6"
+              <Button
+                id="rentals-view-table"
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                className="rounded-none"
               >
-                <Plus className="h-5 w-5 mr-2" />
-                Nova Locação
+                <List className="h-4 w-4 mr-1.5" />
+                Lista
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Filtros de Busca e Status */}
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="rentals-search-input"
-                      placeholder="Buscar por inquilino, local ou complemento..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="w-full sm:w-[250px]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      Status:
-                    </span>
-                    <Select
-                      value={statusFilter}
-                      onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
-                    >
-                      <SelectTrigger id="rentals-status-filter">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="terminated">Encerrado</SelectItem>
-                        <SelectItem value="all">Todos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Rentals List */}
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Contratos de Locação ({filteredRentals.length})
+        {/* Vacant Properties Card + New Rental Button */}
+        <div className="flex gap-[1%] mb-6">
+          <Card className="w-[39%]">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Home className="h-4 w-4" />
+                Imóveis Vagos ({loadingAvailable ? "..." : availableProperties.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
-                  ))}
-                </div>
-              ) : filteredRentals.length === 0 ? (
-                <div className="space-y-4">
-                  <p className="text-muted-foreground text-center py-8">
-                    {searchTerm || statusFilter !== "all" 
-                      ? "Nenhuma locação encontrada com os filtros aplicados."
-                      : "Nenhuma locação cadastrada ainda."}
-                  </p>
-                  {statusFilter === "all" && !searchTerm && (
-                    <div className="flex justify-center">
-                      <Button id="rentals-create-first" onClick={handleCreateNew} disabled={!canCreateRental}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nova Locação
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredRentals.map((rental) => {
-                    const alert = calculateContractAlert(rental.endDate);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const isExpired = rental.endDate && new Date(rental.endDate) < today;
-                    const isVisuallyActive = rental.isActive && !isExpired;
-                    
-                    // Aplicar cores APENAS para contratos ativos dentro de 60 dias
-                    // Vermelho: ≤30 dias | Amarelo: 31-60 dias
-                    const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
-                    const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
-                    const badgeClasses = getAlertBadgeClasses(alert.level);
-
-                    return (
-                      <Card
-                        key={rental.id}
-                        className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${alertClasses} ${!isVisuallyActive ? "opacity-75 bg-slate-50" : ""}`}
-                        onClick={() => handleViewRental(rental)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                <h3 className="text-lg font-semibold text-blue-600 truncate">
-                                  {(() => {
-                                    const foundLocation = locations.find(loc => loc.id === rental.property?.locationId);
-                                    return foundLocation?.name || rental.property?.location || "Local não encontrado";
-                                  })()}
-                                </h3>
-                              </div>
-                              {rental.property?.complement && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 ml-6">
-                                  {rental.property.complement}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-                              {isVisuallyActive ? (
-                                <>
-                                  <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
-                                    Ativa
-                                  </Badge>
-                                  {alert.level !== "normal" && (
-                                    <Badge variant="outline" className={`text-xs whitespace-nowrap ${
-                                      alert.level === "critical" 
-                                        ? "border-red-500 text-red-700 bg-red-50" 
-                                        : "border-yellow-500 text-yellow-700 bg-yellow-50"
-                                    }`}>
-                                      <AlertTriangle className="h-3 w-3 mr-1 flex-shrink-0" />
-                                      <span>{alert.message}</span>
-                                    </Badge>
-                                  )}
-                                  {rentalTerminations[rental.id] && (
-                                    <Badge className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap">
-                                      Rescisão
-                                    </Badge>
-                                  )}
-                                </>
-                              ) : (
-                                <Badge className={isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
-                                  Encerrado
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mb-3 flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
-                          </div>
-
-                          <div className="mb-3 flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
-                            </p>
-                          </div>
-
-                          <div className="flex items-end justify-between gap-3 pt-3 border-t">
-                            <div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Valor do Aluguel
-                              </p>
-                              <p className="text-2xl font-bold text-emerald-600">
-                                {formatCurrency((rental.value || 0) + (rental.garageValue || 0))}
-                              </p>
-                            </div>
-                            {rental.isActive && (
-                              <div className="flex gap-1.5 flex-shrink-0">
-                                <Button
-                                  id={`rentals-history-${rental.id}`}
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 bg-gray-500 hover:bg-gray-600 text-white border-gray-500"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRentalForPaymentHistory(rental);
-                                  }}
-                                  title="Histórico de Pagamentos"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  id={`rentals-renew-${rental.id}`}
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRentalToRenew(rental);
-                                  }}
-                                  title="Renovar Contrato"
-                                >
-                                  <RefreshCw className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  id={`rentals-terminate-${rental.id}`}
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRentalToEnd(rental);
-                                  }}
-                                  title="Rescisão de Contrato"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  id={`rentals-delete-${rental.id}`}
-                                  variant="destructive"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => handleOpenDeleteDialog(rental, e)}
-                                  title="Excluir Locação"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+            <CardContent className="pb-4">
+              {loadingAvailable ? (
+                <div className="h-10 bg-muted animate-pulse rounded-lg" />
+              ) : availableProperties.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
               ) : (
-                <SortableTable
-                  data={filteredRentals}
-                  columns={rentalColumns}
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  onRowClick={handleViewRental}
-                  getRowClassName={(r) => {
-                    const alert = calculateContractAlert(r.endDate);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const isExpired = r.endDate && new Date(r.endDate) < today;
-                    const isVisuallyActive = r.isActive && !isExpired;
-                    const shouldShowAlert = r.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
-                    const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
-                    return `${alertClasses} ${!isVisuallyActive ? "opacity-75" : ""}`;
-                  }}
-                  emptyMessage="Nenhuma locação encontrada."
-                />
+                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um imóvel vago" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableProperties.map((property) => {
+                      const location = locations.find(loc => loc.id === property.locationId);
+                      const displayName = location?.name || property.location || "Local não encontrado";
+                      const fullText = property.complement ? `${displayName} - ${property.complement}` : displayName;
+                      const value = formatCurrency(property.value || property.monthlyRent || 0);
+                      
+                      return (
+                        <SelectItem key={property.id} value={property.id}>
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span className="flex-1 truncate">{fullText}</span>
+                            <span className="font-semibold text-emerald-600 whitespace-nowrap">
+                              {value}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               )}
             </CardContent>
           </Card>
 
-          {activeRentals.length === 0 && rentals.length === 0 && !loading && (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Home className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">Nenhuma locação cadastrada</h3>
-                <p className="text-muted-foreground mb-4">
-                  Comece criando sua primeira locação
-                </p>
-                <Button onClick={handleCreateNew} disabled={!canCreateRental}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nova Locação
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="w-[39%]">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="h-4 w-4" />
+                Inquilinos Disponíveis ({loadingAvailable ? "..." : availableTenants.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+              {loadingAvailable ? (
+                <div className="h-10 bg-muted animate-pulse rounded-lg" />
+              ) : availableTenants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
+              ) : (
+                <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um inquilino disponível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="w-[20%] flex items-center justify-center">
+            <Button 
+              onClick={handleCreateNew}
+              className="h-auto py-4 px-6"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nova Locação
+            </Button>
+          </div>
         </div>
 
-        <RentalFormDialog
-          open={isRentalDialogOpen}
-          onOpenChange={setIsRentalDialogOpen}
-          availableProperties={availableProperties}
-          availableTenants={availableTenants}
-          properties={allProperties}
-          tenants={allTenants}
-          locations={locations}
-          onSuccess={handleDialogSuccess}
-          rental={selectedRental}
-          isViewMode={isViewMode}
-          isLoadingData={loadingAdditionalData}
-          preselectedPropertyId={selectedPropertyId}
-          preselectedTenantId={selectedTenantId}
-        />
-
-        <RentalTerminationDialog
-          open={!!rentalToEnd}
-          onOpenChange={(open) => !open && setRentalToEnd(null)}
-          rental={rentalToEnd}
-          onConfirm={handleConfirmTermination}
-        />
-
-        {/* Dialog Step 1: Confirmar exclusão da locação */}
-        <AlertDialog 
-          open={!!rentalToDelete && deleteStep === 1} 
-          onOpenChange={(open) => {
-            if (!open) {
-              setRentalToDelete(null);
-              setPaymentCounts(null);
-              setDeleteStep(1);
-              setDeleteChoices({ pending: false, paid: false });
-            }
-          }}
-        >
-          <AlertDialogContent id="rentals-delete-confirm-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar exclusão da locação</AlertDialogTitle>
-              <AlertDialogDescription className="space-y-4">
-                <p>Esta locação possui:</p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                  <p className="font-semibold text-blue-900">📊 Histórico Financeiro:</p>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s)</li>
-                    <li>• <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is)</li>
-                  </ul>
+        {/* Filtros de Busca e Status */}
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="rentals-search-input"
+                    placeholder="Buscar por inquilino, local ou complemento..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <p className="font-semibold">Tem certeza que deseja deletar esta locação?</p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel id="rentals-delete-cancel-1" className="w-full sm:w-auto">Não</AlertDialogCancel>
-              <Button
-                id="rentals-delete-confirm-1"
-                onClick={() => {
-                  if (paymentCounts && paymentCounts.pending > 0) {
-                    setDeleteStep(2); // Ir para pergunta sobre pendentes
-                  } else if (paymentCounts && paymentCounts.paid > 0) {
-                    setDeleteStep(3); // Pular para pergunta sobre pagos
-                  } else {
-                    handleDeleteRental(); // Sem recebimentos, deletar direto
-                  }
-                }}
-                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Sim
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </div>
 
-        {/* Dialog Step 2: Deletar recebimentos pendentes? */}
-        <AlertDialog 
-          open={!!rentalToDelete && deleteStep === 2} 
-          onOpenChange={(open) => {
-            if (!open) {
-              setRentalToDelete(null);
-              setPaymentCounts(null);
-              setDeleteStep(1);
-              setDeleteChoices({ pending: false, paid: false });
-            }
-          }}
-        >
-          <AlertDialogContent id="rentals-delete-pending-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Deletar recebimentos pendentes?</AlertDialogTitle>
-              <AlertDialogDescription className="space-y-4">
-                <p>Esta locação possui <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s).</p>
-                <p className="font-semibold">Deseja deletar também os recebimentos pendentes?</p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                id="rentals-delete-pending-no"
-                onClick={() => {
-                  setDeleteChoices(prev => ({ ...prev, pending: false }));
-                  if (paymentCounts && paymentCounts.paid > 0) {
-                    setDeleteStep(3); // Ir para pergunta sobre pagos
-                  } else {
-                    handleDeleteRental(); // Sem pagos, deletar agora
-                  }
-                }}
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                Não
-              </Button>
-              <Button
-                id="rentals-delete-pending-yes"
-                onClick={() => {
-                  setDeleteChoices(prev => ({ ...prev, pending: true }));
-                  if (paymentCounts && paymentCounts.paid > 0) {
-                    setDeleteStep(3); // Ir para pergunta sobre pagos
-                  } else {
-                    handleDeleteRental(); // Sem pagos, deletar agora
-                  }
-                }}
-                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Sim
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Dialog Step 3: Deletar recebimentos pagos? */}
-        <AlertDialog 
-          open={!!rentalToDelete && deleteStep === 3} 
-          onOpenChange={(open) => {
-            if (!open) {
-              setRentalToDelete(null);
-              setPaymentCounts(null);
-              setDeleteStep(1);
-              setDeleteChoices({ pending: false, paid: false });
-            }
-          }}
-        >
-          <AlertDialogContent id="rentals-delete-paid-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Deletar recebimentos pagos/parciais?</AlertDialogTitle>
-              <AlertDialogDescription className="space-y-4">
-                <p>Esta locação possui <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is).</p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-                  <p className="font-semibold text-amber-900">⚠️ Atenção:</p>
-                  <p className="text-sm text-amber-800">
-                    Deletar recebimentos pagos remove o histórico financeiro. 
-                    Esta ação pode impactar relatórios contábeis.
-                  </p>
+              <div className="w-full sm:w-[250px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    Status:
+                  </span>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
+                  >
+                    <SelectTrigger id="rentals-status-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="terminated">Encerrado</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <p className="font-semibold">Deseja deletar também os recebimentos pagos/parciais?</p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                id="rentals-delete-paid-no"
-                onClick={() => {
-                  setDeleteChoices(prev => ({ ...prev, paid: false }));
-                  handleDeleteRental();
-                }}
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                Não
-              </Button>
-              <Button
-                id="rentals-delete-paid-yes"
-                onClick={() => {
-                  setDeleteChoices(prev => ({ ...prev, paid: true }));
-                  handleDeleteRental();
-                }}
-                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Sim
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <AlertDialog open={!!rentalToRenew} onOpenChange={() => setRentalToRenew(null)}>
-          <AlertDialogContent id="rentals-renew-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Renovação</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que você deseja adicionar mais 1 ano de contrato a essa locação?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel id="rentals-renew-cancel">Não</AlertDialogCancel>
-              <AlertDialogAction id="rentals-renew-confirm" onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
-                Sim
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Rentals List */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Contratos de Locação ({filteredRentals.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+                ))}
+              </div>
+            ) : filteredRentals.length === 0 ? (
+              <div className="space-y-4">
+                <p className="text-muted-foreground text-center py-8">
+                  {searchTerm || statusFilter !== "all" 
+                    ? "Nenhuma locação encontrada com os filtros aplicados."
+                    : "Nenhuma locação cadastrada ainda."}
+                </p>
+                {statusFilter === "all" && !searchTerm && (
+                  <div className="flex justify-center">
+                    <Button id="rentals-create-first" onClick={handleCreateNew} disabled={!canCreateRental}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nova Locação
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRentals.map((rental) => {
+                  const alert = calculateContractAlert(rental.endDate);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const isExpired = rental.endDate && new Date(rental.endDate) < today;
+                  const isVisuallyActive = rental.isActive && !isExpired;
+                  
+                  // Aplicar cores APENAS para contratos ativos dentro de 60 dias
+                  // Vermelho: ≤30 dias | Amarelo: 31-60 dias
+                  const shouldShowAlert = rental.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
+                  const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
+                  const badgeClasses = getAlertBadgeClasses(alert.level);
 
-        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="rentals" />
-      </Layout>
-    </>
+                  return (
+                    <Card
+                      key={rental.id}
+                      className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${alertClasses} ${!isVisuallyActive ? "opacity-75 bg-slate-50" : ""}`}
+                      onClick={() => handleViewRental(rental)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <h3 className="text-lg font-semibold text-blue-600 truncate">
+                                {(() => {
+                                  const foundLocation = locations.find(loc => loc.id === rental.property?.locationId);
+                                  return foundLocation?.name || rental.property?.location || "Local não encontrado";
+                                })()}
+                              </h3>
+                            </div>
+                            {rental.property?.complement && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 ml-6">
+                                {rental.property.complement}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+                            {isVisuallyActive ? (
+                              <>
+                                <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
+                                  Ativa
+                                </Badge>
+                                {alert.level !== "normal" && (
+                                  <Badge variant="outline" className={`text-xs whitespace-nowrap ${
+                                    alert.level === "critical" 
+                                      ? "border-red-500 text-red-700 bg-red-50" 
+                                      : "border-yellow-500 text-yellow-700 bg-yellow-50"
+                                  }`}>
+                                    <AlertTriangle className="h-3 w-3 mr-1 flex-shrink-0" />
+                                    <span>{alert.message}</span>
+                                  </Badge>
+                                )}
+                                {rentalTerminations[rental.id] && (
+                                  <Badge className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap">
+                                    Rescisão
+                                  </Badge>
+                                )}
+                              </>
+                            ) : (
+                              <Badge className={isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
+                                Encerrado
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mb-3 flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
+                        </div>
+
+                        <div className="mb-3 flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-end justify-between gap-3 pt-3 border-t">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                              Valor do Aluguel
+                            </p>
+                            <p className="text-2xl font-bold text-emerald-600">
+                              {formatCurrency((rental.value || 0) + (rental.garageValue || 0))}
+                            </p>
+                          </div>
+                          {rental.isActive && (
+                            <div className="flex gap-1.5 flex-shrink-0">
+                              <Button
+                                id={`rentals-history-${rental.id}`}
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 bg-gray-500 hover:bg-gray-600 text-white border-gray-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRentalForPaymentHistory(rental);
+                                }}
+                                title="Histórico de Pagamentos"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                id={`rentals-renew-${rental.id}`}
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRentalToRenew(rental);
+                                }}
+                                title="Renovar Contrato"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                id={`rentals-terminate-${rental.id}`}
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRentalToEnd(rental);
+                                }}
+                                title="Rescisão de Contrato"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                id={`rentals-delete-${rental.id}`}
+                                variant="destructive"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handleOpenDeleteDialog(rental, e)}
+                                title="Excluir Locação"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <SortableTable
+                data={filteredRentals}
+                columns={rentalColumns}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                onRowClick={handleViewRental}
+                getRowClassName={(r) => {
+                  const alert = calculateContractAlert(r.endDate);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const isExpired = r.endDate && new Date(r.endDate) < today;
+                  const isVisuallyActive = r.isActive && !isExpired;
+                  const shouldShowAlert = r.isActive && !isExpired && (alert.level === "warning" || alert.level === "critical");
+                  const alertClasses = shouldShowAlert ? getAlertClasses(alert.level) : "";
+                  return `${alertClasses} ${!isVisuallyActive ? "opacity-75" : ""}`;
+                }}
+                emptyMessage="Nenhuma locação encontrada."
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {activeRentals.length === 0 && rentals.length === 0 && !loading && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Home className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma locação cadastrada</h3>
+              <p className="text-muted-foreground mb-4">
+                Comece criando sua primeira locação
+              </p>
+              <Button onClick={handleCreateNew} disabled={!canCreateRental}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Locação
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <RentalFormDialog
+        open={isRentalDialogOpen}
+        onOpenChange={setIsRentalDialogOpen}
+        availableProperties={availableProperties}
+        availableTenants={availableTenants}
+        properties={allProperties}
+        tenants={allTenants}
+        locations={locations}
+        onSuccess={handleDialogSuccess}
+        rental={selectedRental}
+        isViewMode={isViewMode}
+        isLoadingData={loadingAdditionalData}
+        preselectedPropertyId={selectedPropertyId}
+        preselectedTenantId={selectedTenantId}
+      />
+
+      <RentalTerminationDialog
+        open={!!rentalToEnd}
+        onOpenChange={(open) => !open && setRentalToEnd(null)}
+        rental={rentalToEnd}
+        onConfirm={handleConfirmTermination}
+      />
+
+      {/* Dialog Step 1: Confirmar exclusão da locação */}
+      <AlertDialog 
+        open={!!rentalToDelete && deleteStep === 1} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setRentalToDelete(null);
+            setPaymentCounts(null);
+            setDeleteStep(1);
+            setDeleteChoices({ pending: false, paid: false });
+          }
+        }}
+      >
+        <AlertDialogContent id="rentals-delete-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão da locação</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>Esta locação possui:</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <p className="font-semibold text-blue-900">📊 Histórico Financeiro:</p>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s)</li>
+                  <li>• <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is)</li>
+                </ul>
+              </div>
+              <p className="font-semibold">Tem certeza que deseja deletar esta locação?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel id="rentals-delete-cancel-1" className="w-full sm:w-auto">Não</AlertDialogCancel>
+            <Button
+              id="rentals-delete-confirm-1"
+              onClick={() => {
+                if (paymentCounts && paymentCounts.pending > 0) {
+                  setDeleteStep(2); // Ir para pergunta sobre pendentes
+                } else if (paymentCounts && paymentCounts.paid > 0) {
+                  setDeleteStep(3); // Pular para pergunta sobre pagos
+                } else {
+                  handleDeleteRental(); // Sem recebimentos, deletar direto
+                }
+              }}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Step 2: Deletar recebimentos pendentes? */}
+      <AlertDialog 
+        open={!!rentalToDelete && deleteStep === 2} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setRentalToDelete(null);
+            setPaymentCounts(null);
+            setDeleteStep(1);
+            setDeleteChoices({ pending: false, paid: false });
+          }
+        }}
+      >
+        <AlertDialogContent id="rentals-delete-pending-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deletar recebimentos pendentes?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>Esta locação possui <strong>{paymentCounts?.pending || 0}</strong> recebimento(s) pendente(s).</p>
+              <p className="font-semibold">Deseja deletar também os recebimentos pendentes?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              id="rentals-delete-pending-no"
+              onClick={() => {
+                setDeleteChoices(prev => ({ ...prev, pending: false }));
+                if (paymentCounts && paymentCounts.paid > 0) {
+                  setDeleteStep(3); // Ir para pergunta sobre pagos
+                } else {
+                  handleDeleteRental(); // Sem pagos, deletar agora
+                }
+              }}
+              className="w-full sm:w-auto"
+              variant="outline"
+            >
+              Não
+            </Button>
+            <Button
+              id="rentals-delete-pending-yes"
+              onClick={() => {
+                setDeleteChoices(prev => ({ ...prev, pending: true }));
+                if (paymentCounts && paymentCounts.paid > 0) {
+                  setDeleteStep(3); // Ir para pergunta sobre pagos
+                } else {
+                  handleDeleteRental(); // Sem pagos, deletar agora
+                }
+              }}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Step 3: Deletar recebimentos pagos? */}
+      <AlertDialog 
+        open={!!rentalToDelete && deleteStep === 3} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setRentalToDelete(null);
+            setPaymentCounts(null);
+            setDeleteStep(1);
+            setDeleteChoices({ pending: false, paid: false });
+          }
+        }}
+      >
+        <AlertDialogContent id="rentals-delete-paid-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deletar recebimentos pagos/parciais?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>Esta locação possui <strong>{paymentCounts?.paid || 0}</strong> recebimento(s) pago(s)/parcial(is).</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                <p className="font-semibold text-amber-900">⚠️ Atenção:</p>
+                <p className="text-sm text-amber-800">
+                  Deletar recebimentos pagos remove o histórico financeiro. 
+                  Esta ação pode impactar relatórios contábeis.
+                </p>
+              </div>
+              <p className="font-semibold">Deseja deletar também os recebimentos pagos/parciais?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              id="rentals-delete-paid-no"
+              onClick={() => {
+                setDeleteChoices(prev => ({ ...prev, paid: false }));
+                handleDeleteRental();
+              }}
+              className="w-full sm:w-auto"
+              variant="outline"
+            >
+              Não
+            </Button>
+            <Button
+              id="rentals-delete-paid-yes"
+              onClick={() => {
+                setDeleteChoices(prev => ({ ...prev, paid: true }));
+                handleDeleteRental();
+              }}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!rentalToRenew} onOpenChange={() => setRentalToRenew(null)}>
+        <AlertDialogContent id="rentals-renew-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Renovação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que você deseja adicionar mais 1 ano de contrato a essa locação?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel id="rentals-renew-cancel">Não</AlertDialogCancel>
+            <AlertDialogAction id="rentals-renew-confirm" onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
+              Sim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="rentals" />
+    </Layout>
   );
 }
