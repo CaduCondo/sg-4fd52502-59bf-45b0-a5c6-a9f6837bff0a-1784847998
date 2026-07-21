@@ -72,6 +72,29 @@ export const RentalFormDialog = memo(function RentalFormDialog({
   const [selectedInstallmentNumber, setSelectedInstallmentNumber] = useState<number | null>(null);
   const [loadedInstallment, setLoadedInstallment] = useState<any>(null);
 
+  useEffect(() => {
+    const loadDepositInstallments = async () => {
+      if (rental && open) {
+        try {
+          const { data, error } = await supabase
+            .from("deposit_installments")
+            .select("*")
+            .eq("rental_id", rental.id)
+            .order("installment_number");
+
+          if (!error && data) {
+            // Armazenar no rental
+            rental.depositInstallmentsList = data as any[];
+          }
+        } catch (err) {
+          console.error("Erro ao carregar parcelas:", err);
+        }
+      }
+    };
+
+    loadDepositInstallments();
+  }, [rental, open]);
+
   const loadInstallmentFromDatabase = useCallback(async (rentalId: string, installmentNum: number) => {
     try {
       const { data, error } = await supabase
@@ -731,9 +754,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                     }
                   }}
                   className={`w-full h-10 ${
-                    rental?.depositInstallments?.find(d => d.installment_number === 1)?.status === "paid"
+                    rental?.depositInstallmentsList?.find(d => d.installment_number === 1)?.status === "paid"
                       ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                      : rental?.depositInstallments?.find(d => d.installment_number === 1)?.status === "pending"
+                      : rental?.depositInstallmentsList?.find(d => d.installment_number === 1)?.status === "pending"
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                       : ""
                   }`}
@@ -839,9 +862,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                           }
                         }}
                         className={`w-full ${
-                          rental?.depositInstallments?.find(d => d.installment_number === 2)?.status === "paid"
+                          rental?.depositInstallmentsList?.find(d => d.installment_number === 2)?.status === "paid"
                             ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                            : rental?.depositInstallments?.find(d => d.installment_number === 2)?.status === "pending"
+                            : rental?.depositInstallmentsList?.find(d => d.installment_number === 2)?.status === "pending"
                             ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                             : ""
                         }`}
@@ -899,9 +922,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                           }
                         }}
                         className={`w-full ${
-                          rental?.depositInstallments?.find(d => d.installment_number === 3)?.status === "paid"
+                          rental?.depositInstallmentsList?.find(d => d.installment_number === 3)?.status === "paid"
                             ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                            : rental?.depositInstallments?.find(d => d.installment_number === 3)?.status === "pending"
+                            : rental?.depositInstallmentsList?.find(d => d.installment_number === 3)?.status === "pending"
                             ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
                             : ""
                         }`}

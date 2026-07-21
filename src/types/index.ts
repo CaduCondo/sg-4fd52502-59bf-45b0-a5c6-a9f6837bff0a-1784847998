@@ -200,6 +200,7 @@ export interface Rental {
   
   // Deposit Installments
   depositInstallments?: number;
+  depositInstallmentsList?: DepositInstallment[]; // Array de parcelas carregadas do banco
   depositInstallment1?: number; // Added alias for consistency
   depositInstallment1PaymentDate?: string; // Added alias
   depositInstallment1PixCode?: string; // Added alias
