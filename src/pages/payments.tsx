@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Grid3x3, List, Search } from "lucide-react";
+import { Grid3x3, List, Search, HelpCircle } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { Payment, Rental, Property, Tenant } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
@@ -19,6 +19,7 @@ import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { SortableTable } from "@/components/ui/sortable-table";
 import { supabase } from "@/integrations/supabase/client";
 import { getAllDepositInstallments } from "@/services/depositInstallmentService";
+import { HelpDialog } from "@/components/HelpDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export default function Payments() {
   const { toast } = useToast();
   const { user } = useAuth();
   const mountedRef = useRef(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   
   // Permissões baseadas no sistema centralizado
   const permissions = useMemo(() => ({
@@ -735,27 +737,37 @@ export default function Payments() {
               Gerencie os recebimentos de aluguéis
             </p>
           </div>
-          <div className="flex gap-1 border rounded-lg p-1">
+          <div className="flex gap-2">
             <Button
-              id="payments-view-grid"
-              variant={uiState.viewMode === "grid" ? "default" : "ghost"}
+              variant="outline"
               size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
-              className="h-8 px-3"
+              onClick={() => setHelpOpen(true)}
+              className="h-9"
             >
-              <Grid3x3 className="h-4 w-4 mr-1.5" />
-              Grade
+              <HelpCircle className="h-4 w-4" />
             </Button>
-            <Button
-              id="payments-view-list"
-              variant={uiState.viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
-              className="h-8 px-3"
-            >
-              <List className="h-4 w-4 mr-1.5" />
-              Lista
-            </Button>
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                id="payments-view-grid"
+                variant={uiState.viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
+                className="h-8 px-3"
+              >
+                <Grid3x3 className="h-4 w-4 mr-1.5" />
+                Grade
+              </Button>
+              <Button
+                id="payments-view-list"
+                variant={uiState.viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
+                className="h-8 px-3"
+              >
+                <List className="h-4 w-4 mr-1.5" />
+                Lista
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -956,6 +968,8 @@ export default function Payments() {
           )}
         </DialogContent>
       </Dialog>
+
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="payments" />
     </Layout>
   );
 }

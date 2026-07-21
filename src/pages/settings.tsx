@@ -45,7 +45,8 @@ import {
   Trash2,
   Users,
   Shield,
-  Wallet
+  Wallet,
+  HelpCircle,
 } from "lucide-react";
 
 // Services
@@ -78,11 +79,13 @@ import { UserDialog } from "@/components/settings/UserDialog";
 import { useUsers } from "@/hooks/useUsers";
 import { usePermissions } from "@/hooks/usePermissions";
 import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
+import { HelpDialog } from "@/components/HelpDialog";
 
 export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("company");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Config State
   const [config, setConfig] = useState<CompanyConfig>({
@@ -450,10 +453,21 @@ export default function Settings() {
     <Layout>
       <div id="settings-page" className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Configurações</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie os dados da empresa, usuários e parâmetros do sistema
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Configurações</h1>
+              <p className="text-muted-foreground mt-2">
+                Gerencie os dados da empresa, usuários e parâmetros do sistema
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -1043,6 +1057,8 @@ export default function Settings() {
             location={selectedLocation}
           />
         )}
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="settings" />
       </div>
     </Layout>
   );

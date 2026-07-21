@@ -67,6 +67,7 @@ import {
   ChevronDown,
   Check,
   Edit2,
+  HelpCircle,
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,6 +79,7 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { Payment, Property, Rental, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import { HelpDialog } from "@/components/HelpDialog";
 
 type SortField = "parc" | "local" | "complement" | "tenant" | "period" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
@@ -490,6 +492,7 @@ export default function Financial() {
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [locationsMap, setLocationsMap] = useState<Map<string, string>>(new Map());
+  const [helpOpen, setHelpOpen] = useState(false);
   
   // Novo estado para armazenar as despesas com location_id
   const [locationExpensesData, setLocationExpensesData] = useState<Array<{amount: number, location_id: string}>>([]);
@@ -1649,10 +1652,21 @@ export default function Financial() {
       <div id="financial-page" className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
         <ScrollReveal>
           <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-1">Financeiro</h1>
-            <p className="text-sm text-muted-foreground">
-              Acompanhe receitas, despesas e comissões
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold mb-1">Financeiro</h1>
+                <p className="text-sm text-muted-foreground">
+                  Acompanhe receitas, despesas e comissões
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHelpOpen(true)}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </ScrollReveal>
 
@@ -2305,6 +2319,8 @@ export default function Financial() {
             </TabsContent>
           )}
         </Tabs>
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="financial" />
       </div>
     </Layout>
   );
