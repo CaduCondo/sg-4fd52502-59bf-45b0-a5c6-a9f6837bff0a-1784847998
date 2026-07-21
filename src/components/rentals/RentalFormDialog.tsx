@@ -580,8 +580,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           </div>
 
           {/* Dados do Contrato */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="rental-start-date">Data Início*</Label>
               <Input
                 id="rental-start-date"
@@ -593,7 +593,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="rental-end-date">Data Fim*</Label>
               <Input
                 id="rental-end-date"
@@ -604,11 +604,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 disabled={isFieldDisabled}
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="rental-payment-day">Dia Pagamento*</Label>
+            <div className="space-y-2">
+              <Label htmlFor="rental-payment-day">Dia Vencimento*</Label>
               <Select
                 value={paymentDay}
                 onValueChange={setPaymentDay}
@@ -626,23 +624,26 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rental-has-garage"
-                  checked={hasGarage}
-                  onCheckedChange={(checked) => {
-                    setHasGarage(checked as boolean);
-                    if (!checked) setGarageValue("");
-                  }}
-                  disabled={isFieldDisabled}
-                />
-                <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm">
-                  Vaga Garagem?
-                </Label>
-              </div>
-              {hasGarage && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex items-center space-x-2 md:col-span-1">
+              <Checkbox
+                id="rental-has-garage"
+                checked={hasGarage}
+                onCheckedChange={(checked) => {
+                  setHasGarage(checked as boolean);
+                  if (!checked) setGarageValue("");
+                }}
+                disabled={isFieldDisabled}
+              />
+              <Label htmlFor="rental-has-garage" className="cursor-pointer text-sm">
+                Vaga Garagem?
+              </Label>
+            </div>
+            {hasGarage && (
+              <div className="space-y-2 md:col-span-3">
+                <Label htmlFor="rental-garage-value">Valor Vaga Garagem</Label>
                 <Input
                   id="rental-garage-value"
                   value={garageValue}
@@ -650,8 +651,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                   placeholder="R$ 0,00"
                   disabled={isFieldDisabled}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 p-4 border rounded-md bg-muted/20">
