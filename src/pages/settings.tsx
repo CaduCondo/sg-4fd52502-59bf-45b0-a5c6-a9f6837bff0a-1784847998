@@ -47,6 +47,7 @@ import {
   Shield,
   Wallet,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 
 // Services
@@ -1059,6 +1060,19 @@ export default function Settings() {
         )}
 
         <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} page="settings" />
+
+        {/* Link para Manual */}
+        <div className="fixed bottom-4 right-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open('/manual.html', '_blank')}
+            className="shadow-lg"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Manual do Sistema
+          </Button>
+        </div>
       </div>
     </Layout>
   );

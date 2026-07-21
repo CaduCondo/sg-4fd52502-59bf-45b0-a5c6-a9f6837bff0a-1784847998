@@ -98,7 +98,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
-      <div id="dashboard-page" className="p-4 md:p-6 space-y-6">
+      <div id="dashboard-page" className="px-4 sm:px-6 py-4 sm:py-6 space-y-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
           <p className="text-sm text-muted-foreground">

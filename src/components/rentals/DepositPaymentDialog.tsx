@@ -267,110 +267,60 @@ export function DepositPaymentDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Blocos lado a lado: Informações do Caução + Formação de Valores */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Informações do Caução */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Informações do Caução
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Parcela</span>
-                  <span className="font-semibold">
-                    {installment.installment_number}/{installment.total_installments}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Valor da Parcela</span>
-                  <span className="font-bold text-green-600">{formatCurrency(installment.amount)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Data de Vencimento</span>
-                  <span className="font-medium">
-                    {installment.due_date
-                      ? format(new Date(installment.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge
-                    variant={
-                      installment.status === "paid"
-                        ? "default"
-                        : installment.status === "overdue"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
-                    {installment.status === "paid"
-                      ? "Pago"
+          {/* Informações do Caução */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Informações do Caução
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-muted-foreground">Parcela</span>
+                <span className="font-semibold">
+                  {installment.installment_number}/{installment.total_installments}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-muted-foreground">Valor da Parcela</span>
+                <span className="font-bold text-green-600">{formatCurrency(installment.amount)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-muted-foreground">Data de Vencimento</span>
+                <span className="font-medium">
+                  {installment.due_date
+                    ? format(new Date(installment.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-muted-foreground">Status</span>
+                <Badge
+                  variant={
+                    installment.status === "paid"
+                      ? "default"
                       : installment.status === "overdue"
-                      ? "Atrasado"
-                      : "Pendente"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                      ? "destructive"
+                      : "secondary"
+                  }
+                >
+                  {installment.status === "paid"
+                    ? "Pago"
+                    : installment.status === "overdue"
+                    ? "Atrasado"
+                    : "Pendente"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Formação de Valores */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Formação de Valores
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm">Valor do Caução</span>
-                  <span className="font-semibold">{formatCurrency(installment.amount)}</span>
-                </div>
-
-                {calculations.daysLate > 0 && (
-                  <>
-                    <div className="flex justify-between items-center py-2 bg-red-50 dark:bg-red-950/20 px-3 -mx-3 rounded">
-                      <span className="text-sm text-red-700 dark:text-red-400">
-                        Atraso: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-sm">Multa ({config?.late_fee_percentage || 2}%)</span>
-                      <span className="font-semibold text-red-600">
-                        + {formatCurrency(calculations.lateFee)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-sm">
-                        Juros ({config?.interest_rate_percentage || 0.033}% ao dia)
-                      </span>
-                      <span className="font-semibold text-red-600">
-                        + {formatCurrency(calculations.interest)}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex justify-between items-center py-3 bg-blue-50 dark:bg-blue-950/20 px-3 -mx-3 rounded mt-2">
-                  <span className="font-semibold">Total a Pagar</span>
-                  <span className="font-bold text-lg text-blue-600 dark:text-blue-400">
-                    {formatCurrency(calculations.totalWithFees)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Dados do Recebimento */}
+          {/* Dados do Recebimento do Caução */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Dados do Recebimento
+                Dados do Recebimento do Caução
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -394,9 +344,12 @@ export function DepositPaymentDialog({
                     <SelectContent>
                       <SelectItem value="pix">PIX</SelectItem>
                       <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="transferencia">Transferência Bancária</SelectItem>
+                      <SelectItem value="debito">Débito em Conta</SelectItem>
                       <SelectItem value="boleto">Boleto</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -412,6 +365,34 @@ export function DepositPaymentDialog({
                   />
                 </div>
               </div>
+
+              {calculations.daysLate > 0 && (
+                <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <div className="text-sm font-semibold text-red-700 dark:text-red-400">
+                    Atraso: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Multa ({config?.late_fee_percentage || 2}%)</span>
+                      <span className="font-semibold text-red-600">
+                        + {formatCurrency(calculations.lateFee)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Juros ({config?.interest_rate_percentage || 0.033}% ao dia)</span>
+                      <span className="font-semibold text-red-600">
+                        + {formatCurrency(calculations.interest)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-red-300 dark:border-red-700 font-bold">
+                      <span>Total com Encargos</span>
+                      <span className="text-red-600">
+                        {formatCurrency(calculations.totalWithFees)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="notes">Observações</Label>
@@ -436,25 +417,26 @@ export function DepositPaymentDialog({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("depositPaymentFile")?.click()}
-                >
-                  <Paperclip className="mr-2 h-4 w-4" />
-                  Anexar Comprovante
-                </Button>
                 <input
                   id="depositPaymentFile"
                   type="file"
                   accept="image/*,.pdf"
+                  capture="environment"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileUpload(file);
                   }}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => document.getElementById("depositPaymentFile")?.click()}
+                >
+                  <Paperclip className="mr-2 h-4 w-4" />
+                  Escolher Arquivo
+                </Button>
 
                 {attachments.length > 0 && (
                   <div className="space-y-2">

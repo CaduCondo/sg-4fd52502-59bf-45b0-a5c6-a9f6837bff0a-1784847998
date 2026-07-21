@@ -730,7 +730,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                       }
                     }
                   }}
-                  className="w-full h-10"
+                  className={`w-full h-10 ${
+                    rental?.depositInstallment1Status === "paid"
+                      ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
+                      : rental?.depositInstallment1Status === "pending"
+                      ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
+                      : ""
+                  }`}
                 >
                   Recebimento
                 </Button>
@@ -832,7 +838,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                             }
                           }
                         }}
-                        className="w-full"
+                        className={`w-full ${
+                          rental?.depositInstallment2Status === "paid"
+                            ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
+                            : rental?.depositInstallment2Status === "pending"
+                            ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
+                            : ""
+                        }`}
                       >
                         Recebimento
                       </Button>
@@ -886,7 +898,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                             }
                           }
                         }}
-                        className="w-full"
+                        className={`w-full ${
+                          rental?.depositInstallment3Status === "paid"
+                            ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
+                            : rental?.depositInstallment3Status === "pending"
+                            ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
+                            : ""
+                        }`}
                       >
                         Recebimento
                       </Button>

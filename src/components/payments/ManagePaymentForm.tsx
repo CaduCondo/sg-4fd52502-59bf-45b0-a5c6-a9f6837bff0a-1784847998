@@ -1048,6 +1048,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     id="payment-file-upload"
                     type="file"
                     accept="image/*,.pdf,.doc,.docx"
+                    capture="environment"
                     className="hidden"
                     onChange={(e) => {
                       const index = attachments.length;
@@ -1064,31 +1065,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   >
                     <Paperclip className="mr-2 h-5 w-5" />
                     Escolher Arquivo
-                  </Button>
-                </div>
-
-                <div className="flex-1 sm:hidden">
-                  <input
-                    id="payment-camera-capture"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const index = attachments.length;
-                      addAttachment();
-                      handleFileChange(e, index);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12"
-                    onClick={() => document.getElementById("payment-camera-capture")?.click()}
-                    disabled={uploadingFile}
-                  >
-                    <Camera className="mr-2 h-5 w-5" />
-                    Tirar Foto
                   </Button>
                 </div>
               </div>
