@@ -66,7 +66,7 @@ export function DepositPaymentDialog({
     const loadPaymentMethods = async () => {
       try {
         const methods = await getAllPaymentMethods();
-        setPaymentMethodsTable(methods.map(m => ({ code: m.code, name: m.name })));
+        setPaymentMethodsTable(methods.filter(m => m.active).map(m => ({ code: m.code, name: m.name })));
       } catch (err) {
         console.error("Erro ao carregar formas de pagamento:", err);
         setPaymentMethodsTable([
