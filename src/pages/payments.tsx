@@ -699,7 +699,6 @@ export default function Payments() {
     { key: "installment", label: "Parcela", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[80px]", render: (p: Payment) => getPaymentInstallment(p) },
     { key: "status", label: "Status", sortable: false, headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[100px]", render: () => <Badge className="bg-green-100 text-green-800">Pago</Badge> },
     { key: "tenant", label: "Inquilino", headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.name || "-" },
-    { key: "phone", label: "Celular", sortable: false, headerClassName: "text-center", render: (p: Payment) => getTenantForPayment(p)?.phone || "-" },
     { key: "paymentDate", label: "Pago em", headerClassName: "text-center", cellClassName: "text-center px-2", className: "w-[110px]", render: (p: Payment) => p.paymentDate ? new Date(p.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "-" },
     { 
       key: "amount", 
