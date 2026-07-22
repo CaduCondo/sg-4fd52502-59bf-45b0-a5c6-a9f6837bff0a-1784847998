@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DollarSign, Loader2, Save } from "lucide-react";
 import { memo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LateFeeInterestBlock } from "@/components/payments/LateFeeInterestBlock";
 
 interface BreakdownItemProps {
   item: any;
@@ -243,53 +244,20 @@ export function PaymentBreakdownCard({
               {values.diasAtraso > 0 && (
                 <>
                   <div className="border-t border-dashed my-2"></div>
-                  <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
-                      🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
-                    </p>
-                    
-                    <div className="flex items-center gap-2">
-                      {isEditMode && (
-                        <Checkbox
-                          id="breakdown-remove-late-fee-termination"
-                          checked={removeLateFee}
-                          onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
-                          disabled={isReadOnly}
-                          className="mt-0.5"
-                        />
-                      )}
-                      <div className="flex justify-between flex-1 text-sm">
-                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600"}>
-                          Multa por Atraso ({lateFeePercentage}%)
-                        </span>
-                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                          + {formatCurrency(values.multa)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {values.juros > 0 && (
-                      <div className="flex items-center gap-2">
-                        {isEditMode && (
-                          <Checkbox
-                            id="breakdown-remove-interest-termination"
-                            checked={removeInterest}
-                            onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
-                            disabled={isReadOnly}
-                            className="mt-0.5"
-                          />
-                        )}
-                        <div className="flex justify-between flex-1 text-sm">
-                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600"}>
-                            Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                          </span>
-                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrency(values.juros)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <LateFeeInterestBlock
+                    daysLate={values.diasAtraso}
+                    lateFee={values.multa}
+                    interest={values.juros}
+                    finalTotal={finalTotal}
+                    includeLateFee={!removeLateFee}
+                    includeInterest={!removeInterest}
+                    onIncludeLateFeeChange={(checked) => onRemoveLateFeeChange(!checked)}
+                    onIncludeInterestChange={(checked) => onRemoveInterestChange(!checked)}
+                    lateFeePercentage={lateFeePercentage}
+                    interestRatePercentage={interestRatePercentage}
+                    showCheckboxes={isEditMode}
+                    disabled={isReadOnly}
+                  />
                 </>
               )}
 
@@ -375,53 +343,20 @@ export function PaymentBreakdownCard({
               {values.diasAtraso > 0 && (
                 <>
                   <div className="border-t border-dashed my-2"></div>
-                  <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
-                      🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
-                    </p>
-                    
-                    <div className="flex items-center gap-2">
-                      {isEditMode && (
-                        <Checkbox
-                          id="breakdown-remove-late-fee"
-                          checked={removeLateFee}
-                          onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
-                          disabled={isReadOnly}
-                          className="mt-0.5"
-                        />
-                      )}
-                      <div className="flex justify-between flex-1 text-sm">
-                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600"}>
-                          Multa por Atraso ({lateFeePercentage}%)
-                        </span>
-                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                          + {formatCurrency(values.multa)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {values.juros > 0 && (
-                      <div className="flex items-center gap-2">
-                        {isEditMode && (
-                          <Checkbox
-                            id="breakdown-remove-interest"
-                            checked={removeInterest}
-                            onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
-                            disabled={isReadOnly}
-                            className="mt-0.5"
-                          />
-                        )}
-                        <div className="flex justify-between flex-1 text-sm">
-                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600"}>
-                            Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                          </span>
-                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrency(values.juros)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <LateFeeInterestBlock
+                    daysLate={values.diasAtraso}
+                    lateFee={values.multa}
+                    interest={values.juros}
+                    finalTotal={finalTotal}
+                    includeLateFee={!removeLateFee}
+                    includeInterest={!removeInterest}
+                    onIncludeLateFeeChange={(checked) => onRemoveLateFeeChange(!checked)}
+                    onIncludeInterestChange={(checked) => onRemoveInterestChange(!checked)}
+                    lateFeePercentage={lateFeePercentage}
+                    interestRatePercentage={interestRatePercentage}
+                    showCheckboxes={isEditMode}
+                    disabled={isReadOnly}
+                  />
                 </>
               )}
 

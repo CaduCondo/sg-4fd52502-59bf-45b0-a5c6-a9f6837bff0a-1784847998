@@ -7,10 +7,12 @@ interface LateFeeInterestBlockProps {
   finalTotal: number;
   includeLateFee: boolean;
   includeInterest: boolean;
-  onIncludeLateFeeChange: (value: boolean) => void;
-  onIncludeInterestChange: (value: boolean) => void;
+  onIncludeLateFeeChange: (checked: boolean) => void;
+  onIncludeInterestChange: (checked: boolean) => void;
   lateFeePercentage: number;
   interestRatePercentage: number;
+  showCheckboxes?: boolean;
+  disabled?: boolean;
 }
 
 export function LateFeeInterestBlock({
@@ -24,14 +26,15 @@ export function LateFeeInterestBlock({
   onIncludeInterestChange,
   lateFeePercentage,
   interestRatePercentage,
+  showCheckboxes = true,
+  disabled = false,
 }: LateFeeInterestBlockProps) {
   const formatCurrency = (value: number) => {
-    return formatCurrencyUtil(value);
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
   };
-
-  if (daysLate === 0) {
-    return null;
-  }
 
   return (
     <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -41,16 +44,19 @@ export function LateFeeInterestBlock({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="includeLateFee"
-              checked={includeLateFee}
-              onChange={(e) => onIncludeLateFeeChange(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
+            {showCheckboxes && (
+              <input
+                type="checkbox"
+                id="includeLateFee"
+                checked={includeLateFee}
+                onChange={(e) => onIncludeLateFeeChange(e.target.checked)}
+                disabled={disabled}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+            )}
             <label 
               htmlFor="includeLateFee" 
-              className={`text-sm cursor-pointer ${!includeLateFee ? 'line-through text-muted-foreground' : ''}`}
+              className={`text-sm ${showCheckboxes ? 'cursor-pointer' : ''} ${!includeLateFee ? 'line-through text-muted-foreground' : ''}`}
             >
               Multa ({lateFeePercentage}%)
             </label>
@@ -63,18 +69,21 @@ export function LateFeeInterestBlock({
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="includeInterest"
-              checked={includeInterest}
-              onChange={(e) => onIncludeInterestChange(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
+            {showCheckboxes && (
+              <input
+                type="checkbox"
+                id="includeInterest"
+                checked={includeInterest}
+                onChange={(e) => onIncludeInterestChange(e.target.checked)}
+                disabled={disabled}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+            )}
             <label 
               htmlFor="includeInterest" 
-              className={`text-sm cursor-pointer ${!includeInterest ? 'line-through text-muted-foreground' : ''}`}
+              className={`text-sm ${showCheckboxes ? 'cursor-pointer' : ''} ${!includeInterest ? 'line-through text-muted-foreground' : ''}`}
             >
-              Juros ({interestRatePercentage}% ao dia)
+              Juros ({interestRatePercentage.toFixed(3)}% ao dia)
             </label>
           </div>
           <span className={`font-semibold ${includeInterest ? 'text-red-600' : 'text-muted-foreground line-through'}`}>
