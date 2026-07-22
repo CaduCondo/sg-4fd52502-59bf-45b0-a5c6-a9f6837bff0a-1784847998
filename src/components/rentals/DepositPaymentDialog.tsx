@@ -102,11 +102,6 @@ export function DepositPaymentDialog({
     }
   }, [open, installment]);
 
-  // ✅ Sincronizar Valor Pago com VALOR TOTAL automaticamente
-  useEffect(() => {
-    setPaidAmount(calculations.finalTotal);
-  }, [calculations.finalTotal]);
-
   // Cálculos de multa e juros
   const calculations = useMemo(() => {
     if (!installment.due_date || !config) {
@@ -153,6 +148,11 @@ export function DepositPaymentDialog({
       finalTotal,
     };
   }, [installment.due_date, installment.amount, config, includeLateFee, includeInterest, paymentDate]);
+
+  // ✅ Sincronizar Valor Pago com VALOR TOTAL automaticamente
+  useEffect(() => {
+    setPaidAmount(formatCurrency(calculations.finalTotal));
+  }, [calculations.finalTotal]);
 
   const handleFileUpload = async (file: File) => {
     try {
