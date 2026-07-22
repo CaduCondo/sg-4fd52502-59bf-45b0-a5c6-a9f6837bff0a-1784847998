@@ -102,6 +102,11 @@ export function DepositPaymentDialog({
     }
   }, [open, installment]);
 
+  // ✅ Sincronizar Valor Pago com VALOR TOTAL automaticamente
+  useEffect(() => {
+    setPaidAmount(calculations.finalTotal);
+  }, [calculations.finalTotal]);
+
   // Cálculos de multa e juros
   const calculations = useMemo(() => {
     if (!installment.due_date || !config) {
