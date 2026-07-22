@@ -14,17 +14,22 @@ export interface PaymentMethod {
  * Buscar todos os métodos de pagamento
  */
 export async function getAllPaymentMethods(): Promise<PaymentMethod[]> {
+  console.log("🔍 [paymentMethodService] Buscando formas de pagamento...");
+  
   const { data, error } = await supabase
     .from("payment_methods")
     .select("*")
     .order("display_order", { ascending: true });
 
   if (error) {
-    console.error("Erro ao buscar métodos de pagamento:", error);
+    console.error("❌ [paymentMethodService] Erro ao buscar payment_methods:", error);
     throw error;
   }
 
-  return data || [];
+  console.log("✅ [paymentMethodService] Formas de pagamento carregadas:", data?.length || 0);
+  console.log("📋 [paymentMethodService] Dados:", data);
+  
+  return (data || []) as PaymentMethod[];
 }
 
 /**
