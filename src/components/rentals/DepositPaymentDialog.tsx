@@ -26,6 +26,7 @@ import { X, Calendar, DollarSign, FileText, Receipt, Paperclip } from "lucide-re
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getAllPaymentMethods } from "@/services/paymentMethodService";
+import { LateFeeInterestBlock } from "@/components/payments/LateFeeInterestBlock";
 
 interface DepositPaymentDialogProps {
   open: boolean;
@@ -420,63 +421,18 @@ export function DepositPaymentDialog({
                 </div>
 
                 {calculations.daysLate > 0 && (
-                  <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                    <div className="text-sm font-semibold text-red-700 dark:text-red-400 mb-3">
-                      Atraso no Pagamento: {calculations.daysLate} {calculations.daysLate === 1 ? "dia" : "dias"}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="includeLateFee"
-                            checked={includeLateFee}
-                            onChange={(e) => setIncludeLateFee(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
-                          />
-                          <label 
-                            htmlFor="includeLateFee" 
-                            className={`text-sm cursor-pointer ${!includeLateFee ? 'line-through text-muted-foreground' : ''}`}
-                          >
-                            Multa ({config?.late_fee_percentage || 2}%)
-                          </label>
-                        </div>
-                        <span className={`font-semibold ${includeLateFee ? 'text-red-600' : 'text-muted-foreground line-through'}`}>
-                          {includeLateFee ? "+ " : ""}
-                          {formatCurrency(calculations.lateFee)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="includeInterest"
-                            checked={includeInterest}
-                            onChange={(e) => setIncludeInterest(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
-                          />
-                          <label 
-                            htmlFor="includeInterest" 
-                            className={`text-sm cursor-pointer ${!includeInterest ? 'line-through text-muted-foreground' : ''}`}
-                          >
-                            Juros ({config?.interest_rate_percentage || 0.033}% ao dia)
-                          </label>
-                        </div>
-                        <span className={`font-semibold ${includeInterest ? 'text-red-600' : 'text-muted-foreground line-through'}`}>
-                          {includeInterest ? "+ " : ""}
-                          {formatCurrency(calculations.interest)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-3 border-t border-red-300 dark:border-red-700 font-bold text-base">
-                        <span>VALOR TOTAL</span>
-                        <span className="text-red-600">
-                          {formatCurrency(calculations.finalTotal)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <LateFeeInterestBlock
+                    daysLate={calculations.daysLate}
+                    lateFee={calculations.lateFee}
+                    interest={calculations.interest}
+                    finalTotal={calculations.finalTotal}
+                    includeLateFee={includeLateFee}
+                    includeInterest={includeInterest}
+                    onIncludeLateFeeChange={setIncludeLateFee}
+                    onIncludeInterestChange={setIncludeInterest}
+                    lateFeePercentage={config?.late_fee_percentage || 2}
+                    interestRatePercentage={config?.interest_rate_percentage || 0.033}
+                  />
                 )}
                 
                 {calculations.daysLate === 0 && (
