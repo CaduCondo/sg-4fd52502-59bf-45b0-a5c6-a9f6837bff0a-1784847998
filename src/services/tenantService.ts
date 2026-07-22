@@ -209,11 +209,11 @@ export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<T
     if (data.cnpj !== undefined) updateData.cnpj = data.cnpj;
     if (data.rg !== undefined) updateData.rg = data.rg;
     if (data.document !== undefined) updateData.document = data.document;
-    if (data.documentType !== undefined) updateData.document_type = data.documentType; // ✅ Mapear camelCase → snake_case
+    if (data.documentType !== undefined) updateData.document_type = data.documentType;
     if (data.occupation !== undefined) updateData.occupation = data.occupation;
     if (data.maritalStatus !== undefined) updateData.marital_status = data.maritalStatus;
     if (data.monthlyIncome !== undefined) updateData.monthly_income = data.monthlyIncome;
-    if (data.cep !== undefined) updateData.cep = data.cep;
+    if (data.cep !== undefined) updateData.zip_code = data.cep;
     if (data.street !== undefined) updateData.street = data.street;
     if (data.number !== undefined) updateData.number = data.number;
     if (data.complement !== undefined) updateData.complement = data.complement;
@@ -234,12 +234,14 @@ export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<T
       throw error;
     }
 
-    return tenant ? mapTenantFromDB(tenant) : null;
+    return tenant ? fromDatabase(tenant) : null;
   } catch (error) {
     console.error("Erro ao atualizar inquilino:", error);
     throw error;
   }
 };
+
+export const update = updateTenant;
 
 export async function deleteTenant(id: string): Promise<void> {
   // 🔒 GATILHO DE SEGURANÇA: Verificar se o inquilino tem locações ativas
