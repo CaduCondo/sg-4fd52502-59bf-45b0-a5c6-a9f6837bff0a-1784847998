@@ -54,9 +54,16 @@ export async function createPaymentMethod(data: {
   active?: boolean;
   display_order?: number;
 }): Promise<PaymentMethod> {
+  const insertData = {
+    code: data.code,
+    name: data.name,
+    active: data.active ?? true,
+    display_order: data.display_order ?? 99,
+  };
+
   const { data: result, error } = await supabase
     .from("payment_methods")
-    .insert([data])
+    .insert([insertData])
     .select()
     .single();
 

@@ -415,14 +415,14 @@ export function DepositPaymentDialog({
                   <div>
                     <Label htmlFor="paymentMethod">Forma de Pagamento *</Label>
                     <Select
-                      value={formData.payment_method}
-                      onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+                      value={paymentMethod}
+                      onValueChange={(value) => setPaymentMethod(value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a forma de pagamento" />
                       </SelectTrigger>
                       <SelectContent>
-                        {paymentMethods.map((method) => (
+                        {paymentMethodsTable.map((method) => (
                           <SelectItem key={method.code} value={method.code}>
                             {method.name}
                           </SelectItem>

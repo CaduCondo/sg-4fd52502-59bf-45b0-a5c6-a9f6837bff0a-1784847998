@@ -59,7 +59,7 @@ import {
   updateConfig 
 } from "@/services/configService";
 import * as locationService from "@/services/locationService";
-import { getAllPaymentMethodsAdmin, createPaymentMethod, updatePaymentMethod, deletePaymentMethod, type PaymentMethod } from "@/services/paymentMethodService";
+import { getAllPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod, type PaymentMethod } from "@/services/paymentMethodService";
 
 // Helpers
 import {
@@ -199,7 +199,7 @@ export default function Settings() {
   
   const fetchPaymentMethods = async () => {
     try {
-      const data = await getAllPaymentMethodsAdmin();
+      const data = await getAllPaymentMethods();
       setPaymentMethods(data);
     } catch (error) {
       console.error("Failed to fetch payment methods:", error);

@@ -1037,22 +1037,25 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               formatCurrency={formatCurrency}
               isTerminationPayment={isTerminationPayment}
             />
-            <Select
-              value={formData.payment_method || ""}
-              onValueChange={(value) => handleFieldChange("payment_method", value)}
-              disabled={isViewMode}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a forma de pagamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method.code} value={method.code}>
-                    {method.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <Label htmlFor="payment-method">Forma de Pagamento *</Label>
+              <Select
+                value={formData.payment_method || ""}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value }))}
+                disabled={isReadOnly}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a forma de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method.code} value={method.code}>
+                      {method.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
       </div>
