@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Rental, Payment, Property, Tenant } from "@/types";
+import { Rental, Payment, Property, Tenant, DepositInstallment } from "@/types";
 import { parseISO } from "date-fns";
 import { processContractTermination } from "@/services/terminationService";
 
