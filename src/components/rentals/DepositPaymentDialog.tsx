@@ -431,11 +431,14 @@ export function DepositPaymentDialog({
                             onChange={(e) => setIncludeLateFee(e.target.checked)}
                             className="h-4 w-4 rounded border-gray-300"
                           />
-                          <label htmlFor="includeLateFee" className="text-sm cursor-pointer">
+                          <label 
+                            htmlFor="includeLateFee" 
+                            className={`text-sm cursor-pointer ${!includeLateFee ? 'line-through text-muted-foreground' : ''}`}
+                          >
                             Multa ({config?.late_fee_percentage || 2}%)
                           </label>
                         </div>
-                        <span className="font-semibold text-red-600">
+                        <span className={`font-semibold ${includeLateFee ? 'text-red-600' : 'text-muted-foreground line-through'}`}>
                           {includeLateFee ? "+ " : ""}
                           {formatCurrency(calculations.lateFee)}
                         </span>
@@ -450,11 +453,14 @@ export function DepositPaymentDialog({
                             onChange={(e) => setIncludeInterest(e.target.checked)}
                             className="h-4 w-4 rounded border-gray-300"
                           />
-                          <label htmlFor="includeInterest" className="text-sm cursor-pointer">
+                          <label 
+                            htmlFor="includeInterest" 
+                            className={`text-sm cursor-pointer ${!includeInterest ? 'line-through text-muted-foreground' : ''}`}
+                          >
                             Juros ({config?.interest_rate_percentage || 0.033}% ao dia)
                           </label>
                         </div>
-                        <span className="font-semibold text-red-600">
+                        <span className={`font-semibold ${includeInterest ? 'text-red-600' : 'text-muted-foreground line-through'}`}>
                           {includeInterest ? "+ " : ""}
                           {formatCurrency(calculations.interest)}
                         </span>
