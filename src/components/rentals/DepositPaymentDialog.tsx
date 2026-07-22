@@ -103,7 +103,7 @@ export function DepositPaymentDialog({
 
   // Cálculos de multa e juros
   const calculations = useMemo(() => {
-    if (!paymentDate || !installment.due_date || !config) {
+    if (!installment.due_date || !config) {
       return {
         daysLate: 0,
         lateFee: 0,
@@ -114,8 +114,11 @@ export function DepositPaymentDialog({
     }
 
     const due = new Date(installment.due_date + "T00:00:00");
-    const paid = new Date(paymentDate + "T00:00:00");
-    const daysLate = Math.max(0, differenceInDays(paid, due));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // ✅ CORREÇÃO: Calcular atraso baseado em HOJE vs VENCIMENTO, não em data de recebimento
+    const daysLate = Math.max(0, differenceInDays(today, due));
 
     let lateFee = 0;
     let interest = 0;
@@ -141,7 +144,7 @@ export function DepositPaymentDialog({
       totalWithFees,
       finalTotal,
     };
-  }, [paymentDate, installment.due_date, installment.amount, config, includeLateFee, includeInterest]);
+  }, [installment.due_date, installment.amount, config, includeLateFee, includeInterest]);
 
   const handleFileUpload = async (file: File) => {
     try {
