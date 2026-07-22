@@ -733,17 +733,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="rental-deposit-pix">Código PIX</Label>
-                <Input
-                  id="rental-deposit-pix"
-                  value={depositPixCode}
-                  onChange={(e) => setDepositPixCode(e.target.value)}
-                  placeholder="Código PIX"
-                  disabled={isFieldDisabled}
-                />
-              </div>
-
               <div className="space-y-2 md:col-span-3 flex flex-col justify-end">
                 <Button
                   type="button"

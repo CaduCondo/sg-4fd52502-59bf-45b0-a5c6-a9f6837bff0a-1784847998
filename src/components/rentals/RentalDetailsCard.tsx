@@ -106,7 +106,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
           id: item.id,
           rental_id: item.rental_id,
           installment_number: item.installment_number,
-          total_installments: item.total_installments,
+          total_installments: item.installment_total, // ✅ CORREÇÃO: campo do banco é installment_total
           amount: item.amount,
           due_date: item.due_date,
           payment_date: item.payment_date,
@@ -153,7 +153,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         id: item.id,
         rental_id: item.rental_id,
         installment_number: item.installment_number,
-        total_installments: item.total_installments,
+        total_installments: item.installment_total, // ✅ CORREÇÃO: campo do banco é installment_total
         amount: item.amount,
         due_date: item.due_date,
         payment_date: item.payment_date,
