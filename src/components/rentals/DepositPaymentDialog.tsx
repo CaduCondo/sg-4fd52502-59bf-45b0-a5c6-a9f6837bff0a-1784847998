@@ -115,11 +115,13 @@ export function DepositPaymentDialog({
     }
 
     const due = new Date(installment.due_date + "T00:00:00");
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    // ✅ CORREÇÃO: Calcular atraso baseado em HOJE vs VENCIMENTO, não em data de recebimento
-    const daysLate = Math.max(0, differenceInDays(today, due));
+    // ✅ CORREÇÃO: Calcular atraso baseado na DATA DE RECEBIMENTO escolhida no formulário, não na data atual
+    const payment = new Date(paymentDate + "T00:00:00");
+    payment.setHours(0, 0, 0, 0);
+    
+    // Se a data de recebimento é ANTES ou IGUAL ao vencimento, não há atraso
+    const daysLate = Math.max(0, differenceInDays(payment, due));
 
     let lateFee = 0;
     let interest = 0;
@@ -145,7 +147,7 @@ export function DepositPaymentDialog({
       totalWithFees,
       finalTotal,
     };
-  }, [installment.due_date, installment.amount, config, includeLateFee, includeInterest]);
+  }, [installment.due_date, installment.amount, config, includeLateFee, includeInterest, paymentDate]);
 
   const handleFileUpload = async (file: File) => {
     try {
