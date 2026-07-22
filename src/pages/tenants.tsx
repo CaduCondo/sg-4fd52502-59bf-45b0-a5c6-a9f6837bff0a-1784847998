@@ -342,7 +342,7 @@ export default function TenantsPage() {
               Lista de Inquilinos
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="rounded-md border">
               {filteredTenants.length === 0 ? (
                 <div className="text-center py-12">

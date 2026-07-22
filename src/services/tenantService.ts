@@ -198,13 +198,48 @@ export async function createTenant(data: Partial<Tenant>): Promise<Tenant> {
 
 export const create = createTenant;
 
-export async function updateTenant(id: string, data: Partial<Tenant>): Promise<Tenant> {
-  const dbData = toDatabase(data);
-  const result = await updateSingle<any>(TABLE, id, dbData);
-  return fromDatabase(result);
-}
+export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<Tenant | null> => {
+  try {
+    const updateData: any = {};
+    
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.cpf !== undefined) updateData.cpf = data.cpf;
+    if (data.cnpj !== undefined) updateData.cnpj = data.cnpj;
+    if (data.rg !== undefined) updateData.rg = data.rg;
+    if (data.document !== undefined) updateData.document = data.document;
+    if (data.documentType !== undefined) updateData.document_type = data.documentType; // ✅ Mapear camelCase → snake_case
+    if (data.occupation !== undefined) updateData.occupation = data.occupation;
+    if (data.maritalStatus !== undefined) updateData.marital_status = data.maritalStatus;
+    if (data.monthlyIncome !== undefined) updateData.monthly_income = data.monthlyIncome;
+    if (data.cep !== undefined) updateData.cep = data.cep;
+    if (data.street !== undefined) updateData.street = data.street;
+    if (data.number !== undefined) updateData.number = data.number;
+    if (data.complement !== undefined) updateData.complement = data.complement;
+    if (data.neighborhood !== undefined) updateData.neighborhood = data.neighborhood;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.state !== undefined) updateData.state = data.state;
+    if (data.status !== undefined) updateData.status = data.status;
 
-export const update = updateTenant;
+    const { data: tenant, error } = await supabase
+      .from("tenants")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Erro ao atualizar inquilino:", error);
+      throw error;
+    }
+
+    return tenant ? mapTenantFromDB(tenant) : null;
+  } catch (error) {
+    console.error("Erro ao atualizar inquilino:", error);
+    throw error;
+  }
+};
 
 export async function deleteTenant(id: string): Promise<void> {
   // 🔒 GATILHO DE SEGURANÇA: Verificar se o inquilino tem locações ativas
