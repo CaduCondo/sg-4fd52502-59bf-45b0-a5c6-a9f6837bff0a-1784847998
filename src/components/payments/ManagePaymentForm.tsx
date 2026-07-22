@@ -126,7 +126,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [config, setConfig] = useState<any>(null);
-  const [paymentMethods, setPaymentMethods] = useState<Array<{code: string; name: string}>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ code: string; name: string }>>([]);
 
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
@@ -362,6 +362,31 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLoading(false);
     }
   }, [paymentId, toast, formatCurrency]);
+
+  // ✅ CORREÇÃO: Buscar formas de pagamento da tabela payment_methods
+  useEffect(() => {
+    const loadPaymentMethods = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("payment_methods")
+          .select("code, name")
+          .eq("active", true)
+          .order("display_order", { ascending: true });
+
+        if (error) throw error;
+        setPaymentMethods(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar métodos de pagamento:", error);
+        // Fallback para opções padrão se houver erro
+        setPaymentMethods([
+          { code: "pix", name: "Pix" },
+          { code: "cash", name: "Dinheiro" },
+        ]);
+      }
+    };
+
+    loadPaymentMethods();
+  }, []);
 
   useEffect(() => {
     loadPaymentData();
@@ -1012,6 +1037,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               formatCurrency={formatCurrency}
               isTerminationPayment={isTerminationPayment}
             />
+            <Select
+              value={formData.payment_method || ""}
+              onValueChange={(value) => handleFieldChange("payment_method", value)}
+              disabled={isViewMode}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a forma de pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentMethods.map((method) => (
+                  <SelectItem key={method.code} value={method.code}>
+                    {method.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
       </div>
