@@ -363,24 +363,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   }, [paymentId, toast, formatCurrency]);
 
-  // ✅ CORREÇÃO: Buscar formas de pagamento da tabela payment_methods
+  // ✅ CORREÇÃO: Buscar formas de pagamento usando o service
   useEffect(() => {
     const loadPaymentMethods = async () => {
       try {
-        const { data, error } = await supabase
-          .from("payment_methods")
-          .select("code, name")
-          .eq("active", true)
-          .order("display_order", { ascending: true });
-
-        if (error) throw error;
-        setPaymentMethods(data || []);
+        const methods = await getAllPaymentMethods();
+        setPaymentMethods(methods.filter(m => m.active).map(m => ({ code: m.code, name: m.name })));
       } catch (error) {
         console.error("Erro ao carregar métodos de pagamento:", error);
         // Fallback para opções padrão se houver erro
         setPaymentMethods([
-          { code: "pix", name: "Pix" },
-          { code: "cash", name: "Dinheiro" },
+          { code: "pix", name: "PIX" },
+          { code: "dinheiro", name: "Dinheiro" },
         ]);
       }
     };

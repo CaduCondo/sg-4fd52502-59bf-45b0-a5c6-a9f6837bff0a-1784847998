@@ -427,31 +427,31 @@ export type Database = {
       }
       payment_methods: {
         Row: {
-          active: boolean
+          active: boolean | null
           code: string
-          created_at: string
-          display_order: number
+          created_at: string | null
+          display_order: number | null
           id: string
           name: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          active?: boolean
+          active?: boolean | null
           code: string
-          created_at?: string
-          display_order: number
+          created_at?: string | null
+          display_order?: number | null
           id?: string
           name: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          active?: boolean
+          active?: boolean | null
           code?: string
-          created_at?: string
-          display_order?: number
+          created_at?: string | null
+          display_order?: number | null
           id?: string
           name?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
