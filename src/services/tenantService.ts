@@ -144,19 +144,32 @@ export async function getAllTenants(): Promise<Tenant[]> {
     const tenant = fromDatabase(data);
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
-    let calculatedStatus: "new" | "rented" | "inactive";
+    // ✅ CORREÇÃO CRÍTICA: Respeitar status do banco
+    // Só recalcular se o status do banco for "active" (que mapeia para "new" no frontend)
+    // Se for "inactive" ou "rented" no banco, MANTER como está
+    let finalStatus: "new" | "rented" | "inactive";
     
-    if (rentalStatuses.length === 0) {
-      calculatedStatus = "new";
+    if (data.status === "inactive") {
+      // ✅ Se marcado manualmente como inativo, RESPEITAR
+      finalStatus = "inactive";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'inactive' mantido do banco`);
     } else if (rentalStatuses.includes("active")) {
-      calculatedStatus = "rented";
+      // ✅ Tem locação ativa, então é locatário
+      finalStatus = "rented";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'rented' (tem locação ativa)`);
+    } else if (rentalStatuses.length === 0) {
+      // ✅ Nunca teve locação, então é novo
+      finalStatus = "new";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'new' (sem locações)`);
     } else {
-      calculatedStatus = "inactive";
+      // ✅ Teve locações mas nenhuma ativa, então é inativo
+      finalStatus = "inactive";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'inactive' (locações encerradas)`);
     }
     
     return {
       ...tenant,
-      status: calculatedStatus,
+      status: finalStatus,
     };
   });
   
