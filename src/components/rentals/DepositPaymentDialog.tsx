@@ -80,34 +80,6 @@ export function DepositPaymentDialog({
     loadPaymentMethods();
   }, []);
 
-  // ✅ CORREÇÃO: Buscar formas de pagamento da tabela payment_methods
-  const [paymentMethodsTable, setPaymentMethodsTable] = useState<Array<{ code: string; name: string }>>([]);
-
-  // Carregar métodos de pagamento
-  useEffect(() => {
-    const loadPaymentMethods = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("payment_methods")
-          .select("code, name")
-          .eq("active", true)
-          .order("display_order", { ascending: true });
-
-        if (error) throw error;
-        setPaymentMethodsTable(data || []);
-      } catch (error) {
-        console.error("Erro ao carregar métodos de pagamento:", error);
-        // Fallback para opções padrão se houver erro
-        setPaymentMethodsTable([
-          { code: "pix", name: "Pix" },
-          { code: "cash", name: "Dinheiro" },
-        ]);
-      }
-    };
-
-    loadPaymentMethods();
-  }, []);
-
   // Inicializar campos ao abrir
   useEffect(() => {
     if (open && installment) {
@@ -284,7 +256,7 @@ export function DepositPaymentDialog({
     } finally {
       setLoading(false);
     }
-  }, [paymentDate, paymentMethod, paidAmount, notes, attachments, calculations, installment, onSuccess, onOpenChange]);
+  }, [paymentDate, paymentMethod, paidAmount, notes, attachments, calculations, installment, onSuccess, onOpenChange, toast]);
 
   const handleDelete = async () => {
     if (!confirm("Deseja realmente excluir este recebimento? O status voltará para Pendente.")) {
