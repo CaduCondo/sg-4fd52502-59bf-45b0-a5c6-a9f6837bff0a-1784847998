@@ -2,7 +2,6 @@ import { memo } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PaymentFormFieldsProps {
   formData: {
@@ -56,28 +55,6 @@ export const PaymentFormFields = memo(function PaymentFormFields({
           />
         </div>
 
-        <div>
-          <Label htmlFor="payment_method">
-            Forma de Pagamento <span className="text-red-500">*</span>
-          </Label>
-          <Select
-            value={formData.payment_method}
-            onValueChange={(value) => onFormDataChange({ ...formData, payment_method: value })}
-            disabled={isReadOnly}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pix">PIX</SelectItem>
-              <SelectItem value="dinheiro">Dinheiro</SelectItem>
-              <SelectItem value="boleto">Boleto</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {formData.payment_method === "pix" && (
           <div>
             <Label htmlFor="payment_time">Horário do Recebimento</Label>
@@ -132,7 +109,9 @@ export const PaymentFormFields = memo(function PaymentFormFields({
             </div>
           </div>
         )}
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="amount_to_pay">
             Valor a Pagar <span className="text-red-500">*</span>
@@ -174,9 +153,7 @@ export const PaymentFormFields = memo(function PaymentFormFields({
             placeholder={isTerminationPayment ? "Digite um valor (use - para negativo)" : "R$ 0,00"}
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="installment_info">Parcela</Label>
           <Input
