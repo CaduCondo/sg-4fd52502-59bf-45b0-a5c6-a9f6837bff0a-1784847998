@@ -144,27 +144,27 @@ export async function getAllTenants(): Promise<Tenant[]> {
     const tenant = fromDatabase(data);
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
-    // ✅ CORREÇÃO CRÍTICA: Respeitar status do banco
-    // Só recalcular se o status do banco for "active" (que mapeia para "new" no frontend)
-    // Se for "inactive" ou "rented" no banco, MANTER como está
+    // ✅ NOVA LÓGICA: Respeitar SEMPRE o status do banco, exceto quando há locação ativa
     let finalStatus: "new" | "rented" | "inactive";
     
-    if (data.status === "inactive") {
-      // ✅ Se marcado manualmente como inativo, RESPEITAR
-      finalStatus = "inactive";
-      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'inactive' mantido do banco`);
-    } else if (rentalStatuses.includes("active")) {
-      // ✅ Tem locação ativa, então é locatário
+    // ÚNICA EXCEÇÃO: Se tem locação ativa, SEMPRE é "rented" (sobrescreve qualquer status manual)
+    if (rentalStatuses.includes("active")) {
       finalStatus = "rented";
-      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'rented' (tem locação ativa)`);
-    } else if (rentalStatuses.length === 0) {
-      // ✅ Nunca teve locação, então é novo
-      finalStatus = "new";
-      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'new' (sem locações)`);
-    } else {
-      // ✅ Teve locações mas nenhuma ativa, então é inativo
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'rented' (tem locação ativa - SOBRESCRITO)`);
+    }
+    // CASO CONTRÁRIO: Respeitar o status do banco
+    else if (data.status === "inactive") {
       finalStatus = "inactive";
-      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'inactive' (locações encerradas)`);
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'inactive' (respeitando banco)`);
+    }
+    else if (data.status === "rented") {
+      finalStatus = "rented";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'rented' (respeitando banco)`);
+    }
+    else {
+      // Status do banco é "active" → mostrar como "new"
+      finalStatus = "new";
+      console.log(`📌 [tenantService] Inquilino ${tenant.name}: status 'new' (respeitando banco)`);
     }
     
     return {
