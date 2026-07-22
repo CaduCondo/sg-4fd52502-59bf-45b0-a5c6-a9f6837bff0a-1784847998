@@ -58,6 +58,16 @@ export const usePayments = () => {
       const rentalIds = [...new Set(paymentsData.map(p => p.rental_id).filter(Boolean))];
       console.log("📋 [usePayments] Buscando", rentalIds.length, "rentals...");
 
+      // ✅ PROTEÇÃO: Não fazer query se não houver IDs
+      if (rentalIds.length === 0) {
+        console.warn("⚠️ [usePayments] Nenhum rental_id encontrado");
+        setPayments([]);
+        setRentals([]);
+        setProperties([]);
+        setTenants([]);
+        return;
+      }
+
       // Buscar rentals separadamente
       const { data: rentalsData, error: rentalsError } = await supabase
         .from("rentals")
@@ -71,58 +81,76 @@ export const usePayments = () => {
 
       console.log("✅ [usePayments] Rentals carregados:", rentalsData?.length || 0);
 
+      // ✅ PROTEÇÃO: Se não há rentals, não buscar properties/tenants
+      if (!rentalsData || rentalsData.length === 0) {
+        console.warn("⚠️ [usePayments] Nenhum rental encontrado");
+        setPayments([]);
+        setRentals([]);
+        setProperties([]);
+        setTenants([]);
+        return;
+      }
+
       // Buscar property IDs únicos
-      const propertyIds = [...new Set(rentalsData?.map(r => r.property_id).filter(Boolean) || [])];
+      const propertyIds = [...new Set(rentalsData.map(r => r.property_id).filter(Boolean))];
       console.log("📋 [usePayments] Buscando", propertyIds.length, "properties...");
 
-      // Buscar properties separadamente COM JOIN para locations
-      const { data: propertiesData, error: propertiesError } = await supabase
-        .from("properties")
-        .select(`
-          *,
-          locations:location_id (
-            id,
-            name,
-            street,
-            number,
-            complement,
-            neighborhood,
-            city,
-            state,
-            zip_code
-          )
-        `)
-        .in("id", propertyIds);
+      let propertiesData: any[] = [];
+      if (propertyIds.length > 0) {
+        // Buscar properties separadamente COM JOIN para locations
+        const { data, error: propertiesError } = await supabase
+          .from("properties")
+          .select(`
+            *,
+            locations:location_id (
+              id,
+              name,
+              street,
+              number,
+              complement,
+              neighborhood,
+              city,
+              state,
+              zip_code
+            )
+          `)
+          .in("id", propertyIds);
 
-      if (propertiesError) {
-        console.error("❌ [usePayments] Erro ao buscar properties:", propertiesError);
-        throw propertiesError;
+        if (propertiesError) {
+          console.error("❌ [usePayments] Erro ao buscar properties:", propertiesError);
+          throw propertiesError;
+        }
+
+        propertiesData = data || [];
+        console.log("✅ [usePayments] Properties carregados:", propertiesData.length);
       }
-
-      console.log("✅ [usePayments] Properties carregados:", propertiesData?.length || 0);
 
       // Buscar tenant IDs únicos
-      const tenantIds = [...new Set(rentalsData?.map(r => r.tenant_id).filter(Boolean) || [])];
+      const tenantIds = [...new Set(rentalsData.map(r => r.tenant_id).filter(Boolean))];
       console.log("📋 [usePayments] Buscando", tenantIds.length, "tenants...");
 
-      // Buscar tenants separadamente
-      const { data: tenantsData, error: tenantsError } = await supabase
-        .from("tenants")
-        .select("*")
-        .in("id", tenantIds);
+      let tenantsData: any[] = [];
+      if (tenantIds.length > 0) {
+        // Buscar tenants separadamente
+        const { data, error: tenantsError } = await supabase
+          .from("tenants")
+          .select("*")
+          .in("id", tenantIds);
 
-      if (tenantsError) {
-        console.error("❌ [usePayments] Erro ao buscar tenants:", tenantsError);
-        throw tenantsError;
+        if (tenantsError) {
+          console.error("❌ [usePayments] Erro ao buscar tenants:", tenantsError);
+          throw tenantsError;
+        }
+
+        tenantsData = data || [];
+        console.log("✅ [usePayments] Tenants carregados:", tenantsData.length);
       }
-
-      console.log("✅ [usePayments] Tenants carregados:", tenantsData?.length || 0);
 
       // Processar payments regulares (aluguel)
       const processedPayments = paymentsData.map((payment: any) => {
-        const rental = rentalsData?.find(r => r.id === payment.rental_id);
-        const property = rental ? propertiesData?.find(p => p.id === rental.property_id) : null;
-        const tenant = rental ? tenantsData?.find(t => t.id === rental.tenant_id) : null;
+        const rental = rentalsData.find(r => r.id === payment.rental_id);
+        const property = rental ? propertiesData.find(p => p.id === rental.property_id) : null;
+        const tenant = rental ? tenantsData.find(t => t.id === rental.tenant_id) : null;
         
         // Extrair dados da location do JOIN
         const locationData = property ? (property.locations as any) : null;
@@ -262,10 +290,17 @@ export const usePayments = () => {
 
     } catch (error) {
       console.error("❌ [usePayments] Erro ao carregar recebimentos:", error);
+      
+      // ✅ Resetar estado em caso de erro
+      setPayments([]);
+      setRentals([]);
+      setProperties([]);
+      setTenants([]);
+      
       toast({
         variant: "destructive",
         title: "Erro ao carregar recebimentos",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao buscar os dados. Tente novamente.",
       });
     } finally {
       setLoading(false);
