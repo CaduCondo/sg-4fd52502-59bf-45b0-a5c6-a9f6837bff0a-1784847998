@@ -19,6 +19,7 @@ import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
 import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
 import { invalidateCache } from "@/services/cacheService";
 import { getAllPaymentMethods } from "@/services/paymentMethodService";
+import { LateFeeInterestBlock } from "@/components/payments/LateFeeInterestBlock";
 
 interface BreakdownItem {
   description?: string;
