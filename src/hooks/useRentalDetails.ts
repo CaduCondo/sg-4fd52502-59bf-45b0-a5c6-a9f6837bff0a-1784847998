@@ -246,3 +246,43 @@ export function useRentalDetails(rentalId: string) {
     calculateTotals,
   };
 }
+
+export const loadInstallmentFromDatabase = async (rentalId: string, installmentNumber: number) => {
+  try {
+    const { data, error } = await supabase
+      .from("deposit_installments")
+      .select("*")
+      .eq("rental_id", rentalId)
+      .eq("installment_number", installmentNumber)
+      .single();
+
+    if (error) {
+      console.error("Erro ao buscar parcela:", error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    // ✅ CORREÇÃO: Mapear installment_total (banco) → total_installments (TypeScript)
+    return {
+      id: data.id,
+      rental_id: data.rental_id,
+      installment_number: data.installment_number,
+      total_installments: data.installment_total, // ✅ Campo correto do banco
+      amount: data.amount,
+      due_date: data.due_date,
+      payment_date: data.payment_date,
+      paid_amount: data.paid_amount || 0,
+      payment_method: data.payment_method,
+      pix_code: data.pix_code,
+      status: data.status as "pending" | "paid" | "partial" | "overdue",
+      notes: data.notes,
+      attachments: Array.isArray(data.attachments) ? data.attachments : [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    } as DepositInstallment;
+  } catch (error) {
+    console.error("Erro ao carregar parcela do banco:", error);
+    return null;
+  }
+};
