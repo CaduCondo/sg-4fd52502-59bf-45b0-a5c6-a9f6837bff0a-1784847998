@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Filter } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface TenantFiltersProps {
   searchTerm: string;
@@ -54,61 +53,57 @@ export function TenantFilters({
   };
 
   return (
-    <Card className="bg-muted/30">
-      <CardContent className="pt-6">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground font-medium">
-              {countText}
-            </div>
-            
-            <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-right">Status:</div>
-          </div>
+    <div className="flex flex-col gap-3 w-full max-w-full">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground font-medium">
+          {countText}
+        </div>
+        
+        <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-right">Status:</div>
+      </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 lg:max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="tenant-filters-search"
-                  placeholder="Buscar..."
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-9 h-10"
-                />
-              </div>
-            </div>
-
-            <div className="hidden lg:flex ml-auto">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button id="tenant-filters-status" variant="outline" className="w-[180px] h-10 justify-between">
-                    <span className="truncate">{statusText}</span>
-                    <Filter className="ml-2 h-4 w-4 shrink-0" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[180px] p-3" align="start">
-                  <div className="space-y-2">
-                    {statusOptions.map((option) => (
-                      <label
-                        key={option.value}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
-                      >
-                        <Checkbox
-                          id={`tenant-status-${option.value}`}
-                          checked={statusFilter.includes(option.value)}
-                          onCheckedChange={() => handleStatusToggle(option.value)}
-                        />
-                        <span className="text-sm">{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+      <div className="flex gap-3">
+        <div className="flex-1 lg:max-w-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="tenant-filters-search"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-9 h-10"
+            />
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="hidden lg:flex ml-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button id="tenant-filters-status" variant="outline" className="w-[180px] h-10 justify-between">
+                <span className="truncate">{statusText}</span>
+                <Filter className="ml-2 h-4 w-4 shrink-0" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[180px] p-3" align="start">
+              <div className="space-y-2">
+                {statusOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                  >
+                    <Checkbox
+                      id={`tenant-status-${option.value}`}
+                      checked={statusFilter.includes(option.value)}
+                      onCheckedChange={() => handleStatusToggle(option.value)}
+                    />
+                    <span className="text-sm">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+    </div>
   );
 }

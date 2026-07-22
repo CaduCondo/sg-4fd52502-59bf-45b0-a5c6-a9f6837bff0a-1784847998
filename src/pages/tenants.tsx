@@ -325,15 +325,19 @@ export default function TenantsPage() {
           </div>
         </ScrollReveal>
 
-        <TenantFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          sortBy="alphabetical"
-          onSortChange={() => {}}
-          totalCount={filteredTenants.length}
-        />
+        <Card className="bg-muted/30">
+          <CardContent className="pt-6">
+            <TenantFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              sortBy="alphabetical"
+              onSortChange={() => {}}
+              totalCount={filteredTenants.length}
+            />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
