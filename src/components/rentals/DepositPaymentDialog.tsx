@@ -54,7 +54,7 @@ export function DepositPaymentDialog({
   const [attachments, setAttachments] = useState<string[]>([]);
   const [includeLateFee, setIncludeLateFee] = useState(true);
   const [includeInterest, setIncludeInterest] = useState(true);
-  const [paymentMethods, setPaymentMethods] = useState<Array<{ code: string; name: string }>>([]);
+  const [paymentMethodsTable, setPaymentMethodsTable] = useState<Array<{ code: string; name: string }>>([]);
 
   // Carregar configurações e métodos de pagamento
   useEffect(() => {
@@ -66,10 +66,10 @@ export function DepositPaymentDialog({
     const loadPaymentMethods = async () => {
       try {
         const methods = await getAllPaymentMethods();
-        setPaymentMethods(methods.map(m => ({ code: m.code, name: m.name })));
+        setPaymentMethodsTable(methods.map(m => ({ code: m.code, name: m.name })));
       } catch (err) {
         console.error("Erro ao carregar formas de pagamento:", err);
-        setPaymentMethods([
+        setPaymentMethodsTable([
           { code: "pix", name: "PIX" },
           { code: "dinheiro", name: "Dinheiro" },
         ]);
