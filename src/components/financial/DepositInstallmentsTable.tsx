@@ -110,7 +110,7 @@ export function DepositInstallmentsTable({
             id,
             rental_id,
             installment_number,
-            total_installments,
+            installment_total,
             amount,
             pix_code,
             partner_commission,
@@ -151,9 +151,14 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // Type assertion em duas etapas - bypass do tipo complexo do Supabase
-        console.log("✅ Dados carregados, total:", installmentsData.length);
-        setData(installmentsData as unknown as DepositInstallment[]);
+        // ✅ CORREÇÃO: Mapear installment_total (banco) → total_installments (TypeScript)
+        const mappedInstallments = installmentsData.map((item: any) => ({
+          ...item,
+          total_installments: item.installment_total, // ✅ Mapear campo correto
+        }));
+
+        console.log("✅ Dados mapeados, total:", mappedInstallments.length);
+        setData(mappedInstallments as unknown as DepositInstallment[]);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
