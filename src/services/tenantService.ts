@@ -23,10 +23,10 @@ function toDatabase(data: Partial<Tenant>): any {
   // Frontend usa "new" mas banco usa "active"
   if (data.status !== undefined) {
     const statusMap: Record<string, string> = {
-      "new": "active",      // Inquilino novo = ativo no banco
-      "active": "active",   // Manter active
-      "rented": "rented",   // Inquilino locatário
-      "inactive": "inactive" // Inquilino inativo
+      "new": "active",
+      "active": "active",
+      "rented": "rented",
+      "inactive": "inactive"
     };
     dbData.status = statusMap[data.status] || "active";
     console.log(`📋 [tenantService.toDatabase] Status mapeado: ${data.status} → ${dbData.status}`);
@@ -58,31 +58,29 @@ function toDatabase(data: Partial<Tenant>): any {
   console.log("📋 [tenantService.toDatabase] CNPJ:", data.cnpj);
   console.log("📋 [tenantService.toDatabase] Document:", data.document);
   
-  // Definir o campo document baseado no tipo
+  // ✅ CORREÇÃO CRÍTICA: Gravar APENAS em 'document' e 'cpf', NUNCA em 'cnpj' (coluna não existe)
   if (docType === "cpf") {
     const cpfValue = data.cpf || data.document || "";
     if (cpfValue && cpfValue !== "") {
       dbData.document = cpfValue;
       dbData.cpf = cpfValue;
       console.log("✅ [tenantService.toDatabase] CPF definido:", cpfValue);
-    } else {
-      console.warn("⚠️ [tenantService.toDatabase] CPF não definido!");
     }
   } else if (docType === "cnpj") {
     const cnpjValue = data.cnpj || data.document || "";
     if (cnpjValue && cnpjValue !== "") {
-      dbData.document = cnpjValue;
-      console.log("✅ [tenantService.toDatabase] CNPJ definido:", cnpjValue);
-    } else {
-      console.warn("⚠️ [tenantService.toDatabase] CNPJ não definido!");
+      dbData.document = cnpjValue;  // ✅ Gravar CNPJ em 'document', NÃO em 'cnpj'
+      dbData.cpf = null;  // Limpar CPF quando for CNPJ
+      console.log("✅ [tenantService.toDatabase] CNPJ definido em 'document':", cnpjValue);
     }
   } else if (data.document && data.document !== "") {
-    // Fallback para campo genérico 'document'
     dbData.document = data.document;
     const cleanDoc = data.document.replace(/\D/g, "");
     dbData.document_type = cleanDoc.length === 11 ? "cpf" : "cnpj";
     if (cleanDoc.length === 11) {
       dbData.cpf = data.document;
+    } else {
+      dbData.cpf = null;
     }
     console.log("✅ [tenantService.toDatabase] Document genérico definido:", data.document);
   }
@@ -93,9 +91,6 @@ function toDatabase(data: Partial<Tenant>): any {
 }
 
 function fromDatabase(data: any): Tenant {
-  // 🔥 MAPEAMENTO REVERSO - banco retorna active/inactive/rented
-  // Converter "active" para "new" apenas se o inquilino NUNCA teve locações
-  // (será calculado na função getAllTenants/getActive)
   return {
     ...data,
     documentType: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
@@ -115,18 +110,16 @@ function fromDatabase(data: any): Tenant {
     neighborhood: data.neighborhood,
     city: data.city,
     state: data.state,
-    status: data.status, // Manter status do banco (será recalculado em getAllTenants)
+    status: data.status,
   };
 }
 
 export async function getAllTenants(): Promise<Tenant[]> {
   console.log("🔄 [tenantService] Buscando inquilinos e suas locações...");
   
-  // Buscar todos os inquilinos
   const tenantsData = await fetchAll<any>(TABLE);
   console.log(`📊 [tenantService] ${tenantsData.length} inquilinos encontrados`);
   
-  // Buscar todas as locações para calcular status correto
   const { data: rentalsData, error: rentalsError } = await supabase
     .from("rentals")
     .select("tenant_id, status") as any;
@@ -137,7 +130,6 @@ export async function getAllTenants(): Promise<Tenant[]> {
     console.log(`📊 [tenantService] ${(rentalsData || []).length} locações encontradas`);
   }
   
-  // Criar mapa de locações por inquilino
   const rentalsMap = new Map<string, string[]>();
   (rentalsData || []).forEach((rental: any) => {
     if (!rentalsMap.has(rental.tenant_id)) {
@@ -148,22 +140,17 @@ export async function getAllTenants(): Promise<Tenant[]> {
   
   console.log(`📊 [tenantService] Mapa de locações criado com ${rentalsMap.size} inquilinos`);
   
-  // Calcular status correto para cada inquilino
   const result = tenantsData.map((data) => {
     const tenant = fromDatabase(data);
     const rentalStatuses = rentalsMap.get(tenant.id) || [];
     
-    // Calcular status baseado nas locações
     let calculatedStatus: "new" | "rented" | "inactive";
     
     if (rentalStatuses.length === 0) {
-      // Nunca teve contrato - status "new"
       calculatedStatus = "new";
     } else if (rentalStatuses.includes("active")) {
-      // Tem pelo menos um contrato ativo - status "rented" (Locatário)
       calculatedStatus = "rented";
     } else {
-      // Teve contratos mas nenhum ativo (todos cancelled/terminated) - status "inactive"
       calculatedStatus = "inactive";
     }
     
@@ -173,7 +160,6 @@ export async function getAllTenants(): Promise<Tenant[]> {
     };
   });
   
-  // Log de todos os status únicos encontrados
   const uniqueStatuses = [...new Set(result.map(t => t.status))];
   console.log(`✅ [tenantService] Status únicos encontrados:`, uniqueStatuses);
   console.log(`📊 [tenantService] Resumo: ${result.filter(t => t.status === "new").length} novos, ${result.filter(t => t.status === "rented").length} locatários, ${result.filter(t => t.status === "inactive").length} inativos`);
@@ -200,27 +186,13 @@ export const create = createTenant;
 
 export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<Tenant | null> => {
   try {
-    const updateData: any = {};
+    console.log("🔄 [tenantService.updateTenant] Atualizando inquilino:", id);
+    console.log("📥 [tenantService.updateTenant] Dados recebidos:", data);
     
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.email !== undefined) updateData.email = data.email;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.cpf !== undefined) updateData.cpf = data.cpf;
-    if (data.cnpj !== undefined) updateData.cnpj = data.cnpj;
-    if (data.rg !== undefined) updateData.rg = data.rg;
-    if (data.document !== undefined) updateData.document = data.document;
-    if (data.documentType !== undefined) updateData.document_type = data.documentType;
-    if (data.occupation !== undefined) updateData.occupation = data.occupation;
-    if (data.maritalStatus !== undefined) updateData.marital_status = data.maritalStatus;
-    if (data.monthlyIncome !== undefined) updateData.monthly_income = data.monthlyIncome;
-    if (data.cep !== undefined) updateData.zip_code = data.cep;
-    if (data.street !== undefined) updateData.street = data.street;
-    if (data.number !== undefined) updateData.number = data.number;
-    if (data.complement !== undefined) updateData.complement = data.complement;
-    if (data.neighborhood !== undefined) updateData.neighborhood = data.neighborhood;
-    if (data.city !== undefined) updateData.city = data.city;
-    if (data.state !== undefined) updateData.state = data.state;
-    if (data.status !== undefined) updateData.status = data.status;
+    // ✅ CORREÇÃO: Usar toDatabase para garantir mapeamento correto
+    const updateData = toDatabase(data);
+    
+    console.log("📤 [tenantService.updateTenant] Dados para banco:", updateData);
 
     const { data: tenant, error } = await supabase
       .from("tenants")
@@ -230,13 +202,14 @@ export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<T
       .single();
 
     if (error) {
-      console.error("Erro ao atualizar inquilino:", error);
+      console.error("❌ [tenantService.updateTenant] Erro ao atualizar:", error);
       throw error;
     }
 
+    console.log("✅ [tenantService.updateTenant] Inquilino atualizado com sucesso");
     return tenant ? fromDatabase(tenant) : null;
   } catch (error) {
-    console.error("Erro ao atualizar inquilino:", error);
+    console.error("❌ [tenantService.updateTenant] Erro:", error);
     throw error;
   }
 };
@@ -244,7 +217,6 @@ export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<T
 export const update = updateTenant;
 
 export async function deleteTenant(id: string): Promise<void> {
-  // 🔒 GATILHO DE SEGURANÇA: Verificar se o inquilino tem locações ativas
   const { data: activeRentals, error: rentalError } = await supabase
     .from("rentals")
     .select("id, status")
@@ -271,7 +243,6 @@ export const remove = deleteTenant;
 export async function getActive(): Promise<Tenant[]> {
   console.log("🔄 [tenantService.getActive] Buscando inquilinos disponíveis (apenas status 'new')...");
   
-  // Buscar todos os inquilinos
   const { data: tenantsData, error: tenantsError } = await supabase
     .from("tenants")
     .select("id, name, status")
@@ -284,7 +255,6 @@ export async function getActive(): Promise<Tenant[]> {
 
   console.log(`📊 [tenantService.getActive] ${(tenantsData || []).length} inquilinos encontrados`);
   
-  // Buscar TODAS as locações (ativas, canceladas, terminadas) para calcular status
   const { data: rentalsData, error: rentalsError } = await supabase
     .from("rentals")
     .select("tenant_id, status") as any;
@@ -293,7 +263,6 @@ export async function getActive(): Promise<Tenant[]> {
     console.error("❌ [tenantService.getActive] Erro ao buscar locações:", rentalsError);
   }
   
-  // Criar mapa de locações por inquilino
   const rentalsMap = new Map<string, string[]>();
   (rentalsData || []).forEach((rental: any) => {
     if (!rentalsMap.has(rental.tenant_id)) {
@@ -304,9 +273,8 @@ export async function getActive(): Promise<Tenant[]> {
   
   console.log(`📊 [tenantService.getActive] Mapa de locações criado com ${rentalsMap.size} inquilinos que já tiveram/têm locações`);
   
-  // Retornar APENAS inquilinos que NUNCA tiveram locações (status "new")
   const newTenants = (tenantsData || []).filter(
-    (tenant: any) => !rentalsMap.has(tenant.id) // Nunca teve locação = status "new"
+    (tenant: any) => !rentalsMap.has(tenant.id)
   );
   
   console.log(`✅ [tenantService.getActive] ${newTenants.length} inquilinos com status "new" (nunca tiveram locações)`);
