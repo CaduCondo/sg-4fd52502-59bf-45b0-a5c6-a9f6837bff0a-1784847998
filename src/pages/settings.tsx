@@ -1179,6 +1179,10 @@ export default function Settings() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               
+              console.log("🔍 [settings] Iniciando salvamento de forma de pagamento...");
+              console.log("📋 [settings] Form data:", paymentMethodForm);
+              console.log("✏️ [settings] Editando?", !!editingPaymentMethod);
+              
               // ✅ Gerar code automaticamente se estiver vazio
               let code = paymentMethodForm.code.trim();
               if (!code && paymentMethodForm.name) {
@@ -1188,10 +1192,12 @@ export default function Settings() {
                   .replace(/[^a-z0-9\s]/g, '')
                   .replace(/\s+/g, '_')
                   .substring(0, 50);
+                console.log("🔧 [settings] Code gerado automaticamente:", code);
               }
               
               // ✅ Validar se code não está vazio
               if (!code) {
+                console.error("❌ [settings] Code está vazio!");
                 toast({ 
                   title: "Erro de validação", 
                   description: "O código da forma de pagamento é obrigatório.",
@@ -1206,17 +1212,23 @@ export default function Settings() {
                   code: code,
                 };
                 
+                console.log("💾 [settings] Dados a salvar:", dataToSave);
+                
                 if (editingPaymentMethod) {
+                  console.log("📝 [settings] Atualizando forma de pagamento ID:", editingPaymentMethod.id);
                   await updatePaymentMethod(editingPaymentMethod.id, dataToSave);
                   toast({ title: "Forma de pagamento atualizada" });
                 } else {
-                  await createPaymentMethod(dataToSave);
+                  console.log("➕ [settings] Criando nova forma de pagamento");
+                  const result = await createPaymentMethod(dataToSave);
+                  console.log("✅ [settings] Forma de pagamento criada:", result);
                   toast({ title: "Forma de pagamento criada" });
                 }
                 setIsPaymentMethodDialogOpen(false);
                 await fetchPaymentMethods();
               } catch (error: any) {
-                console.error("Erro ao salvar forma de pagamento:", error);
+                console.error("❌ [settings] Erro ao salvar forma de pagamento:", error);
+                console.error("❌ [settings] Error details:", error.message, error.details);
                 toast({ 
                   title: "Erro ao salvar", 
                   description: error.message || "Não foi possível salvar a forma de pagamento.",
