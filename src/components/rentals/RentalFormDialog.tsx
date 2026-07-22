@@ -394,16 +394,25 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           const installmentsData = [];
           const totalInstallments = parseInt(depositInstallmentCount);
 
-          // ✅ 1ª PARCELA: Salva due_date E payment_date (quando digitado)
+          // ✅ 1ª PARCELA: Se PIX Code preenchido → marcar como PAGO automaticamente
           if (depositAmount && depositPaymentDate) {
+            const hasPix = depositPixCode && depositPixCode.trim() !== "";
+            
             installmentsData.push({
               installment_number: 1,
               total_installments: totalInstallments,
               amount: parseCurrencyToNumber(depositAmount),
               due_date: depositPaymentDate,
-              payment_date: depositPaymentDate, // ✅ NOVO: mesma data em payment_date
+              payment_date: hasPix ? depositPaymentDate : null, // ✅ Preencher payment_date se tiver PIX
               pix_code: depositPixCode || null,
+              status: hasPix ? "paid" : "pending", // ✅ Se tiver PIX → marcar como pago
+              paid_amount: hasPix ? parseCurrencyToNumber(depositAmount) : 0, // ✅ Se pago → paid_amount = amount
+              payment_method: hasPix ? "pix" : null, // ✅ Método de pagamento
             });
+            
+            if (hasPix) {
+              console.log("✅ [RentalFormDialog] 1ª parcela marcada como PAGA (PIX Code preenchido)");
+            }
           }
 
           // ✅ 2ª PARCELA: Salva APENAS due_date (payment_date será preenchido ao pagar)
@@ -414,6 +423,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               amount: parseCurrencyToNumber(depositInstallment2),
               due_date: depositInstallment2PaymentDate,
               payment_date: null, // ✅ NULL: será preenchido quando for pago
+              status: "pending",
+              paid_amount: 0,
             });
           }
 
@@ -425,6 +436,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
               amount: parseCurrencyToNumber(depositInstallment3),
               due_date: depositInstallment3PaymentDate,
               payment_date: null, // ✅ NULL: será preenchido quando for pago
+              status: "pending",
+              paid_amount: 0,
             });
           }
 

@@ -13,6 +13,9 @@ export async function createDepositInstallments(
     due_date: string;
     payment_date?: string | null;
     pix_code?: string | null;
+    status?: "pending" | "paid" | "partial";
+    paid_amount?: number;
+    payment_method?: string | null;
   }>
 ): Promise<DepositInstallment[]> {
   try {
@@ -54,8 +57,9 @@ export async function createDepositInstallments(
       due_date: inst.due_date,
       payment_date: inst.payment_date || null,
       pix_code: inst.pix_code || null,
-      status: "pending",
-      paid_amount: 0,
+      status: inst.status || "pending",
+      paid_amount: inst.paid_amount || 0,
+      payment_method: inst.payment_method || null,
     }));
 
     const { data, error } = await supabase
