@@ -1178,18 +1178,50 @@ export default function Settings() {
             </DialogHeader>
             <form onSubmit={async (e) => {
               e.preventDefault();
+              
+              // ✅ Gerar code automaticamente se estiver vazio
+              let code = paymentMethodForm.code.trim();
+              if (!code && paymentMethodForm.name) {
+                code = paymentMethodForm.name.toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .replace(/[^a-z0-9\s]/g, '')
+                  .replace(/\s+/g, '_')
+                  .substring(0, 50);
+              }
+              
+              // ✅ Validar se code não está vazio
+              if (!code) {
+                toast({ 
+                  title: "Erro de validação", 
+                  description: "O código da forma de pagamento é obrigatório.",
+                  variant: "destructive" 
+                });
+                return;
+              }
+              
               try {
+                const dataToSave = {
+                  ...paymentMethodForm,
+                  code: code,
+                };
+                
                 if (editingPaymentMethod) {
-                  await updatePaymentMethod(editingPaymentMethod.id, paymentMethodForm);
+                  await updatePaymentMethod(editingPaymentMethod.id, dataToSave);
                   toast({ title: "Forma de pagamento atualizada" });
                 } else {
-                  await createPaymentMethod(paymentMethodForm);
+                  await createPaymentMethod(dataToSave);
                   toast({ title: "Forma de pagamento criada" });
                 }
                 setIsPaymentMethodDialogOpen(false);
                 await fetchPaymentMethods();
-              } catch (error) {
-                toast({ title: "Erro ao salvar", variant: "destructive" });
+              } catch (error: any) {
+                console.error("Erro ao salvar forma de pagamento:", error);
+                toast({ 
+                  title: "Erro ao salvar", 
+                  description: error.message || "Não foi possível salvar a forma de pagamento.",
+                  variant: "destructive" 
+                });
               }
             }} className="space-y-4">
               <div className="space-y-2">
@@ -1197,7 +1229,20 @@ export default function Settings() {
                 <Input
                   id="paymentMethodName"
                   value={paymentMethodForm.name}
-                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, name: e.target.value })}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setPaymentMethodForm({ 
+                      ...paymentMethodForm, 
+                      name: name,
+                      // ✅ Auto-preencher code baseado no name (apenas se for novo)
+                      code: editingPaymentMethod ? paymentMethodForm.code : name.toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .replace(/\s+/g, '_')
+                        .substring(0, 50)
+                    });
+                  }}
                   placeholder="Ex: PIX, Dinheiro, Boleto"
                   required
                 />
@@ -1208,13 +1253,23 @@ export default function Settings() {
                 <Input
                   id="paymentMethodCode"
                   value={paymentMethodForm.code}
-                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, code: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                  onChange={(e) => setPaymentMethodForm({ 
+                    ...paymentMethodForm, 
+                    code: e.target.value.toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/[^a-z0-9_]/g, '')
+                      .substring(0, 50)
+                  })}
                   placeholder="Ex: pix, dinheiro, boleto"
                   required
                   disabled={!!editingPaymentMethod}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Código único (não pode ser alterado depois)
+                  {editingPaymentMethod 
+                    ? "Código único (não pode ser alterado)"
+                    : "Gerado automaticamente do nome (pode editar antes de salvar)"
+                  }
                 </p>
               </div>
               
@@ -1224,7 +1279,7 @@ export default function Settings() {
                   id="paymentMethodOrder"
                   type="number"
                   value={paymentMethodForm.display_order}
-                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, display_order: parseInt(e.target.value) })}
+                  onChange={(e) => setPaymentMethodForm({ ...paymentMethodForm, display_order: parseInt(e.target.value) || 0 })}
                   min="1"
                 />
               </div>
