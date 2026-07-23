@@ -1671,20 +1671,19 @@ export default function Financial() {
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 h-auto p-1 no-print">
-            <TabsTrigger id="financial-tab-rentals" value="rentals" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
-              Locações
-            </TabsTrigger>
-            {(isAdmin || user?.role === "broker") && (
-              <TabsTrigger id="financial-tab-deposits" value="deposits" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
-                Cauções
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+            <TabsList className="grid w-full max-w-md grid-cols-2 h-auto p-1">
+              <TabsTrigger id="financial-tab-rentals" value="rentals" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
+                Locações
               </TabsTrigger>
-            )}
-          </TabsList>
+              {(isAdmin || user?.role === "broker") && (
+                <TabsTrigger id="financial-tab-deposits" value="deposits" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
+                  Cauções
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-          <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-            {/* Period Selector - apenas na aba Locações */}
-            <div className="flex justify-end no-print">
+            <div className="flex items-center">
               <PeriodSelector 
                 selectedMonth={selectedMonth} 
                 selectedYear={selectedYear}
@@ -1695,7 +1694,9 @@ export default function Financial() {
                 showAllOption={false}
               />
             </div>
+          </div>
 
+          <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
             {/* Cards de Métricas - Locações */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 print-cards">
               {/* Card 1: AZUL - Receita Bruta */}
