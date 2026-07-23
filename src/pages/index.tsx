@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
 import { PropertyPublicCard } from "@/components/public/PropertyPublicCard";
@@ -129,24 +128,7 @@ export default function PublicHomePage() {
 
   return (
     <>
-      <Head>
-        <title>{siteConfig.name} - Encontre seu novo lar</title>
-        <meta name="description" content={siteConfig.description} />
-        <meta property="og:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
-        <meta property="og:description" content={siteConfig.description} />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="/og-image.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
-        <meta name="twitter:description" content={siteConfig.description} />
-        
-        {/* Preconnect CRÍTICO para domínios de imagens - carregamento MUITO mais rápido */}
-        <link rel="preconnect" href="https://ygqwacfyxcsycaegbnrp.supabase.co" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://ygqwacfyxcsycaegbnrp.supabase.co" />
-        
-        {/* Resource hints para melhor performance */}
-        <link rel="prefetch" as="image" />
-      </Head>
+      
 
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <PublicHeader />
