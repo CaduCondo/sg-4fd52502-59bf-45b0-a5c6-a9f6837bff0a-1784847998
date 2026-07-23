@@ -76,7 +76,7 @@ export function DepositInstallmentsTable({
   const [data, setData] = useState<DepositInstallment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("active"); // ✅ CORRIGIDO: Padrão "active"
-  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string; rentalId: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -96,89 +96,87 @@ export function DepositInstallmentsTable({
     return <ArrowDown className="h-4 w-4 ml-1" />;
   }, [sortField, sortDirection]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!isAdmin) {
+  const fetchData = useCallback(async () => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("🔍 === INÍCIO BUSCA PARCELAS DE CAUÇÃO ===");
+
+      const query = supabase
+        .from("deposit_installments")
+        .select(`
+          id,
+          rental_id,
+          installment_number,
+          installment_total,
+          amount,
+          pix_code,
+          partner_commission,
+          internal_commission,
+          payment_date,
+          status,
+          due_date,
+          rental:rentals!rental_id(
+            id,
+            rent_value,
+            garage_value,
+            security_deposit,
+            has_partner_broker,
+            status,
+            returned_deposit_amount,
+            tenant:tenants(name),
+            property:properties(
+              complement,
+              location:locations(name)
+            )
+          )
+        `)
+        .order("due_date", { ascending: true, nullsFirst: false });
+
+      const { data: installmentsData, error } = await query;
+
+      if (error) {
+        console.error("❌ Erro na query:", error);
+        throw error;
+      }
+
+      console.log("✅ Query executada com sucesso");
+      console.log("📊 Total de parcelas:", installmentsData?.length || 0);
+
+      if (!installmentsData || installmentsData.length === 0) {
+        console.log("⚠️ Nenhuma parcela encontrada");
+        setData([]);
         setLoading(false);
         return;
       }
 
-      try {
-        setLoading(true);
-        console.log("🔍 === INÍCIO BUSCA PARCELAS DE CAUÇÃO ===");
+      const mappedInstallments = installmentsData.map((item: any) => ({
+        ...item,
+        total_installments: item.installment_total,
+      }));
 
-        // 🔥 CRÍTICO: Buscar TODAS as parcelas de caução, sem filtrar por status de rental aqui
-        const query = supabase
-          .from("deposit_installments")
-          .select(`
-            id,
-            rental_id,
-            installment_number,
-            installment_total,
-            amount,
-            pix_code,
-            partner_commission,
-            internal_commission,
-            payment_date,
-            status,
-            due_date,
-            rental:rentals!rental_id(
-              id,
-              rent_value,
-              garage_value,
-              security_deposit,
-              has_partner_broker,
-              status,
-              returned_deposit_amount,
-              tenant:tenants(name),
-              property:properties(
-                complement,
-                location:locations(name)
-              )
-            )
-          `)
-          .order("due_date", { ascending: true, nullsFirst: false });
+      console.log("✅ Dados mapeados, total:", mappedInstallments.length);
+      setData(mappedInstallments as unknown as DepositInstallment[]);
+      setLoading(false);
+    } catch (error) {
+      console.error("❌ Erro ao buscar dados:", error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os dados de caução.",
+        variant: "destructive",
+      });
+      setData([]);
+      setLoading(false);
+    }
+  }, [isAdmin, toast]);
 
-        const { data: installmentsData, error } = await query;
-
-        if (error) {
-          console.error("❌ Erro na query:", error);
-          throw error;
-        }
-
-        console.log("✅ Query executada com sucesso");
-        console.log("📊 Total de parcelas:", installmentsData?.length || 0);
-
-        if (!installmentsData || installmentsData.length === 0) {
-          console.log("⚠️ Nenhuma parcela encontrada");
-          setData([]);
-          setLoading(false);
-          return;
-        }
-
-        // ✅ CORREÇÃO: Mapear installment_total (banco) → total_installments (TypeScript)
-        const mappedInstallments = installmentsData.map((item: any) => ({
-          ...item,
-          total_installments: item.installment_total, // ✅ Mapear campo correto
-        }));
-
-        console.log("✅ Dados mapeados, total:", mappedInstallments.length);
-        setData(mappedInstallments as unknown as DepositInstallment[]);
-        setLoading(false);
-      } catch (error) {
-        console.error("❌ Erro ao buscar dados:", error);
-        toast({
-          title: "Erro ao carregar dados",
-          description: "Não foi possível carregar os dados de caução.",
-          variant: "destructive",
-        });
-        setData([]);
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchData();
-  }, [isAdmin, toast]); // Removido statusFilter do array de dependências
+  }, [fetchData]);
 
   // 🔥 FILTRAR DADOS APÓS CARREGAMENTO, BASEADO NO FILTRO SELECIONADO
   const filteredData = useMemo(() => {
@@ -212,56 +210,8 @@ export function DepositInstallmentsTable({
     }
   }, [sortField, sortDirection]);
 
-  const handleUpdateField = useCallback(async (
-    installmentId: string,
-    field: string,
-    value: string | number
-  ) => {
-    try {
-      const updateData: any = {};
-      
-      if (field === "pix_code") {
-        updateData.pix_code = value;
-      } else if (field === "partner_commission") {
-        updateData.partner_commission = value;
-      } else if (field === "internal_commission") {
-        updateData.internal_commission = value;
-      } else if (field === "amount") {
-        updateData.amount = value;
-      }
-
-      const { error } = await supabase
-        .from("deposit_installments")
-        .update(updateData)
-        .eq("id", installmentId);
-
-      if (error) throw error;
-
-      // Atualizar estado local
-      setData(prevData =>
-        prevData.map(item =>
-          item.id === installmentId
-            ? { ...item, [field]: value }
-            : item
-        )
-      );
-
-      toast({
-        title: "Atualizado com sucesso",
-        description: "Campo atualizado.",
-      });
-    } catch (error) {
-      console.error("Erro ao atualizar campo:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao atualizar",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido",
-      });
-    }
-  }, [toast]);
-
   const handleStartEdit = useCallback((installment: DepositInstallment, field: string) => {
-    setEditingCell({ id: installment.id, field });
+    setEditingCell({ id: installment.id, field, rentalId: installment.rental_id });
     
     // Definir valor inicial baseado no campo
     if (field === "pix_code") {
@@ -272,6 +222,8 @@ export function DepositInstallmentsTable({
       setEditingValue(formatCurrency(installment.internal_commission || 0));
     } else if (field === "amount") {
       setEditingValue(formatCurrency(installment.amount || 0));
+    } else if (field === "returned_deposit_amount") {
+      setEditingValue(formatCurrency(installment.rental?.returned_deposit_amount || 0));
     }
   }, []);
 
@@ -286,7 +238,7 @@ export function DepositInstallmentsTable({
         const { error: updateRentalError } = await supabase
           .from("rentals")
           .update({ returned_deposit_amount: newValue })
-          .eq("id", editingCell.installment.rental_id);
+          .eq("id", editingCell.rentalId);
 
         if (updateRentalError) {
           console.error("Erro ao atualizar valor devolvido:", updateRentalError);
@@ -297,8 +249,24 @@ export function DepositInstallmentsTable({
           });
           return;
         }
+      } else if (editingCell.field === "pix_code") {
+        // Salvar código PIX como string
+        const { error: updateInstallmentError } = await supabase
+          .from("deposit_installments")
+          .update({ pix_code: editingValue })
+          .eq("id", editingCell.id);
+
+        if (updateInstallmentError) {
+          console.error("Erro ao atualizar código PIX:", updateInstallmentError);
+          toast({
+            title: "Erro ao salvar",
+            description: "Não foi possível atualizar o código PIX.",
+            variant: "destructive",
+          });
+          return;
+        }
       } else {
-        // Salvar outros campos na tabela deposit_installments
+        // Salvar outros campos numéricos na tabela deposit_installments
         const { error: updateInstallmentError } = await supabase
           .from("deposit_installments")
           .update({ [editingCell.field]: newValue })
@@ -320,7 +288,7 @@ export function DepositInstallmentsTable({
         description: "O valor foi salvo com sucesso.",
       });
 
-      fetchData();
+      await fetchData();
     } catch (error) {
       console.error("Erro ao salvar:", error);
       toast({
@@ -332,7 +300,7 @@ export function DepositInstallmentsTable({
       setEditingCell(null);
       setEditingValue("");
     }
-  }, [editingCell, editingValue, toast]);
+  }, [editingCell, editingValue, toast, fetchData]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingCell(null);
