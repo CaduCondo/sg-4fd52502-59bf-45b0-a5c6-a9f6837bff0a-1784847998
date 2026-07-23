@@ -1,40 +1,44 @@
 ==========================================
-   ATUALIZAR PROJETO - COMANDOS DIRETOS
+   ATUALIZAR PROJETO - PASSO A PASSO
 ==========================================
 
-COPIE E COLE UM COMANDO DE CADA VEZ NO CMD/TERMINAL
-(Aperte Enter depois de cada comando)
+PASSO 1: Descobrir o nome do branch
+Cole este comando:
+
+git branch -r
+
+(Isso vai mostrar os branches disponiveis)
+Procure por algo como "origin/master" ou "origin/main"
 
 ==========================================
 
-COMANDO 1:
-cd C:\Users\debor\Documents\sistema_locacao
+PASSO 2: Use o comando correto baseado no resultado:
 
-COMANDO 2:
-git fetch origin
+SE VIU "origin/master", cole:
+git reset --hard origin/master
 
-COMANDO 3:
+SE VIU "origin/main", cole:
 git reset --hard origin/main
 
-COMANDO 4:
+==========================================
+
+PASSO 3: Limpar arquivos
 git clean -fd
 
-COMANDO 5:
+PASSO 4: Instalar dependencias
 npm install
 
-COMANDO 6:
+PASSO 5: Rodar o servidor
 npm run dev
 
 ==========================================
 
-PRONTO! Acesse: http://localhost:3000
+RAPIDO: Se quiser fazer tudo de uma vez (DEPOIS do PASSO 1):
 
-==========================================
+Para MASTER:
+git fetch origin && git reset --hard origin/master && git clean -fd && npm install && npm run dev
 
-IMPORTANTE:
-- Se o servidor ja estava rodando, feche com Ctrl+C antes
-- Cole UM comando de cada vez
-- Aguarde cada comando terminar antes do proximo
-- Se pedir confirmacao, digite Y e Enter
+Para MAIN:
+git fetch origin && git reset --hard origin/main && git clean -fd && npm install && npm run dev
 
 ==========================================
