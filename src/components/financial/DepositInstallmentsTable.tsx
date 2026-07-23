@@ -278,20 +278,61 @@ export function DepositInstallmentsTable({
   const handleSaveEdit = useCallback(async () => {
     if (!editingCell) return;
 
-    const { id, field } = editingCell;
-    
-    let finalValue: string | number = editingValue;
-    
-    // Converter valores monetários para número
-    if (field === "partner_commission" || field === "internal_commission" || field === "amount") {
-      finalValue = parseCurrencyToNumber(editingValue);
-    }
+    const newValue = parseCurrencyToNumber(editingValue);
 
-    await handleUpdateField(id, field, finalValue);
-    
-    setEditingCell(null);
-    setEditingValue("");
-  }, [editingCell, editingValue, handleUpdateField]);
+    try {
+      if (editingCell.field === "returned_deposit_amount") {
+        // Salvar valor devolvido na tabela rentals
+        const { error: updateRentalError } = await supabase
+          .from("rentals")
+          .update({ returned_deposit_amount: newValue })
+          .eq("id", editingCell.installment.rental_id);
+
+        if (updateRentalError) {
+          console.error("Erro ao atualizar valor devolvido:", updateRentalError);
+          toast({
+            title: "Erro ao salvar",
+            description: "Não foi possível atualizar o valor devolvido.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        // Salvar outros campos na tabela deposit_installments
+        const { error: updateInstallmentError } = await supabase
+          .from("deposit_installments")
+          .update({ [editingCell.field]: newValue })
+          .eq("id", editingCell.id);
+
+        if (updateInstallmentError) {
+          console.error("Erro ao atualizar parcela:", updateInstallmentError);
+          toast({
+            title: "Erro ao salvar",
+            description: "Não foi possível atualizar a parcela.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      toast({
+        title: "Valor atualizado",
+        description: "O valor foi salvo com sucesso.",
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar o valor.",
+        variant: "destructive",
+      });
+    } finally {
+      setEditingCell(null);
+      setEditingValue("");
+    }
+  }, [editingCell, editingValue, toast]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingCell(null);
@@ -933,12 +974,32 @@ export function DepositInstallmentsTable({
                           )}
                         </TableCell>
 
-                        {/* Valor Devolvido - mesclado - somente para contratos cancelados */}
+                        {/* Valor Devolvido - mesclado - somente para contratos cancelados - EDITÁVEL */}
                         {statusFilter !== "active" && shouldRenderCell(rentalId, index) && (
                           <TableCell className="text-right font-semibold text-red-600 whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
-                            {rental?.status !== "active" && rental?.returned_deposit_amount 
-                              ? formatCurrency(rental.returned_deposit_amount)
-                              : "-"}
+                            {editingCell?.id === installment.id && editingCell?.field === "returned_deposit_amount" ? (
+                              <Input
+                                type="text"
+                                className="w-full h-9 text-right text-sm font-semibold border-blue-500 text-red-600"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(formatCurrencyInput(e.target.value))}
+                                onBlur={handleSaveEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveEdit();
+                                  if (e.key === "Escape") handleCancelEdit();
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span
+                                className="cursor-pointer hover:bg-blue-50 px-3 py-2 rounded block text-right"
+                                onClick={() => handleStartEdit(installment, "returned_deposit_amount")}
+                              >
+                                {rental?.status !== "active" && rental?.returned_deposit_amount 
+                                  ? formatCurrency(rental.returned_deposit_amount)
+                                  : "-"}
+                              </span>
+                            )}
                           </TableCell>
                         )}
                       </TableRow>
