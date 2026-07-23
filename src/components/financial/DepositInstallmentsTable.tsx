@@ -824,7 +824,7 @@ export function DepositInstallmentsTable({
                         <TableCell 
                           className={`text-center font-medium ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}
                         >
-                          {installment.installment_number}/${installment.total_installments}
+                          {String(installment.installment_number).replace(/\$/g, '')}/{String(installment.total_installments).replace(/\$/g, '')}
                         </TableCell>
 
                         {/* Status - NÃO mesclado - COM COLORAÇÃO */}
