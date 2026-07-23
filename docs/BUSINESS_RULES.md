@@ -166,58 +166,186 @@ Uma propriedade pode ter os seguintes status:
 
 ---
 
-## 💰 Caução
+## 💰 Security Deposit (Caução)
 
-### Tipos de Pagamento
+### Payment Types
 
-| Tipo | Descrição |
-|------|-----------|
-| **À vista** | Caução pago integralmente no primeiro mês |
-| **Parcelado em 2x** | Caução dividido em 2 parcelas (1º e 2º mês) |
-| **Parcelado em 3x** | Caução dividido em 3 parcelas (1º, 2º e 3º mês) |
+| Type | Description |
+|------|-------------|
+| **Single payment** | Deposit paid in full in the first month |
+| **2 installments** | Deposit split into 2 payments (1st and 2nd month) |
+| **3 installments** | Deposit split into 3 payments (1st, 2nd, and 3rd month) |
 
-### Cálculo das Parcelas
+### deposit_installments Table
 
-**Regra:** Divisão igualitária com ajuste de centavos na última parcela
+**Structure:** The system maintains a separate record for each deposit installment in the `deposit_installments` table.
 
-**Exemplo 1 - Caução R$ 1.000,00 em 3x:**
-- 1ª parcela: R$ 333,33
-- 2ª parcela: R$ 333,33
-- 3ª parcela: R$ 333,34 (ajuste de R$ 0,01)
+**Key fields:**
+- `id` (UUID): Unique identifier for the installment
+- `rental_id` (UUID): Reference to the rental
+- `installment_number` (INTEGER): Installment number (1, 2, or 3)
+- `installment_total` (INTEGER): Total number of installments
+- `amount` (DECIMAL): Amount of this installment
+- `due_date` (DATE): Due date (automatically calculated)
+- `payment_date` (DATE): Payment date of the installment
+- `pix_code` (TEXT): PIX code for payment verification
+- `partner_commission` (DECIMAL): Partner broker commission (one-time)
+- `internal_commission` (DECIMAL): Internal broker commission (one-time)
+- `status` (TEXT): Installment status (pending, paid, overdue)
 
-**Exemplo 2 - Caução R$ 1.234,56 em 2x:**
-- 1ª parcela: R$ 617,28
-- 2ª parcela: R$ 617,28
+### Due Dates for Installments
 
-### Correção por IGPM
+**IMPORTANT:** The system uses specific fields in the `rentals` table to determine due dates:
 
-**Na rescisão do contrato:**
+| Installment | Field in rentals | Description |
+|-------------|------------------|-------------|
+| 1st installment | `deposit_payment_date` | Payment date for first installment ("Payment Date" field in form) |
+| 2nd installment | `deposit_installment2_payment_date` | Due date for second installment |
+| 3rd installment | `deposit_installment3_payment_date` | Due date for third installment |
 
-1. Sistema busca o **IGPM acumulado** do período da locação
-2. Aplica correção sobre o valor original do caução
-3. **Devolução:** Valor corrigido é abatido no recebimento do último mês
+**Example:**
+- Rental created: 07/01/2025
+- Deposit: $1,200.00 in 3x
+- Payment Date: 07/01/2025
+- 2nd Installment Due Date: 08/01/2025
+- 3rd Installment Due Date: 09/01/2025
 
-**Fórmula:**
+**Result:**
+- Installment 1/3: $400.00 - Due 07/01/2025
+- Installment 2/3: $400.00 - Due 08/01/2025
+- Installment 3/3: $400.00 - Due 09/01/2025
+
+### Installment Calculation
+
+**Rule:** Equal division with cents adjustment in the last installment
+
+**Example 1 - $1,000.00 deposit in 3x:**
+- 1st installment: $333.33
+- 2nd installment: $333.33
+- 3rd installment: $333.34 (adjustment of $0.01)
+
+**Example 2 - $1,234.56 deposit in 2x:**
+- 1st installment: $617.28
+- 2nd installment: $617.28
+
+### Deposit Commissions
+
+**Important:** Commissions are recorded ONCE in the system, even when the deposit is split into installments.
+
+**Fields in deposit_installments table:**
+- `partner_commission`: Partner broker commission amount
+- `internal_commission`: Internal broker commission amount
+
+**Business rule:**
+- Values are set when creating the rental
+- Commissions apply to the **total** deposit amount, not per installment
+- Displayed in the financial deposit report
+- Only installments from the same rental share the same commission values (rowspan in table)
+
+**Example:**
+- Deposit: $1,200.00 (3x of $400.00)
+- Partner Commission: $360.00 (30% of total)
+- Internal Commission: $240.00 (20% of total)
+
+**Table display:**
 ```
-Caução Corrigido = Caução Original × (1 + IGPM_Acumulado/100)
+┌─────────────────────────────────────────────────────────┐
+│ Location | Tenant | Partner | Partner Pay | Internal Pay│ (Rowspan - merged)
+│                    Broker      $360.00       $240.00   │
+├─────────────────────────────────────────────────────────┤
+│                    Installment 1/3 | Date | Value | PIX │
+│                    Installment 2/3 | Date | Value | PIX │
+│                    Installment 3/3 | Date | Value | PIX │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Exemplo:**
-- Caução original: R$ 1.200,00
-- IGPM acumulado no período: 8,5%
-- **Caução corrigido:** R$ 1.200,00 × 1,085 = R$ 1.302,00
+### Receipt Tracking
 
-### Código PIX
+**Verification system:**
+- An installment is considered **received** when the `pix_code` field is filled
+- Status `paid` indicates paid installment
+- Status `pending` indicates unpaid installment
+- Status `overdue` indicates overdue installment
 
-- Campo opcional para cada parcela do caução
-- Facilita o pagamento pelo inquilino
-- Pode ser um PIX Copia e Cola ou QR Code (base64)
+**PIX Code:**
+- Optional field for each installment
+- Serves as payment verification
+- Can be edited inline in financial report
+- Facilitates tracking and reconciliation
 
-### Isenção de Taxa no Caução
+### Inline Editing in Financial Report
 
-**Regra:** Taxa administrativa **NÃO é aplicada** sobre o valor do caução
+**Admin and Broker can edit directly in the table:**
 
-**Motivo:** Caução é uma garantia, não é receita da administradora
+1. **PIX Code** - Click the pencil icon:
+   - Free text field
+   - Saves to `deposit_installments.pix_code`
+   - When filled, row turns green (received)
+
+2. **Commissions** - Click the value to edit:
+   - Partner Commission: `deposit_installments.partner_commission`
+   - Internal Commission: `deposit_installments.internal_commission`
+   - Automatic currency mask
+   - Updates KPIs in real-time
+
+3. **Installment Amount** - Inline editable:
+   - Field: `deposit_installments.amount`
+   - Useful for adjustments or corrections
+   - Automatically recalculates totals
+
+4. **Returned Amount** (cancelled contracts only):
+   - Field: `rentals.returned_deposit_amount`
+   - Displayed only when filter ≠ "Active"
+   - Merged (rowspan) - one value per rental
+   - Used to record how much was actually returned to the tenant
+
+### Returned Amount
+
+**Feature for cancelled contracts:**
+
+When a contract is cancelled/terminated, the system allows recording the deposit amount that was returned to the tenant.
+
+**Field:** `returned_deposit_amount` in `rentals` table
+
+**Rules:**
+- Visible only for contracts with `status != 'active'`
+- Inline editable in financial report (Deposits tab)
+- Value can be less than original deposit (deductions for damages, etc.)
+- Displayed in red in "Returned Amount" column
+- Merged (rowspan) - single value per rental
+
+**Usage example:**
+- Deposit paid: $1,200.00
+- Property damages: $300.00
+- **Returned amount:** $900.00
+
+### IGPM Correction
+
+**IMPORTANT:** Upon contract termination, the deposit is corrected by accumulated IGPM.
+
+**Process:**
+
+1. System fetches the **accumulated IGPM** for the rental period
+2. Applies correction to the total deposit amount paid
+3. **Return:** Corrected amount is deducted from the last month's payment
+
+**Formula:**
+```
+Corrected Deposit = Original Deposit × (1 + Accumulated_IGPM/100)
+```
+
+**Example:**
+- Original deposit: $1,200.00
+- Accumulated IGPM in period: 8.5%
+- **Corrected deposit:** $1,200.00 × 1.085 = $1,302.00
+
+**Note:** The IGPM-corrected amount is used in termination calculations. The `returned_deposit_amount` field is for recording the actual amount returned (which may differ due to deductions).
+
+### Admin Fee Exemption on Deposit
+
+**Rule:** Administrative fee is **NOT applied** to deposit amount
+
+**Reason:** Deposit is a guarantee, not income for the property manager
 
 ---
 

@@ -1204,6 +1204,189 @@ SENÃO:
 
 ---
 
+## 💰 Caução
+
+### Tipos de Pagamento
+
+| Tipo | Descrição |
+|------|-----------|
+| **À vista** | Caução pago integralmente no primeiro mês |
+| **Parcelado em 2x** | Caução dividido em 2 parcelas (1º e 2º mês) |
+| **Parcelado em 3x** | Caução dividido em 3 parcelas (1º, 2º e 3º mês) |
+
+### Tabela deposit_installments
+
+**Estrutura:** O sistema mantém um registro separado para cada parcela de caução na tabela `deposit_installments`.
+
+**Campos principais:**
+- `id` (UUID): Identificador único da parcela
+- `rental_id` (UUID): Referência para a locação
+- `installment_number` (INTEGER): Número da parcela (1, 2 ou 3)
+- `installment_total` (INTEGER): Total de parcelas do caução
+- `amount` (DECIMAL): Valor desta parcela
+- `due_date` (DATE): Data de vencimento (calculada automaticamente)
+- `payment_date` (DATE): Data de pagamento da parcela
+- `pix_code` (TEXT): Código PIX para comprovação de pagamento
+- `partner_commission` (DECIMAL): Comissão do corretor parceiro (única vez)
+- `internal_commission` (DECIMAL): Comissão do corretor interno (única vez)
+- `status` (TEXT): Status da parcela (pending, paid, overdue)
+
+### Datas de Vencimento das Parcelas
+
+**IMPORTANTE:** O sistema usa campos específicos na tabela `rentals` para determinar as datas de vencimento:
+
+| Parcela | Campo em rentals | Descrição |
+|---------|------------------|-----------|
+| 1ª parcela | `deposit_payment_date` | Data de pagamento da primeira parcela (campo "Data Pagamento" no formulário) |
+| 2ª parcela | `deposit_installment2_payment_date` | Data de vencimento da segunda parcela |
+| 3ª parcela | `deposit_installment3_payment_date` | Data de vencimento da terceira parcela |
+
+**Exemplo:**
+- Locação criada: 01/07/2025
+- Caução: R$ 1.200,00 em 3x
+- Data Pagamento: 01/07/2025
+- Data Vencimento 2ª Parcela: 01/08/2025
+- Data Vencimento 3ª Parcela: 01/09/2025
+
+**Resultado:**
+- Parcela 1/3: R$ 400,00 - Vencimento 01/07/2025
+- Parcela 2/3: R$ 400,00 - Vencimento 01/08/2025
+- Parcela 3/3: R$ 400,00 - Vencimento 01/09/2025
+
+### Cálculo das Parcelas
+
+**Regra:** Divisão igualitária com ajuste de centavos na última parcela
+
+**Exemplo 1 - Caução R$ 1.000,00 em 3x:**
+- 1ª parcela: R$ 333,33
+- 2ª parcela: R$ 333,33
+- 3ª parcela: R$ 333,34 (ajuste de R$ 0,01)
+
+**Exemplo 2 - Caução R$ 1.234,56 em 2x:**
+- 1ª parcela: R$ 617,28
+- 2ª parcela: R$ 617,28
+
+### Comissões de Caução
+
+**Importante:** As comissões são registradas UMA ÚNICA VEZ no sistema, mesmo quando o caução é parcelado.
+
+**Campos na tabela deposit_installments:**
+- `partner_commission`: Valor da comissão do corretor parceiro
+- `internal_commission`: Valor da comissão do corretor interno
+
+**Regra de negócio:**
+- Valores são definidos na criação da locação
+- Comissões aplicam-se ao valor **total** do caução, não por parcela
+- Exibidas no relatório financeiro de cauções
+- Apenas parcelas da mesma locação compartilham os mesmos valores de comissão (rowspan na tabela)
+
+**Exemplo:**
+- Caução: R$ 1.200,00 (3x de R$ 400,00)
+- Comissão Parceiro: R$ 360,00 (30% do total)
+- Comissão Interno: R$ 240,00 (20% do total)
+
+**Exibição na tabela:**
+```
+┌─────────────────────────────────────────────────────────┐
+│ Local | Inquilino | Corretor | Pg Parceiro | Pg Interno│ (Rowspan - mesclado)
+│                     Parceiro    R$ 360,00    R$ 240,00 │
+├─────────────────────────────────────────────────────────┤
+│                     Parcela 1/3 | Data | Valor | PIX   │
+│                     Parcela 2/3 | Data | Valor | PIX   │
+│                     Parcela 3/3 | Data | Valor | PIX   │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Controle de Recebimento
+
+**Sistema de verificação:**
+- Uma parcela é considerada **recebida** quando o campo `pix_code` está preenchido
+- Status `paid` indica parcela paga
+- Status `pending` indica parcela não paga
+- Status `overdue` indica parcela atrasada
+
+**Código PIX:**
+- Campo opcional para cada parcela
+- Serve como comprovação de pagamento
+- Pode ser editado inline no relatório financeiro
+- Facilita rastreamento e reconciliação
+
+### Edição Inline no Relatório Financeiro
+
+**Admin e Broker podem editar diretamente na tabela:**
+
+1. **Código PIX** - Clique no ícone de lápis:
+   - Campo de texto livre
+   - Salva em `deposit_installments.pix_code`
+   - Ao preencher, linha fica verde (recebido)
+
+2. **Comissões** - Clique no valor para editar:
+   - Comissão Parceiro: `deposit_installments.partner_commission`
+   - Comissão Interno: `deposit_installments.internal_commission`
+   - Máscara de moeda automática
+   - Atualiza KPIs em tempo real
+
+3. **Valor da Parcela** - Editável inline:
+   - Campo: `deposit_installments.amount`
+   - Útil para ajustes ou correções
+   - Recalcula totais automaticamente
+
+4. **Valor Devolvido** (apenas contratos cancelados):
+   - Campo: `rentals.returned_deposit_amount`
+   - Exibido apenas quando filtro ≠ "Ativas"
+   - Mesclado (rowspan) - um valor por locação
+   - Usado para registrar quanto foi efetivamente devolvido ao inquilino
+
+### Valor Devolvido
+
+**Funcionalidade para contratos cancelados:**
+
+Quando um contrato é cancelado/rescindido, o sistema permite registrar o valor do caução que foi devolvido ao inquilino.
+
+**Campo:** `returned_deposit_amount` na tabela `rentals`
+
+**Regras:**
+- Visível apenas para contratos com `status != 'active'`
+- Editável inline no relatório financeiro (aba Cauções)
+- Valor pode ser menor que o caução original (descontos por danos, etc.)
+- Exibido em vermelho na coluna "Valor Devolvido"
+- Mesclado (rowspan) - um valor único por locação
+
+**Exemplo de uso:**
+- Caução pago: R$ 1.200,00
+- Danos no imóvel: R$ 300,00
+- **Valor devolvido:** R$ 900,00
+
+### Correção por IGPM
+
+**IMPORTANTE:** Na rescisão do contrato, o caução é corrigido pelo IGPM acumulado.
+
+**Processo:**
+
+1. Sistema busca o **IGPM acumulado** do período da locação
+2. Aplica correção sobre o valor total do caução pago
+3. **Devolução:** Valor corrigido é abatido no recebimento do último mês
+
+**Fórmula:**
+```
+Caução Corrigido = Caução Original × (1 + IGPM_Acumulado/100)
+```
+
+**Exemplo:**
+- Caução original: R$ 1.200,00
+- IGPM acumulado no período: 8,5%
+- **Caução corrigido:** R$ 1.200,00 × 1,085 = R$ 1.302,00
+
+**Observação:** O valor corrigido pelo IGPM é usado nos cálculos de rescisão. O campo `returned_deposit_amount` serve para registrar o valor efetivamente devolvido (que pode ser diferente devido a descontos).
+
+### Isenção de Taxa no Caução
+
+**Regra:** Taxa administrativa **NÃO é aplicada** sobre o valor do caução
+
+**Motivo:** Caução é uma garantia, não é receita da administradora
+
+---
+
 ## 📊 Financeiro
 
 ### Objetivo

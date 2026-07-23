@@ -286,6 +286,14 @@ CREATE INDEX idx_rentals_dates ON rentals(start_date, end_date);
 | `created_at` | TIMESTAMP | Data de criação | DEFAULT NOW() |
 | `updated_at` | TIMESTAMP | Data de atualização | DEFAULT NOW() |
 
+**Novo campo:**
+
+| Coluna | Tipo | Descrição | Constraints |
+|--------|------|-----------|-------------|
+| `returned_deposit_amount` | DECIMAL(10,2) | Valor do caução devolvido | - |
+
+**Uso:** Registra o valor efetivamente devolvido ao inquilino quando o contrato é cancelado. Pode ser diferente do valor original devido a descontos por danos.
+
 ---
 
 ### 5. payments (Recebimentos)
@@ -362,7 +370,74 @@ CREATE INDEX idx_payments_reference ON payments(reference_year, reference_month)
 
 ---
 
-### 6. system_users (Usuários do Sistema)
+### 6. deposit_installments (Parcelas de Caução)
+
+**Descrição:** Parcelas do caução de cada locação
+
+```sql
+CREATE TABLE deposit_installments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rental_id UUID NOT NULL REFERENCES rentals(id) ON DELETE CASCADE,
+  installment_number INTEGER NOT NULL CHECK (installment_number >= 1 AND installment_number <= 3),
+  installment_total INTEGER NOT NULL CHECK (installment_total >= 1 AND installment_total <= 3),
+  amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+  due_date DATE NOT NULL,
+  payment_date DATE,
+  paid_amount DECIMAL(10,2) DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'partial', 'overdue')),
+  payment_method TEXT,
+  pix_code TEXT,
+  partner_commission DECIMAL(10,2),
+  internal_commission DECIMAL(10,2),
+  notes TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX idx_deposit_installments_rental_id ON deposit_installments(rental_id);
+CREATE INDEX idx_deposit_installments_status ON deposit_installments(status);
+CREATE INDEX idx_deposit_installments_due_date ON deposit_installments(due_date);
+```
+
+**Colunas:**
+
+| Coluna | Tipo | Descrição | Constraints |
+|--------|------|-----------|-------------|
+| `id` | UUID | Identificador único | PRIMARY KEY |
+| `rental_id` | UUID | Referência para locação | FK → rentals(id) CASCADE |
+| `installment_number` | INTEGER | Número da parcela | 1-3 |
+| `installment_total` | INTEGER | Total de parcelas | 1-3 |
+| `amount` | DECIMAL(10,2) | Valor da parcela | NOT NULL, > 0 |
+| `due_date` | DATE | Data de vencimento | NOT NULL |
+| `payment_date` | DATE | Data de pagamento | - |
+| `paid_amount` | DECIMAL(10,2) | Valor pago | DEFAULT 0 |
+| `status` | TEXT | Status da parcela | 4 valores possíveis |
+| `payment_method` | TEXT | Método de pagamento | - |
+| `pix_code` | TEXT | Código PIX | - |
+| `partner_commission` | DECIMAL(10,2) | Comissão corretor parceiro | - |
+| `internal_commission` | DECIMAL(10,2) | Comissão corretor interno | - |
+| `notes` | TEXT | Observações | - |
+| `attachments` | JSONB | Array de anexos | DEFAULT '[]' |
+| `created_at` | TIMESTAMP | Data de criação | DEFAULT NOW() |
+| `updated_at` | TIMESTAMP | Data de atualização | DEFAULT NOW() |
+
+**Status possíveis:**
+- `pending` - Aguardando pagamento
+- `paid` - Pago
+- `partial` - Pagamento parcial
+- `overdue` - Atrasado
+
+**Observações importantes:**
+- Parcelas são criadas automaticamente ao criar uma locação com caução
+- `pix_code` serve como comprovante de recebimento (quando preenchido = recebido)
+- Comissões são valores únicos por locação (não por parcela)
+- Datas de vencimento vêm dos campos `deposit_payment_date`, `deposit_installment2_payment_date` e `deposit_installment3_payment_date` da tabela `rentals`
+
+---
+
+### 7. system_users (Usuários do Sistema)
 
 **Descrição:** Usuários com permissões
 
@@ -402,7 +477,7 @@ CREATE INDEX idx_system_users_role ON system_users(role);
 
 ---
 
-### 7. user_location_permissions (Permissões por Localização)
+### 8. user_location_permissions (Permissões por Localização)
 
 **Descrição:** Define quais localizações cada usuário pode acessar
 
@@ -424,7 +499,7 @@ CREATE INDEX idx_ulp_location ON user_location_permissions(location_id);
 
 ---
 
-### 8. admin_fee_exemptions (Isenções de Taxa)
+### 9. admin_fee_exemptions (Isenções de Taxa)
 
 **Descrição:** Inquilinos isentos de taxa administrativa
 
@@ -445,7 +520,7 @@ CREATE UNIQUE INDEX idx_exemptions_tenant ON admin_fee_exemptions(tenant_id);
 
 ---
 
-### 9. location_expenses (Despesas de Localização)
+### 10. location_expenses (Despesas de Localização)
 
 **Descrição:** Despesas operacionais por localização
 

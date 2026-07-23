@@ -728,6 +728,223 @@ a.click();
 
 ---
 
+## 💼 Serviços de Cauções
+
+### depositInstallmentService.ts
+
+**Localização:** `src/services/depositInstallmentService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. createDepositInstallments
+```typescript
+async function createDepositInstallments(
+  rentalId: string,
+  installments: Array<{
+    installment_number: number;
+    total_installments: number;
+    amount: number;
+    due_date: string;
+    payment_date?: string | null;
+    pix_code?: string | null;
+    status?: "pending" | "paid" | "partial";
+    paid_amount?: number;
+    payment_method?: string | null;
+  }>
+): Promise<DepositInstallment[]>
+```
+
+**Descrição:** Cria parcelas de caução para uma locação
+
+**Parâmetros:**
+- `rentalId` (string) - ID da locação
+- `installments` (Array) - Array com dados de cada parcela
+
+**Retorno:** Array de `DepositInstallment` criado
+
+**Validação:** Verifica se já existem parcelas antes de criar (evita duplicatas)
+
+**Exemplo:**
+```typescript
+import { createDepositInstallments } from "@/services/depositInstallmentService";
+
+const installments = await createDepositInstallments("rental-123", [
+  {
+    installment_number: 1,
+    total_installments: 3,
+    amount: 400.00,
+    due_date: "2026-01-01",
+    status: "pending"
+  },
+  {
+    installment_number: 2,
+    total_installments: 3,
+    amount: 400.00,
+    due_date: "2026-02-01",
+    status: "pending"
+  },
+  {
+    installment_number: 3,
+    total_installments: 3,
+    amount: 400.00,
+    due_date: "2026-03-01",
+    status: "pending"
+  }
+]);
+```
+
+---
+
+##### 2. getDepositInstallmentsByRental
+```typescript
+async function getDepositInstallmentsByRental(
+  rentalId: string
+): Promise<DepositInstallment[]>
+```
+
+**Descrição:** Busca todas as parcelas de caução de uma locação
+
+**Parâmetros:**
+- `rentalId` (string) - ID da locação
+
+**Retorno:** Array de `DepositInstallment` ordenado por `installment_number`
+
+**Exemplo:**
+```typescript
+import { getDepositInstallmentsByRental } from "@/services/depositInstallmentService";
+
+const installments = await getDepositInstallmentsByRental("rental-123");
+console.log("Parcelas:", installments.length);
+```
+
+---
+
+##### 3. updateDepositInstallment
+```typescript
+async function updateDepositInstallment(
+  id: string,
+  updates: Partial<DepositInstallment>
+): Promise<DepositInstallment>
+```
+
+**Descrição:** Atualiza uma parcela de caução
+
+**Parâmetros:**
+- `id` (string) - ID da parcela
+- `updates` (Partial<DepositInstallment>) - Campos a atualizar
+
+**Retorno:** Objeto `DepositInstallment` atualizado
+
+**Campos editáveis:**
+- `amount` - Valor da parcela
+- `pix_code` - Código PIX
+- `partner_commission` - Comissão parceiro
+- `internal_commission` - Comissão interno
+- `payment_date` - Data de pagamento
+- `paid_amount` - Valor pago
+- `status` - Status
+- `notes` - Observações
+
+**Exemplo:**
+```typescript
+import { updateDepositInstallment } from "@/services/depositInstallmentService";
+
+// Marcar como recebido via PIX
+const updated = await updateDepositInstallment("installment-123", {
+  pix_code: "00020126580014br.gov.bcb.pix...",
+  status: "paid",
+  payment_date: "2026-01-05"
+});
+```
+
+---
+
+##### 4. markDepositInstallmentAsPaid
+```typescript
+async function markDepositInstallmentAsPaid(
+  id: string,
+  paymentDate: string,
+  paymentMethod: string,
+  notes?: string,
+  attachments?: string[]
+): Promise<DepositInstallment>
+```
+
+**Descrição:** Marca uma parcela de caução como paga
+
+**Parâmetros:**
+- `id` (string) - ID da parcela
+- `paymentDate` (string) - Data do pagamento (YYYY-MM-DD)
+- `paymentMethod` (string) - Método de pagamento
+- `notes` (string, opcional) - Observações
+- `attachments` (string[], opcional) - URLs de comprovantes
+
+**Retorno:** Objeto `DepositInstallment` atualizado
+
+**Exemplo:**
+```typescript
+import { markDepositInstallmentAsPaid } from "@/services/depositInstallmentService";
+
+const paid = await markDepositInstallmentAsPaid(
+  "installment-123",
+  "2026-01-05",
+  "PIX",
+  "Recebido via PIX",
+  ["https://storage.supabase.co/comprovante.pdf"]
+);
+```
+
+---
+
+##### 5. deleteDepositInstallmentsByRental
+```typescript
+async function deleteDepositInstallmentsByRental(
+  rentalId: string
+): Promise<void>
+```
+
+**Descrição:** Deleta todas as parcelas de caução de uma locação
+
+**Parâmetros:**
+- `rentalId` (string) - ID da locação
+
+**Uso:** Chamado automaticamente ao deletar uma locação (CASCADE)
+
+**Exemplo:**
+```typescript
+import { deleteDepositInstallmentsByRental } from "@/services/depositInstallmentService";
+
+await deleteDepositInstallmentsByRental("rental-123");
+```
+
+---
+
+### Tipo DepositInstallment
+
+```typescript
+interface DepositInstallment {
+  id: string;
+  rental_id: string;
+  installment_number: number;
+  total_installments: number;
+  amount: number;
+  due_date: string;
+  payment_date: string | null;
+  paid_amount: number;
+  payment_method: string | null;
+  pix_code: string | null;
+  partner_commission?: number;
+  internal_commission?: number;
+  status: "pending" | "paid" | "partial" | "overdue";
+  notes: string | null;
+  attachments: string[];
+  created_at: string;
+  updated_at: string;
+}
+```
+
+---
+
 ## 🔌 API Routes
 
 ### Next.js API Routes
