@@ -713,6 +713,7 @@ export type Database = {
           property_id: string
           rent_due_day: number | null
           rent_value: number | null
+          returned_deposit_amount: number | null
           security_deposit: number | null
           start_date: string
           status: string | null
@@ -736,6 +737,7 @@ export type Database = {
           property_id: string
           rent_due_day?: number | null
           rent_value?: number | null
+          returned_deposit_amount?: number | null
           security_deposit?: number | null
           start_date: string
           status?: string | null
@@ -759,6 +761,7 @@ export type Database = {
           property_id?: string
           rent_due_day?: number | null
           rent_value?: number | null
+          returned_deposit_amount?: number | null
           security_deposit?: number | null
           start_date?: string
           status?: string | null

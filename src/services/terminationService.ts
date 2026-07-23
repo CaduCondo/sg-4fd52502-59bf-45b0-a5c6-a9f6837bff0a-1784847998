@@ -392,6 +392,7 @@ export async function processContractTermination(data: TerminationData): Promise
     .from("rentals")
     .update({
       end_date: terminationDate,
+      returned_deposit_amount: correctedDeposit, // ✅ Salvar valor devolvido
       updated_at: new Date().toISOString()
     })
     .eq("id", rentalId);
@@ -402,6 +403,7 @@ export async function processContractTermination(data: TerminationData): Promise
   }
 
   console.log(`  ✅ Data fim atualizada para: ${terminationDate}`);
+  console.log(`  ✅ Valor devolvido do caução: R$ ${correctedDeposit.toFixed(2)}`);
 
   // ==========================================
   // PASSO 7: DELETAR pagamentos futuros

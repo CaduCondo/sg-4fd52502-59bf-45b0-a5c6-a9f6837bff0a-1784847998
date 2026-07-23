@@ -125,6 +125,7 @@ export function DepositInstallmentsTable({
               security_deposit,
               has_partner_broker,
               status,
+              returned_deposit_amount,
               tenant:tenants(name),
               property:properties(
                 complement,
@@ -693,6 +694,9 @@ export function DepositInstallmentsTable({
                     <TableHead className="text-center font-semibold">Data Pagamento</TableHead>
                     <TableHead className="text-center font-semibold">Valor Pago</TableHead>
                     <TableHead className="text-center font-semibold">Código PIX</TableHead>
+                    {statusFilter !== "active" && (
+                      <TableHead className="text-center font-semibold">Valor Devolvido</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -924,6 +928,15 @@ export function DepositInstallmentsTable({
                             </span>
                           )}
                         </TableCell>
+
+                        {/* Valor Devolvido - mesclado - somente para contratos cancelados */}
+                        {statusFilter !== "active" && shouldRenderCell(rentalId, index) && (
+                          <TableCell className="text-right font-semibold text-blue-600 whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
+                            {rental?.status !== "active" && rental?.returned_deposit_amount 
+                              ? formatCurrency(rental.returned_deposit_amount)
+                              : "-"}
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
