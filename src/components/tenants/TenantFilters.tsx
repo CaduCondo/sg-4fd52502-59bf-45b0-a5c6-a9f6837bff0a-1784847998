@@ -59,7 +59,7 @@ export function TenantFilters({
           {countText}
         </div>
         
-        <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-right">Status:</div>
+        <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-left">Status:</div>
       </div>
 
       <div className="flex gap-3">
