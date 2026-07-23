@@ -24,6 +24,28 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
+// Interface estendida para incluir returned_deposit_amount até os tipos serem regenerados
+interface RentalWithReturnedDeposit {
+  rent_value: number;
+  garage_value: number;
+  security_deposit: number;
+  has_partner_broker: boolean;
+  status: string;
+  returned_deposit_amount?: number;
+  deposit_payment_date?: string;
+  deposit_installment2_payment_date?: string;
+  deposit_installment3_payment_date?: string;
+  tenant: {
+    name: string;
+  };
+  property: {
+    complement: string;
+    location: {
+      name: string;
+    };
+  };
+}
+
 interface DepositInstallment {
   id: string;
   rental_id: string;
@@ -36,25 +58,7 @@ interface DepositInstallment {
   payment_date: string | null;
   status: string;
   due_date: string | null;
-  rental: {
-    rent_value: number;
-    garage_value: number;
-    security_deposit: number;
-    has_partner_broker: boolean;
-    status: string;
-    deposit_payment_date?: string;
-    deposit_installment2_payment_date?: string;
-    deposit_installment3_payment_date?: string;
-    tenant: {
-      name: string;
-    };
-    property: {
-      complement: string;
-      location: {
-        name: string;
-      };
-    };
-  };
+  rental: RentalWithReturnedDeposit;
 }
 
 interface DepositInstallmentsTableProps {
