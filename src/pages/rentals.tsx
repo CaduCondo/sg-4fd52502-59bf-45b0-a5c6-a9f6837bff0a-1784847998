@@ -982,25 +982,30 @@ export default function RentalsPage() {
         {/* Filtros de Busca e Status */}
         <Card className="mb-8">
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="rentals-search-input"
-                    placeholder="Buscar por inquilino, local ou complemento..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground font-medium">
+                  {filteredRentals.length} {filteredRentals.length === 1 ? "contrato de locação encontrado" : "contratos de locação encontrados"}
                 </div>
+                
+                <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-left">Status:</div>
               </div>
 
-              <div className="w-full sm:w-[250px]">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium whitespace-nowrap">
-                    Status:
-                  </span>
+              <div className="flex gap-3">
+                <div className="flex-1 lg:max-w-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="rentals-search-input"
+                      placeholder="Buscar por inquilino, local ou complemento..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden lg:flex ml-auto w-[180px]">
                   <Select
                     value={statusFilter}
                     onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
@@ -1022,11 +1027,6 @@ export default function RentalsPage() {
 
         {/* Rentals List */}
         <Card className="w-full">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              Contratos de Locação ({filteredRentals.length})
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
             {loading ? (
               <div className="space-y-2">
