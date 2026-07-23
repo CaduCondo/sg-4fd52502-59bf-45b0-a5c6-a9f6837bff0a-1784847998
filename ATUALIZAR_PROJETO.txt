@@ -1,44 +1,52 @@
 ==========================================
-   ATUALIZAR PROJETO - PASSO A PASSO
+   FORÇAR ATUALIZAÇÃO PARA VERSÃO ATUAL
 ==========================================
 
-PASSO 1: Descobrir o nome do branch
-Cole este comando:
-
-git branch -r
-
-(Isso vai mostrar os branches disponiveis)
-Procure por algo como "origin/master" ou "origin/main"
+IMPORTANTE: Seu Git está funcionando, mas precisa
+buscar os commits mais recentes!
 
 ==========================================
 
-PASSO 2: Use o comando correto baseado no resultado:
+PASSO 1 - Cole no CMD:
+cd C:\Users\debor\Documents\sistema_locacao
 
-SE VIU "origin/master", cole:
-git reset --hard origin/master
+PASSO 2 - Verifique o remote atual:
+git remote -v
 
-SE VIU "origin/main", cole:
+PASSO 3 - Busque TODOS os commits:
+git fetch --all --prune
+
+PASSO 4 - Veja os commits mais recentes:
+git log origin/main --oneline -5
+
+PASSO 5 - Force update para o commit mais recente:
 git reset --hard origin/main
 
-==========================================
-
-PASSO 3: Limpar arquivos
+PASSO 6 - Limpe arquivos temporários:
 git clean -fd
 
-PASSO 4: Instalar dependencias
+PASSO 7 - Instale dependências:
 npm install
 
-PASSO 5: Rodar o servidor
+PASSO 8 - Inicie o servidor:
 npm run dev
 
 ==========================================
 
-RAPIDO: Se quiser fazer tudo de uma vez (DEPOIS do PASSO 1):
+SE O COMMIT AINDA ESTIVER EM 43ffd563:
 
-Para MASTER:
-git fetch origin && git reset --hard origin/master && git clean -fd && npm install && npm run dev
+O problema pode ser que seu remote não aponta para o
+repositório correto do GitHub/Softgen.
 
-Para MAIN:
-git fetch origin && git reset --hard origin/main && git clean -fd && npm install && npm run dev
+Cole este comando e me mande o resultado:
+git remote get-url origin
+
+==========================================
+
+COMMITS ESPERADOS (mais recentes):
+- f373532 (2026-07-23) fix(dev): detect correct default branch
+- e493922 (2026-07-23) fix(dev): fix syntax error
+- fb99baf (2026-07-23) docs(guide): add visual guide
+- 3814c99 (2026-07-23) feat(dev): add sync script
 
 ==========================================

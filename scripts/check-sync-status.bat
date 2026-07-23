@@ -4,40 +4,28 @@ echo Verificando Status de Sincronizacao
 echo ====================================
 echo.
 
-echo [1] Branch Atual:
-git branch --show-current
+echo [1] Seu commit atual:
+git log -1 --oneline
 echo.
 
-echo [2] Branches Remotos Disponiveis:
-git branch -r
+echo [2] URL do remote:
+git remote get-url origin
 echo.
 
-echo [3] Status do Git:
-git status
+echo [3] Ultimos 5 commits do remote:
+git log origin/main --oneline -5
 echo.
 
-echo [4] Ultimos 5 Commits Locais:
-git log -5 --oneline
+echo [4] Diferenca entre local e remote:
+git rev-list --left-right --count HEAD...origin/main
 echo.
 
-echo [5] Ultimos 5 Commits Remotos (main):
-git log origin/main -5 --oneline 2>nul
-if %errorlevel% neq 0 (
-    echo Branch 'main' nao encontrada, tentando 'master'...
-    git log origin/master -5 --oneline
-)
-echo.
-
-echo [6] Configuracao do Remote:
-git remote -v
-echo.
-
-echo [7] Diferencas entre Local e Remoto:
-git fetch origin --quiet
-git rev-list --left-right --count HEAD...origin/main 2>nul
-if %errorlevel% neq 0 (
-    git rev-list --left-right --count HEAD...origin/master
-)
+echo ====================================
+echo Analise:
+echo - Se seu commit for 43ffd563 = DESATUALIZADO
+echo - Commits esperados devem comecar com f373532
+echo - Se a URL do remote estiver errada, precisa corrigir
+echo ====================================
 echo.
 
 pause
