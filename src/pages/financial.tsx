@@ -1649,7 +1649,7 @@ export default function Financial() {
       {/* Adicionar estilos de impressão */}
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       
-      <div id="financial-page" className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
+      <div id="financial-page" className="space-y-6">
         <ScrollReveal>
           <div className="mb-6">
             <div className="flex items-center justify-between">
