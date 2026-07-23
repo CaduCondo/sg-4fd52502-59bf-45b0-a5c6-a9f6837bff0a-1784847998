@@ -325,7 +325,7 @@ export default function TenantsPage() {
           </div>
         </ScrollReveal>
 
-        <Card className="bg-muted/30">
+        <Card className="w-full">
           <CardContent className="pt-6">
             <TenantFilters
               searchTerm={searchTerm}
@@ -339,55 +339,45 @@ export default function TenantsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Lista de Inquilinos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="rounded-md border">
-              {filteredTenants.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">
-                    {searchTerm || statusFilter.length > 0
-                      ? "Nenhum inquilino encontrado com os filtros aplicados." 
-                      : "Nenhum inquilino encontrado."}
-                  </p>
-                  {!searchTerm && statusFilter.length === 0 && (
-                    <Button id="tenants-create-first" onClick={handleCreateNew} className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Criar Primeiro Inquilino
-                    </Button>
-                  )}
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTenants.map((tenant) => (
-                    <TenantCard
-                      key={tenant.id}
-                      tenant={tenant}
-                      onClick={() => handleViewTenant(tenant)}
-                      onDelete={() => handleDelete(tenant.id)}
-                      viewMode={viewMode}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <SortableTable
-                  data={filteredTenants}
-                  columns={tenantColumns}
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  onRowClick={handleViewTenant}
-                  emptyMessage={searchTerm || statusFilter.length > 0 ? "Nenhum inquilino encontrado com os filtros aplicados." : "Nenhum inquilino encontrado."}
-                />
+        <div className="rounded-md border">
+          {filteredTenants.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                {searchTerm || statusFilter.length > 0
+                  ? "Nenhum inquilino encontrado com os filtros aplicados." 
+                  : "Nenhum inquilino encontrado."}
+              </p>
+              {!searchTerm && statusFilter.length === 0 && (
+                <Button id="tenants-create-first" onClick={handleCreateNew} className="mt-4">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro Inquilino
+                </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTenants.map((tenant) => (
+                <TenantCard
+                  key={tenant.id}
+                  tenant={tenant}
+                  onClick={() => handleViewTenant(tenant)}
+                  onDelete={() => handleDelete(tenant.id)}
+                  viewMode={viewMode}
+                />
+              ))}
+            </div>
+          ) : (
+            <SortableTable
+              data={filteredTenants}
+              columns={tenantColumns}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onRowClick={handleViewTenant}
+              emptyMessage={searchTerm || statusFilter.length > 0 ? "Nenhum inquilino encontrado com os filtros aplicados." : "Nenhum inquilino encontrado."}
+            />
+          )}
+        </div>
 
         <TenantFormDialog
           open={dialogState.isOpen}
