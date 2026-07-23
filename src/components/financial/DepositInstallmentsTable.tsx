@@ -691,7 +691,7 @@ export function DepositInstallmentsTable({
                     <TableHead className="text-center font-semibold">Status</TableHead>
                     <TableHead className="text-center font-semibold">Data Vencimento</TableHead>
                     <TableHead className="text-center font-semibold">Data Pagamento</TableHead>
-                    <TableHead className="text-center font-semibold">Valor</TableHead>
+                    <TableHead className="text-center font-semibold">Valor Pago</TableHead>
                     <TableHead className="text-center font-semibold">Código PIX</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -735,14 +735,14 @@ export function DepositInstallmentsTable({
 
                         {/* Valor Aluguel - mesclado - SEM COLORAÇÃO */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell className="text-right whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
                             {formatCurrency(rental?.rent_value || 0)}
                           </TableCell>
                         )}
 
                         {/* Valor Total Caução - mesclado - SEM COLORAÇÃO */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right font-semibold" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell className="text-right font-semibold whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
                             {formatCurrency(totalDepositValue)}
                           </TableCell>
                         )}
@@ -756,7 +756,7 @@ export function DepositInstallmentsTable({
                         
                         {/* Valor Parceiro - mesclado com edição inline - SEM COLORAÇÃO */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell className="text-right whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
                             {rental?.has_partner_broker ? (
                               editingCell?.id === installment.id && editingCell?.field === "partner_commission" ? (
                                 <Input
@@ -787,7 +787,7 @@ export function DepositInstallmentsTable({
                         
                         {/* Valor Corretor - mesclado com edição inline - SEM COLORAÇÃO */}
                         {shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell className="text-right whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
                             {editingCell?.id === installment.id && editingCell?.field === "internal_commission" ? (
                               <Input
                                 type="text"
@@ -876,7 +876,7 @@ export function DepositInstallmentsTable({
                         </TableCell>
                         
                         {/* Valor - NÃO mesclado - COM COLORAÇÃO - texto verde - edição inline */}
-                        <TableCell className={`text-right font-semibold text-green-600 ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
+                        <TableCell className={`text-right font-semibold text-green-600 whitespace-nowrap ${installment.pix_code ? 'bg-green-50' : 'bg-red-50'}`}>
                           {editingCell?.id === installment.id && editingCell?.field === "amount" ? (
                             <Input
                               type="text"
