@@ -935,7 +935,7 @@ export function DepositInstallmentsTable({
 
                         {/* Valor Devolvido - mesclado - somente para contratos cancelados */}
                         {statusFilter !== "active" && shouldRenderCell(rentalId, index) && (
-                          <TableCell className="text-right font-semibold text-blue-600 whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
+                          <TableCell className="text-right font-semibold text-red-600 whitespace-nowrap" rowSpan={getRowSpan(rentalId)}>
                             {rental?.status !== "active" && rental?.returned_deposit_amount 
                               ? formatCurrency(rental.returned_deposit_amount)
                               : "-"}
