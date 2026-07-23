@@ -1,0 +1,55 @@
+==========================================
+   COMO ATUALIZAR O PROJETO
+   (COPIE E COLE OS COMANDOS ABAIXO)
+==========================================
+
+PASSO 1: Abrir o CMD (Terminal)
+--------------------------------
+1. Aperte: Windows + R
+2. Digite: cmd
+3. Clique OK
+
+
+PASSO 2: Ir para a pasta do projeto
+------------------------------------
+Copie e cole este comando, depois aperte Enter:
+
+cd C:\Users\debor\Documents\sistema_locacao
+
+
+PASSO 3: Rodar o script de atualização
+---------------------------------------
+Copie e cole este comando, depois aperte Enter:
+
+scripts\sync-local.bat
+
+(Aguarde terminar, vai pedir para apertar qualquer tecla no final)
+
+
+PASSO 4: Reiniciar o servidor
+------------------------------
+Se o servidor estava rodando, feche com Ctrl+C
+
+Depois digite:
+
+npm run dev
+
+
+PRONTO! Agora acesse: http://localhost:3000
+
+==========================================
+
+SE DER ERRO, FAÇA MANUALMENTE:
+-------------------------------
+
+Copie e cole UM DE CADA VEZ (apertando Enter após cada):
+
+git fetch origin
+git reset --hard origin/main
+git clean -fd
+npm install
+npm run dev
+
+==========================================
+
+DÚVIDAS? Tire print do erro e mande no chat!
