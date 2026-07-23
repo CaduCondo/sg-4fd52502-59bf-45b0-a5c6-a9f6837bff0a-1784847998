@@ -985,7 +985,7 @@ export default function RentalsPage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground font-medium">
-                  {filteredRentals.length} {filteredRentals.length === 1 ? "contrato de locação encontrado" : "contratos de locação encontrados"}
+                  {filteredRentals.length} {filteredRentals.length === 1 ? "locação encontrada" : "locações encontradas"}
                 </div>
                 
                 <div className="hidden lg:block w-[180px] text-sm font-medium text-foreground text-left">Status:</div>

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -771,43 +772,48 @@ export default function Payments() {
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 w-full">
-            <PeriodSelector
-              selectedMonth={selectedMonth as number}
-              selectedYear={selectedYear as number}
-              onMonthChange={handleMonthChange}
-              onYearChange={handleYearChange}
-            />
-            
-            <div className="relative w-full max-w-sm ml-0 sm:ml-2">
-              <Input
-                id="payments-search-input"
-                type="search"
-                placeholder="Buscar por inquilino, endereço..."
-                className="pl-8 w-full"
-                value={uiState.searchQuery}
-                onChange={(e) => setUiState(prev => ({ ...prev, searchQuery: e.target.value }))}
-              />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="payments-search-input"
+                  type="search"
+                  placeholder="Buscar por inquilino, endereço..."
+                  className="pl-10 w-full"
+                  value={uiState.searchQuery}
+                  onChange={(e) => setUiState(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <PeriodSelector
+                  selectedMonth={selectedMonth as number}
+                  selectedYear={selectedYear as number}
+                  onMonthChange={handleMonthChange}
+                  onYearChange={handleYearChange}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {loading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Carregando recebimentos...</p>
           </div>
         ) : (
-          <Tabs defaultValue="pending" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
-              <TabsTrigger id="payments-tab-pending" value="pending" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+          <Tabs defaultValue="pending" className="space-y-0">
+            <TabsList className="grid w-full max-w-md grid-cols-2 h-auto p-1">
+              <TabsTrigger id="payments-tab-pending" value="pending" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
                 <span className="hidden sm:inline">Recebimentos Pendentes</span>
                 <span className="sm:hidden">Pendentes</span>
                 <Badge variant="destructive" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger id="payments-tab-paid" value="paid" className="gap-2 text-xs sm:text-base py-2 px-2 sm:px-4">
+              <TabsTrigger id="payments-tab-paid" value="paid" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
                 <span className="hidden sm:inline">Recebimentos Pagos</span>
                 <span className="sm:hidden">Pagos</span>
                 <Badge variant="default" className="bg-green-500 text-xs">
@@ -817,7 +823,7 @@ export default function Payments() {
             </TabsList>
 
             {/* Aba: Recebimentos Pendentes */}
-            <TabsContent value="pending" className="space-y-6">
+            <TabsContent value="pending" className="mt-0 space-y-0">
               {pendingPayments.length > 0 ? (
                 uiState.viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
