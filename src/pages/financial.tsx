@@ -1671,29 +1671,27 @@ export default function Financial() {
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-            <TabsList className="grid w-full sm:w-auto grid-cols-2 gap-1 sm:gap-2 h-auto p-1 no-print">
-              <TabsTrigger id="financial-tab-rentals" value="rentals" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+            <TabsList className="grid w-full max-w-md grid-cols-2 h-auto p-1">
+              <TabsTrigger id="financial-tab-rentals" value="rentals" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
                 Locações
               </TabsTrigger>
               {(isAdmin || user?.role === "broker") && (
-                <TabsTrigger id="financial-tab-deposits" value="deposits" className="text-xs sm:text-sm whitespace-normal h-auto py-2 px-3">
+                <TabsTrigger id="financial-tab-deposits" value="deposits" className="gap-2 text-xs sm:text-base py-3 px-4 sm:px-6">
                   Cauções
                 </TabsTrigger>
               )}
             </TabsList>
 
-            <div className="w-full sm:w-auto no-print">
-              <PeriodSelector 
-                selectedMonth={selectedMonth} 
-                selectedYear={selectedYear}
-                onMonthChange={(m) => setSelectedMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
-                onYearChange={(y) => setSelectedYear(y === 'all' ? new Date().getFullYear() : Number(y))}
-                onFilterMonthChange={(m) => setFilterMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
-                onFilterYearChange={(y) => setFilterYear(y === 'all' ? new Date().getFullYear() : Number(y))}
-                showAllOption={false}
-              />
-            </div>
+            <PeriodSelector 
+              selectedMonth={selectedMonth} 
+              selectedYear={selectedYear}
+              onMonthChange={(m) => setSelectedMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
+              onYearChange={(y) => setSelectedYear(y === 'all' ? new Date().getFullYear() : Number(y))}
+              onFilterMonthChange={(m) => setFilterMonth(m === 'all' ? new Date().getMonth() + 1 : Number(m))}
+              onFilterYearChange={(y) => setFilterYear(y === 'all' ? new Date().getFullYear() : Number(y))}
+              showAllOption={false}
+            />
           </div>
 
           <TabsContent value="rentals" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
