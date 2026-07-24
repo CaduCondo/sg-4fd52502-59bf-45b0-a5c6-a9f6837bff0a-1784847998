@@ -964,6 +964,204 @@
             </div>
         </div>
 
+        <!-- SEÇÃO: SISTEMA DE CAUÇÕES -->
+        <section id="caucoes" class="mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-blue-600 border-b-2 border-blue-200 pb-2">
+                💰 Sistema de Cauções
+            </h2>
+
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <p class="font-semibold text-blue-900">
+                    O sistema de cauções permite gerenciar depósitos de segurança de forma parcelada (1x, 2x ou 3x).
+                </p>
+            </div>
+
+            <!-- Tipos de Caução -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Tipos de Pagamento</h3>
+                
+                <table class="w-full border-collapse border border-gray-300 mb-4">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Tipo</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">À vista</td>
+                            <td class="border border-gray-300 px-4 py-2">Caução pago integralmente no primeiro mês</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Parcelado em 2x</td>
+                            <td class="border border-gray-300 px-4 py-2">Caução dividido em 2 parcelas (1º e 2º mês)</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Parcelado em 3x</td>
+                            <td class="border border-gray-300 px-4 py-2">Caução dividido em 3 parcelas (1º, 2º e 3º mês)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cálculo de Parcelas -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Cálculo das Parcelas</h3>
+                
+                <div class="bg-white border border-gray-300 rounded p-4 mb-4">
+                    <p class="mb-2"><strong>Regra:</strong> Divisão igualitária com ajuste de centavos na última parcela</p>
+                    
+                    <div class="ml-4 mt-3">
+                        <p class="font-semibold text-green-700 mb-1">Exemplo 1 - Caução R$ 1.000,00 em 3x:</p>
+                        <ul class="list-disc list-inside ml-4 text-gray-700">
+                            <li>1ª parcela: R$ 333,33</li>
+                            <li>2ª parcela: R$ 333,33</li>
+                            <li>3ª parcela: R$ 333,34 (ajuste de R$ 0,01)</li>
+                        </ul>
+                    </div>
+
+                    <div class="ml-4 mt-3">
+                        <p class="font-semibold text-green-700 mb-1">Exemplo 2 - Caução R$ 1.234,56 em 2x:</p>
+                        <ul class="list-disc list-inside ml-4 text-gray-700">
+                            <li>1ª parcela: R$ 617,28</li>
+                            <li>2ª parcela: R$ 617,28</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comissões de Caução -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Comissões de Caução</h3>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                    <p class="font-semibold text-yellow-900">
+                        ⚠️ Importante: As comissões são registradas UMA ÚNICA VEZ no sistema, mesmo quando o caução é parcelado.
+                    </p>
+                </div>
+
+                <ul class="list-disc list-inside ml-4 text-gray-700 space-y-2">
+                    <li>Valores são definidos na criação da locação</li>
+                    <li>Comissões aplicam-se ao valor <strong>total</strong> do caução, não por parcela</li>
+                    <li>Exibidas no relatório financeiro de cauções</li>
+                    <li>Apenas parcelas da mesma locação compartilham os mesmos valores de comissão</li>
+                </ul>
+
+                <div class="mt-4 ml-4">
+                    <p class="font-semibold text-blue-700 mb-1">Exemplo:</p>
+                    <ul class="list-disc list-inside ml-4 text-gray-700">
+                        <li>Caução: R$ 1.200,00 (3x de R$ 400,00)</li>
+                        <li>Comissão Parceiro: R$ 360,00 (30% do total)</li>
+                        <li>Comissão Interno: R$ 240,00 (20% do total)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Controle de Recebimento -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Controle de Recebimento</h3>
+                
+                <p class="mb-4 text-gray-700">Uma parcela é considerada <strong class="text-green-600">recebida</strong> quando o campo <code class="bg-gray-100 px-2 py-1 rounded">pix_code</code> está preenchido.</p>
+
+                <div class="bg-white border border-gray-300 rounded p-4">
+                    <p class="font-semibold mb-2">Status possíveis:</p>
+                    <ul class="list-disc list-inside ml-4 text-gray-700 space-y-1">
+                        <li><span class="inline-block w-20 font-mono text-sm">paid</span> - Parcela paga</li>
+                        <li><span class="inline-block w-20 font-mono text-sm">pending</span> - Parcela não paga</li>
+                        <li><span class="inline-block w-20 font-mono text-sm">overdue</span> - Parcela atrasada</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Edição Inline -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Edição Inline no Relatório Financeiro</h3>
+                
+                <p class="mb-4 text-gray-700"><strong>Admin e Broker</strong> podem editar diretamente na tabela:</p>
+
+                <ol class="list-decimal list-inside ml-4 text-gray-700 space-y-3">
+                    <li>
+                        <strong>Código PIX</strong> - Clique no ícone de lápis
+                        <ul class="list-disc list-inside ml-8 text-gray-600 mt-1">
+                            <li>Campo de texto livre</li>
+                            <li>Ao preencher, linha fica verde (recebido)</li>
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <strong>Comissões</strong> - Clique no valor para editar
+                        <ul class="list-disc list-inside ml-8 text-gray-600 mt-1">
+                            <li>Máscara de moeda automática</li>
+                            <li>Atualiza KPIs em tempo real</li>
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <strong>Valor da Parcela</strong> - Editável inline
+                        <ul class="list-disc list-inside ml-8 text-gray-600 mt-1">
+                            <li>Útil para ajustes ou correções</li>
+                            <li>Recalcula totais automaticamente</li>
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <strong>Valor Devolvido</strong> (apenas contratos cancelados)
+                        <ul class="list-disc list-inside ml-8 text-gray-600 mt-1">
+                            <li>Exibido apenas quando filtro ≠ "Ativas"</li>
+                            <li>Usado para registrar quanto foi devolvido ao inquilino</li>
+                            <li>Valor pode ser menor que o caução original (descontos por danos)</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Correção por IGPM -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Correção por IGPM</h3>
+                
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                    <p class="font-semibold text-red-900">
+                        ⚠️ IMPORTANTE: Na rescisão do contrato, o caução é corrigido pelo IGPM acumulado.
+                    </p>
+                </div>
+
+                <p class="mb-4 text-gray-700"><strong>Processo:</strong></p>
+                <ol class="list-decimal list-inside ml-4 text-gray-700 space-y-2">
+                    <li>Sistema busca o <strong>IGPM acumulado</strong> do período da locação</li>
+                    <li>Aplica correção sobre o valor total do caução pago</li>
+                    <li><strong>Devolução:</strong> Valor corrigido é abatido no recebimento do último mês</li>
+                </ol>
+
+                <div class="bg-white border border-gray-300 rounded p-4 mt-4">
+                    <p class="font-semibold mb-2">Fórmula:</p>
+                    <pre class="bg-gray-100 p-3 rounded"><code>Caução Corrigido = Caução Original × (1 + IGPM_Acumulado/100)</code></pre>
+
+                    <div class="mt-4">
+                        <p class="font-semibold text-blue-700 mb-1">Exemplo:</p>
+                        <ul class="list-disc list-inside ml-4 text-gray-700">
+                            <li>Caução original: R$ 1.200,00</li>
+                            <li>IGPM acumulado no período: 8,5%</li>
+                            <li><strong>Caução corrigido:</strong> R$ 1.200,00 × 1,085 = R$ 1.302,00</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Isenção de Taxa -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800">Isenção de Taxa no Caução</h3>
+                
+                <div class="bg-green-50 border-l-4 border-green-500 p-4">
+                    <p class="font-semibold text-green-900">
+                        ✅ Regra: Taxa administrativa <strong>NÃO é aplicada</strong> sobre o valor do caução
+                    </p>
+                    <p class="text-green-800 mt-2">
+                        <strong>Motivo:</strong> Caução é uma garantia, não é receita da administradora
+                    </p>
+                </div>
+            </div>
+        </section>
+
         <!-- SEÇÃO 8: FINANCEIRO -->
         <div id="financial" class="section">
             <h2>8. Módulo Financeiro</h2>
